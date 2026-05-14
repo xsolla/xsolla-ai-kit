@@ -1,0 +1,40 @@
+name: Sync provider-specific rule files
+
+on:
+  push:
+    paths:
+      - 'skills/**/*.md'
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate .cursor/rules/ from SKILL.md files
+        run: |
+          mkdir -p .cursor/rules
+          for skill_dir in skills/*/; do
+            skill_name=$(basename "$skill_dir")
+            skill_file="$skill_dir/SKILL.md"
+            if [ -f "$skill_file" ]; then
+              output_file=".cursor/rules/${skill_name}.mdc"
+              echo "---" > "$output_file"
+              echo "description: Xsolla ${skill_name} skill" >> "$output_file"
+              echo "globs: ['**/*']" >> "$output_file"
+              echo "alwaysApply: false" >> "$output_file"
+              echo "---" >> "$output_file"
+              echo "" >> "$output_file"
+              cat "$skill_file" >> "$output_file"
+              echo "Generated: $output_file"
+            fi
+          done
+
+      - name: Commit generated files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .cursor/rules/
+          git diff --staged --quiet || git commit -m "chore: sync provider rules from SKILL.md files [skip ci]"
+          git push
