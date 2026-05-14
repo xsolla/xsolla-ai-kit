@@ -1,0 +1,59 @@
+---
+description: Xsolla shop-setup skill
+globs: ['**/*']
+alwaysApply: false
+---
+
+---
+name: shop-setup
+description: >-
+  Orchestrates the full zero-to-shop workflow for Xsolla game commerce integrations.
+  Use when a developer wants to build a complete game shop from scratch, set up
+  a headless webshop, integrate Xsolla into a game, launch a storefront, or wire
+  up a game catalog with payments and authentication end-to-end. Coordinates all
+  domain skills in sequence: project-init → login-setup → catalog-design →
+  shop-design → payments-config → webhooks-impl → store-build.
+metadata:
+  owner: j.manashti
+  domain: orchestrator
+---
+
+## When to use
+
+Use this skill when the developer wants to:
+- Build a complete Xsolla-powered game shop from scratch
+- Set up a headless webshop with catalog, payments, and auth
+- Walk through the full Xsolla integration checklist
+- Launch a working shop in sandbox end-to-end
+
+Do NOT use this skill for single-domain tasks (e.g. "just add a payment method") — use the relevant domain skill directly instead.
+
+## Prerequisites
+
+```bash
+export XSOLLA_API_KEY=<your-sandbox-key>
+export MERCHANT_ID=<your-merchant-id>
+export XSOLLA_ENV=sandbox
+```
+
+You will need an Xsolla Publisher Account. Create one at https://publisher.xsolla.com/signup if you don't have one.
+
+## Steps
+
+This skill chains the following domain skills in order. Run each to completion before moving to the next.
+
+1. **`project-init`** — Create an Xsolla project and configure merchant settings
+2. **`login-setup`** — Integrate Xsolla Login or NewID authentication
+3. **`catalog-design`** — Configure virtual catalog: items, pricing, virtual currency, bundles
+4. **`shop-design`** — Apply branding, theme tokens, and LLM-assisted visual design
+5. **`payments-config`** — Integrate Pay Station and configure payment methods
+6. **`webhooks-impl`** — Implement webhook handlers for order and payment events
+7. **`store-build`** — Deploy WebShop, Site Builder storefront, or headless FE
+
+After completing all steps, run an end-to-end sandbox transaction to verify the full flow.
+
+## Common pitfalls
+
+- **Wrong order**: `login-setup` must come before `payments-config` — Pay Station needs an auth token
+- **Missing PROJECT_ID**: After `project-init`, set `PROJECT_ID` in your environment before running subsequent skills
+- **Sandbox vs production**: Keep `XSOLLA_ENV=sandbox` until the full flow is verified — production webhooks cannot be easily rolled back
