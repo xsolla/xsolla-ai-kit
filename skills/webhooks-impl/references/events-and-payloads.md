@@ -115,8 +115,11 @@ after a `refund` or any other cancellation.
 - `cancel_subscription`: same shape plus `subscription.date_end` (termination
   date), no `date_next_charge`. Revoke access at `date_end`.
 
-Idempotency key for subscription events = `subscription.subscription_id` +
-event type (a renewal repeats the same `subscription_id`).
+Idempotency key for subscription events = `subscription.subscription_id` + a
+**per-event discriminator**. Do **not** dedup on `(subscription_id, type)` alone:
+`update_subscription` repeats on every renewal with the same id and type, so that
+would silently drop legitimate renewals. Use `subscription.date_next_charge` (or
+the renewal's charge/transaction id) as the discriminator.
 
 ## Refund reason codes
 

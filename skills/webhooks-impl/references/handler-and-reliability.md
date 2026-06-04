@@ -6,7 +6,7 @@
 | --- | --- | --- |
 | `200` / `201` / `204` | Handled successfully (or already handled). | Marked delivered. |
 | `400` + error body | Bad/unverifiable request (bad signature, unknown user). | No retry; flow stops. |
-| `5xx` | **Temporary** failure on your side. | Xsolla **retries** (see below). |
+| `5xx` | **Temporary** failure on your side. | Xsolla **retries** for most event types (see below); `user_validation` is **not retried**. |
 
 Error body for `400`:
 
@@ -47,7 +47,7 @@ app.post('/xsolla/webhooks', async (req, res) => {
       // payment/refund ALSO arrive — treat those as financial records only, or you
       // will fulfill twice.
       case 'order_paid': {
-        if (await alreadyProcessed(txId(evt))) return res.sendStatus(200); // idempotent replay
+        if (await alreadyProcessed(txId(evt))) return res.sendStatus(204); // idempotent replay
         await grantItemsAtomically(txId(evt), userId(evt), evt);
         return res.sendStatus(204);
       }
@@ -61,7 +61,7 @@ app.post('/xsolla/webhooks', async (req, res) => {
         return res.sendStatus(204);
       }
       case 'create_subscription':   // optional — only if you sell subscriptions
-      case 'update_subscription':   // sent on every renewal → extend access
+      case 'update_subscription':   // every renewal → extend; dedup on subscription_id + date_next_charge
       case 'cancel_subscription': { // revoke at evt.subscription.date_end
         await applySubscriptionState(evt.notification_type, evt.user.id, evt.subscription);
         return res.sendStatus(204);
@@ -87,6 +87,16 @@ Never store two successful transactions with the same id.
 3. On unique-constraint conflict → already processed → return the previous
    result (a `2xx`). Do **not** grant items again.
 
+> A successful catalog purchase **always** emits `order_paid` (combined) or
+> `order_paid` alongside `payment` (separate) — never `payment` alone. Key your
+> fulfillment off `order_*` so the same path works in both modes.
+
+For **subscription** events, the transaction id isn't the dedup key: use
+`subscription.subscription_id` **plus a per-event discriminator**, since
+`update_subscription` repeats on every renewal with the same id and type. Dedup
+renewals on `subscription.date_next_charge` (or the renewal's charge/transaction
+id) so legitimate renewals aren't dropped.
+
 ## Retries and delivery order
 
 - `order_paid` / `order_canceled`: on `5xx`/no response → **2× @ 5 min, 7× @ 15
@@ -104,7 +114,9 @@ whole chain. Monitor and alert on webhook error rate.
 ## Network hardening
 
 Accept webhook traffic only from Xsolla's published source IPs (defense in depth
-— signature verification is still mandatory):
+— signature verification is still mandatory). The ranges below are a snapshot and
+**can go stale**; always treat the docs as the source of truth:
+https://developers.xsolla.com/webhooks/overview (see "Webhook listener").
 
 ```
 185.30.20.0/24  185.30.21.0/24  185.30.22.0/24  185.30.23.0/24

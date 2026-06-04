@@ -1,8 +1,8 @@
 # Signature verification
 
 Every Xsolla webhook is authenticated with a SHA-1 signature over the **raw
-body** plus the project's secret key. Verify it **before** parsing or acting on
-anything. No verification = anyone can grant items.
+body** plus the project's secret key. Verify it **before acting on the payload**
+(and always hash the raw request bytes). No verification = anyone can grant items.
 
 ## Algorithm
 
@@ -29,6 +29,7 @@ const express = require('express');
 const crypto = require('crypto');
 
 const SECRET = process.env.XSOLLA_WEBHOOK_SECRET;
+if (!SECRET) throw new Error('XSOLLA_WEBHOOK_SECRET is required'); // fail fast on misconfig
 const app = express();
 
 // Keep the raw body so the signature can be verified byte-for-byte.
