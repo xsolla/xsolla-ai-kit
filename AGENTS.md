@@ -14,16 +14,16 @@ Skills call **Xsolla REST APIs directly**. The CLI (`xsolla/xsolla-cli`) is an o
 
 ## Skill inventory
 
-| Skill | What it does |
-|-------|-------------|
-| `shop-setup` | **Orchestrator** — coordinates the full zero-to-shop flow, chaining all domain skills |
-| `project-init` | Creates and configures an Xsolla project + merchant settings |
-| `catalog-design` | Configures virtual catalog: items, pricing, virtual currency, bundles |
-| `login-setup` | Integrates Xsolla Login / NewID authentication |
-| `payments-config` | Integrates Pay Station + configures payment methods |
-| `webhooks-impl` | Generates webhook handler code for order/payment events |
-| `store-build` | Deploys WebShop or headless storefront |
-| `shop-design` | Applies branding, theme tokens, LLM-assisted visual design |
+| Skill             | What it does                                                                          |
+|-------------------|---------------------------------------------------------------------------------------|
+| `shop-setup`      | **Orchestrator** — coordinates the full zero-to-shop flow, chaining all domain skills |
+| `merchant-setup`  | Creates and configures an Xsolla account + get API key                                |
+| `catalog-design`  | Configures virtual catalog: items, pricing, virtual currency, bundles                 |
+| `login-setup`     | Integrates Xsolla Login / NewID authentication                                        |
+| `payments-config` | Integrates Pay Station + configures payment methods                                   |
+| `webhooks-impl`   | Generates webhook handler code for order/payment events                               |
+| `store-build`     | Deploys WebShop or headless storefront                                                |
+| `shop-design`     | Applies branding, theme tokens, LLM-assisted visual design                            |
 
 ---
 
@@ -33,7 +33,7 @@ Skills are loaded automatically when you open this repo in your agent. To run a 
 
 ```
 Set up a full Xsolla game shop for my project
-→ triggers: shop-setup orchestrator
+→ triggers: shop-setup
 
 Configure my Xsolla catalog with items and pricing
 → triggers: catalog-design
@@ -47,15 +47,11 @@ Integrate Pay Station checkout into my game
 ## Environment variables
 
 ```bash
-XSOLLA_API_KEY=<your sandbox key>
-PROJECT_ID=<your project ID>
-MERCHANT_ID=<your merchant ID>
-XSOLLA_ENV=sandbox   # default; set to "production" for prod
+XSOLLA_MERCHANT_ID=<your merchant ID>
+XSOLLA_PROJECT_ID=<your project ID>
+XSOLLA_PROJECT_API_KEY=<your API key>
 ```
-
-Use `xsolla config set merchant_id <id>` (if CLI is available) to persist locally instead of exporting each session.
-
-Sandbox fixture project: `173042` — safe for any sandbox testing. Ask @j.manashti for the API key.
+Setup by `merchant-setup` skill.
 
 ---
 
