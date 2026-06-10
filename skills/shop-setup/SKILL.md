@@ -146,7 +146,7 @@ The token is always obtained via a backend HTTP call — **never generated on th
 |---|--------|-----------|-------------|------|
 | **1** | `POST https://store.xsolla.com/api/v2/project/{id}/payment/cart/{cartId}` | Browser → Store API directly | **Default for Headless Store / AI build** — no partner backend needed. Full Store lifecycle: cart validated → order created → token returned. | - |
 | **2** | `POST https://store.xsolla.com/api/v3/project/{id}/admin/payment/token` | Partner's backend → Store API (admin auth, S2S) | Production setup where checkout must go through partner's server. Same internal Store logic as method 1, different call architecture. | https://developers.xsolla.com/api/catalog/payment-server-side/admin-create-payment-token |
-| **3** | `POST https://api.xsolla.co/merchant/v2/merchants/{id}/token` | Partner's backend → Merchant API | No Store catalog needed; simple amount + description; maximum `token_data` control. Use when Store API is not part of the integration. | https://developers.xsolla.com/payment-ui-and-flow/payment-ui/how-to-get-payment-token/ |
+| **3** | `POST https://api.xsolla.com/merchant/v2/merchants/{id}/token` | Partner's backend → Merchant API | No Store catalog needed; simple amount + description; maximum `token_data` control. Use when Store API is not part of the integration. | https://developers.xsolla.com/payment-ui-and-flow/payment-ui/how-to-get-payment-token/ |
 
 Methods 1 and 2 both return `{ token, order_id }` and include full Store order lifecycle (SKU validation, promo redemption, inventory reservation). Method 3 returns `{ token }` only — no Store order, no SKU validation.
 
