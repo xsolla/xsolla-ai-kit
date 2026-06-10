@@ -29,23 +29,20 @@ claude --add-dir /path/to/xsolla-ai-kit
 # Clone and open in VS Code — copilot-instructions.md loads automatically
 ```
 
-Set environment variables before running any skill:
+Set environment variables or use `merchant-setup` skill:
 
 ```bash
-export XSOLLA_API_KEY=<your-sandbox-key>
-export PROJECT_ID=<your-project-id>
-export MERCHANT_ID=<your-merchant-id>
-export XSOLLA_ENV=sandbox   # default; set to "production" for prod
+XSOLLA_MERCHANT_ID=<your merchant ID>
+XSOLLA_PROJECT_ID=<your project ID>
+XSOLLA_PROJECT_API_KEY=<your API key>
 ```
-
-Sandbox fixture: project ID `173042` — safe for any sandbox testing.
 
 ## Skill inventory
 
-| Skill | Domain | Owner | Status |
-|-------|--------|-------|--------|
-| `shop-setup` | Orchestrator — full zero-to-shop flow | @j.manashti | Draft |
-| `project-init` | Project + CLI setup | @j.manashti | Draft |
+| Skill | Domain | Owner | Status  |
+|-------|--------|-------|---------|
+| `shop-setup` | Orchestrator — full zero-to-shop flow | @y.klochikhin | Done    |
+| `merchant-setup` | Merchant and Project setup  | @y.klochikhin | Done    |
 | `catalog-design` | Items, pricing, virtual currency, bundles | @p.sanachev | Planned |
 | `login-setup` | Login / NewID / auth | @mohammed_abujalala | Planned |
 | `payments-config` | Pay Station / headless checkout | @v.malykh | Planned |
