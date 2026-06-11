@@ -1,44 +1,129 @@
 ---
 name: catalog-design
 description: >-
-  Configures the Xsolla virtual catalog for a game — including virtual items,
-  virtual currency, bundles, pricing tiers, and player inventory. Use when
-  setting up a game's item catalog, adding purchasable goods, configuring
-  virtual currency, creating starter packs or bundles, setting regional pricing,
-  or managing item attributes and images. Covers Catalog, Cart, Player Inventory,
-  Refunds, Receipt validation, and Geo pricing surfaces.
+  Configures the Xsolla catalog for a game and wires the full sell-side flow: virtual
+  items, virtual currency and its packages, bundles, game key packages, item groups,
+  regional pricing and regional sale restrictions. Use when setting up a game's item
+  catalog, adding purchasable goods, configuring virtual currency, creating starter
+  packs or bundles, selling a game via keys, setting local prices per country, building
+  a store catalog on the client, implementing purchase, or confirming purchases —
+  including "set up my Xsolla catalog", "create virtual items / currency / bundles",
+  "sell game keys", "regional prices", "fast purchase by SKU", "cart purchase",
+  "buy for virtual currency", "track order status", "grant items after payment".
 metadata:
   owner: p.sanachev
   domain: catalog
-  status: planned
+  status: draft
 ---
 
 ## Status
 
-This skill is **in planning**. @p.sanachev (Tech Lead, IGS-Left) owns authoring.
+This skill is a **draft** authored by the catalog SME (@p.sanachev, Tech Lead, IGS-Left).
 
-Reference material is being collected in `references/`:
-- [`references/items.md`](references/items.md) — item types, attributes, images
-- [`references/pricing.md`](references/pricing.md) — pricing models, virtual currency economics
-- [`references/bundles.md`](references/bundles.md) — bundle strategies, starter packs
+Detailed material lives in `references/`:
+- [`references/items.md`](references/items.md) — virtual items, VC, packages, bundles, groups (Admin API)
+- [`references/game-keys.md`](references/game-keys.md) — key packages, platforms, entitlement
+- [`references/pricing.md`](references/pricing.md) — local prices, regional restrictions
+- [`references/catalog-client.md`](references/catalog-client.md) — client catalog calls
+- [`references/purchase-and-tracking.md`](references/purchase-and-tracking.md) — purchase flows, order confirmation
 
 ## When to use
 
 Use this skill when the developer wants to:
-- Create virtual items (consumables, non-consumables, subscriptions)
-- Configure virtual currency denominations
-- Set up starter packs, bundles, or timed offers
-- Configure geo-pricing or regional pricing tiers
-- Manage player inventory and refunds
-- Validate receipts server-side
+
+- Create virtual items, virtual currency, VC packages, bundles, or item groups
+- Sell a game or DLC via game keys (Steam, Epic, PlayStation, DRM-free, …)
+- Set local prices per country or restrict sales by region
+- Build the store catalog UI on the client (game or website)
+- Implement purchase: fast purchase by SKU, cart, purchase for VC, free items
+- Confirm purchases: webhooks on the server or order tracking on the client
+
+Out of scope: player inventory, server-side cart, refund handling, payment UI
+configuration (→ `payments-config`), webhook handler code (→ `webhooks-impl`).
 
 ## Prerequisites
 
 ```bash
-export XSOLLA_API_KEY=<your-sandbox-key>
-export PROJECT_ID=<your-project-id>
-export MERCHANT_ID=<your-merchant-id>
-export XSOLLA_ENV=sandbox
+export XSOLLA_MERCHANT_ID=<your merchant ID>
+export XSOLLA_PROJECT_ID=<your project ID>
+export XSOLLA_PROJECT_API_KEY=<your API key>
 ```
 
-Project must exist (run `project-init` first).
+- An Xsolla project (run `merchant-setup` first — it sets up these variables).
+- **Xsolla MCP (strongly recommended).** Connect the official Xsolla MCP server
+  (<https://developers.xsolla.com/get-started/ai-assistants/>). Before calling any
+  Admin API, verify the current request schema with the `search_xsolla_sources` tool —
+  this skill links the right operations, but field-level schemas must come from live
+  docs, not from this file. If the MCP is unavailable, fetch the linked
+  developers.xsolla.com pages.
+
+## Steps
+
+1. **Choose the archetype and set up the catalog (Admin API).** Ask which of the two
+   the game needs (or both): **in-game items** (typical mobile/F2P) — groups → virtual
+   currency → virtual items → VC packages → bundles, see `references/items.md`; or
+   **game sales via keys** — a key package per platform → upload keys, see
+   `references/game-keys.md`. Admin calls use basic auth
+   (`XSOLLA_MERCHANT_ID:XSOLLA_PROJECT_API_KEY`); verify each request body via the
+   Xsolla MCP first.
+
+2. **Set up pricing.** Recommend regional prices in local currencies for key markets
+   via the `prices` array; keep the currency list and default currency identical across
+   all items. For game keys, optionally add regional sale restrictions (regions →
+   `regions` array) — depends on the game. See `references/pricing.md`.
+
+3. **Build the catalog on the client (Catalog API).** Render the store from
+   client-side Catalog calls for the specific item types you sell (`Get virtual items
+   list`, `Get virtual currency list`, `Get list of bundles`, `Get games list`), called
+   **from the client without a `country` parameter** — country, prices, and regional
+   availability resolve from the user's IP. Never use Admin calls for the storefront.
+   See `references/catalog-client.md`.
+
+4. **Implement purchase.** Default to **fast purchase by SKU**: client-side
+   `Create order with specified item` (user JWT) → returns `order_id` + payment token →
+   open Pay Station with the token. Cart, purchase for VC, free items, and game-key
+   specifics: `references/purchase-and-tracking.md`. The payment step itself belongs to
+   the `payments-config` skill.
+
+5. **Confirm the purchase.** Server (recommended): handle `order_paid` /
+   `order_canceled` webhooks — implement with the `webhooks-impl` skill. Client (no
+   server): WebSocket order status + short-polling `Get order` fallback. See
+   `references/purchase-and-tracking.md`.
+
+6. **Verify end-to-end.** In sandbox (`"sandbox": true`, test cards): fetch the catalog
+   via a Catalog call, buy an item, confirm the order reaches `done`, and the
+   confirmation path (webhook or socket) fired.
+
+## Common pitfalls
+
+- **Order creation from the server.** Client payment calls resolve country → currency →
+  payment methods from the caller's IP. Call them from the client; don't pass
+  `currency`/`country`. (Server-side token generation is a separate API that requires
+  `country.value` or `X-User-Ip`.)
+- **Admin API on the storefront.** Admin calls are rate-limited and not for user
+  traffic; catalogs are built from Catalog-subsection calls, per item type.
+- **Update wipes fields.** Admin update calls replace, not merge: GET the item first
+  and send back everything you want to keep (e.g. omit `limits` → limits deleted).
+- **Inconsistent currencies break the catalog.** Different currency sets or default
+  currencies across items cause fallback prices or `price: null` on the storefront.
+- **Wrong webhook set.** Accounts registered after 2025-01-22 get combined
+  `order_paid`/`order_canceled`; older accounts also receive separate
+  `payment`/`refund` and must process them all.
+- **Game keys + Pay Station Embed/iframe.** Not supported — sell keys via a new window
+  or direct link. With reglocks assigned, keys upload only via the Upload codes API.
+
+## Agent test
+
+Prompt: "Configure my Xsolla catalog with items and pricing, then wire up purchase and
+order confirmation. It's a mobile F2P game with gems (virtual currency), gem packs,
+boosters, and a starter bundle."
+
+Live run on sandbox project `173042` (2026-06-11): the agent discovered and applied
+this skill (+ `webhooks-impl` for confirmation context), verified schemas via the Xsolla
+MCP as mandated, and executed the real flow — created 3 groups, virtual currency, a
+consumable booster priced in VC, 2 VC packages, and a per-user-limited starter bundle
+(all `201`); read everything back via typed client Catalog calls without `country`
+(IP-resolved USD prices, `200`); created a server-side sandbox order + payment token
+(`201`, not paid); then deleted every created entity (`204`, verified empty). Steps
+requiring a user JWT (fast purchase, VC purchase, Get order/WebSocket) were planned and
+documented as blocked: no Login on the fixture project. ✅
