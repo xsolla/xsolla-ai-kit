@@ -56,8 +56,6 @@ codex plugin marketplace add xsolla/xsolla-ai-kit
 
 Restart Codex, open the plugin directory, choose the **Xsolla AI Kit** marketplace, and install the `xsolla-ai-kit` plugin. Refresh later with `codex plugin marketplace upgrade xsolla-ai-kit`.
 
-> Opening this repo in Codex also picks the plugin up automatically — the repo ships a marketplace at `.agents/plugins/marketplace.json`.
-
 ### Gemini CLI: install as an extension
 
 Gemini has no marketplace — the repo *is* the extension. Install it directly from a terminal:
@@ -71,8 +69,6 @@ Restart Gemini CLI to load the skills. Pull updates later with `gemini extension
 ### Cursor: install as a plugin
 
 The repo ships a Cursor plugin manifest at `.cursor-plugin/plugin.json`. Cursor plugins are distributed through Cursor's marketplace — submit the repo at [cursor.com/marketplace/publish](https://cursor.com/marketplace/publish), then install it from within Cursor.
-
-> Already opening this repo as a workspace? The skills work immediately via the auto-generated `.cursor/rules/` — no plugin install needed.
 
 Set environment variables or use `merchant-setup` skill:
 
