@@ -24,6 +24,13 @@ Use the kit as a plugin in your preferred coding agent:
 claude plugin marketplace add xsolla/xsolla-ai-kit && claude plugin install xsolla-ai-kit@xsolla-ai-kit
 ```
 
+Or in a session:
+
+```text
+/plugin marketplace add xsolla/xsolla-ai-kit
+/plugin install xsolla-ai-kit@xsolla-ai-kit
+```
+
 ### Codex
 
 ```bash
