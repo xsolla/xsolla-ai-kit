@@ -31,7 +31,7 @@ claude --add-dir /path/to/xsolla-ai-kit
 
 Or install the kit as a plugin so the skills follow you into any project, without cloning this repo:
 
-### Claude Code: install once, use everywhere
+### Claude Code
 
 Install the plugin from a terminal — it's user-scoped, so the skills are then available in **every** project you open:
 
@@ -46,7 +46,7 @@ Already inside a Claude Code session? Run the two slash commands instead (`&&` w
 /plugin install xsolla-ai-kit@xsolla-ai-kit
 ```
 
-### Codex: install as a plugin
+### Codex
 
 ```bash
 codex plugin marketplace add xsolla/xsolla-ai-kit
@@ -54,7 +54,7 @@ codex plugin marketplace add xsolla/xsolla-ai-kit
 
 Then open Codex to use the skills — the plugin installs automatically.
 
-### Gemini CLI: install as an extension
+### Gemini CLI
 
 ```bash
 gemini extensions install https://github.com/xsolla/xsolla-ai-kit
@@ -62,7 +62,7 @@ gemini extensions install https://github.com/xsolla/xsolla-ai-kit
 
 Then open Gemini CLI to use the skills.
 
-### Cursor: install as a plugin
+### Cursor
 
 The repo ships a Cursor plugin manifest at `.cursor-plugin/plugin.json`. Cursor plugins are distributed through Cursor's marketplace — submit the repo at [cursor.com/marketplace/publish](https://cursor.com/marketplace/publish), then install it from within Cursor.
 
