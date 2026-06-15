@@ -54,7 +54,7 @@ Add the marketplace from a terminal, then install from the plugin directory:
 codex plugin marketplace add xsolla/xsolla-ai-kit
 ```
 
-Restart Codex, open the plugin directory, choose the **Xsolla AI Kit** marketplace, and install the `xsolla-ai-kit` plugin. Refresh later with `codex plugin marketplace upgrade xsolla-ai-kit`.
+Then open the plugin directory, choose the **Xsolla AI Kit** marketplace, and install the `xsolla-ai-kit` plugin. Refresh later with `codex plugin marketplace upgrade xsolla-ai-kit`.
 
 ### Gemini CLI: install as an extension
 
@@ -64,7 +64,7 @@ Gemini has no marketplace — the repo *is* the extension. Install it directly f
 gemini extensions install https://github.com/xsolla/xsolla-ai-kit
 ```
 
-Restart Gemini CLI to load the skills. Pull updates later with `gemini extensions update xsolla-ai-kit`.
+The skills load the next time you launch Gemini CLI. Pull updates later with `gemini extensions update xsolla-ai-kit`.
 
 ### Cursor: install as a plugin
 
