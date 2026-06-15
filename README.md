@@ -64,7 +64,7 @@ Gemini has no marketplace — the repo *is* the extension. Install it directly f
 gemini extensions install https://github.com/xsolla/xsolla-ai-kit
 ```
 
-The skills load the next time you launch Gemini CLI. Pull updates later with `gemini extensions update xsolla-ai-kit`.
+Then open Gemini CLI to use the skills. Pull updates later with `gemini extensions update xsolla-ai-kit`.
 
 ### Cursor: install as a plugin
 
