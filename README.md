@@ -58,6 +58,16 @@ Restart Codex, open the plugin directory, choose the **Xsolla AI Kit** marketpla
 
 > Opening this repo in Codex also picks the plugin up automatically — the repo ships a marketplace at `.agents/plugins/marketplace.json`.
 
+### Gemini CLI: install as an extension
+
+Gemini has no marketplace — the repo *is* the extension. Install it directly from a terminal:
+
+```bash
+gemini extensions install https://github.com/xsolla/xsolla-ai-kit
+```
+
+Restart Gemini CLI to load the skills. Pull updates later with `gemini extensions update xsolla-ai-kit`.
+
 Set environment variables or use `merchant-setup` skill:
 
 ```bash
