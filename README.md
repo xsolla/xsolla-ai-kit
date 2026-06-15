@@ -16,34 +16,12 @@ Open this repo in your AI coding tool and you immediately get guided, Xsolla-spe
 
 ## Quick start
 
-No installation required. Just open this repo in your agent:
-
-```bash
-# Claude Code
-claude --add-dir /path/to/xsolla-ai-kit
-
-# Cursor
-# Add this repo as a workspace folder
-
-# GitHub Copilot
-# Clone and open in VS Code — copilot-instructions.md loads automatically
-```
-
-Or install the kit as a plugin so the skills follow you into any project, without cloning this repo:
+Use the kit as a plugin in your preferred coding agent:
 
 ### Claude Code
 
-Install the plugin from a terminal — it's user-scoped, so the skills are then available in **every** project you open:
-
 ```bash
 claude plugin marketplace add xsolla/xsolla-ai-kit && claude plugin install xsolla-ai-kit@xsolla-ai-kit
-```
-
-Already inside a Claude Code session? Run the two slash commands instead (`&&` won't work there):
-
-```text
-/plugin marketplace add xsolla/xsolla-ai-kit
-/plugin install xsolla-ai-kit@xsolla-ai-kit
 ```
 
 ### Codex
@@ -52,21 +30,17 @@ Already inside a Claude Code session? Run the two slash commands instead (`&&` w
 codex plugin marketplace add xsolla/xsolla-ai-kit
 ```
 
-Then open Codex to use the skills — the plugin installs automatically.
-
 ### Gemini CLI
 
 ```bash
 gemini extensions install https://github.com/xsolla/xsolla-ai-kit
 ```
 
-Then open Gemini CLI to use the skills.
-
 ### Cursor
 
-The repo ships a Cursor plugin manifest at `.cursor-plugin/plugin.json`. Cursor plugins are distributed through Cursor's marketplace — submit the repo at [cursor.com/marketplace/publish](https://cursor.com/marketplace/publish), then install it from within Cursor.
+Search **Xsolla AI Kit** in Cursor's plugin marketplace and click Install.
 
-Set environment variables or use `merchant-setup` skill:
+Then set environment variables or run the `merchant-setup` skill:
 
 ```bash
 XSOLLA_MERCHANT_ID=<your merchant ID>
