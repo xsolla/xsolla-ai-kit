@@ -1,0 +1,27 @@
+{
+  "name": "xsolla-ai-kit",
+  "version": "0.1.0",
+  "description": "Xsolla agent skills toolkit — guided, end-to-end workflows for merchant setup, catalog design, Login/NewID, Pay Station, webhooks, storefront build, and shop branding, calling Xsolla REST APIs directly.",
+  "author": {
+    "name": "Xsolla"
+  },
+  "homepage": "https://github.com/xsolla/xsolla-ai-kit",
+  "repository": "https://github.com/xsolla/xsolla-ai-kit",
+  "license": "MIT",
+  "keywords": [
+    "xsolla",
+    "game-shop",
+    "payments",
+    "pay-station",
+    "catalog",
+    "webhooks",
+    "storefront",
+    "login"
+  ],
+  "skills": "./skills/",
+  "mcpServers": {
+    "xsolla-docs": {
+      "url": "https://xsolla.mcp.kapa.ai"
+    }
+  }
+}

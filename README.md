@@ -68,6 +68,12 @@ gemini extensions install https://github.com/xsolla/xsolla-ai-kit
 
 Restart Gemini CLI to load the skills. Pull updates later with `gemini extensions update xsolla-ai-kit`.
 
+### Cursor: install as a plugin
+
+The repo ships a Cursor plugin manifest at `.cursor-plugin/plugin.json`. Cursor plugins are distributed through Cursor's marketplace — submit the repo at [cursor.com/marketplace/publish](https://cursor.com/marketplace/publish), then install it from within Cursor.
+
+> Already opening this repo as a workspace? The skills work immediately via the auto-generated `.cursor/rules/` — no plugin install needed.
+
 Set environment variables or use `merchant-setup` skill:
 
 ```bash
