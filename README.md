@@ -68,10 +68,6 @@ gemini extensions install https://github.com/xsolla/xsolla-ai-kit
 
 Restart Gemini CLI to load the skills. Pull updates later with `gemini extensions update xsolla-ai-kit`.
 
-### Bundled docs MCP
-
-All three integrations ship the **Xsolla docs MCP server** (`xsolla-docs` → `https://xsolla.mcp.kapa.ai`), giving the agent live, searchable access to Xsolla documentation. It's OAuth-protected, so your tool runs a one-time browser sign-in the first time it connects — no API key to configure.
-
 Set environment variables or use `merchant-setup` skill:
 
 ```bash
