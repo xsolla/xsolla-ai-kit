@@ -41,7 +41,7 @@ keys are delivered on the release date.
    Source: [Selling via direct link](https://developers.xsolla.com/sell-games/set-up-selling-game-keys/#guides_game_sales_selling_game_keys_selling_via_direct_link).
 2. **Own UI via API** — build the catalog with [game-keys-catalog](catalog-client.md)
    calls, then create an order (see [purchase-and-tracking.md](purchase-and-tracking.md)).
-3. **Site Builder / widget** — out of scope here; covered by the `store-build` skill.
+3. **Site Builder / widget** — out of scope here.
 
 **Limitation:** Pay Station Embed and iframe do **not** support selling game keys — use a
 new window or the direct link. Source: [Set up item purchase](https://developers.xsolla.com/virtual-goods/own-ui/client-side-token-generation/set-up-item-purchase/).

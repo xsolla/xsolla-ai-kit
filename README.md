@@ -65,8 +65,6 @@ XSOLLA_PROJECT_API_KEY=<your API key>
 | `login-setup` | Login / NewID / auth | @mohammed_abujalala | Planned |
 | `payments-config` | Pay Station / headless checkout | @v.malykh | Planned |
 | `webhooks-impl` | Webhook handler generation | @e.chernykh | Planned |
-| `store-build` | WebShop / Site Builder / headless FE | @sergei_vasiuk | Planned |
-| `shop-design` | Theme, branding, LLM-assisted design | @k.zatsepin | Planned |
 
 ## Contributing
 

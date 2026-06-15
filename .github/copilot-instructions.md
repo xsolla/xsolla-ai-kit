@@ -16,8 +16,6 @@ This repo contains Xsolla agent skills. You are helping a developer build or int
 - `login-setup` — Xsolla Login / NewID authentication
 - `payments-config` — Pay Station, payment methods
 - `webhooks-impl` — webhook handler code generation
-- `store-build` — WebShop / headless storefront
-- `shop-design` — theme tokens, branding, LLM-assisted design
 
 ## When in doubt
 
