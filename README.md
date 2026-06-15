@@ -2,7 +2,7 @@
 
 Agent skills for Xsolla — works with Claude Code, GitHub Copilot, Cursor, Codex CLI, Windsurf, Roo Code, Augment, and more.
 
-Open this repo in your AI coding tool and you immediately get guided, Xsolla-specific workflows: from setting up a project, configuring a catalog, integrating Pay Station, implementing webhooks, to launching a full game shop.
+Open this repo in your AI coding tool and you immediately get guided, Xsolla-specific workflows — from setting up a project and configuring a catalog to integrating Pay Station, implementing webhooks, and launching a full game shop.
 
 ## What's inside
 
@@ -29,6 +29,8 @@ claude --add-dir /path/to/xsolla-ai-kit
 # Clone and open in VS Code — copilot-instructions.md loads automatically
 ```
 
+Or install the kit as a plugin so the skills follow you into any project, without cloning this repo:
+
 ### Claude Code: install once, use everywhere
 
 Install the plugin from a terminal — it's user-scoped, so the skills are then available in **every** project you open:
@@ -48,17 +50,17 @@ Update later with `claude plugin marketplace update xsolla-ai-kit`.
 
 ### Codex: install as a plugin
 
-Add the marketplace from a terminal, then install from the plugin directory:
+Add the marketplace from a terminal:
 
 ```bash
 codex plugin marketplace add xsolla/xsolla-ai-kit
 ```
 
-Then open the plugin directory, choose the **Xsolla AI Kit** marketplace, and install the `xsolla-ai-kit` plugin. Refresh later with `codex plugin marketplace upgrade xsolla-ai-kit`.
+Then open Codex's plugin directory, select the **Xsolla AI Kit** marketplace, and install the `xsolla-ai-kit` plugin. Refresh later with `codex plugin marketplace upgrade xsolla-ai-kit`.
 
 ### Gemini CLI: install as an extension
 
-Gemini has no marketplace — the repo *is* the extension. Install it directly from a terminal:
+Gemini has no marketplace — the repo *is* the extension. Install it from a terminal:
 
 ```bash
 gemini extensions install https://github.com/xsolla/xsolla-ai-kit
