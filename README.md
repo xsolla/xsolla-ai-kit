@@ -2,7 +2,7 @@
 
 Agent skills for Xsolla — works with Claude Code, GitHub Copilot, Cursor, Codex CLI, Windsurf, Roo Code, Augment, and more.
 
-Open this repo in your AI coding tool and you immediately get guided, Xsolla-specific workflows: from setting up a project, configuring a catalog, integrating Pay Station, implementing webhooks, to launching a full game shop.
+Install the kit in your AI coding tool and you get guided, Xsolla-specific workflows — from setting up a project and configuring a catalog to integrating Pay Station, implementing webhooks, and launching a full game shop.
 
 ## What's inside
 
@@ -16,20 +16,38 @@ Open this repo in your AI coding tool and you immediately get guided, Xsolla-spe
 
 ## Quick start
 
-No installation required. Just open this repo in your agent:
+Use the kit as a plugin in your preferred coding agent:
+
+### Claude Code
 
 ```bash
-# Claude Code
-claude --add-dir /path/to/xsolla-ai-kit
-
-# Cursor
-# Add this repo as a workspace folder
-
-# GitHub Copilot
-# Clone and open in VS Code — copilot-instructions.md loads automatically
+claude plugin marketplace add xsolla/xsolla-ai-kit && claude plugin install xsolla-ai-kit@xsolla-ai-kit
 ```
 
-Set environment variables or use `merchant-setup` skill:
+Or in a session:
+
+```text
+/plugin marketplace add xsolla/xsolla-ai-kit
+/plugin install xsolla-ai-kit@xsolla-ai-kit
+```
+
+### Codex
+
+```bash
+codex plugin marketplace add xsolla/xsolla-ai-kit
+```
+
+### Gemini CLI
+
+```bash
+gemini extensions install https://github.com/xsolla/xsolla-ai-kit
+```
+
+### Cursor
+
+Search **Xsolla AI Kit** in Cursor's plugin marketplace and click Install.
+
+Then set environment variables or run the `merchant-setup` skill:
 
 ```bash
 XSOLLA_MERCHANT_ID=<your merchant ID>
