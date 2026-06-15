@@ -29,6 +29,35 @@ claude --add-dir /path/to/xsolla-ai-kit
 # Clone and open in VS Code — copilot-instructions.md loads automatically
 ```
 
+### Claude Code: install once, use everywhere
+
+Install the plugin from a terminal — it's user-scoped, so the skills are then available in **every** project you open:
+
+```bash
+claude plugin marketplace add xsolla/xsolla-ai-kit && claude plugin install xsolla-ai-kit@xsolla-ai-kit
+```
+
+Already inside a Claude Code session? Run the two slash commands instead (`&&` won't work there):
+
+```text
+/plugin marketplace add xsolla/xsolla-ai-kit
+/plugin install xsolla-ai-kit@xsolla-ai-kit
+```
+
+Update later with `claude plugin marketplace update xsolla-ai-kit`.
+
+### Codex: install as a plugin
+
+Add the marketplace from a terminal, then install from the plugin directory:
+
+```bash
+codex plugin marketplace add xsolla/xsolla-ai-kit
+```
+
+Restart Codex, open the plugin directory, choose the **Xsolla AI Kit** marketplace, and install the `xsolla-ai-kit` plugin. Refresh later with `codex plugin marketplace upgrade xsolla-ai-kit`.
+
+> Opening this repo in Codex also picks the plugin up automatically — the repo ships a marketplace at `.agents/plugins/marketplace.json`.
+
 Set environment variables or use `merchant-setup` skill:
 
 ```bash
