@@ -20,6 +20,7 @@
     "login"
   ],
   "skills": "./skills/",
+  "mcpServers": "./mcp-servers.json",
   "interface": {
     "displayName": "Xsolla AI Kit",
     "shortDescription": "Guided Xsolla workflows from zero to a live game shop",
