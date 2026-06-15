@@ -2,7 +2,7 @@
 
 Agent skills for Xsolla — works with Claude Code, GitHub Copilot, Cursor, Codex CLI, Windsurf, Roo Code, Augment, and more.
 
-Open this repo in your AI coding tool and you immediately get guided, Xsolla-specific workflows — from setting up a project and configuring a catalog to integrating Pay Station, implementing webhooks, and launching a full game shop.
+Install the kit in your AI coding tool and you get guided, Xsolla-specific workflows — from setting up a project and configuring a catalog to integrating Pay Station, implementing webhooks, and launching a full game shop.
 
 ## What's inside
 
