@@ -12,8 +12,6 @@ Each subdirectory contains a `SKILL.md` — a structured workflow file for an Xs
 | [`login-setup`](login-setup/SKILL.md)         | Login / NewID / auth                  | @mohammed_abujalala | Planned |
 | [`payments-config`](payments-config/SKILL.md) | Pay Station / headless checkout       | @v.malykh           | Planned |
 | [`webhooks-impl`](webhooks-impl/SKILL.md)     | Webhook handler generation            | @e.chernykh         | Draft   |
-| [`store-build`](store-build/SKILL.md)         | WebShop / Site Builder / headless FE  | @e.solodaev         | Planned |
-| [`shop-design`](shop-design/SKILL.md)         | Theme, branding, LLM-assisted design  | @k.zatsepin         | Planned |
 
 ## Adding a skill
 

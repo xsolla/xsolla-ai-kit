@@ -22,8 +22,6 @@ Skills call **Xsolla REST APIs directly**. The CLI (`xsolla/xsolla-cli`) is an o
 | `login-setup`     | Integrates Xsolla Login / NewID authentication                                           |
 | `payments-config` | Integrates Pay Station + configures payment methods                                      |
 | `webhooks-impl`   | Generates webhook handler code for order/payment events                                  |
-| `store-build`     | Deploys WebShop or headless storefront                                                   |
-| `shop-design`     | Applies branding, theme tokens, LLM-assisted visual design                               |
 
 ---
 
