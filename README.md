@@ -46,15 +46,13 @@ Already inside a Claude Code session? Run the two slash commands instead (`&&` w
 /plugin install xsolla-ai-kit@xsolla-ai-kit
 ```
 
-Update later with `claude plugin marketplace update xsolla-ai-kit`.
-
 ### Codex: install as a plugin
 
 ```bash
 codex plugin marketplace add xsolla/xsolla-ai-kit
 ```
 
-Then open Codex to use the skills — the plugin installs automatically. Refresh later with `codex plugin marketplace upgrade xsolla-ai-kit`.
+Then open Codex to use the skills — the plugin installs automatically.
 
 ### Gemini CLI: install as an extension
 
@@ -62,7 +60,7 @@ Then open Codex to use the skills — the plugin installs automatically. Refresh
 gemini extensions install https://github.com/xsolla/xsolla-ai-kit
 ```
 
-Then open Gemini CLI to use the skills. Update later with `gemini extensions update xsolla-ai-kit`.
+Then open Gemini CLI to use the skills.
 
 ### Cursor: install as a plugin
 
