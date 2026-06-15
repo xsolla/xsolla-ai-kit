@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
+  "name": "xsolla-ai-kit",
+  "description": "Xsolla agent skills toolkit — install the xsolla-ai-kit plugin to get guided, Xsolla-specific workflows from zero to a live game shop.",
+  "owner": {
+    "name": "Xsolla",
+    "email": "a.springut@xsolla.com"
+  },
+  "plugins": [
+    {
+      "name": "xsolla-ai-kit",
+      "source": "./",
+      "description": "All Xsolla workflow skills in one plugin: shop-setup (orchestrator), merchant-setup, catalog-design, login-setup, payments-config, webhooks-impl, store-build, and shop-design.",
+      "category": "productivity",
+      "keywords": [
+        "xsolla",
+        "game-shop",
+        "payments",
+        "catalog",
+        "webhooks"
+      ]
+    }
+  ]
+}

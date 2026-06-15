@@ -1,0 +1,20 @@
+{
+  "name": "xsolla-ai-kit",
+  "interface": {
+    "displayName": "Xsolla AI Kit"
+  },
+  "plugins": [
+    {
+      "name": "xsolla-ai-kit",
+      "source": {
+        "source": "local",
+        "path": "./"
+      },
+      "policy": {
+        "installation": "INSTALLED_BY_DEFAULT",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}
