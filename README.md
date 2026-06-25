@@ -63,7 +63,7 @@ XSOLLA_PROJECT_API_KEY=<your API key>
 | `merchant-setup` | Merchant and Project setup  | @y.klochikhin | Done    |
 | `catalog-design` | Items, pricing, virtual currency, bundles | @p.sanachev | Planned |
 | `login-setup` | Login / NewID / auth | @mohammed_abujalala | Planned |
-| `payments-config` | Pay Station / headless checkout | @v.malykh | Planned |
+| `headless-checkout-integration` | Payments via Headless Checkout | @y.klochikhin | Draft |
 | `webhooks-impl` | Webhook handler generation | @e.chernykh | Planned |
 
 ## Contributing
