@@ -1,8 +1,8 @@
-# xsolla-ai-kit
+# Xsolla AI Toolkit
 
-Agent skills for Xsolla — works with Claude Code, GitHub Copilot, Cursor, Codex CLI, Windsurf, Roo Code, Augment, and more.
+Agent skills for Xsolla — works with Claude Code, GitHub Copilot, Codex CLI, Windsurf, Roo Code, Augment, and more.
 
-Install the kit in your AI coding tool and you get guided, Xsolla-specific workflows — from setting up a project and configuring a catalog to integrating Pay Station, implementing webhooks, and launching a full game shop.
+Install the kit in your AI coding tool and your agent can integrate Xsolla's APIs directly into your game, or build a fully functional headless web shop you own and host with full control of the frontend. It works with the AI coding tools you already use, with no engine lock-in and no proprietary assistant. Instead of generating code that looks right but breaks in production, your agent follows validated, production-ready logic encoding the correct integration paths, so the first AI-assisted attempt is the right one, with validation built in. From setting up a project and configuring a catalog to integrating Pay Station and implementing webhooks, the kit takes you from zero to a working integration.
 
 ## What's inside
 
@@ -16,7 +16,7 @@ Install the kit in your AI coding tool and you get guided, Xsolla-specific workf
 
 ## Quick start
 
-Use the kit as a plugin in your preferred coding agent:
+Install the kit as a plugin in your preferred coding agent, or copy it into your project for any tool that follows the [AGENTS.md](https://agents.md) convention:
 
 ### Claude Code
 
@@ -43,9 +43,14 @@ codex plugin marketplace add xsolla/xsolla-ai-kit
 gemini extensions install https://github.com/xsolla/xsolla-ai-kit
 ```
 
-### Cursor
+### Other tools (Windsurf, Roo Code, Augment, Amp, Copilot, …)
 
-Search **Xsolla AI Kit** in Cursor's plugin marketplace and click Install.
+For tools with no official plugin system, use the kit by copying `AGENTS.md` and the `skills/` directory into your project root. Any tool that follows the [AGENTS.md](https://agents.md) convention will pick the skills up automatically the next time you open the project:
+
+```bash
+git clone https://github.com/xsolla/xsolla-ai-kit
+cp -r xsolla-ai-kit/AGENTS.md xsolla-ai-kit/skills your-game-project/
+```
 
 Then set environment variables or run the `merchant-setup` skill:
 
