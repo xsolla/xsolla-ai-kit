@@ -22,7 +22,7 @@
   "skills": "./skills/",
   "mcpServers": "./mcp-servers.json",
   "interface": {
-    "displayName": "Xsolla AI Kit",
+    "displayName": "Xsolla AI Toolkit",
     "shortDescription": "Guided Xsolla workflows from zero to a live game shop",
     "longDescription": "Bundles every Xsolla workflow skill: shop-setup (orchestrator), merchant-setup, catalog-design, login-setup, payments-config, webhooks-impl, store-build, and shop-design. Skills call Xsolla REST APIs directly — no CLI dependency.",
     "developerName": "Xsolla",
