@@ -46,7 +46,7 @@ Xsolla catalog + Pay Station, without Site Builder). Trigger conditions:
 - Reviewing an existing webhook handler before go-live
 
 This skill covers **handler implementation**. Configuring the webhook URL and
-secret on the project is part of `project-init` / `payments-config`.
+secret on the project is part of `merchant-setup` / `headless-checkout-integration`.
 
 ## Prerequisites
 
@@ -56,7 +56,7 @@ export XSOLLA_ENV=sandbox                                  # default; "productio
 ```
 
 - An Xsolla project with **webhooks enabled** and a generated **secret key**
-  (run `project-init` / `payments-config` first). The webhook URL must be
+  (run `merchant-setup` / `headless-checkout-integration` first). The webhook URL must be
   **HTTPS** — HTTP is rejected.
 - A backend that can read the **raw request body** (needed for signature
   verification) and a datastore for idempotency keys.

@@ -14,14 +14,14 @@ Skills call **Xsolla REST APIs directly**. The CLI (`xsolla/xsolla-cli`) is an o
 
 ## Skill inventory
 
-| Skill             | What it does                                                                             |
-|-------------------|------------------------------------------------------------------------------------------|
-| `shop-setup`      | **Orchestrator** — coordinates the full zero-to-shop flow, chaining all domain skills    |
-| `merchant-setup`  | Creates and configures an Xsolla account + get API key                                   |
-| `catalog-design`  | Configures the catalog and the client flow: client catalog, purchase, order confirmation |
-| `login-setup`     | Integrates Xsolla Login / NewID authentication                                           |
-| `payments-config` | Integrates Pay Station + configures payment methods                                      |
-| `webhooks-impl`   | Generates webhook handler code for order/payment events                                  |
+| Skill                           | What it does                                                                             |
+|---------------------------------|------------------------------------------------------------------------------------------|
+| `shop-setup`                    | **Orchestrator** — coordinates the full zero-to-shop flow, chaining all domain skills    |
+| `merchant-setup`                | Creates and configures an Xsolla account + get API key                                   |
+| `catalog-design`                | Configures the catalog and the client flow: client catalog, purchase, order confirmation |
+| `login-setup`                   | Integrates Xsolla Login / NewID authentication                                           |
+| `headless-checkout-integration` | Payments via Headless Checkout                                                           |
+| `webhooks-impl`                 | Generates webhook handler code for order/payment events                                  |
 
 ---
 
@@ -36,8 +36,8 @@ Set up a full Xsolla game shop for my project
 Configure my Xsolla catalog with items and pricing
 → triggers: catalog-design
 
-Integrate Pay Station checkout into my game
-→ triggers: payments-config
+Integrate payments into my game
+→ triggers: headless-checkout-integration
 ```
 
 ---

@@ -95,7 +95,7 @@ Login issues the JWT that the rest of the stack consumes:
                      ┌────────────────────┐
    user JWT (Bearer) │                    │  same JWT used by:
    ──────────────────►   Store API        │  · catalog-design (cart, fast purchase)
-                     │  Pay Station       │  · payments-config (payment-token call)
+                     │  Payments          │  · headless-checkout-integration (payment-token call)
                      │  Webhooks          │  · webhooks-impl (user.id == JWT.sub)
                      │  Partner backend   │
                      └────────────────────┘

@@ -4,5 +4,5 @@
 # Skills require the domain SME + Javad
 skills/catalog-design/**   @p.sanachev @j.manashti
 skills/login-setup/**      @mohammed_abujalala @j.manashti
-skills/payments-config/**  @v.malykh @j.manashti
+skills/headless-checkout-integration/**  @y.klochikhin @j.manashti
 skills/webhooks-impl/**    @e.chernykh @j.manashti
