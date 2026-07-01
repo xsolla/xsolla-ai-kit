@@ -39,7 +39,7 @@ Use this skill when the developer wants to:
 - Confirm purchases: webhooks on the server or order tracking on the client
 
 Out of scope: player inventory, server-side cart, refund handling, payment UI
-configuration (→ `payments-config`), webhook handler code (→ `webhooks-impl`).
+configuration (→ `headless-checkout-integration`), webhook handler code (→ `webhooks-impl`).
 
 ## Prerequisites
 
@@ -83,7 +83,7 @@ export XSOLLA_PROJECT_API_KEY=<your API key>
    `Create order with specified item` (user JWT) → returns `order_id` + payment token →
    open Pay Station with the token. Cart, purchase for VC, free items, and game-key
    specifics: `references/purchase-and-tracking.md`. The payment step itself belongs to
-   the `payments-config` skill.
+   the `headless-checkout-integration` skill.
 
 5. **Confirm the purchase.** Server (recommended): handle `order_paid` /
    `order_canceled` webhooks — implement with the `webhooks-impl` skill. Client (no

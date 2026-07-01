@@ -14,7 +14,7 @@ This repo contains Xsolla agent skills. You are helping a developer build or int
 - `shop-setup` — orchestrates the full zero-to-shop workflow
 - `catalog-design` — virtual catalog, items, pricing, bundles
 - `login-setup` — Xsolla Login / NewID authentication
-- `payments-config` — Pay Station, payment methods
+- `headless-checkout-integration` — Payments via Headless Checkout
 - `webhooks-impl` — webhook handler code generation
 
 ## When in doubt

@@ -26,7 +26,7 @@ discount details are shown to the user only inside the payment UI.
 2. The call returns `order_id` + a payment `token` (24h lifetime by default).
 3. Open the payment UI: `https://secure.xsolla.com/paystation4/?token={token}`
    (sandbox: `https://sandbox-secure.xsolla.com/paystation4/?token={token}`).
-   The payment itself is Pay Station territory — see the `payments-config` skill.
+   The payment itself is Headless Checkout territory — see the `headless-checkout-integration` skill.
 
 Server-side token generation exists as a separate scenario
 ([Create payment token for purchase](https://developers.xsolla.com/api/catalog/payment-server-side/admin-create-payment-token/)) —

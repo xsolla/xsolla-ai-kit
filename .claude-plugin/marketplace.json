@@ -10,7 +10,7 @@
     {
       "name": "xsolla-ai-kit",
       "source": "./",
-      "description": "All Xsolla workflow skills in one plugin: shop-setup (orchestrator), merchant-setup, catalog-design, login-setup, payments-config, webhooks-impl, store-build, and shop-design.",
+      "description": "All Xsolla workflow skills in one plugin: shop-setup (orchestrator), merchant-setup, catalog-design, login-setup, headless-checkout-integration, webhooks-impl.",
       "category": "productivity",
       "keywords": [
         "xsolla",

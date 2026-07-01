@@ -52,9 +52,9 @@ Use this skill when the developer wants to:
 - **Validate a user JWT** in their backend (signature, `iss`, `exp`, `xsolla_login_project_id`, `groups`, `sub`)
 - Manage users: link social accounts, reset password, enable MFA, edit profile, manage attributes, ban/unban, search, export/import
 - Build a **shadow Login project** for cross-platform accounts (main account ↔ Steam / Xbox / Epic / PSN platform accounts)
-- Provide a logged-in `Bearer JWT` to **Store / cart / payment-token** flows in `catalog-design`, **Pay Station** in `payments-config`, or `user.id` to the handler in `webhooks-impl`
+- Provide a logged-in `Bearer JWT` to **Store / cart / payment-token** flows in `catalog-design`, **Headless Checkout** in `headless-checkout-integration`, or `user.id` to the handler in `webhooks-impl`
 
-Out of scope: catalog & purchase (→ `catalog-design`), Pay Station UI (→ `payments-config`), webhook handler implementation (→ `webhooks-impl`), Xsolla account/API-key bootstrap (→ `merchant-setup`).
+Out of scope: catalog & purchase (→ `catalog-design`), Payments (→ `headless-checkout-integration`), webhook handler implementation (→ `webhooks-impl`), Xsolla account/API-key bootstrap (→ `merchant-setup`).
 
 ## Prerequisites
 
