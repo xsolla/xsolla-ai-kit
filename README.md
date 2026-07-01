@@ -71,6 +71,23 @@ XSOLLA_PROJECT_API_KEY=<your API key>
 | `headless-checkout-integration` | Payments via Headless Checkout | @y.klochikhin | Draft |
 | `webhooks-impl` | Webhook handler generation | @e.chernykh | Planned |
 
+## Invoking a skill
+
+Skills load automatically once the plugin is installed — the agent picks the
+right one from your request (e.g. "build me a shop" → `shop-setup`). To force a
+specific skill:
+
+| Agent        | Explicit invocation                                             |
+|--------------|-----------------------------------------------------------------|
+| Claude Code  | `/shop-setup` (slash command; `/xsolla-ai-kit:shop-setup` if names clash) |
+| Cursor       | `@shop-setup` via the Rules picker — or just describe the task  |
+| Codex CLI    | No per-skill command — describe the task; Codex routes via AGENTS.md |
+| Others       | Natural language; skills load from SKILL.md / generated rules   |
+
+`shop-setup` is the entry point — it scopes the build and chains the domain
+skills (`catalog-design`, `login-setup`, `headless-checkout-integration`,
+`webhooks-impl`).
+
 ## Contributing
 
 See [CONTRIBUTING-skills.md](CONTRIBUTING-skills.md) for the full guide on writing a skill.
