@@ -25,7 +25,11 @@ each. Scope is the storefront; catalog, login, payments, and webhooks have their
   no page; the page and default blocks appear after a beat or after `enable-preview`. Poll.
 - **Page theme overrides site theme.** Editing only the site theme leaves the page looking
   default. Set the page theme (`type: "page"`, paths `["theme",...]`) for the look that ships.
-- **`enable-preview` / `preview-link` take `--slug` only** (no merchant/project flags).
+- **`create-website --slug <x>` auto-suffixes the slug.** The created domain is e.g.
+  `voidwall-45e0`, not `voidwall`. Capture `.data.domain` from the create response and pass it
+  as `--slug` to `get-structure` / `enable-preview` / `preview-link`; the requested slug 404s.
+- **`enable-preview` / `preview-link` take `--slug` only** (no merchant/project flags) — and the
+  slug value is the returned domain, per the note above.
 - **`verify-website` returns 404 on a topup landing.** Check readiness with `get-structure`.
 
 ## Blocks
@@ -38,23 +42,36 @@ each. Scope is the storefront; catalog, login, payments, and webhooks have their
 - **The offer-chain block is a federated block.** There is no non-federated offer-chain module;
   `module: federated`, `blockId: sb-offer-chain`. It references an existing offer chain by
   `internalBlockValues.offerChainId`; create that entity elsewhere (liveops), out of scope here.
+- **Header nav chrome cannot be removed via CLI.** The top nav (Store / Daily gifts / Rewards /
+  Redeem code) is not in the landing structure or features and persists even after the matching
+  blocks are deleted. Surface this limitation to the developer; do not try to work around it.
 
 ## Block customization
 
 - **`update-block` paths need the `values` prefix for blocks.** A block patch to `["title"]`
   returns ok and changes nothing; use `["values","title"]`. Site patches use document-root
-  paths; page patches use `["theme",...]`.
+  paths; page patches use `["theme",...]`. Exception: `components` (store sections, FAQ
+  questions) is patched at `["components"]`, block root — see below.
 - **Block text is HTML rich text.** Set `localized-value-descriptor.localizedString` values
   wrapped in `<p>` (or `<h1>` for a hero headline). Bare strings render in a flat "plain text"
   style. `get-structure` does not inline localized text (it returns `L:` ids); verify via the
   `update-block` response's `localizations` map.
 - **`background.color` is a tint over the image.** An opaque color hides the image entirely.
   Keep it transparent or low-alpha and darken with `background.gradient`.
-- **Store sections live in `newStore.components[]`.** Each has `section.item.group` and `type`.
-  Types: `virtual_currency` (currency packages / top-up), `virtual_good` (items), `bundle`
-  (bundles). Currency packages show via a `virtual_currency` section with group `__all__`, not
-  by group or bundle type. Reorder by replacing the components array; there is no move op for
-  components. Fresh blocks ship with `__test__/...` placeholder sections; replace them.
+- **Store sections and FAQ questions live in `block.components[]` — a sibling of `values`, not
+  inside it.** Patch at `["components"]` (block root). `["values","components"]` and
+  `values.questions` return `ok:true` and silently do nothing. Sections are `newStoreSection`,
+  questions are `questionV2`. Copy `card.layouts` verbatim from the placeholder; only
+  `selectedLayoutType` changes. Section `type`: `virtual_currency` (currency packages / top-up,
+  group `__all__`, not by group/bundle), `virtual_good` (items), `bundle` (bundles). Reorder by
+  rewriting the array; there is no move op.
+- **A fresh `newStore` block shows Xsolla demo data until you replace `components[0]`.** Its
+  placeholder `section.item.group` is `__test__/bundle` → "Mystic Kit" / "Test item" / a lone
+  "Bundles" tab. `ok:true` and a healthy `get-structure` do not mean the real catalog renders —
+  render the preview to confirm (see the storefront skill, "Render to verify").
+- **`featured` layout is a single-item carousel** (one item + pagination dots, the rest hidden).
+  Good as a hero/anchor; use a grid like `vertical` where the buyer compares items. It reads as
+  "only one item loaded" — it isn't.
 - **Federated-block images live in `resources.mediaValues["I:..."].src`.** Repoint that to a
   `upload-asset` CDN URL, and darken with the entry's `gradient`.
 
@@ -65,6 +82,13 @@ each. Scope is the storefront; catalog, login, payments, and webhooks have their
   `image_url`. The landing must exist first. There is no other upload path in the CLI.
 - **A missing source file stays unset.** If the art does not exist, leave the image empty and
   flag it rather than substituting an unrelated image.
+
+## Adjacent CLI corrections (out of storefront scope, seen in the same build)
+
+- **`admin-update-currency-package` uses `--package-sku`,** not `--currency-package-sku`.
+- **Subscriptions (`api.xsolla.com`) accept the `pa-v4-token` JWT** passed as `XSOLLA_TOKEN`,
+  even though the same token is rejected by the publisher-account endpoints. Worth noting where
+  the subscriptions skill implies only `xsolla auth login` works.
 
 ## The rule that prevents lost work
 

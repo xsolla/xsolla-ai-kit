@@ -49,6 +49,12 @@ throughout; the craft is in the choices.
 `page`, or `site`. Block patches address paths under `values` (for example
 `["values","title"]`); a path missing the `values` prefix returns ok and changes nothing.
 
+**The one exception — `components`.** Store sections and FAQ questions do not live under
+`values`; they live in `block.components[]`, a sibling of `values` at the block root. Patch
+them at path `["components"]` — no `values` prefix. This is the explicit exception to the rule
+above: `["components"]` takes effect, while the intuitive `["values","components"]` is a silent
+no-op. Every `update-block` returns `ok:true` either way, so the wrong path fails silently.
+
 ### Text (rich HTML)
 
 Set a `localized-value-descriptor` whose `localizedString` values are HTML, one per locale:
@@ -79,16 +85,53 @@ federated blocks (offer chain), the image lives in
 color transparent or low-alpha and do the darkening with `background.gradient` (for a hero,
 fade light at the top to solid at the bottom so it blends into the page background).
 
-### Store sections (newStore components)
+### Store sections (the `newStore` block's `components[]`)
 
-Sections live in `newStore.components[]`. Each has `section.item.group`, `section.item.type`,
-a `card.selectedLayoutType`, and a `section.title`. Types:
+Sections live in the store block's `components[]` — at the **block root**, a sibling of
+`values`, not inside it. Patch the whole array at `["components"]` (the patch-model exception
+above); there is no move op for components, so reorder by rewriting the array.
+
+**A fresh `newStore` block renders Xsolla demo data until you replace its placeholder.** The
+default `components[0]` has `section.item.group: "__test__/bundle"`, which renders "Mystic Kit"
+/ "Test item" / a single "Bundles" tab. `ok:true` from `update-block` and a healthy
+`get-structure` do **not** mean the real catalog is showing — the block existing is not the
+block being wired.
+
+Fix: read the block, keep the placeholder's `card.layouts` object (it holds every layout-type
+definition), and replace the whole array with real sections:
+```
+xsolla shopbuilder update-block --merchant-id <m> --project-id <p> --landing-id <landing> \
+  --data '{"r1":{"type":"block","id":"<blockId>","patches":[
+    {"op":"replace","path":["components"],"value":[<sections>]}]}}' --json
+```
+Each section is a `newStoreSection`:
+```
+{"_id":"<id>","type":"newStoreSection","enable":true,
+ "card":{"layouts":{ …copy verbatim from the placeholder… },"selectedLayoutType":"vertical"},
+ "section":{"item":{"group":"<group>","type":"<type>","autoSelected":false},
+            "title":<LVD>,"background":<…>,"hiddenEmpty":true,"horizontalScroll":false}}
+```
+Copy `card.layouts` verbatim from the existing placeholder section (it defines all layout
+types); only `selectedLayoutType` changes per section. Section item `type`:
 - `virtual_currency` with group `__all__` shows the currency packages (top-up). Packages are
   not shown by group or bundle type.
 - `virtual_good` shows virtual items (skins, gear, boosters, passes) by group.
 - `bundle` shows bundles by group.
-Fresh blocks ship with `__test__/...` placeholder sections; replace them. Reorder sections by
-replacing the whole `components` array (there is no move op for components).
+
+**Layout — `featured` is a single-item carousel.** It shows one item at a time with pagination
+dots and hides the rest: good as a hero/anchor, wrong where the buyer needs to compare (currency
+tiers, a full skins grid). For those, use a grid layout like `vertical` so all items show at
+once. A `featured` section reads as "the store only loaded one item" — it didn't; that's the
+carousel.
+
+### FAQ questions (the `faq` block's `components[]`)
+
+FAQ questions are also `components[]` at the block root, each a `questionV2`:
+```
+{"_id":"<id>","enable":true,"type":"questionV2","question":<LVD>,"answer":<LVD>,"value":{ …image }}
+```
+Patch at `["components"]`. Writing `values.questions` returns `ok:true` and silently does
+nothing — the same trap as store sections.
 
 ### Per-block and site theme
 
@@ -98,7 +141,14 @@ buttonTextColor, overlayColor, borderColor), `buttonBorderRadius`, `backgroundBl
 
 ## Common pitfalls
 
-- Block patch paths without the `values` prefix; silent no-op.
+- Block patch paths without the `values` prefix; silent no-op. Exception: `components` (see
+  the patch model) is patched at `["components"]`, block root.
+- Patching `["values","components"]` for sections or `values.questions` for FAQ; both return
+  `ok:true` and do nothing. Sections and questions live at `["components"]` (block root).
+- Trusting `ok:true` + `get-structure` as proof the store is wired. A fresh block shows demo
+  data ("Mystic Kit") until `components[0]`'s `__test__/...` section is replaced. Render it.
+- Reading a `featured` section as "only one item loaded"; it is a single-item carousel by
+  design. Use `vertical` (grid) where items must be compared.
 - Plain-string text; renders unstyled. Always HTML.
 - Opaque `background.color`; hides the image. Darken with the gradient.
 - Currency packages placed in a `bundle` or grouped section; they return empty. Use a
@@ -107,5 +157,9 @@ buttonTextColor, overlayColor, borderColor), `buttonBorderRadius`, `backgroundBl
 ## Verify
 
 - The `update-block` response `localizations` map contains your HTML text.
-- `get-structure` shows each section's `group`, `type`, and layout, and image `src` values set.
+- `get-structure` shows each section's `group`, `type`, and layout, and image `src` values set,
+  and no section still points at a `__test__/...` group.
 - Read the client catalog calls to confirm each section resolves to real items.
+- **Render the store, don't just check structure.** `get-structure` passing while every section
+  is still demo data is exactly the failure this skill guards against. Load the authenticated
+  preview and eyeball it (see shopbuilder-storefront, "Render to verify").

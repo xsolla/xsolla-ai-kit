@@ -53,8 +53,11 @@ or a mismatched image is a customize problem.
   right one by absolute path.
 - `XSOLLA_SHOPBUILDER_SESSION` holds the `pa-v4-token` cookie value. It expires; re-copy it
   from Publisher Account when a `shopbuilder` call returns 403.
-- Record `merchant_id`, `project_id`, the storefront `slug`, and after creation the
-  `landing_id` and `page_id`.
+- Record `merchant_id`, `project_id`, and after creation the `landing_id`, `page_id`, and the
+  **returned `domain`**. `create-website --slug <x>` auto-suffixes the slug (`voidwall` →
+  domain `voidwall-45e0`); capture `.data.domain` from the create response and pass *that* as
+  `--slug` to `get-structure`, `enable-preview`, and `preview-link`. Querying the requested
+  slug 404s.
 
 ## Steps
 
@@ -66,8 +69,8 @@ or a mismatched image is a customize problem.
    them into a funnel.
 5. `shopbuilder-customize`: author copy, place images, configure store sections, tune
    backgrounds and theme.
-6. Enable preview (`xsolla shopbuilder enable-preview --slug <slug>`), review, then publish
-   and go live in Publisher Account.
+6. Enable preview (`xsolla shopbuilder enable-preview --slug <domain>`), **render and eyeball
+   it** (see "Render to verify"), then publish and go live in Publisher Account.
 
 ## The one rule that prevents lost work
 
@@ -78,12 +81,28 @@ landing back to the developer, say so; when they are editing, stay out.
 
 ## Verifying a build
 
-- `xsolla shopbuilder get-structure --slug <slug> --json` is the source of truth for
+Structural checks are necessary but **not sufficient**: `get-structure` and `get-localization`
+pass while the store is still all Xsolla demo data ("Mystic Kit"). Verify structure *and* render.
+
+- `xsolla shopbuilder get-structure --slug <domain> --json` is the source of truth for
   structure, but it does not inline localized text (it returns `L:` ids). Verify authored
   copy through the `update-block` response's `localizations` map.
 - The admin catalog read lags; when confirming what the storefront serves, read the client
   catalog calls instead.
 - `verify-website` returns 404 on a topup landing; use `get-structure` to check readiness.
+
+### Render to verify
+
+The only way to catch a store that is structurally healthy but still showing demo data is to
+look at it. Render the authenticated preview and eyeball it:
+
+1. Load `https://sitebuilder.xsolla.com/preview/<domain>` in headless Chrome with the
+   `pa-v4-token` session value (the `XSOLLA_SHOPBUILDER_SESSION` value) set as a `pa-v4-token`
+   cookie on `sitebuilder.xsolla.com`.
+2. **Scroll the page top-to-bottom before capturing.** Card images are lazy-loaded; blank
+   images below the fold are a screenshot artifact, not a real problem.
+3. Take a full-page screenshot and check the real catalog, copy, and imagery render — not
+   "Mystic Kit" / "Test item" / a lone "Bundles" tab.
 
 ## Reference
 

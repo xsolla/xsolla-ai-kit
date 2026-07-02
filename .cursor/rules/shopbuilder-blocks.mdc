@@ -43,6 +43,11 @@ store), `faq`, `rewards`, `promocodes`. Hosted modules (`sb-offer-chain`, `sb-da
 `offerwall-block`) are not addable by name; they are added as a `federated` block and then
 configured (below).
 
+A placed `newStore` or `faq` block is not a wired one: a fresh `newStore` renders Xsolla demo
+data ("Mystic Kit") until its placeholder section is replaced, and both blocks' sections and
+questions live in the block's `components[]` at the block root (a sibling of `values`), not
+under `values`. Wiring both is shopbuilder-customize's job — see its "Store sections" section.
+
 ## How to build
 
 1. Strip the default template blocks so you start clean. Read them, then delete each:
@@ -77,6 +82,10 @@ configured (below).
 - Assuming add order is preserved; verify and `move-block` to fix.
 - Over-blocking. A long page of low-value blocks buries the store.
 - Editing in the Publisher Account editor at the same time; blocks silently vanish. One writer.
+- Deleting blocks to remove the top nav. The header nav chrome (Store / Daily gifts / Rewards /
+  Redeem code) is not in the landing structure or features and persists even after the matching
+  blocks are deleted — it cannot be removed via CLI. Surface this limitation to the developer;
+  do not work around it.
 
 ## Verify
 
