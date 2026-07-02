@@ -6,39 +6,33 @@ This file is read automatically by most AI coding agents (Cursor, Codex CLI, Git
 
 ## What this repo is
 
-`xsolla/xsolla-ai-kit` is the Xsolla agent skills toolkit — a collection of `SKILL.md` files (agentskills.io format) that teach AI coding agents how to execute Xsolla-specific workflows end-to-end, without requiring the Xsolla CLI as a dependency.
+`xsolla/xsolla-ai-kit` is a **marketplace of Xsolla agent-skill plugins** — collections of `SKILL.md` files (agentskills.io format) that teach AI coding agents how to execute Xsolla-specific workflows end-to-end. Skills call **Xsolla REST APIs directly**; the CLI is an optional shortcut.
 
-Skills call **Xsolla REST APIs directly**. The CLI (`xsolla/xsolla-cli`) is an optional shortcut once it ships to production.
-
----
-
-## Skill inventory
-
-| Skill                           | What it does                                                                             |
-|---------------------------------|------------------------------------------------------------------------------------------|
-| `shop-setup`                    | **Orchestrator** — coordinates the full zero-to-shop flow, chaining all domain skills    |
-| `merchant-setup`                | Creates and configures an Xsolla account + get API key                                   |
-| `catalog-design`                | Configures the catalog and the client flow: client catalog, purchase, order confirmation |
-| `login-setup`                   | Integrates Xsolla Login / NewID authentication                                           |
-| `headless-checkout-integration` | Payments via Headless Checkout                                                           |
-| `webhooks-impl`                 | Generates webhook handler code for order/payment events                                  |
+Each plugin is self-contained under `plugins/`. The marketplace manifest (`.claude-plugin/marketplace.json`, `.agents/plugins/marketplace.json`) lists them.
 
 ---
 
-## How to invoke a skill
+## Plugins
 
-Skills are loaded automatically when you open this repo in your agent. To run a specific skill, ask your agent naturally:
+| Plugin | Directory | What it does |
+|--------|-----------|--------------|
+| `xsolla-ai-kit` | [`plugins/headless-shop/`](plugins/headless-shop/) | **Headless shop** — assemble a custom, self-hosted storefront from Login + Store API + Headless Checkout SDK. Skills: shop-setup (orchestrator), merchant-setup, catalog-design, login-setup, headless-checkout-integration, webhooks-impl. |
+| `xsolla-shopbuilder` | [`plugins/shopbuilder/`](plugins/shopbuilder/) | **Shop Builder** — build a hosted, no-code storefront via the `xsolla shopbuilder` CLI. Skills: shopbuilder-storefront (orchestrator), site, page, blocks, customize. |
 
-```
-Set up a full Xsolla game shop for my project
-→ triggers: shop-setup
+Each plugin has its own `AGENTS.md` with the detailed skill inventory and usage.
 
-Configure my Xsolla catalog with items and pricing
-→ triggers: catalog-design
+---
 
-Integrate payments into my game
-→ triggers: headless-checkout-integration
-```
+## Repo layout
+
+| Path | Contents |
+|------|----------|
+| `plugins/<name>/` | One self-contained plugin: skills + per-ecosystem configs (`.claude-plugin/`, `.codex-plugin/`, `.cursor-plugin/`, `gemini-extension.json`). |
+| `.claude-plugin/marketplace.json` | Marketplace manifest (Claude Code). Lists all plugins. |
+| `.agents/plugins/marketplace.json` | Marketplace manifest (agents ecosystem). |
+| `.cursor/rules/` | Auto-generated Cursor rules, aggregated across all plugins (do not edit manually). |
+| `docs/` | Architecture, distribution, and skill-gap guides. |
+| `.github/workflows/` | sync-providers.yml — regenerates `.cursor/rules/` from every plugin's SKILL.md. |
 
 ---
 
@@ -49,28 +43,16 @@ XSOLLA_MERCHANT_ID=<your merchant ID>
 XSOLLA_PROJECT_ID=<your project ID>
 XSOLLA_PROJECT_API_KEY=<your API key>
 ```
-Setup by `merchant-setup` skill.
+Set up by the `merchant-setup` skill.
 
 ---
 
-## Key directories
-
-| Path | Contents |
-|------|----------|
-| `skills/` | SKILL.md files. One subdirectory per workflow. |
-| `skills/<name>/references/` | Long-form reference docs. Keeps SKILL.md under 200 lines. |
-| `docs/` | Architecture, distribution, and skill-gap guides. |
-| `.github/workflows/` | sync-providers.yml — auto-generates Cursor .mdc files from SKILL.md |
-| `.cursor/rules/` | Auto-generated Cursor rules (do not edit manually) |
-
----
-
-## Adding a skill
+## Adding a skill or plugin
 
 See [CONTRIBUTING-skills.md](CONTRIBUTING-skills.md) for the full guide.
 
 Quick rules:
-- One `SKILL.md` per `skills/<skill-name>/` directory
+- One `SKILL.md` per `plugins/<plugin>/skills/<skill-name>/` directory
 - Under 200 lines; split into `references/` if it grows past that
 - Description must contain trigger keywords — make it pushy
 - No `curl` commands — skills describe intent, not raw HTTP

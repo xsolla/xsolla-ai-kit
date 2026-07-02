@@ -8,7 +8,7 @@
       "name": "xsolla-ai-kit",
       "source": {
         "source": "local",
-        "path": "./"
+        "path": "./plugins/headless-shop"
       },
       "policy": {
         "installation": "INSTALLED_BY_DEFAULT",

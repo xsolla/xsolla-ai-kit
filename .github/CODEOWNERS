@@ -2,7 +2,7 @@
 *   @j.manashti
 
 # Skills require the domain SME + Javad
-skills/catalog-design/**   @p.sanachev @j.manashti
-skills/login-setup/**      @mohammed_abujalala @j.manashti
-skills/headless-checkout-integration/**  @y.klochikhin @j.manashti
-skills/webhooks-impl/**    @e.chernykh @j.manashti
+plugins/headless-shop/skills/catalog-design/**   @p.sanachev @j.manashti
+plugins/headless-shop/skills/login-setup/**      @mohammed_abujalala @j.manashti
+plugins/headless-shop/skills/headless-checkout-integration/**  @y.klochikhin @j.manashti
+plugins/headless-shop/skills/webhooks-impl/**    @e.chernykh @j.manashti

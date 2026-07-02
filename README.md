@@ -6,12 +6,20 @@ Install the kit in your AI coding tool and your agent can integrate Xsolla's API
 
 ## What's inside
 
+This repo is a **marketplace of plugins**. Each plugin lives under `plugins/` and is self-contained.
+
+| Plugin | Directory | Purpose |
+|--------|-----------|---------|
+| `xsolla-ai-kit` | `plugins/headless-shop/` | Headless, self-hosted storefront — Login + Store API + Headless Checkout SDK |
+| `xsolla-shopbuilder` | `plugins/shopbuilder/` | Hosted, no-code storefront via the `xsolla shopbuilder` CLI |
+
 | Directory | Purpose |
 |-----------|---------|
-| `skills/` | SKILL.md files — one per Xsolla domain |
-| `AGENTS.md` | Universal context loaded automatically by most agents |
+| `plugins/<name>/skills/` | SKILL.md files — one per Xsolla domain |
+| `plugins/<name>/AGENTS.md` | Per-plugin context loaded automatically by most agents |
+| `AGENTS.md` | Repo-level context / marketplace overview |
 | `.github/copilot-instructions.md` | GitHub Copilot-specific context |
-| `.cursor/rules/` | Auto-generated Cursor .mdc rules |
+| `.cursor/rules/` | Auto-generated Cursor .mdc rules (aggregated across plugins) |
 | `docs/` | Architecture, distribution, and skill-gap guides |
 
 ## Quick start
@@ -45,11 +53,14 @@ gemini extensions install https://github.com/xsolla/xsolla-ai-kit
 
 ### Other tools (Windsurf, Roo Code, Augment, Amp, Copilot, …)
 
-For tools with no official plugin system, use the kit by copying `AGENTS.md` and the `skills/` directory into your project root. Any tool that follows the [AGENTS.md](https://agents.md) convention will pick the skills up automatically the next time you open the project:
+For tools with no official plugin system, use a plugin by copying its `AGENTS.md` and `skills/` directory into your project root. Any tool that follows the [AGENTS.md](https://agents.md) convention will pick the skills up automatically the next time you open the project:
 
 ```bash
 git clone https://github.com/xsolla/xsolla-ai-kit
-cp -r xsolla-ai-kit/AGENTS.md xsolla-ai-kit/skills your-game-project/
+# headless shop:
+cp -r xsolla-ai-kit/plugins/headless-shop/AGENTS.md xsolla-ai-kit/plugins/headless-shop/skills your-game-project/
+# or Shop Builder:
+cp -r xsolla-ai-kit/plugins/shopbuilder/AGENTS.md xsolla-ai-kit/plugins/shopbuilder/skills your-game-project/
 ```
 
 Then set environment variables or run the `merchant-setup` skill:
