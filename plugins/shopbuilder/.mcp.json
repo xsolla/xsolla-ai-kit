@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "xsolla-docs": {
+      "type": "http",
+      "url": "https://xsolla.mcp.kapa.ai"
+    }
+  }
+}

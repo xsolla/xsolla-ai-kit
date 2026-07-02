@@ -1,0 +1,105 @@
+---
+name: shopbuilder-customize
+description: >-
+  Level 4 of the Shop Builder hierarchy: block customization. Covers the update-block patch
+  model, block text as HTML rich text, images via upload-asset and federated mediaValues,
+  backgrounds and the tint trap, store sections (newStore components: group, type, layout,
+  title), and per-block theme, plus how to think about copy, imagery, section organization, and
+  pricing presentation to convert. Use when editing block content, writing storefront copy,
+  setting block or section images, arranging store sections, or tuning colors, fonts, and
+  buttons. Part of the shopbuilder-storefront set; run last, after shopbuilder-blocks.
+metadata:
+  domain: shopbuilder
+  level: 4-customize
+---
+
+# Shop Builder: Block customization
+
+This is where a working storefront becomes a good one: the copy, imagery, section
+organization, and pricing presentation inside each block. Same `update-block` mechanics
+throughout; the craft is in the choices.
+
+## How to think: use customization to convert
+
+- **Copy in the brand voice, concrete and buyer-focused.** Answer the buyer's real question.
+  Use rich-text hierarchy on purpose: a hero headline as `<h1>`, a subtitle as `<p>`, so the
+  eye lands where you want.
+- **Store sections are merchandising inside the store.** Group by intent. Put high-value bundles
+  near the top for price anchoring. Order sections by what converts. Match card layout to
+  content: `featured` for bundles and currency packs, vertical grids for cosmetics. Section
+  titles should sell, not just label.
+- **Imagery is consistency plus legibility.** Use on-brand art in one style, an image on every
+  card, and backgrounds that set mood without beating the content. Darken a busy background with
+  a gradient, never with an opaque color tint.
+- **Pricing and trust close the sale.** Rely on regional pricing so locals see local money.
+  Surface payment methods, a "cosmetic only / not pay-to-win" reassurance where true, and a
+  support contact.
+
+## How to build
+
+### The patch model
+
+`update-block --data '{"r1":{"type":"<t>","id":"<id>","patches":[...]}}'`. Target `block`,
+`page`, or `site`. Block patches address paths under `values` (for example
+`["values","title"]`); a path missing the `values` prefix returns ok and changes nothing.
+
+### Text (rich HTML)
+
+Set a `localized-value-descriptor` whose `localizedString` values are HTML, one per locale:
+```
+{"op":"replace","path":["values","title"],"value":{
+  "__type":"localized-value-descriptor","enable":true,
+  "localizedString":{"en-US":"<h1>Hold the Line</h1>","fr-FR":"<h1>Tenez la ligne</h1>"}}}
+```
+Wrap body copy in `<p>`, hero headlines in `<h1>`. Bare strings render in a flat plain-text
+style. `get-structure` will not show the text back (it returns `L:` ids); confirm via the
+`update-block` response's `localizations` map.
+
+### Images
+
+Upload once, reference the returned CDN URL:
+```
+xsolla shopbuilder upload-asset --merchant-id <m> --project-id <p> --landing-id <landing> \
+  --type image --file <path> --json
+```
+For native blocks (hero logo, hero background), set the URL on the block's image field. For
+federated blocks (offer chain), the image lives in
+`values.resources.mediaValues["I:..."].src`; repoint that entry's `src` and darken via its
+`gradient`.
+
+### Backgrounds and the tint trap
+
+`background.color` renders as a tint over the image. An opaque color hides the image. Keep the
+color transparent or low-alpha and do the darkening with `background.gradient` (for a hero,
+fade light at the top to solid at the bottom so it blends into the page background).
+
+### Store sections (newStore components)
+
+Sections live in `newStore.components[]`. Each has `section.item.group`, `section.item.type`,
+a `card.selectedLayoutType`, and a `section.title`. Types:
+- `virtual_currency` with group `__all__` shows the currency packages (top-up). Packages are
+  not shown by group or bundle type.
+- `virtual_good` shows virtual items (skins, gear, boosters, passes) by group.
+- `bundle` shows bundles by group.
+Fresh blocks ship with `__test__/...` placeholder sections; replace them. Reorder sections by
+replacing the whole `components` array (there is no move op for components).
+
+### Per-block and site theme
+
+Theme fields live under `theme`: `mainColors` (accentColor, secondaryColor, textColor,
+buttonTextColor, overlayColor, borderColor), `buttonBorderRadius`, `backgroundBlur`, `fonts`,
+`pictureBackground`. Set them on the page (the look that ships) and mirror on the site.
+
+## Common pitfalls
+
+- Block patch paths without the `values` prefix; silent no-op.
+- Plain-string text; renders unstyled. Always HTML.
+- Opaque `background.color`; hides the image. Darken with the gradient.
+- Currency packages placed in a `bundle` or grouped section; they return empty. Use a
+  `virtual_currency` section with group `__all__`.
+
+## Verify
+
+- The `update-block` response `localizations` map contains your HTML text.
+- `get-structure` shows each section's `group`, `type`, and layout, and image `src` values set.
+- Read the client catalog calls to confirm each section resolves to real items.

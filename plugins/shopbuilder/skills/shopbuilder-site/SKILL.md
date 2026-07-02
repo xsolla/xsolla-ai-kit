@@ -1,0 +1,74 @@
+---
+name: shopbuilder-site
+description: >-
+  Level 1 of the Shop Builder hierarchy: the site (landing) container. Covers creating the
+  Shop Builder landing, waiting out its async scaffolding, setting languages and the brand
+  seed theme, and the domain, plus how to think about the site as the shop's identity and
+  reach (primary job, currency model, locale strategy). Use when creating a Shop Builder site,
+  choosing what the shop sells, setting up languages or regional reach, or establishing the
+  base theme. Part of the shopbuilder-storefront set; run before shopbuilder-page.
+metadata:
+  domain: shopbuilder
+  level: 1-site
+---
+
+# Shop Builder: Site
+
+The site is the container and the shop's identity. Choices here (what it sells, which
+currency model, which locales, the brand seed) propagate to every level below, so set them
+deliberately before building the page.
+
+## How to think: use the site to set identity and reach
+
+- **Decide the shop's primary job first.** Currency top-up, cosmetics, or bundles as the lead.
+  This one choice drives the block order, the hero message, and how sections are arranged later.
+- **Keep the currency model clean.** Sell premium currency through packages, never the raw
+  currency. Keep soft or earned currency out of the store entirely so it never looks purchasable.
+- **Treat localization as a reach decision made here.** Choose target locales on purpose. A
+  site left at a single language silently hides translated copy authored later, so the language
+  set is a cap on everything downstream.
+- **The site theme is the brand seed.** Palette, type, and the world the shop lives in start
+  here as the inherited default. The page will override it (see shopbuilder-page), so treat
+  this as the baseline, not the final look.
+- **Name and slug are discoverability and trust.** Pick a slug that reads as the game's shop.
+
+## How to build
+
+1. Create the landing (only the `topup` type exists in the CLI):
+   ```
+   xsolla shopbuilder create-website --merchant-id <m> --project-id <p> \
+     --name "<Game> Store" --slug <slug> --type topup --json
+   ```
+   Capture the returned `_id` as the `landing_id`.
+2. Wait out scaffolding. The page and default blocks appear a moment after creation, or after
+   `enable-preview`. Poll until a page exists:
+   ```
+   xsolla shopbuilder enable-preview --slug <slug> --json
+   xsolla shopbuilder get-structure --merchant-id <m> --project-id <p> --slug <slug> --json
+   ```
+   Record `pages[0]._id` as the `page_id`.
+3. Add the target languages:
+   ```
+   xsolla shopbuilder add-language --merchant-id <m> --project-id <p> --slug <slug> --language fr-FR
+   ```
+   Repeat per locale (for example `de-DE`, `ja-JP`, `pt-BR`).
+4. Set the site (seed) theme via a site-level patch (`type: "site"`, id `current-site`, paths
+   at document root, for example `["theme","mainColors","accentColor"]`). See shopbuilder-customize
+   for the theme fields; set the page theme to match in shopbuilder-page, since the page overrides.
+5. Attach a custom domain if the shop needs one (`add-domain` / `verify-domain`), otherwise the
+   `<slug>.xsolla.site` preview host is used.
+
+## Common pitfalls
+
+- Building blocks before scaffolding finishes; `get-structure` returns no page. Poll first.
+- Leaving the site at one language, then wondering why the other locales never show.
+- Treating the site theme as the final look; the page theme overrides it.
+
+## Verify
+
+- `get-structure` returns a page id and the default template blocks.
+- `languages` lists every target locale.
+
+## Next
+
+Run `shopbuilder-page` to set the page theme and backdrop.

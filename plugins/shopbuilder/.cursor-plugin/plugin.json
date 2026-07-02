@@ -1,0 +1,25 @@
+{
+  "name": "xsolla-shopbuilder",
+  "version": "0.1.0",
+  "description": "Xsolla Shop Builder toolkit — guided workflows for building a hosted, no-code game storefront on Xsolla Shop Builder (edited via the `xsolla shopbuilder` CLI): site, page, blocks, and block customization.",
+  "author": {
+    "name": "Xsolla"
+  },
+  "homepage": "https://github.com/xsolla/xsolla-ai-kit",
+  "repository": "https://github.com/xsolla/xsolla-ai-kit",
+  "license": "MIT",
+  "keywords": [
+    "xsolla",
+    "shop-builder",
+    "shopbuilder",
+    "storefront",
+    "game-shop",
+    "no-code"
+  ],
+  "skills": "./skills/",
+  "mcpServers": {
+    "xsolla-docs": {
+      "url": "https://xsolla.mcp.kapa.ai"
+    }
+  }
+}

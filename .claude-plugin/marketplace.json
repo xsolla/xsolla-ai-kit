@@ -19,6 +19,20 @@
         "catalog",
         "webhooks"
       ]
+    },
+    {
+      "name": "xsolla-shopbuilder",
+      "source": "./plugins/shopbuilder",
+      "description": "Build a hosted, no-code game storefront on Xsolla Shop Builder (edited via the `xsolla shopbuilder` CLI): site, page, blocks, and block customization. Self-contained — separate from the headless kit.",
+      "category": "productivity",
+      "keywords": [
+        "xsolla",
+        "shop-builder",
+        "shopbuilder",
+        "storefront",
+        "game-shop",
+        "no-code"
+      ]
     }
   ]
 }

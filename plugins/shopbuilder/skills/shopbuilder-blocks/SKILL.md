@@ -1,0 +1,82 @@
+---
+name: shopbuilder-blocks
+description: >-
+  Level 3 of the Shop Builder hierarchy: blocks. Covers the block taxonomy, adding, deleting,
+  moving, and ordering blocks, and adding hosted modules (offer chain, daily reward, offerwall)
+  via the federated block, plus how to think about block choice and order as the storefront's
+  sales funnel. Use when adding or removing storefront blocks, arranging their order, building
+  the page layout, or placing an offer-chain / daily-reward / offerwall block. Part of the
+  shopbuilder-storefront set; run after shopbuilder-page and before shopbuilder-customize.
+metadata:
+  domain: shopbuilder
+  level: 3-blocks
+---
+
+# Shop Builder: Blocks
+
+Blocks are the storefront's merchandising. Which blocks you include, and in what order, is the
+sales funnel. Assemble the sequence here; tune each block's contents in shopbuilder-customize.
+
+## How to think: use blocks as the sales funnel
+
+- **Block order is the funnel.** A strong default for a game shop: hero, then an offer or promo
+  hook, then the store, then FAQ, then footer. Each block earns the next scroll or loses the sale.
+- **Choose blocks with intent.** Hero states who and what. An offer-chain or promo block creates
+  urgency and drives the first purchase. The store block (`newStore`) is the catalog and the
+  conversion surface. FAQ removes doubt (pay-to-win, delivery, payments). The footer carries
+  studio identity, support, and trust.
+- **Restraint is a feature.** Lead with the highest-value thing. Every extra block is another
+  chance to bounce. Add hosted engagement modules only where they reinforce the funnel.
+- **Hosted modules are engagement, not decoration.** Offer chain, daily reward, and offerwall
+  drive return visits and first purchases; place them near the top of the funnel if used at all.
+
+## Block taxonomy
+
+Native blocks addable by name: `lead` (hero and footer sign-off), `newStore` (the catalog
+store), `faq`, `rewards`, `promocodes`. Hosted modules (`sb-offer-chain`, `sb-daily-reward`,
+`offerwall-block`) are not addable by name; they are added as a `federated` block and then
+configured (below).
+
+## How to build
+
+1. Strip the default template blocks so you start clean. Read them, then delete each:
+   ```
+   xsolla shopbuilder get-structure --merchant-id <m> --project-id <p> --slug <slug> --json
+   xsolla shopbuilder delete-block --merchant-id <m> --project-id <p> --landing-id <landing> \
+     --page-id <page> --blockid <id> --force --json
+   ```
+2. Add the intended native blocks:
+   ```
+   xsolla shopbuilder add-block --merchant-id <m> --project-id <p> --landing-id <landing> \
+     --page-id <page> --block lead --json
+   ```
+   Add `lead`, `newStore`, `faq` as needed. Adds can land out of order (async); fix with move.
+3. Order them into the funnel:
+   ```
+   xsolla shopbuilder move-block --merchant-id <m> --project-id <p> --landing-id <landing> \
+     --page-id <page> --source <fromIndex> --destination <toIndex> --json
+   ```
+4. Add a hosted module (for example an offer chain). Add a generic `federated` block, then set
+   its `values` by cloning a working reference block and pointing it at your entity:
+   - `add-block --block federated`
+   - `update-block` the new block's `values` to `blockId: "sb-offer-chain"`, the module `host`,
+     `internalBlockValues` (including `offerChainId: <id>`), and `resources`.
+   The offer-chain entity itself is created in liveops (out of this set's scope); this step only
+   displays it. Image and label tuning is in shopbuilder-customize.
+
+## Common pitfalls
+
+- Adding a hosted module by name (`--block sb-offer-chain`); it returns 500. Add `federated`,
+  then configure.
+- Assuming add order is preserved; verify and `move-block` to fix.
+- Over-blocking. A long page of low-value blocks buries the store.
+- Editing in the Publisher Account editor at the same time; blocks silently vanish. One writer.
+
+## Verify
+
+- `get-structure` lists the intended blocks in funnel order, and the federated block shows
+  `blockId: sb-offer-chain` with the correct `offerChainId`.
+
+## Next
+
+Run `shopbuilder-customize` to author copy, images, store sections, and per-block theme.

@@ -1,0 +1,64 @@
+---
+name: shopbuilder-page
+description: >-
+  Level 2 of the Shop Builder hierarchy: the page. Covers the page theme (which overrides the
+  site theme and is the look that actually ships), the page backdrop, and SEO, plus how to
+  think about the page as a single-scroll funnel and a consistent mood. Use when the theme is
+  not showing despite site-theme edits, when setting the page mood or background, or when
+  arranging the page's overall flow. Part of the shopbuilder-storefront set; run after
+  shopbuilder-site and before shopbuilder-blocks.
+metadata:
+  domain: shopbuilder
+  level: 2-page
+---
+
+# Shop Builder: Page
+
+The page is one scroll. It carries the mood and the flow, and its theme, not the site theme,
+is what the visitor sees. Set the page up as a funnel before placing blocks.
+
+## How to think: use the page to set mood and flow
+
+- **One scroll is one story.** Read the page top to bottom as a funnel: identity, then hook,
+  then browse and convert, then reassure, then close. The block order later fills this shape.
+- **The page theme is the real look.** It overrides the site theme. Set the mood here (deep and
+  atmospheric for a grim sci-fi shop, bright and clean for a casual one) rather than fighting
+  the inherited default. If a theme change is not showing, it is almost always because it was
+  applied to the site and not the page.
+- **The background is the stage.** One cohesive backdrop ties the whole scroll together. Prefer
+  a single page background over per-block backdrops that compete. Darken it enough that block
+  content stays legible on top.
+
+## How to build
+
+1. Get the `page_id` from `get-structure` (`pages[0]._id`).
+2. Apply the theme as a page-level patch so it actually renders:
+   ```
+   xsolla shopbuilder update-block --merchant-id <m> --project-id <p> --landing-id <landing> \
+     --data '{"r1":{"type":"page","id":"<page_id>","patches":[
+       {"op":"replace","path":["theme","mainColors","accentColor"],"value":"rgba(53,224,255,1)"}
+     ]}}' --json
+   ```
+   Mirror the same values on the site theme (`type:"site"`, id `current-site`) so future pages
+   inherit them. The full field list (mainColors, buttonBorderRadius, backgroundBlur, fonts) is
+   in shopbuilder-customize.
+3. Set the page background image and tint on `theme.pictureBackground`:
+   `img` (an uploaded CDN URL), `enable: true`, `type: "image"`, `size: "cover"`, and a
+   semi-transparent `color` (for example `rgba(10,14,20,0.78)`) so the image shows while
+   staying dark enough for legibility. An opaque `color` hides the image.
+4. Set the page SEO/title so search and social show the shop's name.
+
+## Common pitfalls
+
+- Applying theme changes to the site only; the page override wins, so the page looks unthemed.
+- An opaque `pictureBackground.color`, which hides the background image entirely.
+- Multiple loud per-block backdrops that break the single-stage feel.
+
+## Verify
+
+- `get-structure` shows the page theme `mainColors` and `pictureBackground.img` set, with a
+  semi-transparent `color`.
+
+## Next
+
+Run `shopbuilder-blocks` to place and order the funnel.
