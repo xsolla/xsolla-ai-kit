@@ -14,7 +14,7 @@ widget DOM).
 |---|---------|-------------|----------|----------------------------------|
 | 1 | PA visual editor | Yes | Theme: colors, logo, background, roundness, social order, language | No |
 | 2 | Custom CSS upload via PA UI | Yes | Arbitrary CSS | Requires `true` (server-side CSS) |
-| 3 | **Custom CSS via API (this skill)** | No (scripted) | Arbitrary CSS (same as #2) | Requires `true` — but server-side CSS applies regardless of the flag |
+| 3 | **Custom CSS via API (this skill)** | No (scripted) | Arbitrary CSS (same as #2) | Requires `true` (the default) — ignored if a project is flipped to `false` |
 | 4 | Client-side via SDK | No | `customStyle` (CSS URL), `themeJSON`, `socialsJSON`, locale | `customStyle` needs `false`; `themeJSON`/`socialsJSON` always work |
 
 **Quick decision:** colors/logo/roundness only, no code → Channel 1. Full CSS and you manage the

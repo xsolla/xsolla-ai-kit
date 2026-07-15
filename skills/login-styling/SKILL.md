@@ -4,7 +4,8 @@ description: >-
   Applies a custom visual style / theme / brand to the Xsolla Login widget (Login Widget 2.0,
   `@xsolla/login-sdk`) — the sign-in, sign-up, and password-reset screens. Primary path is
   API-based: upload a CSS file to Xsolla storage, then attach its CDN URL to the login project
-  so the widget injects it server-side (works regardless of the `disallow_external_style` flag).
+  so the widget injects it server-side — honored under the project's default setting, which is
+  why it's the reliable path.
   Also covers structured theming (colors, logo, roundness, background, social order via themeJSON)
   and the SDK / Publisher Account alternatives. Use whenever a developer says "style the login",
   "theme the Login widget", "customize the login UI", "brand the sign-in / sign-up screen",
@@ -86,9 +87,10 @@ export XSOLLA_PUBLISHER_TOKEN=<Publisher Account bearer token>
    | Auth | `Authorization: Bearer <XSOLLA_PUBLISHER_TOKEN>` |
    | Body | `{ "custom_style_url": "<file_url from step 2>" }` |
 
-   Server-side CSS attached this way is injected as a `<link rel="stylesheet">` and **always
-   applies** — it is **not** gated by `disallow_external_style` (unlike the SDK `customStyle`
-   param). This is the key reason API deployment is the reliable path.
+   Server-side CSS attached this way is injected as a `<link rel="stylesheet">` and **is honored
+   under the default `disallow_external_style: true`** — which is why API deployment is the
+   reliable path. (If a project has been flipped to `false`, the SDK `customStyle` param wins and
+   this uploaded CSS is ignored instead — see [`references/channels-and-flag.md`](references/channels-and-flag.md).)
 
 4. **Verify and refresh.** `GET https://login.xsolla.com/api/projects/{id}/custom_style_url`
    → confirm it returns your CDN URL. Then hard-refresh the widget (Ctrl/Cmd+F5) and allow
@@ -102,7 +104,7 @@ export XSOLLA_PUBLISHER_TOKEN=<Publisher Account bearer token>
 
 - **"We pass `customStyle` in code but nothing changes."** That is the SDK path (Channel 4),
   gated by `disallow_external_style` (default `true` → SDK CSS ignored). **Use this skill's API
-  upload instead** — it is not gated. Full flag explainer:
+  upload instead** — it's the path honored under the default `true`. Full flag explainer:
   [`references/channels-and-flag.md`](references/channels-and-flag.md).
 - **Upload returns 422.** File isn't plain-text `.css` (macOS RTF) or its MIME isn't allowed.
   Re-save as plain text; confirm it doesn't report "Rich Text Format".
