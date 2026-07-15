@@ -21,7 +21,7 @@ Skills live under `plugins/<plugin>/skills/`. Two plugins:
   - `headless-checkout-integration` — Payments via Headless Checkout
   - `webhooks-impl` — webhook handler code generation
 - **`xsolla-shopbuilder`** (`plugins/shopbuilder/`) — hosted, no-code storefront via the `xsolla shopbuilder` CLI:
-  - `shopbuilder-storefront` (orchestrator), `shopbuilder-site`, `shopbuilder-page`, `shopbuilder-blocks`, `shopbuilder-customize`
+  - `shopbuilder-storefront` (orchestrator), `shopbuilder-site`, `shopbuilder-page`, `shopbuilder-blocks`, `shopbuilder-customize`, `shopbuilder-custom-block` (advanced escape hatch)
 
 ## When in doubt
 

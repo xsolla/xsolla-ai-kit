@@ -58,7 +58,7 @@ Setup by `merchant-setup` skill.
 | Path | Contents |
 |------|----------|
 | `skills/` | SKILL.md files. One subdirectory per workflow. |
-| `skills/<name>/references/` | Long-form reference docs. Keeps SKILL.md under 200 lines. |
+| `skills/<name>/references/` | Long-form reference docs that keep SKILL.md focused. |
 | `../../docs/` | (repo root) Architecture, distribution, and skill-gap guides. |
 | `../../.github/workflows/` | (repo root) sync-providers.yml — auto-generates Cursor .mdc files from all plugins' SKILL.md |
 | `../../.cursor/rules/` | (repo root) Auto-generated Cursor rules, aggregated across plugins (do not edit manually) |
@@ -71,7 +71,7 @@ See [../../CONTRIBUTING-skills.md](../../CONTRIBUTING-skills.md) for the full gu
 
 Quick rules:
 - One `SKILL.md` per `skills/<skill-name>/` directory
-- Under 200 lines; split into `references/` if it grows past that
+- Keep SKILL.md focused; move long-form detail into `references/`
 - Description must contain trigger keywords — make it pushy
 - No `curl` commands — skills describe intent, not raw HTTP
 - PR must include agent test output (exact prompt + one-line result)

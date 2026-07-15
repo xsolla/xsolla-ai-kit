@@ -22,7 +22,7 @@
   "interface": {
     "displayName": "Xsolla Shop Builder Toolkit",
     "shortDescription": "Guided Xsolla workflows for building a storefront on Shop Builder",
-    "longDescription": "Bundles the Xsolla Shop Builder workflow skills for standing up a hosted, no-code game storefront: shopbuilder-storefront (orchestrator), shopbuilder-site, shopbuilder-page, shopbuilder-blocks, shopbuilder-customize. Storefront is edited through the `xsolla shopbuilder` CLI.",
+    "longDescription": "Bundles the Xsolla Shop Builder workflow skills for standing up a hosted, no-code game storefront: shopbuilder-storefront (orchestrator), shopbuilder-site, shopbuilder-page, shopbuilder-blocks, shopbuilder-customize, and shopbuilder-custom-block (advanced escape hatch). Storefront is edited through the `xsolla shopbuilder` CLI.",
     "developerName": "Xsolla",
     "category": "Productivity",
     "websiteURL": "https://xsolla.com"

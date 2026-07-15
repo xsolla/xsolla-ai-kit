@@ -23,6 +23,7 @@ The storefront is a four-level hierarchy — **site → page → blocks → bloc
 | `shopbuilder-page`       | 2 — Page       | One scroll as a funnel: mood, the page theme that overrides the site theme, backdrop, SEO         |
 | `shopbuilder-blocks`     | 3 — Blocks     | Merchandising: which blocks, in what order, incl. hosted modules (offer chain, daily reward, offerwall) |
 | `shopbuilder-customize`  | 4 — Customize  | Conversion: copy, imagery, store sections, per-block theme via the `update-block` patch model     |
+| `shopbuilder-custom-block` | Escape hatch | **Advanced only** — author and deploy a custom React block via the AI Custom Block API when native blocks + `update-block` cannot express the needed layout, styling, or behavior |
 
 **Prerequisites (own skills, out of scope here):** merchant account and keys, project creation, catalog, login, payments, webhooks. The store block renders the project catalog, so build the catalog first.
 
@@ -45,5 +46,5 @@ See [../../CONTRIBUTING-skills.md](../../CONTRIBUTING-skills.md) for the full gu
 
 Quick rules:
 - One `SKILL.md` per `skills/<skill-name>/` directory
-- Under 200 lines; split into `references/` if it grows past that
+- Keep SKILL.md focused; move long-form detail into `references/`
 - Description must contain trigger keywords — make it pushy

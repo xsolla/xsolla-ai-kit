@@ -42,6 +42,11 @@ data ("Mystic Kit") until its placeholder section is replaced, and both blocks' 
 questions live in the block's `components[]` at the block root (a sibling of `values`), not
 under `values`. Wiring both is shopbuilder-customize's job — see its "Store sections" section.
 
+There is also a **custom (AI custom) block** — a React component you author and deploy — but it
+is an advanced escape hatch, not part of the normal taxonomy. Use it only when a native block
+plus `update-block` customization cannot produce the layout, styling, or behavior you need. See
+`shopbuilder-custom-block`.
+
 ## How to build
 
 1. Strip the default template blocks so you start clean. Read them, then delete each:

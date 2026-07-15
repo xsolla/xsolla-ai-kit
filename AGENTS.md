@@ -17,7 +17,7 @@ Each plugin is self-contained under `plugins/`. The marketplace manifest (`.clau
 | Plugin | Directory | What it does |
 |--------|-----------|--------------|
 | `xsolla-ai-kit` | [`plugins/headless-shop/`](plugins/headless-shop/) | **Headless shop** — assemble a custom, self-hosted storefront from Login + Store API + Headless Checkout SDK. Skills: shop-setup (orchestrator), merchant-setup, catalog-design, login-setup, headless-checkout-integration, webhooks-impl. |
-| `xsolla-shopbuilder` | [`plugins/shopbuilder/`](plugins/shopbuilder/) | **Shop Builder** — build a hosted, no-code storefront via the `xsolla shopbuilder` CLI. Skills: shopbuilder-storefront (orchestrator), site, page, blocks, customize. |
+| `xsolla-shopbuilder` | [`plugins/shopbuilder/`](plugins/shopbuilder/) | **Shop Builder** — build a hosted, no-code storefront via the `xsolla shopbuilder` CLI. Skills: shopbuilder-storefront (orchestrator), site, page, blocks, customize, custom-block (advanced escape hatch). |
 
 Each plugin has its own `AGENTS.md` with the detailed skill inventory and usage.
 
@@ -53,7 +53,7 @@ See [CONTRIBUTING-skills.md](CONTRIBUTING-skills.md) for the full guide.
 
 Quick rules:
 - One `SKILL.md` per `plugins/<plugin>/skills/<skill-name>/` directory
-- Under 200 lines; split into `references/` if it grows past that
+- Keep SKILL.md focused; move long-form detail into `references/`
 - Description must contain trigger keywords — make it pushy
 - No `curl` commands — skills describe intent, not raw HTTP
 - PR must include agent test output (exact prompt + one-line result)

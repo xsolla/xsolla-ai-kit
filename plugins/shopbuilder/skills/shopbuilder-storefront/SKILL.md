@@ -44,6 +44,11 @@ Run the four in order. A reviewer can locate any problem by level: wrong currenc
 site problem, theme not showing is a page problem, weak funnel is a blocks problem, flat copy
 or a mismatched image is a customize problem.
 
+**Advanced escape hatch (`shopbuilder-custom-block`).** When a native block plus `update-block`
+customization cannot express a needed layout, styling, or behavior, a custom React block can be
+authored and deployed. Reach for it last — exhaust the native path first; it is code you then
+own, and native blocks stay editable in Publisher Account and survive platform updates.
+
 ## Prerequisites
 
 - The catalog exists and reads back through the client catalog calls. A storefront with no

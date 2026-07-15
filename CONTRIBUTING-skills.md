@@ -10,7 +10,7 @@ This is the Xsolla guide for writing agent skills for `xsolla/xsolla-ai-kit`.
 ## Quick rules
 
 1. **One skill per directory** — `plugins/<plugin>/skills/<skill-name>/SKILL.md`
-2. **Under 200 lines** — split overflow into `plugins/<plugin>/skills/<skill-name>/references/*.md`
+2. **Keep SKILL.md focused** — move long-form detail into `plugins/<plugin>/skills/<skill-name>/references/*.md`
 3. **YAML frontmatter required** — see format below
 4. **Pushy description** — cover every trigger scenario; agents use this to decide when to invoke
 5. **No raw `curl` commands** — describe intent + Xsolla API endpoint, not raw HTTP
