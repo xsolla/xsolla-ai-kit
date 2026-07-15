@@ -75,16 +75,40 @@ block from failing to render after publish:
 
 ## Styling — the reason you're here
 
-Advanced styling is the main legitimate use. Do it without breaking the page:
+Advanced styling is the main legitimate use. A custom block must look like part of the
+storefront, not bolted on — **match the site's theme: its colors, fonts, and imagery.** A block
+that ships its own palette and typeface reads as broken even when it works.
+
+**Match the theme, don't reinvent it.** Read the page/site `theme` (via `get-structure`) and
+drive the block from those same values rather than hardcoded ones:
+
+- **Colors** — `theme.mainColors`: `accentColor` (primary actions/highlights), `secondaryColor`,
+  `textColor`, `buttonTextColor`, `overlayColor`, `borderColor`. Use the accent for CTAs and the
+  text color for copy so the block reads as the same brand; don't introduce off-palette colors.
+- **Fonts** — `theme.fonts`. Use the site's font family for all block text; never bundle a
+  different typeface. Upload custom fonts as assets (`upload-asset`, `woff/woff2/ttf/otf`) only
+  when the design genuinely requires one the site lacks.
+- **Buttons and surfaces** — mirror `buttonBorderRadius`, `backgroundBlur`, and the button
+  colors so controls match native blocks.
+- **Images** — upload art with `upload-asset` and reference the CDN URL from `defaultData`; keep
+  one art style consistent with the rest of the page (see shopbuilder-customize). Darken busy
+  backgrounds with a gradient, never an opaque tint.
+
+Feed these theme values through `defaultData` (so they stay editable and can be re-synced if the
+site theme changes) or read them from the platform's injected theme context / exposed CSS
+variables if available — confirm which from an example or the compiler diagnostics, don't invent
+the hook. When the site theme changes, the block should follow, not drift.
+
+Do it without breaking the page:
 
 - **Scope every style to your block** (a stable root class or CSS-module scoping) so it cannot
   leak onto sibling blocks on the page.
 - **Never style against Shop Builder / SiteBuilder internals** (`xds-*` classes, platform
   wrappers). They change without notice and break your block.
 - **Mobile-first**: unconditional styles for mobile, layered overrides at larger breakpoints.
-- **Prefer design tokens / the block's theme values over hardcoded values;** avoid `!important`
-  and inline `style={{}}` for anything the block should let the merchant theme.
-- Use 6-digit hex or `rgba()`; keep the block visually consistent with the page theme.
+- **Prefer the site theme values over hardcoded ones;** avoid `!important` and inline
+  `style={{}}` for anything the block should let the merchant theme.
+- Use 6-digit hex or `rgba()`.
 
 ## Deploy flow
 
@@ -114,6 +138,8 @@ already stores in `XSOLLA_SHOPBUILDER_SESSION`. Full endpoints and payloads:
 - Reading data from props/state instead of the block's values, or hard-coding defaults in the
   component instead of `defaultData`.
 - Unguarded `window`/`document` at module scope — compiles fine, fails to render after publish.
+- Shipping an off-theme palette or a bundled typeface instead of the site's `theme.mainColors`
+  and `theme.fonts` — the block reads as broken even when it works.
 - Styling `xds-*` internals or leaking unscoped global styles onto other blocks.
 - Inventing the injected hook signature instead of confirming it from diagnostics or an example.
 - Trusting `ok:true` / a healthy `get-structure` as proof — render the preview.
@@ -125,4 +151,6 @@ already stores in `XSOLLA_SHOPBUILDER_SESSION`. Full endpoints and payloads:
 - The deploy returns a `blockId` and `host`; a 400's `details[]` is empty on success.
 - `get-structure` lists the custom block on the intended page.
 - **Render the authenticated preview** and confirm the block draws correctly, on mobile and
-  desktop widths, alongside the native blocks — not just that the call returned `ok`.
+  desktop widths, alongside the native blocks — not just that the call returned `ok`. The
+  block's colors, fonts, and imagery should read as the same storefront as the native blocks
+  above and below it, with no off-palette color or mismatched typeface.
