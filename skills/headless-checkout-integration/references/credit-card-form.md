@@ -17,7 +17,9 @@ Every checkout page (by contract):
 <psdk-legal></psdk-legal>
 ```
 
-Recommended: `psdk-payment-form-messages` for server messages. Optional: `psdk-finance-details`.
+**Render `psdk-payment-form-messages`** (see **Form Messages** below — it carries real
+server text like the sandbox "no redirect" notice; render it *visibly*, not hidden).
+Optional: `psdk-finance-details`.
 
 **Return page** (`returnUrl`) — user lands here after 3DS redirect. Must re-run `init()` + `setToken(tokenFromUrl)` +
 render `psdk-status`.
@@ -60,16 +62,14 @@ Server returns `Field[]` with `type`, `name`, `isMandatory`. Map each field:
 | `type === 'check'`       | `psdk-checkbox`    | `name`                     |
 | `type === 'label'`       | **none — skip it** | —                          |
 
-**Match on `type` explicitly — do NOT use a catch-all `else → psdk-text`.** The card
-flow also returns `type: 'label'` fields (e.g. `description`, `termsAndConditions`)
-that are **informational, not inputs**. Rendering a label as `psdk-text` tries to
-mount a secure iframe with no server config and throws **`Could not load control
-component config`**. Skip `label` fields — legal/terms text is already shown by
-`psdk-legal`. Only map the input types above; ignore anything else.
-
-**Short form**: fixed
-`card_number`, `card_month`, `card_year`, `cvv`, `zip`, `allowSubscription` — only if present in `form.fields`. Filter:
-`isMandatory === '1'` for minimal UI; all fields for BR/regional flows.
+`form.fields` is **already the visible set** (the SDK drops hidden `fix_*` / `signature`
+fields) — render all of it, mapping **by `type`**. The one rule: **skip `type: 'label'`;
+never fall through to a catch-all `else → psdk-text`** — a label has no secure config, so
+`psdk-text` throws `Could not load control component config`, and a rendered
+`termsAndConditions` is the "EULA on every step" bug. Labels are shown elsewhere: legal by
+`psdk-legal`, status/info text (e.g. the sandbox "no redirect" notice) by
+`psdk-payment-form-messages` (**Form Messages** below) — not as fields. Filtering to
+`isMandatory === '1'` is an optional minimal-UI choice, not required.
 
 Then add `psdk-submit-button` and call **`form.activate()`**. `activate()` is
 **mandatory, not optional** — it wires up the mounted secure fields and enables
@@ -81,25 +81,28 @@ do not treat that example as complete on this point.
 
 ---
 
-## Step 3: Wait for Secure Fields (Loading State)
+## Step 3: Show a loader (there is no "loading" event)
 
-Card fields load inside secure iframes. This step is **optional** — only for showing
-a loading state while the iframes initialize.
+**Trap:** `onNextAction` reports *outcomes*, not loading — the SDK gives you **no
+"request in flight" event**. If you don't drive loaders yourself, the buyer stares at a blank
+area during every round-trip. Two gaps:
+
+- **Form fetch + field load** (`form.init`, and each `show_fields` step): show a loader from
+  the moment you start until the fields are ready. Readiness = the
+  **`setupAndAwaitFieldsLoading(fields)` promise resolving**. Hide the form area meanwhile and
+  reveal on resolve (mount the fields behind the loader so they load while hidden).
+- **Submit → next action:** `psdk-submit-button` shows its **own** in-button loader — leave
+  that gap to it.
 
 ```typescript
-// Map + APPEND the field components to the DOM first (Step 2), THEN:
-const mandatory = form.fields.filter(f => f.isMandatory === '1');
-await headlessCheckout.form.setupAndAwaitFieldsLoading(mandatory);
-// now reveal the form — see headless-sdk-testing /wait-fields-loading
+// mount the field components FIRST (Step 2), then:
+await headlessCheckout.form.setupAndAwaitFieldsLoading(tracked); // resolve → hide loader, reveal form
 ```
 
-**Order matters: the field components must already be mounted in the DOM before you
-call this.** Calling `setupAndAwaitFieldsLoading` *before* rendering the components
-(e.g. to "preload, then render") **never resolves** — the promise waits for iframes
-that do not exist yet, so the form hangs on the loader forever with no error. If you
-are not showing a loading state, you can skip this entirely and just render →
-`activate()`. `psdk-payment-form` calls this internally. For custom UI — call
-explicitly. Use `AbortSignal` when the user switches methods mid-load.
+`psdk-payment-form` does this internally; render fields manually → you call it. **Mount the
+components before calling, and pass only the ones you mounted as secure inputs** (never a
+`label`/hidden field) — otherwise the promise **hangs forever** on an iframe that never
+appears. (`activate()`, not this, enables submit — Step 2.) `AbortSignal` on method switch.
 
 ---
 
@@ -152,27 +155,60 @@ Call `setSecureComponentStyles(css)` **before** `setToken()`. Ref: `secure-compo
 
 **Also:** `cardBinCountryChanged` on `psdk-card-number` (hide fields by BIN country); `psdk-payment-form` auto-creates
 missing fields (watch console); reset form on method switch (
-demo); [test cards](https://developers.xsolla.com/doc/pay-station/testing/test-cards/) for 3DS/success/decline.
+demo); [test cards](https://developers.xsolla.com/doc/pay-station/testing/test-cards/) for 3DS/success/decline. The
+**"save this card" checkbox** is the server-driven `allowSave` field (present only for savable methods) — see
+`saved-methods` for saving/reusing a method.
 
 ---
 
-## Testing (Sandbox)
+## Form Messages (server status / info text)
 
-Use these test cards in **sandbox mode** to confirm the integration works end-to-end. For all cards: **Exp. date
-`12/40`**, **CVV2 any 3 digits**. Verifying these three cards is enough to confirm the integration is functional.
+Some server responses carry a **`messages`** block — free-text status/info **not** in
+`form.fields` and **not** a NextAction (e.g. sandbox: *"Unlike with real payment… no
+redirect to the payment system"*). Surface it by mounting **`psdk-payment-form-messages`**
+(it auto-subscribes to `formMessagesChanged` and renders the text — just mount it):
 
-| Card number        | Flow                                          | Behavior                                                                          |
-|--------------------|-----------------------------------------------|-----------------------------------------------------------------------------------|
-| `4111111111111111` | Plain payment, **no 3DS**                     | Charges directly → `check_status` → `psdk-status` shows success                   |
-| `4111111111111152` | 3DS — **acquirer's built-in mechanism**       | Redirects to the Xsolla verification page, then back to `returnUrl`               |
-| `4423610000000007` | 3DS — **external MPI**                        | Redirects to the Xsolla verification page, then back to `returnUrl`               |
+```html
+<psdk-payment-form-messages></psdk-payment-form-messages>
+```
 
-**3DS flow (last two cards):** the form triggers a `redirect` NextAction to the Xsolla verification page. The password
-field is **pre-filled** — just click the confirmation button. After confirmation the user is redirected back to the
-**return page** (`returnUrl`), where `init()` + `setToken(tokenFromUrl)` + `psdk-status` report the final status.
+**Render it visibly and keep it mounted through the whole form flow** — not `sr-only`, and
+not only on step 1 (the message often arrives after the first submit). Hiding it is why a
+step looks empty for no reason. Ref: `demo-install` → `.../checkout/form-container`.
 
-**Testing the `failed` status:** on the verification page, enter a **wrong password** (e.g. `123456`) instead of
-confirming the pre-filled one. The payment fails and the return page reports the failed status.
+---
+
+## Testing (Sandbox) — you are NOT done until a real transaction lands on `psdk-status`
+
+Rendering the form is **not** "done." "The form renders" / "it should work" does not count — drive an actual sandbox
+payment and observe the terminal screen. Run **all three** cards below and report the result of each. For all cards:
+**Exp. date `12/40`**, **CVV2 any 3 digits**.
+
+| # | Card number        | Path exercised                          | Expected terminal state                                              |
+|---|--------------------|-----------------------------------------|---------------------------------------------------------------------|
+| 1 | `4111111111111111` | plain card, **no 3DS**                  | `check_status` → `psdk-status` shows **success**                    |
+| 2 | `4111111111111152` | 3DS — acquirer's built-in mechanism     | `redirect` → Xsolla verify page → **return page** → success        |
+| 3 | `4423610000000007` | 3DS — external MPI                      | `redirect` → Xsolla verify page → **return page** → success        |
+
+**Card 1 alone does NOT prove the integration** — it skips `redirect` and the **return page** entirely, which is the
+part most likely to be broken (wrong `returnUrl`, SDK not loaded on the return route, stripped query params). Cards 2
+and 3 are **mandatory**.
+
+**3DS flow (cards 2 & 3):** the form triggers a `redirect` to the Xsolla verify page
+(`sandbox-secure.xsolla.com/pages/sandbox`); the password is **pre-filled** — just confirm. The user is then redirected
+to the **return page** (`returnUrl`), where `init()` + `setToken(tokenFromUrl)` + `psdk-status` report the final status.
+To test the **`failed`** status, enter a **wrong password** (e.g. `123456`) instead of confirming the pre-filled one.
+
+**Driving it headlessly.** The card inputs live in cross-origin secure iframes, but Playwright/Puppeteer can drive them:
+
+- Locate each input via `frameLocator('iframe[src*="text-input/<field>"]').locator('input')`.
+- **Type with real key presses, not `fill()`.** `fill()` sets the value in one shot and the secure field's listeners
+  never fire, so the field stays `INVALID` and **submit silently hangs** (no NextAction, no error). Use
+  `pressSequentially(value)` / character-by-character `type()` so each keystroke registers and the field goes `VALID`.
+- Then click the button inside `psdk-submit-button`.
+- On the verify page: a **GDPR overlay** intercepts clicks — dismiss it first (`button.gdpr-accept-all-button`); the
+  code is pre-filled, so click `#xps-submit-button` to confirm (or replace it with a wrong code for the `failed` path).
+- Finally, assert the return page renders `psdk-status` with the expected terminal state and capture the screen.
 
 ---
 
@@ -192,4 +228,7 @@ confirming the pre-filled one. The payment fails and the return page reports the
 
 - [ ] `psdk-total` + `psdk-legal`; `form.init` + all five NextActions handled
 - [ ] `card_number` → `psdk-card-number`; `show_fields` clears + re-renders
+- [ ] Map `form.fields` by `type`; **skip `label`** (no catch-all `else → psdk-text`) — labels are `psdk-legal` / form-messages, not inputs
+- [ ] `psdk-payment-form-messages` rendered **visibly** + kept mounted (server status/info text)
+- [ ] Loader on form fetch + each `show_fields` step (driven by `setupAndAwaitFieldsLoading`); submit gap left to the button
 - [ ] 3DS path (`psdk-redirect` / `psdk-3ds`); return page with `psdk-status`

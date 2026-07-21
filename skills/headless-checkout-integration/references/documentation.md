@@ -130,7 +130,7 @@ All readable via `web_fetch` on `raw.githubusercontent.com`.
 | `apple-pay` | `index.html` | Apple Pay lifecycle events; `hide_form` NextAction; fullscreen QR iframe |
 | `qr-code` | `index.html` | `show_qr_code` NextAction; `QrCodeComponent` inline |
 | `mobile-payment` | `index.html` | `show_mobile_payment_screen` NextAction; waiting screen with status button |
-| `save-payment-method` | `index.html` | `save-method-mode="true"`; `form.init({ savePaymentMethod: true })` |
+| `save-payment-method` | `index.html` | `form.init({ savePaymentMethod: true })`; save checkbox (`allowSave` field) during payment |
 | `saved-methods` | `index.html` | `psdk-saved-methods`; `delete-mode="true"`; `deletedSavedMethodStatus` event |
 | `payment-via-saved-method` | `index.html` | `form.init({ paymentWithSavedMethod: true, savedMethodId })`; `TotalComponent` |
 | `changing-country` | `index.html` | `psdk-select type="country"`; `userCountryChanged` event |

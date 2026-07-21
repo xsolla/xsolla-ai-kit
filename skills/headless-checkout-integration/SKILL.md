@@ -6,22 +6,140 @@ description: >-
   stays isolated in secure iframes and payments run through Xsolla without the
   standard Pay Station. Use when the developer wants to "integrate Headless Checkout",
   "add @xsolla/pay-station-sdk", "accept a credit card payment in sandbox",
-  "render psdk-card-number / psdk-payment-form", "handle onNextAction / NextAction",
-  "do sandbox 3DS", or "show payment status / psdk-status" for a custom checkout.
+  "add a payment method selector", "integrate PayPal / alternative payment methods",
+  "add Google Pay / Apple Pay", "render psdk-card-number / psdk-payment-form",
+  "handle onNextAction / NextAction", "do sandbox 3DS", or "show payment status /
+  psdk-status" for a custom checkout.
 metadata:
   owner: y.klochikhin
   domain: payments
   status: draft
 ---
 
-## Status
+## What this skill does
 
-This skill targets the **first integration milestone**:
-a working **sandbox** payment through the **credit card form**. Other payment
-methods (PayPal, Apple/Google Pay, QR, mobile), saved cards, custom styling, and
-**production / go-live** are out of scope here and will be added later.
+Integrates Headless Checkout into a **custom checkout UI** via `@xsolla/pay-station-sdk`,
+running in **sandbox**. This is a big integration, so it is built **one payment method at a
+time** (see Phases) until every method works. This file is a **map and a sequence** — the actual
+how-to lives in `references/`; load only the reference the current phase needs.
 
-Detailed material lives in `references/` — load only what the current step needs:
+**Frontend only.** It does **not** cover the production token backend (server-to-server) nor
+webhook fulfillment — see `webhooks-impl` for granting items after `order_paid`.
+
+## When to use
+
+The developer wants to accept a payment with their **own** checkout UI (not the hosted Pay
+Station) and is working in **sandbox** — standing up the integration from scratch, adding a
+method selector, adding a payment method (card, PayPal/APM, QR, mobile), or adding the Google
+Pay / Apple Pay wallet buttons.
+
+## Prerequisites
+
+Run **`merchant-setup`** first. The developer must have:
+
+```bash
+XSOLLA_MERCHANT_ID=<your merchant ID>
+XSOLLA_PROJECT_ID=<your project ID>
+XSOLLA_PROJECT_API_KEY=<your API key>   # server-side / agent-side only — NEVER ship to the browser
+```
+
+If credentials are missing, stop and complete `merchant-setup` first. The **only** secret that
+ever reaches the browser is the short-lived **payment token** — never the API key.
+
+## The one mental model: `form.init()` + one `onNextAction` dispatcher
+
+Every payment method — card, PayPal, QR, mobile, wallets — runs through the same shape: call
+`form.init({ paymentMethodId, returnUrl })`, render the **server-driven** fields, the user
+submits, and the SDK drives a small state machine by emitting **NextActions** to your
+`onNextAction` handler. **React to whatever action arrives — never assume a fixed sequence, and
+never switch on the payment method id.** All flows converge on a final **status** view.
+
+One dispatcher, keyed on `nextAction.type`, handles everything. Where each action is documented:
+
+| NextAction(s)                                                | Owned by reference     |
+|-------------------------------------------------------------|------------------------|
+| `show_fields`, `show_errors`, `3DS`, `check_status`         | `credit-card-form`     |
+| `redirect`                                                  | `redirect-flow`        |
+| `check_status`, `status_updated`                            | `payment-status`       |
+| `special_button` (wallets)                                  | `google-pay` / `apple-pay` |
+| `show_qr_code`, `show_mobile_payment_screen`, `show_cash_payment_instruction` | `payment-methods` |
+
+## Phases — build incrementally, one method at a time
+
+Do **not** attempt everything at once. Finish and **test** each phase in sandbox before the next.
+
+**Phase 1 — Credit card, end to end.** Install + `init({ sandbox: true })`, mint a sandbox token
+(no backend), build the card form from `form.fields`, handle the `onNextAction` chain, show the
+status, and drive a real sandbox payment including 3DS + the return page.
+→ `initialization`, `credit-card-form`, `redirect-flow` (3DS-via-redirect), `payment-status`.
+**Done when** the three sandbox test cards pass (see `credit-card-form` → Testing).
+
+**Phase 2 — Payment method selection.** Let the user pick a method instead of hardcoding the
+card PID; hand the chosen `paymentMethodId` to `form.init()`. Choose a layout pattern (start with
+a simple list; icons mandatory; wallets as branded buttons) and design back/retry navigation.
+→ `payment-methods-list`. **Done when** selecting a method routes into its form.
+
+**Phase 3 — Additional methods, one type at a time.** Add the handlers for **redirect systems**,
+**mobile**, **QR**, cash. But sandbox runs only redirect PS for real — mobile/QR/cash collapse to
+the generic sandbox flow (form → notice → success), so their real UIs are **production-only**.
+Sandbox-test on **PayPal (+ Venmo)**; code the rest to spec.
+→ `payment-methods` (per-method NextAction; sandbox limits; PayPal/Venmo recipe), `redirect-flow`.
+**Done when** PayPal (+ Venmo) reach a terminal status in sandbox and the other handlers are coded.
+
+**Phase 4 — Google Pay.** Add the wallet button via the shared dispatcher (`special_button`),
+then **ask the user to verify and give feedback** before continuing.
+→ `google-pay`. **Done when** a sandbox Google Pay payment completes and the user confirms.
+
+**Phase 5 — Apple Pay.** Same wallet pattern, then
+**ask the user to verify and give feedback**.
+→ `apple-pay`. **Done when** a sandbox Apple Pay payment completes and the user confirms.
+
+**Phase 6 — Saved methods.** Let the user save a method while paying, show saved methods as the
+**first step** on return visits (with "pay another way" fallback), pay with one (still
+NextAction-driven — may need CVV / 3DS), and delete them.
+→ `saved-methods`. **Done when** the sandbox round trip passes: save → see it → pay with it → delete.
+
+End state: every payment method integrated and working in **sandbox**, with saving/reuse. Only
+**production / go-live** is out of scope here and comes later.
+
+## Styling & UX — match the store, don't ship the demo look
+
+Headless Checkout is an **unstyled component library**. The SDK examples use deliberately bare
+styles — **never treat them as the target design.** From Phase 1 onward, style the checkout to
+match the **host store's own look** (its colors, typography, radius, spacing, buttons) so it
+reads as part of the store, not a bolted-on widget. Do this from the start — restyling a finished
+flow is far more work than building it styled.
+
+Apply real **payment-UX best practices**, not a naive one-input-per-field stack. This list is
+illustrative, not exhaustive — aim for a fast, low-friction, trustworthy checkout:
+
+- **Compact card entry.** Present the card as **one or two tight rows**, not a tall accordion of
+  full-width fields. Expiry (4 digits) and CVV (3) are tiny — put them side by side on one row
+  with the card number; don't give each a full-width block.
+- **Auto-advance focus** to the next field as one fills (number → expiry → CVV), and surface
+  validation **inline** next to the field, not as a distant banner.
+- **Respect brand tokens**, keep it **responsive / mobile-first**, use accessible labels, and
+  show clear **loading / disabled** states while the SDK works.
+
+The card inputs are cross-origin **secure iframes** — outer CSS cannot reach inside them, so
+their styling goes through `setSecureComponentStyles(css)` **before** `setToken()`. Wrapper hosts
+(`psdk-card-number`, `psdk-text`, …) are styled with normal CSS for layout/sizing. Both layers
+and the mechanism live in `credit-card-form` → **Secure Field Styling**.
+
+## Testing is mandatory (every phase)
+
+A payment integration is verified only by a **completed sandbox transaction ending on a status
+screen** — not by "the form renders." Each phase ends with an observed transaction; the concrete
+test recipe lives in the phase's reference (card test matrix + headless-driving tips in
+`credit-card-form`; PayPal sandbox login in `payment-methods`; wallet notes in `google-pay` /
+`apple-pay`). Report the terminal screen you actually observed. **Driving it headlessly
+(Playwright/Puppeteer)? Read [`references/testing.md`](references/testing.md) first** — the
+cross-cutting gotchas (secure-field `fill()` vs keystrokes, submit-button host click, driver
+artifact vs real bug) that otherwise eat hours.
+
+## References
+
+Load only what the current phase needs.
 
 - [`references/documentation.md`](references/documentation.md) — navigation map: which official doc / GitHub example to
   load per task, full component table, SDK reference (README)
@@ -31,173 +149,33 @@ Detailed material lives in `references/` — load only what the current step nee
 - [`references/initialization.md`](references/initialization.md) — install SDK, `init({ sandbox: true })` +
   `setToken()`, getting a sandbox payment token with **no backend**
 - [`references/payment-methods-list.md`](references/payment-methods-list.md) — `psdk-payment-methods` vs custom API,
-  `selectionChange`, country handling, handoff to `form.init()`
+  `selectionChange`, country handling, handoff to `form.init()`; **layout patterns (list / accordion / tabs), method
+  icons, wallet-button placement, back navigation**
 - [`references/credit-card-form.md`](references/credit-card-form.md) — server-driven fields, field→component mapping,
-  `setupAndAwaitFieldsLoading`, the five NextActions, two 3DS paths
-- [`references/redirect-flow.md`](references/redirect-flow.md) — the `redirect` NextAction: `psdk-redirect` vs manual
-  form, GET/POST + 414, new-tab gesture rule, return page (covers 3DS-via-redirect, e-wallets, extra verification)
+  `setupAndAwaitFieldsLoading`, the NextActions, two 3DS paths, **the sandbox test matrix + how to drive it headlessly**
+- [`references/redirect-flow.md`](references/redirect-flow.md) — **all redirect mechanics**: `psdk-redirect` vs manual
+  form, GET/POST + 414, same-tab / new-tab / WebView window strategies + iframe caveat, `isNewWindowRequired` /
+  `isSameWindowRequired`, new-tab gesture, return page (covers 3DS-via-redirect, e-wallets, extra verification)
 - [`references/payment-status.md`](references/payment-status.md) — `check_status`, `psdk-status` vs custom UI, the **one
   ** `getStatus()` rule, `status_updated`, return page
-
-## When to use
-
-Use this skill when the developer wants to **accept a payment with their own
-custom checkout UI** via `@xsolla/pay-station-sdk` (Headless Checkout), and is at
-the **sandbox + credit card** stage. Trigger conditions:
-
-- Standing up a Headless Checkout integration from scratch
-- Rendering the payment methods list and wiring method selection
-- Building the bank-card form from `form.fields` / `psdk-card-number`
-- Handling `onNextAction` (`show_fields`, `show_errors`, `redirect`, `3DS`, `check_status`)
-- Running a sandbox card payment, including sandbox 3DS, and showing the result
-
-This skill is **frontend integration only**. It does **not** cover the production
-token backend (server-to-server), nor webhook fulfillment — see `webhooks-impl`
-for granting items after `order_paid`.
-
-## Prerequisites
-
-Run **`merchant-setup`** first. The partner must have:
-
-```bash
-XSOLLA_MERCHANT_ID=<your merchant ID>
-XSOLLA_PROJECT_ID=<your project ID>
-XSOLLA_PROJECT_API_KEY=<your API key>   # server-side / agent-side only — NEVER ship to the browser
-```
-
-If credentials are missing, stop and complete `merchant-setup` before continuing.
-The **only** secret that ever reaches the browser is the short-lived **payment
-token** — never the API key.
-
-## What `NextAction` means (read before Step 4)
-
-After the user submits the form, the SDK does **not** return a final result. The
-acquirer/bank drives a small state machine, and the SDK surfaces each transition
-as a **NextAction** delivered to your `onNextAction` handler. Your job is to react
-to whatever the server asks for next — never to assume a fixed sequence. The card
-flow uses these actions:
-
-| NextAction     | Server is asking you to…                                   | You do                                                                                |
-|----------------|------------------------------------------------------------|---------------------------------------------------------------------------------------|
-| `show_fields`  | collect new/replacement fields (e.g. BR 2nd step, retry)   | **clear the container**, set `form.fields = action.data.fields`, re-render            |
-| `show_errors`  | display a validation / server error                        | render `action.data.errors[0].message`; user fixes & resubmits                        |
-| `redirect`     | send the user to an external page (acquirer 3DS, e-wallet) | use `psdk-redirect`; user returns via `returnUrl` — see `references/redirect-flow.md` |
-| `3DS`          | run an MPI 3DS challenge                                   | mount `psdk-3ds`, `data-challenge` = `JSON.stringify(action.data.data)` (nested `.data.data`!) |
-| `check_status` | the payment is submitted — switch to the status view       | **dynamically create** `psdk-status` (never static markup) or call `getStatus()` once          |
-
-The three terminal branches — **`redirect`**, **`3DS`**, and **`check_status`** —
-all converge on the same place: showing the user a final **status**. That is why
-Step 7 exists regardless of which path the bank chose. Full handler details and
-the two distinct 3DS paths are in `references/credit-card-form.md`.
-
-## Steps
-
-1. **Install the SDK and initialize in sandbox.** `npm install --save
-   @xsolla/pay-station-sdk`, then `await headlessCheckout.init({ sandbox: true,
-   isWebView: false, language: 'en' })`. **Always pass `sandbox: true`** at this
-   stage. Details + framework notes (Angular `CUSTOM_ELEMENTS_SCHEMA`):
-   `references/initialization.md`.
-
-2. **Get a sandbox payment token — no backend.** Do not build a token endpoint
-   yet. Generate a token on demand (Merchant API, Method 3) and deliver it to the
-   page via `?token=` or a dev-only constant, then `await
-   headlessCheckout.setToken(token)`. Token TTL is ~24h — when SDK calls start
-   failing, regenerate and reload. Curl + delivery options:
-   `references/initialization.md`.
-
-3. **Render the payment methods list and capture the selection.** Use
-   `psdk-payment-methods` for the fast path, or fetch `getRegularMethods()` /
-   `getQuickMethods()` for custom UI. On `selectionChange`, hand the chosen
-   `paymentMethodId` to `form.init()`. To skip selection while focusing on cards,
-   hardcode the sandbox card PID `1380`. Details: `references/payment-methods-list.md`.
-
-4. **Initialize the card form and subscribe to `onNextAction` first.** Call
-   `headlessCheckout.form.init({ paymentMethodId, returnUrl })` and register
-   `form.onNextAction(handler)` **before** the user can submit (see the table
-   above). The field set is **server-driven** — read `form.fields`; never hardcode
-   which fields exist. Walkthrough: `references/credit-card-form.md`.
-
-5. **Map fields to components, mount them, then activate.** Map each `form.fields`
-   entry (`card_number → psdk-card-number`, `type:text → psdk-text`, etc.) and
-   **append the components to the DOM first** — only skip `type: 'label'` fields
-   (they are not inputs). Add `psdk-submit-button`. Then call **`form.activate()`**
-   — this is **mandatory**: without it the secure inputs accept no data and submit
-   silently does nothing. `await form.setupAndAwaitFieldsLoading(mandatoryFields)`
-   is for showing a loading state while the iframes initialize — if you use it,
-   call it **after** the components are mounted (calling it before they exist hangs
-   forever). Every checkout page **must** include `psdk-total` and `psdk-legal` by
-   contract. Mapping table (incl. the `label` type): `references/credit-card-form.md`.
-
-6. **User fills and submits → handle the NextAction branch.** On `show_errors`,
-   show the message and let the user retry (back to fill). On `show_fields`, clear
-   and re-render. On `redirect` / `3DS`, run the 3DS path (`psdk-redirect` /
-   `psdk-3ds`) — use Xsolla **test cards** to force success / decline / 3DS in
-   sandbox. All branches lead to `check_status`. Details:
-   `references/credit-card-form.md`; redirect mechanics (GET/POST, new-tab gesture,
-   return page) in `references/redirect-flow.md`.
-
-7. **Show the final status.** On `check_status`, mount `psdk-status` and do
-   nothing else — the component owns the WebSocket and reads `status_updated`
-   itself. If you build custom status UI instead, call `getStatus()` **exactly
-   once** to start polling and take every later update from `status_updated`.
-   After a redirect, the user lands on `returnUrl` — that page re-runs `init()` +
-   `setToken(tokenFromUrl)` and renders `psdk-status`. **`returnUrl` must resolve
-   to a page/route that actually loads the SDK and your status handler, and must
-   carry the page identifier.** On SPAs any route reloads your app; on
-   multi-page/CMS sites (WordPress, server-rendered) it does **not** — if `returnUrl`
-   drops the page id (e.g. `?page_id=`, slug, or path) the browser lands on the home
-   page or a 404 with none of your code, and the symptom is exactly "nothing happens,
-   status is never requested." Build `returnUrl` by adding only `token` to the full
-   current page URL — never strip its query. Details: `references/redirect-flow.md`,
-   `references/payment-status.md`.
-
-## Acceptance — you are NOT done until you have run a real transaction
-
-Rendering the form is not "done." A payment integration is only verified by a
-**completed transaction ending on `psdk-status`**. Prose like "the form renders" or
-"it should work" does not count — drive an actual sandbox payment and observe the
-result. Do **all three** of the following and report the terminal screen for each:
-
-| # | Test card (`exp 12/40`, any CVV) | Path exercised               | Expected terminal state                                  |
-|---|----------------------------------|------------------------------|----------------------------------------------------------|
-| 1 | `4111111111111111`               | plain card, **no 3DS**       | `check_status` → `psdk-status` shows **success**         |
-| 2 | `4111111111111152`               | 3DS via **acquirer redirect**| `redirect` → Xsolla verify page → **return page** → success |
-| 3 | `4423610000000007`               | 3DS via **external MPI**     | `redirect` → Xsolla verify page → **return page** → success |
-
-Card 1 alone does **not** prove the integration: it skips `redirect` and the
-**return page** entirely — the part most likely to be broken (wrong `returnUrl`,
-SDK not loaded on the return route, stripped query params). Cards 2 and 3 are
-**mandatory**, not optional. To test `failed`, enter a wrong password (e.g.
-`123456`) on the verify page instead of confirming the pre-filled one.
-
-**How to actually run it.** The card inputs live in cross-origin secure iframes,
-but a headless browser (Playwright/Puppeteer) can drive them. Locate each input via
-`frameLocator('iframe[src*="text-input/<field>"]').locator('input')` — but **type
-into it with real key presses, not `fill()`**. `locator.fill()` sets the value in
-one shot and the secure field's listeners never fire, so the field stays
-`INVALID`/required and **submit silently hangs** (no NextAction, no error). Use
-`pressSequentially(value)` (Playwright) / character-by-character `type()` so the
-iframe registers each keystroke and the field goes `VALID`. Then click the button
-inside `psdk-submit-button`.
-
-For the two 3DS cards, follow the `redirect` to the Xsolla sandbox verify page
-(`sandbox-secure.xsolla.com/pages/sandbox`) and drive it:
-
-1. A **GDPR consent overlay** intercepts clicks — dismiss it first:
-   `button.gdpr-accept-all-button`.
-2. The security code is **pre-filled**; just click the confirm button
-   `#xps-submit-button`. (To test the `failed` path, replace it with a wrong code
-   like `123456` before confirming.)
-
-Then assert your return page renders `psdk-status` with the expected terminal state
-and capture the final screen.
+- [`references/payment-methods.md`](references/payment-methods.md) — which method emits which NextAction; **redirect
+  systems** (PayPal) + **SDK / same-window** methods, **QR** (`show_qr_code`), **mobile** (`show_mobile_payment_screen`);
+  PayPal sandbox test recipe
+- [`references/google-pay.md`](references/google-pay.md) — the **Google Pay** wallet button via the shared dispatcher:
+  the `special_button` action, the `show_fields` (ZIP) step a bespoke screen would drop
+- [`references/apple-pay.md`](references/apple-pay.md) — the **Apple Pay** wallet button: renders inside
+  `psdk-submit-button` automatically (no new NextAction), desktop QR fallback, browser-support gating, domain registration
+- [`references/saved-methods.md`](references/saved-methods.md) — **save** a method while paying (`allowSave` field /
+  `savePaymentMethod`), **detect + show** saved methods first (`getSavedMethods`, `psdk-saved-methods`), **pay** with one
+  (`paymentWithSavedMethod` + `savedMethodId`, still NextAction-driven), and **delete** (`delete-mode`)
+- [`references/testing.md`](references/testing.md) — **headless sandbox testing gotchas**: secure-field `fill()` vs real
+  keystrokes (opposite per field), the `psdk-submit-button` host click + retry, telling a driver artifact from a real bug
 
 ### Agent test (reference run)
 
-Prompt: "Integrate Xsolla Headless Checkout into my web app and let me pay with a
-credit card in sandbox." Expected: the agent reads `SKILL.md`, pulls
-`initialization`, `payment-methods-list`, `credit-card-form`, `redirect-flow`, and
-`payment-status` as each step needs them; installs `@xsolla/pay-station-sdk`;
-initializes with `sandbox: true`; mints a sandbox token; builds the card form from
-`form.fields`; handles the full `onNextAction` chain; and **passes all three
-acceptance cards above**, including the 3DS return page, on a real run. ✅
+Prompt: "Integrate Xsolla Headless Checkout into my web app and let me pay with a credit card in
+sandbox." Expected: the agent follows **Phase 1** — reads `SKILL.md`, pulls `initialization`,
+`credit-card-form`, `redirect-flow`, and `payment-status` as each step needs them; installs
+`@xsolla/pay-station-sdk`; initializes with `sandbox: true`; mints a sandbox token; builds the
+card form from `form.fields`; handles the full `onNextAction` chain; and **passes the three
+sandbox test cards** (incl. the 3DS return page) on a real run. ✅
