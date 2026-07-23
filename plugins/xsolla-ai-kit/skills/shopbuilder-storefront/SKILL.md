@@ -1,10 +1,4 @@
 ---
-description: Xsolla shopbuilder-storefront skill
-globs: ['**/*']
-alwaysApply: false
----
-
----
 name: shopbuilder-storefront
 description: >-
   Entry point and orchestrator for building a game storefront with Xsolla Shop Builder,

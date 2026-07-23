@@ -9,28 +9,20 @@
   "plugins": [
     {
       "name": "xsolla-ai-kit",
-      "source": "./plugins/headless-shop",
-      "description": "Headless shop — assemble a custom, self-hosted storefront: shop-setup (orchestrator), merchant-setup, catalog-design, login-setup, headless-checkout-integration, webhooks-impl.",
+      "source": "./plugins/xsolla-ai-kit",
+      "description": "Build any Xsolla game shop from one entry point (shop-setup): a shared foundation (merchant-setup, catalog-design, login-setup, webhooks-impl) then a choice of build path — headless (headless-storefront, headless-login, headless-checkout-integration) or Shop Builder (shopbuilder-storefront + site/page/blocks/customize/custom-block).",
       "category": "productivity",
       "keywords": [
         "xsolla",
         "game-shop",
+        "storefront",
         "payments",
         "catalog",
-        "webhooks"
-      ]
-    },
-    {
-      "name": "xsolla-shopbuilder",
-      "source": "./plugins/shopbuilder",
-      "description": "Build a hosted, no-code game storefront on Xsolla Shop Builder (edited via the `xsolla shopbuilder` CLI): site, page, blocks, block customization, and a custom-block escape hatch for advanced styling. Self-contained — separate from the headless kit.",
-      "category": "productivity",
-      "keywords": [
-        "xsolla",
+        "login",
+        "webhooks",
+        "headless",
         "shop-builder",
         "shopbuilder",
-        "storefront",
-        "game-shop",
         "no-code"
       ]
     }

@@ -1,0 +1,117 @@
+---
+description: Xsolla headless-storefront skill
+globs: ['**/*']
+alwaysApply: false
+---
+
+---
+name: headless-storefront
+description: >-
+  Path orchestrator for building a custom, self-hosted Xsolla storefront — the headless
+  branch of shop-setup. Use when the developer is writing their own frontend (React/Vue/etc.)
+  and embedding the shop into their own site rather than using the hosted Shop Builder. It
+  assembles the storefront on top of the shared foundation (catalog, login, webhooks) by
+  sequencing the headless code skills — headless-login then headless-checkout-integration —
+  and covers the frontend phases the partner builds: reading the catalog without auth,
+  guest cart, login and the guest→Bearer cart merge, personal-store features, and getting the
+  payment token and opening the embedded Headless Checkout SDK (Pay Station as fallback). Use
+  when someone says "build a headless shop", "custom storefront in my own site", "embed the
+  Xsolla store in my React app", "wire up the cart and checkout", "get a payment token", or
+  asks how the headless frontend pieces fit together. Scope is the headless storefront
+  assembly; the catalog, shared login config, and webhooks are prerequisites with their own
+  skills. For the hosted no-code path use `shopbuilder-storefront` instead.
+metadata:
+  domain: headless
+  kind: orchestrator
+---
+
+# Headless storefront
+
+Assemble a custom storefront from Xsolla Store API + Login + Headless Checkout SDK, embedded
+in the partner's own site. This skill sets the scope, the order, and the rules; the domain
+skills do the work. It is the headless branch that `shop-setup` routes to.
+
+## What is a headless storefront
+
+A custom game store the **partner builds and hosts**. The partner writes the frontend;
+Xsolla provides the backend services and SDKs.
+
+| Component | Role |
+|-----------|------|
+| **Store API** | Commerce backend — catalog, cart, orders, promos, inventory, virtual currency |
+| **Login** | Player identity — JWT, social login, game ID binding |
+| **Headless Checkout SDK** ⭐ | Embedded payment UI on the partner's site — **recommended payment layer here** |
+| **Pay Station** | Xsolla-hosted payment page — fallback when embedded UI is not needed |
+
+> **Headless Checkout SDK** (`github.com/xsolla/pay-station-sdk`) renders the full payment UI
+> directly on the partner's site with no redirect — the natural fit when AI is building the
+> whole storefront. Pay Station redirect is a valid fallback, not the default here.
+
+## Scope
+
+In scope: the storefront frontend + payment wiring the partner writes.
+Prerequisites (each its own skill, handled by `shop-setup` before this branch):
+
+- **`merchant-setup`** — account, project, API keys.
+- **`catalog-design`** — the catalog exists and reads back through the client catalog calls.
+  A storefront with no catalog shows nothing.
+- **`login-setup`** — the Login project exists, is linked, and the needed methods are on.
+- **`webhooks-impl`** — the fulfillment backend (built here or right after; required before
+  real-money go-live).
+
+## The build order
+
+The agent builds bottom-up: data first, then identity, then payment.
+
+1. **Catalog read (public).** Fetch the catalog via Store API v2 by `projectId` + `locale`,
+   no `Authorization` header. Display prices, currencies, limits; filter by group.
+   *Validate:* catalog loads without a JWT; locale changes item names.
+2. **Guest cart.** One `cartId` per store; guest requests carry `x-unauthorized-id` (a stable
+   UUID in `localStorage`). Get, add/update/remove, clear, fill.
+   *Validate:* add item → reload → cart persists.
+3. **Login + cart switch** (`headless-login`). Integrate the Login Widget/API/SDK, then on
+   login switch the cart from `x-unauthorized-id` to `Authorization: Bearer <JWT>` and
+   **merge** the guest cart into the authenticated cart; refetch catalog and cart so personal
+   limits and country pricing apply.
+   *Validate:* login → cart preserved; logout → guest mode; re-login → account cart restored.
+4. **Personal-store features (JWT).** Only what the product needs: virtual-currency balance,
+   inventory/unclaimed rewards, promo codes, reward chains, free items. All with `Bearer JWT`.
+5. **Payment** (`headless-checkout-integration`). Get the payment token **via a backend HTTP
+   call, never on the frontend**, then open the embedded Headless Checkout SDK (or Pay
+   Station as fallback).
+   *Validate:* token received; payment UI opens; sandbox test payment completes.
+6. **Fulfillment** (`webhooks-impl`). After payment, Xsolla sends a webhook to the partner
+   backend; verify the signature, extract `user.id` (= JWT `sub`) and items, grant them,
+   respond `200`. Required for real-money purchases.
+
+### Payment token — which method
+
+The token is always obtained by a backend HTTP call. Choose:
+
+| # | Method | Who calls | When |
+|---|--------|-----------|------|
+| **1** | `POST /v2/project/{id}/payment/cart/{cartId}` (Store API) | Browser → Store API | **Default for a headless / AI build** — no partner backend needed; full Store order lifecycle. |
+| **2** | `POST /v3/project/{id}/admin/payment/token` (Store API, admin S2S) | Partner backend | Production where checkout must run through the partner server. |
+| **3** | `POST /merchant/v2/merchants/{id}/token` (Merchant API) | Partner backend | No Store catalog; simple amount + description only. |
+
+Methods 1–2 return `{ token, order_id }` with full SKU/promo/inventory lifecycle. Method 3
+returns `{ token }` only. **Default: Method 1.** Full detail in `headless-checkout-integration`.
+
+## Anti-patterns
+
+1. **Don't skip the prerequisites** — no catalog in PA = empty store regardless of frontend.
+2. **Don't require login to browse** — catalog and guest cart work without a JWT.
+3. **Don't open the payment UI before the cart is validated** — phases go in order.
+4. **Don't generate the payment token on the frontend** — receive it via HTTP, pass to the SDK.
+5. **Don't skip the webhook handler** — payment success without a webhook = player paid,
+   received nothing.
+6. **Don't use the Merchant API token for free-cart or virtual-currency purchases** — wrong endpoint.
+
+## Steps
+
+1. Confirm the prerequisites (`merchant-setup`, `catalog-design`, `login-setup`) are done.
+2. Build the catalog read, then the guest cart (Store API; see `catalog-design`).
+3. `headless-login`: integrate Login and switch the cart to `Bearer` with a guest-cart merge.
+4. Add the personal-store features the product needs.
+5. `headless-checkout-integration`: get the payment token and open the embedded payment UI.
+6. `webhooks-impl`: implement the fulfillment handler; run a sandbox payment end-to-end.

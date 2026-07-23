@@ -1,0 +1,163 @@
+---
+name: headless-login
+description: >-
+  The headless code integration of Xsolla Login — everything a custom, self-hosted frontend
+  and backend must implement once the shared Login project exists (see `login-setup`). Covers
+  adding an OAuth 2.0 client and the redirect/CORS config for the partner's own domain,
+  choosing between the Login Widget (`@xsolla/login-sdk`), the raw Login API, and the Xsolla
+  SDKs, JWT vs OAuth 2.0 protocol, implementing each authentication flow in code (classic,
+  passwordless email/SMS one-time codes, social via browser redirect or native silent token,
+  device ID, server custom ID, silent cross-platform), issuing a server JWT, validating the
+  user JWT against the JWKS in the partner backend, refresh, account/social linking, MFA,
+  password reset, user attributes, and switching the Store cart from a guest `x-unauthorized-id`
+  to `Authorization: Bearer <JWT>` with a guest→account cart merge. Use whenever a developer
+  says "integrate the Login Widget", "add @xsolla/login-sdk", "log in with Google/Steam in
+  my app", "validate a user JWT on my backend", "issue a server token", "handle
+  redirect_uri", "refresh the token", "switch my cart to Bearer after login", "merge the
+  guest cart", "link social accounts", "add MFA / password reset in my UI", or any headless
+  frontend/backend Login coding task. Prerequisite: `login-setup` (the Login project and
+  enabled methods). Not for Shop Builder — its hosted site handles login without code.
+metadata:
+  owner: mohammed_abujalala
+  domain: login
+  status: draft
+---
+
+## Status
+
+This skill is a **draft** authored by the Login SME (@mohammed_abujalala).
+
+## Scope
+
+This is the **headless** half of Login: the code a partner writes to authenticate players
+in their own frontend and backend, plus the OAuth client and redirect config that a custom
+domain needs. It assumes the **shared Login project already exists** — `login-setup` created
+it, chose the storage, and enabled the methods. If that has not happened, run `login-setup`
+first.
+
+**Shop Builder builds do not use this skill** — the hosted storefront renders the login UI
+and manages tokens itself.
+
+Detailed material lives in `references/` — load only what the current step needs:
+- [`references/oauth-and-redirects.md`](references/oauth-and-redirects.md) — OAuth 2.0 client types (public/confidential/server), redirect URIs, Callback URLs, Allowed origins (CORS), the client-id/secret checklist
+- [`references/integration-modes.md`](references/integration-modes.md) — Login Widget vs Login API vs Xsolla SDKs; JWT vs OAuth 2.0 protocol; client-side vs server-side calls
+- [`references/auth-flows.md`](references/auth-flows.md) — every authentication method in code: classic, passwordless email/SMS, social (browser redirect + native silent token), device ID, server custom ID, silent cross-platform
+- [`references/tokens-and-validation.md`](references/tokens-and-validation.md) — user JWT vs server JWT, claims, expiration & refresh, JWKS validation, common errors, rate limits, IP allowlist
+- [`references/user-management.md`](references/user-management.md) — profile, password reset, MFA, account linking, social linking, attributes, friends, search, ban/unban, export/import
+
+## When to use
+
+- Add an **OAuth 2.0 client** (public for the Widget/SDK; confidential/server for backend
+  issuance) and register the partner's **redirect URIs and CORS origins**.
+- Pick between **Login Widget**, **Login API**, or an **Xsolla SDK**, and between **JWT**
+  and **OAuth 2.0** protocols.
+- Implement auth flows in code: "Continue with Google/Steam", email/SMS one-time code,
+  classic sign-up with confirmation, device ID guest play, custom ID, silent cross-platform.
+- **Validate the user JWT** in the backend (signature vs JWKS, `iss`, `exp`,
+  `xsolla_login_project_id`, `sub`); issue and use a **server JWT**; refresh proactively.
+- Switch the **Store cart** from `x-unauthorized-id` to `Authorization: Bearer <JWT>` and
+  **merge** the guest cart into the authenticated cart on login.
+- Build user-management UI: profile, password reset, MFA, social/account linking, attributes.
+
+Out of scope: the Login project and method toggles (→ `login-setup`), catalog & cart
+mechanics themselves (→ `catalog-design`), payments (→ `headless-checkout-integration`),
+webhook fulfillment (→ `webhooks-impl`).
+
+## Prerequisites
+
+```bash
+export XSOLLA_PROJECT_ID=<your project ID>
+export XSOLLA_LOGIN_PROJECT_ID=<UUID of the Login project>   # from login-setup
+export XSOLLA_LOGIN_OAUTH_CLIENT_ID=<numeric OAuth 2.0 client ID>
+# server/confidential flow only — never expose to client builds
+export XSOLLA_LOGIN_OAUTH_CLIENT_SECRET=<OAuth 2.0 client secret>
+```
+
+- **`login-setup` completed** — the Login project exists, is linked to the Store project,
+  the storage is chosen, and the needed auth methods/social providers are enabled.
+- **Xsolla MCP (strongly recommended).** Verify current request schemas with
+  `search_xsolla_sources` before any Login API call; field-level shapes must come from live
+  docs, not this file. If MCP is unavailable, fetch the linked developers.xsolla.com pages.
+- API base URL: `https://login.xsolla.com/api`. HTTPS only.
+
+## Steps
+
+1. **Add the OAuth 2.0 client and redirect/CORS config.** Create a *public* client for the
+   Widget/SDK (or *confidential*/*server* for backend issuance). Register the partner's
+   Callback URL(s), Error callback URL, redirect URIs, and Allowed origins (CORS) — they
+   must match the URLs the frontend passes byte-for-byte. Details:
+   [`references/oauth-and-redirects.md`](references/oauth-and-redirects.md).
+
+2. **Pick the integration mode and protocol.** Default to the **Login Widget**
+   (`@xsolla/login-sdk`) for web — fastest, ready-made UI. Use the **Login API** for a
+   custom UI or non-web client; use an **Xsolla SDK** for engines (Unity/Unreal/iOS/Android/
+   Cocos). Prefer **OAuth 2.0** (refresh tokens, SSO); fall back to JWT only in tightly
+   controlled environments. Decision matrix and widget init:
+   [`references/integration-modes.md`](references/integration-modes.md).
+
+3. **Implement the chosen authentication method(s) in code.** classic (`Register new user`
+   → `Auth by username and password` + `Reset password`); passwordless (`Start auth by
+   email/phone` → one-time code → `Complete auth by email/phone`); social (browser: `Get
+   link for social auth` → redirect → callback token; native/silent: `Auth via access token
+   of social network`); device ID; server custom ID; silent cross-platform for shadow
+   projects. Endpoints and provider notes: [`references/auth-flows.md`](references/auth-flows.md).
+
+4. **Validate the user JWT on every privileged backend request.** Verify signature against
+   `https://login.xsolla.com/api/projects/{login_project_id}/keys` (JWKS, `kid`-aware
+   rotation), `iss == https://login.xsolla.com`, `exp` in the future,
+   `xsolla_login_project_id == <expected>`. Use `sub` (UUID) as the user id. Issue a server
+   JWT via `client_credentials`; refresh user JWTs via `refresh_token` before `exp`. Full
+   claims and error codes: [`references/tokens-and-validation.md`](references/tokens-and-validation.md).
+
+5. **Switch the Store cart to authenticated mode.** On login, move the cart from the guest
+   `x-unauthorized-id` header to `Authorization: Bearer <JWT>`, **merge** the guest line
+   items into the authenticated cart, and refetch catalog and cart so personal limits and
+   country pricing apply. On logout, clear the JWT and return to guest mode. (This is the
+   Login side of the cart flow owned by `catalog-design`.)
+
+6. **Wire up the user-management features the product needs.** Profile, password reset,
+   MFA/2FA, social/account linking, attributes, friends, search, ban/unban. Endpoint table:
+   [`references/user-management.md`](references/user-management.md).
+
+7. **Verify end-to-end.** In sandbox: register a test user, log in with each enabled
+   method, decode + JWKS-validate the JWT, refresh it, hit a Store cart call with
+   `Authorization: Bearer <JWT>`, confirm the payment-token call accepts it, and confirm the
+   webhook delivers the same `user.id` (= `sub`) so `webhooks-impl` can grant items.
+
+## Common pitfalls
+
+- **Wrong client / wrong protocol mix.** A *public* client cannot do `client_credentials`;
+  a *server* client cannot do user login. JWT-protocol (`/api/login/...`) and OAuth 2.0
+  (`/api/oauth2/...`) endpoints differ — pick one per flow and stay consistent.
+- **Trusting the JWT without validating it.** Always verify signature against the project's
+  **JWKS**, not a hard-coded key, and check `iss`, `exp`, `xsolla_login_project_id`. Without
+  these, any forged token is accepted.
+- **Mismatched callback URL / CORS origin.** `redirect_uri_mismatch` or silent failure when
+  the URL passed to the Widget/API is not listed byte-for-byte under Callback URLs / Allowed
+  origins. Trailing slash, scheme, and port must match.
+- **Identifying users by `email`/`username` instead of `sub`.** Both change; `sub` (UUID) is
+  the stable id and must equal the webhook `user.id`.
+- **One-time codes / nonces retried.** Passwordless codes and native social nonces (Meta
+  Horizon `GetUserProof`, Steam session ticket on first use) are single-use — a naive retry
+  on a 5xx burns the credential. Request a fresh code/nonce per attempt.
+- **Forgetting to refresh.** User JWTs expire (default 24 h). Without `refresh_token`
+  (OAuth 2.0) or re-auth (JWT), Store and payment calls start failing 401 mid-session.
+- **Not merging the guest cart.** Logging in without carrying the guest `x-unauthorized-id`
+  cart into the Bearer cart loses everything the player added before signing in.
+
+## Agent test
+
+Prompt: "Integrate Xsolla Login into my web game. I want a 'Continue with Google' button,
+classic email + password sign-up with email confirmation, and a passwordless email
+one-time-code option. Validate JWTs on my Node.js backend before granting Store access, and
+merge the guest cart on login."
+
+Expected (live run, sandbox): the agent reads this `SKILL.md` plus the five references,
+adds an OAuth 2.0 *public* client with the app's redirect URI + CORS origin, scaffolds Login
+Widget init, implements the three flows (Google via `Get link for social auth`; classic via
+`Register new user` → confirmation → `Auth by username and password`; passwordless via
+`Start/Complete auth by email`), adds Express middleware that fetches the JWKS and verifies
+signature + `iss` + `exp` + `xsolla_login_project_id` exposing `req.user.sub`, and switches
+the Store cart to `Bearer` with a guest-cart merge on login. Sandbox smoke test: register →
+confirmation `200` → login each method → JWT validates → refresh succeeds → tampered token
+rejected 401 → guest cart items survive login. ⏳ Pending live run on a fixture project.

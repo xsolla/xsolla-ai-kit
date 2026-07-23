@@ -1,0 +1,36 @@
+{
+  "name": "xsolla-ai-kit",
+  "version": "0.1.0",
+  "description": "Xsolla agent skills toolkit — one entry point (shop-setup) that builds a game shop end to end: a shared foundation (merchant setup, catalog, Login/NewID, webhooks) then a choice of build path — headless (custom self-hosted storefront + Headless Checkout SDK) or Shop Builder (hosted, no-code storefront).",
+  "author": {
+    "name": "Xsolla",
+    "url": "https://xsolla.com"
+  },
+  "homepage": "https://github.com/xsolla/xsolla-ai-kit",
+  "repository": "https://github.com/xsolla/xsolla-ai-kit",
+  "license": "MIT",
+  "keywords": [
+    "xsolla",
+    "game-shop",
+    "storefront",
+    "payments",
+    "pay-station",
+    "catalog",
+    "webhooks",
+    "login",
+    "headless",
+    "shop-builder",
+    "shopbuilder",
+    "no-code"
+  ],
+  "skills": "./skills/",
+  "mcpServers": "./mcp-servers.json",
+  "interface": {
+    "displayName": "Xsolla AI Toolkit",
+    "shortDescription": "Guided Xsolla workflows from zero to a live game shop",
+    "longDescription": "One entry point, two build paths. shop-setup runs the shared foundation (merchant-setup, catalog-design, login-setup, webhooks-impl) then routes to either the headless path (headless-storefront, headless-login, headless-checkout-integration) for a custom self-hosted store, or the Shop Builder path (shopbuilder-storefront + site/page/blocks/customize/custom-block) for a hosted, no-code store.",
+    "developerName": "Xsolla",
+    "category": "Productivity",
+    "websiteURL": "https://xsolla.com"
+  }
+}

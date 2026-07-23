@@ -16,10 +16,9 @@ Each plugin is self-contained under `plugins/`. The marketplace manifest (`.clau
 
 | Plugin | Directory | What it does |
 |--------|-----------|--------------|
-| `xsolla-ai-kit` | [`plugins/headless-shop/`](plugins/headless-shop/) | **Headless shop** — assemble a custom, self-hosted storefront from Login + Store API + Headless Checkout SDK. Skills: shop-setup (orchestrator), merchant-setup, catalog-design, login-setup, headless-checkout-integration, webhooks-impl. |
-| `xsolla-shopbuilder` | [`plugins/shopbuilder/`](plugins/shopbuilder/) | **Shop Builder** — build a hosted, no-code storefront via the `xsolla shopbuilder` CLI. Skills: shopbuilder-storefront (orchestrator), site, page, blocks, customize, custom-block (advanced escape hatch). |
+| `xsolla-ai-kit` | [`plugins/xsolla-ai-kit/`](plugins/xsolla-ai-kit/) | **Build any Xsolla game shop.** One entry point (`shop-setup`) runs a shared foundation (merchant-setup, catalog-design, login-setup, webhooks-impl) then routes to a build path: **headless** (headless-storefront, headless-login, headless-checkout-integration — a custom self-hosted store) or **Shop Builder** (shopbuilder-storefront + site/page/blocks/customize/custom-block — a hosted, no-code store). |
 
-Each plugin has its own `AGENTS.md` with the detailed skill inventory and usage.
+The plugin has its own `AGENTS.md` with the detailed skill inventory and the two-path flow.
 
 ---
 

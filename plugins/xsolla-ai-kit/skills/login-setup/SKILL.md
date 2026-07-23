@@ -1,10 +1,4 @@
 ---
-description: Xsolla login-setup skill
-globs: ['**/*']
-alwaysApply: false
----
-
----
 name: login-setup
 description: >-
   Shared, storefront-agnostic setup of Xsolla Login (a.k.a. NewID) — the player identity

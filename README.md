@@ -10,8 +10,7 @@ This repo is a **marketplace of plugins**. Each plugin lives under `plugins/` an
 
 | Plugin | Directory | Purpose |
 |--------|-----------|---------|
-| `xsolla-ai-kit` | `plugins/headless-shop/` | Headless, self-hosted storefront — Login + Store API + Headless Checkout SDK |
-| `xsolla-shopbuilder` | `plugins/shopbuilder/` | Hosted, no-code storefront via the `xsolla shopbuilder` CLI |
+| `xsolla-ai-kit` | `plugins/xsolla-ai-kit/` | Build any Xsolla game shop — one entry point (`shop-setup`) runs a shared foundation, then routes to the **headless** path (custom self-hosted storefront) or the **Shop Builder** path (hosted, no-code storefront) |
 
 | Directory | Purpose |
 |-----------|---------|
@@ -57,10 +56,7 @@ For tools with no official plugin system, use a plugin by copying its `AGENTS.md
 
 ```bash
 git clone https://github.com/xsolla/xsolla-ai-kit
-# headless shop:
-cp -r xsolla-ai-kit/plugins/headless-shop/AGENTS.md xsolla-ai-kit/plugins/headless-shop/skills your-game-project/
-# or Shop Builder:
-cp -r xsolla-ai-kit/plugins/shopbuilder/AGENTS.md xsolla-ai-kit/plugins/shopbuilder/skills your-game-project/
+cp -r xsolla-ai-kit/plugins/xsolla-ai-kit/AGENTS.md xsolla-ai-kit/plugins/xsolla-ai-kit/skills your-game-project/
 ```
 
 Then set environment variables or run the `merchant-setup` skill:
@@ -73,14 +69,21 @@ XSOLLA_PROJECT_API_KEY=<your API key>
 
 ## Skill inventory
 
-| Skill | Domain | Owner | Status  |
-|-------|--------|-------|---------|
-| `shop-setup` | Orchestrator — full zero-to-shop flow | @y.klochikhin | Done    |
-| `merchant-setup` | Merchant and Project setup  | @y.klochikhin | Done    |
-| `catalog-design` | Items, pricing, virtual currency, bundles | @p.sanachev | Planned |
-| `login-setup` | Login / NewID / auth | @mohammed_abujalala | Planned |
-| `headless-checkout-integration` | Payments via Headless Checkout | @y.klochikhin | Draft |
-| `webhooks-impl` | Webhook handler generation | @e.chernykh | Planned |
+One entry point runs the shared foundation, then routes to one of two build paths.
+
+| Skill | Tier | Domain | Owner |
+|-------|------|--------|-------|
+| `shop-setup` | Entry | Single entry point — foundation + path router | @y.klochikhin |
+| `merchant-setup` | Shared | Merchant and Project setup | @y.klochikhin |
+| `catalog-design` | Shared | Items, pricing, virtual currency, bundles | @p.sanachev |
+| `login-setup` | Shared | Shared Login / NewID project config | @mohammed_abujalala |
+| `webhooks-impl` | Shared | Webhook handler generation | @e.chernykh |
+| `headless-storefront` | Headless | Headless path orchestrator | @y.klochikhin |
+| `headless-login` | Headless | Headless Login code integration | @mohammed_abujalala |
+| `headless-checkout-integration` | Headless | Payments via Headless Checkout | @y.klochikhin |
+| `shopbuilder-storefront` | Shop Builder | Shop Builder path orchestrator | — |
+| `shopbuilder-site` / `-page` / `-blocks` / `-customize` | Shop Builder | The site→page→blocks→customize hierarchy | — |
+| `shopbuilder-custom-block` | Shop Builder | Advanced escape hatch (custom React block) | — |
 
 ## Invoking a skill
 
@@ -95,9 +98,10 @@ specific skill:
 | Codex CLI    | No per-skill command — describe the task; Codex routes via AGENTS.md |
 | Others       | Natural language; skills load from SKILL.md / generated rules   |
 
-`shop-setup` is the entry point — it scopes the build and chains the domain
-skills (`catalog-design`, `login-setup`, `headless-checkout-integration`,
-`webhooks-impl`).
+`shop-setup` is the single entry point — it runs the shared foundation
+(`merchant-setup`, `catalog-design`, `login-setup`, `webhooks-impl`), then asks
+or infers the build path and hands off to `headless-storefront` or
+`shopbuilder-storefront`.
 
 ## Contributing
 

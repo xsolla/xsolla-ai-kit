@@ -8,22 +8,10 @@
       "name": "xsolla-ai-kit",
       "source": {
         "source": "local",
-        "path": "./plugins/headless-shop"
+        "path": "./plugins/xsolla-ai-kit"
       },
       "policy": {
         "installation": "INSTALLED_BY_DEFAULT",
-        "authentication": "ON_INSTALL"
-      },
-      "category": "Productivity"
-    },
-    {
-      "name": "xsolla-shopbuilder",
-      "source": {
-        "source": "local",
-        "path": "./plugins/shopbuilder"
-      },
-      "policy": {
-        "installation": "AVAILABLE",
         "authentication": "ON_INSTALL"
       },
       "category": "Productivity"

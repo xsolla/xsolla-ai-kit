@@ -1,0 +1,24 @@
+{
+  "name": "xsolla-ai-kit",
+  "description": "Xsolla agent skills toolkit — one entry point (shop-setup) that builds a game shop end to end: a shared foundation (merchant setup, catalog, Login/NewID, webhooks) then a choice of build path — headless (custom self-hosted storefront + Headless Checkout SDK) or Shop Builder (hosted, no-code storefront).",
+  "homepage": "https://github.com/xsolla/xsolla-ai-kit",
+  "repository": "https://github.com/xsolla/xsolla-ai-kit",
+  "license": "MIT",
+  "author": {
+    "name": "Xsolla"
+  },
+  "keywords": [
+    "xsolla",
+    "game-shop",
+    "storefront",
+    "payments",
+    "pay-station",
+    "catalog",
+    "webhooks",
+    "login",
+    "headless",
+    "shop-builder",
+    "shopbuilder",
+    "no-code"
+  ]
+}

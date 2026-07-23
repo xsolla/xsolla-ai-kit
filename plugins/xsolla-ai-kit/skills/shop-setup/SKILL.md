@@ -1,10 +1,4 @@
 ---
-description: Xsolla shop-setup skill
-globs: ['**/*']
-alwaysApply: false
----
-
----
 name: shop-setup
 description: >-
   Single entry point and orchestrator for building any Xsolla game shop — START HERE for any

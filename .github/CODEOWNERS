@@ -2,7 +2,8 @@
 *   @j.manashti
 
 # Skills require the domain SME + Javad
-plugins/headless-shop/skills/catalog-design/**   @p.sanachev @j.manashti
-plugins/headless-shop/skills/login-setup/**      @mohammed_abujalala @j.manashti
-plugins/headless-shop/skills/headless-checkout-integration/**  @y.klochikhin @j.manashti
-plugins/headless-shop/skills/webhooks-impl/**    @e.chernykh @j.manashti
+plugins/xsolla-ai-kit/skills/catalog-design/**   @p.sanachev @j.manashti
+plugins/xsolla-ai-kit/skills/login-setup/**      @mohammed_abujalala @j.manashti
+plugins/xsolla-ai-kit/skills/headless-login/**   @mohammed_abujalala @j.manashti
+plugins/xsolla-ai-kit/skills/headless-checkout-integration/**  @y.klochikhin @j.manashti
+plugins/xsolla-ai-kit/skills/webhooks-impl/**    @e.chernykh @j.manashti
