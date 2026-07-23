@@ -116,9 +116,10 @@ The agent builds bottom-up: data first, then identity, then payment.
 
 **Goal:** player can log in; store knows who they are.
 
-- Integrate Login project (`loginProjectId`)
+- Integrate Login project (`loginProjectId`) → `login-setup`
 - Options: Login widget, OAuth2 redirect, custom game User ID via partner backend
 - On success: store JWT (cookie or memory); on logout: clear JWT
+- **Style the Login UI to match the shop** → `login-styling` (don't ship the stock widget look)
 
 **What changes in Store after login:**
 

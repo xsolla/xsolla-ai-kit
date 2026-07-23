@@ -10,6 +10,7 @@ Each subdirectory contains a `SKILL.md` — a structured workflow file for an Xs
 | [`merchant-setup`](merchant-setup/SKILL.md)                               | Merchant and Project setup            | @y.klochikhin       | Done   |
 | [`catalog-design`](catalog-design/SKILL.md)                               | Items, purchase & order tracking      | @p.sanachev         | Draft  |
 | [`login-setup`](login-setup/SKILL.md)                                     | Login / NewID / auth                  | @mohammed_abujalala | Draft  |
+| [`login-styling`](login-styling/SKILL.md)                                 | Login UI theming / branding           | @a.springut         | Draft  |
 | [`headless-checkout-integration`](headless-checkout-integration/SKILL.md) | Payments via Headless Checkout        | @y.klochikhin       | Draft  |
 | [`webhooks-impl`](webhooks-impl/SKILL.md)                                 | Webhook handler generation            | @e.chernykh         | Draft  |
 
