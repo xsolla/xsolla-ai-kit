@@ -23,6 +23,7 @@ Each subdirectory contains a `SKILL.md` — a structured workflow file for an Xs
 |---------------------------------------------------------------------------|-------------------------------------|---------------------|--------|
 | [`headless-storefront`](headless-storefront/SKILL.md)                     | Headless path orchestrator          | @y.klochikhin       | Draft  |
 | [`headless-login`](headless-login/SKILL.md)                               | Headless Login code integration     | @mohammed_abujalala | Draft  |
+| [`login-styling`](login-styling/SKILL.md)                                 | Theme/brand the Login widget (CSS)  | @elnur_khalilov     | Draft  |
 | [`headless-checkout-integration`](headless-checkout-integration/SKILL.md) | Payments via Headless Checkout      | @y.klochikhin       | Draft  |
 
 ## Shop Builder branch

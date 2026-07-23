@@ -80,7 +80,8 @@ One entry point runs the shared foundation, then routes to one of two build path
 | `webhooks-impl` | Shared | Webhook handler generation | @e.chernykh |
 | `headless-storefront` | Headless | Headless path orchestrator | @y.klochikhin |
 | `headless-login` | Headless | Headless Login code integration | @mohammed_abujalala |
-| `headless-checkout-integration` | Headless | Payments via Headless Checkout | @y.klochikhin |
+| `login-styling` | Headless | Theme/brand the Login widget (API CSS) | @elnur_khalilov |
+| `headless-checkout-integration` | Headless | Payments via Headless Checkout (cards, Apple/Google Pay, saved methods) | @y.klochikhin |
 | `shopbuilder-storefront` | Shop Builder | Shop Builder path orchestrator | — |
 | `shopbuilder-site` / `-page` / `-blocks` / `-customize` | Shop Builder | The site→page→blocks→customize hierarchy | — |
 | `shopbuilder-custom-block` | Shop Builder | Advanced escape hatch (custom React block) | — |

@@ -60,6 +60,7 @@ shop-setup (here)
   ├─ 4. ? choose path ?
   │     ├─ HEADLESS  → headless-storefront
   │     │                → headless-login (widget/API, JWT, cart Bearer)
+  │     │                → login-styling (theme the Login widget)
   │     │                → headless-checkout-integration (payment token + embedded UI)
   │     └─ SHOP BUILDER → shopbuilder-storefront
   │                        → site → page → blocks → customize (→ custom-block)
@@ -81,8 +82,9 @@ shop-setup (here)
    methods the shop needs. This is the shared identity foundation; its JWT `sub` is the
    `user.id` that flows into cart, payment, and webhooks.
 4. **Choose the path** (see above) and hand off:
-   - **Headless** → `headless-storefront`, which sequences `headless-login` and
-     `headless-checkout-integration` and covers the frontend assembly.
+   - **Headless** → `headless-storefront`, which sequences `headless-login` (with
+     `login-styling` to theme the widget) and `headless-checkout-integration`, and covers the
+     frontend assembly.
    - **Shop Builder** → `shopbuilder-storefront`, which sequences `shopbuilder-site`,
      `-page`, `-blocks`, `-customize` (and `-custom-block` as an escape hatch). Login here is
      configuration only — the methods enabled in step 3 render on the hosted site; no code.

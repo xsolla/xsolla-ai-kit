@@ -72,7 +72,8 @@ The agent builds bottom-up: data first, then identity, then payment.
 3. **Login + cart switch** (`headless-login`). Integrate the Login Widget/API/SDK, then on
    login switch the cart from `x-unauthorized-id` to `Authorization: Bearer <JWT>` and
    **merge** the guest cart into the authenticated cart; refetch catalog and cart so personal
-   limits and country pricing apply.
+   limits and country pricing apply. **Style the widget to match the shop** (`login-styling`) —
+   don't ship the stock look.
    *Validate:* login → cart preserved; logout → guest mode; re-login → account cart restored.
 4. **Personal-store features (JWT).** Only what the product needs: virtual-currency balance,
    inventory/unclaimed rewards, promo codes, reward chains, free items. All with `Bearer JWT`.

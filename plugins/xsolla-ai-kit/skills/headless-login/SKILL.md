@@ -58,6 +58,8 @@ Detailed material lives in `references/` — load only what the current step nee
 - Switch the **Store cart** from `x-unauthorized-id` to `Authorization: Bearer <JWT>` and
   **merge** the guest cart into the authenticated cart on login.
 - Build user-management UI: profile, password reset, MFA, social/account linking, attributes.
+- **Theme the Login widget to match the game** — once it renders, style it (don't ship the
+  stock look) via `login-styling`.
 
 Out of scope: the Login project and method toggles (→ `login-setup`), catalog & cart
 mechanics themselves (→ `catalog-design`), payments (→ `headless-checkout-integration`),
@@ -115,11 +117,15 @@ export XSOLLA_LOGIN_OAUTH_CLIENT_SECRET=<OAuth 2.0 client secret>
    country pricing apply. On logout, clear the JWT and return to guest mode. (This is the
    Login side of the cart flow owned by `catalog-design`.)
 
-6. **Wire up the user-management features the product needs.** Profile, password reset,
+6. **Style the Login widget** so it matches the game rather than shipping the Xsolla default —
+   this is a required part of a real integration, not optional polish. Hand off to
+   `login-styling` for the theming mechanics (API-based CSS deployment).
+
+7. **Wire up the user-management features the product needs.** Profile, password reset,
    MFA/2FA, social/account linking, attributes, friends, search, ban/unban. Endpoint table:
    [`references/user-management.md`](references/user-management.md).
 
-7. **Verify end-to-end.** In sandbox: register a test user, log in with each enabled
+8. **Verify end-to-end.** In sandbox: register a test user, log in with each enabled
    method, decode + JWKS-validate the JWT, refresh it, hit a Store cart call with
    `Authorization: Bearer <JWT>`, confirm the payment-token call accepts it, and confirm the
    webhook delivers the same `user.id` (= `sub`) so `webhooks-impl` can grant items.

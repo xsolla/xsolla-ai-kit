@@ -2,7 +2,7 @@
 
 Guide for an AI agent. Covers the `redirect` NextAction: when the server sends the user off-page and how to take them there and back.
 
-**Prerequisites:** `credit-card-form` or another payment flow skill — `form.init()` + `onNextAction` working. Status handling lives in `payment-status`.
+**Prerequisites:** `credit-card-form` or another payment flow skill — `form.init()` + `onNextAction` working. Status handling lives in `payment-status`. This doc owns **all redirect mechanics**; which payment methods emit `redirect` (PayPal, e-wallets, SDK/same-window systems) and the non-redirect methods (QR, mobile, cash) live in `payment-methods`.
 
 ---
 
@@ -40,9 +40,38 @@ nextAction.data.redirect = {
 
 ---
 
+## Choosing the Window: Same-Tab vs New-Tab
+
+There are **two** working ways to send the user to the provider. `psdk-redirect` implements both and picks based on the server flags — you only override for an environment the server can't see (an iframe).
+
+| Strategy | How | Trade-off |
+|---|---|---|
+| **Same tab** (default) | Navigate the current window to the provider; `returnUrl` brings it back to the status page. `psdk-redirect` submits **automatically — no extra click**. | Cannot run inside an iframe: it navigates the *iframe's* document and the provider refuses to render there. |
+| **New tab** | `psdk-redirect` renders a **Continue** button; clicking it opens the provider in a new tab, then polls for its close (`redirectWindowClosed`). | Adds **one extra click** — the browser blocks opening a tab without a fresh user gesture (see the gesture rule). |
+
+**Prefer same-tab.** Every extra step on a payment form costs conversion, and same-tab is also the better mobile experience (juggling tabs on a phone is awkward). New-tab is used **only when required**.
+
+### How to choose (in order)
+
+1. **Is the checkout inside an iframe?** → **new tab**, always. Same-tab navigates the *iframe's* document, and the provider page almost always refuses to render in an iframe (`X-Frame-Options` / `frame-ancestors`), so the user gets stuck. Headless Checkout has no iframe of its own — this applies **only** if *you* wrapped it in one (common on mobile, which is exactly where it hurts).
+2. **Did the server send `isNewWindowRequired`?** → **new tab**.
+3. **Otherwise** — `isSameWindowRequired`, **or no flag at all** → **same tab**. This is the default: fewer steps → higher conversion, and it's best on mobile.
+
+**In one line: same tab, unless the SDK asks for a new tab (`isNewWindowRequired`) or you're inside an iframe.**
+
+### WebView (native mobile apps only)
+
+If your app embeds the checkout in a **native WebView**, no tab can open: redirect with `window.open(providerUrl)`, which hands off to the device's default browser, and set **`is_independent_windows`** in the payment token so the backend expects the detached window. There is no automatic return — the return page must tell the user to switch back to the app. (Plain web builds are not WebViews — ignore this unless you're inside a native app shell.)
+
+### Server-forced same-window methods (the "SDK payment methods" group)
+
+A distinct group of systems — **Barzahlen, Naver, Venmo, Paytm, Alipay, PIX**, and similar — **cannot** survive a new tab or an iframe and **must** open in the same top-level window. You do **not** maintain a list of which ones: **the server sets `isSameWindowRequired: true`** on their `redirect` action, and `psdk-redirect` obeys it. These are the first methods to fail under an iframe wrapper (see the callout above); there is no new-tab fallback for them — the fix is to not iframe the checkout. Method-level context and the `sdk-payment-methods` example live in `payment-methods`.
+
+---
+
 ## Approach A: `psdk-redirect` (Recommended)
 
-The component builds the hidden form, picks GET/POST, handles new-tab vs same-tab, and emits `redirectWindowClosed` when a new tab is closed. Pass the raw `redirect` object as JSON.
+The component builds the hidden form, picks GET/POST, handles new-tab vs same-tab, and emits `redirectWindowClosed` when a new tab is closed. Pass the raw `redirect` object as JSON. **It acts only when the server sets a flag** — with neither flag it stays inert and you must drive the redirect yourself (Approach B).
 
 ```typescript
 headlessCheckout.form.onNextAction((nextAction) => {
@@ -60,10 +89,12 @@ headlessCheckout.form.onNextAction((nextAction) => {
 <psdk-redirect data-redirect='...' text="Continue"></psdk-redirect>
 ```
 
+**The flags are the server's decision, not a hint.** When the backend sets one, **obey it** (via `psdk-redirect`) rather than re-deriving the strategy — override only for the environment the server can't see (iframe ⇒ never same-tab; WebView ⇒ independent window). But the server does **not** always send a flag (see the "Neither flag set" case below) — when none arrives, default to **same tab**.
+
 Behavior by flag:
-- **`isSameWindowRequired`** → submits the form in the current tab automatically (no button).
-- **`isNewWindowRequired`** → renders a `text` button; on click opens `about:blank` in a named tab, submits into it, polls for close, then fires `EventName.redirectWindowClosed` (DOM event + public postMessage). A button is mandatory here — see the gesture rule below.
-- **Neither** → same-tab submit.
+- **`isSameWindowRequired`** → submits the form in the current tab automatically (no button). = same tab.
+- **`isNewWindowRequired`** → renders a `text` button; on click opens `about:blank` in a named tab, submits into it, polls for close, then fires `EventName.redirectWindowClosed` (DOM event + public postMessage). A button is mandatory here — see the gesture rule below. = new tab.
+- **Neither flag set** → `psdk-redirect` stays **inert**: it builds the form but neither auto-submits nor shows a button. This is **not** just a theoretical config error — real methods hit it (e.g. **PayPal** in sandbox). Handle it as the **default = same tab**: submit the redirect form yourself in the current window (see Approach B below). Don't wait for a flag that isn't coming, and don't add a "Continue" button for it — same-tab needs no gesture, so a button would only cost a click.
 
 After redirect, the user comes back via `returnUrl`. Mount `psdk-status` on the return page (see below). For a popup flow where the checkout tab stays open, prime status with **one** `getStatus()` on `redirect` — see `payment-status` "Popup redirect".
 
@@ -73,7 +104,16 @@ Ref: `examples/credit-card/init-payment-flow.js` (Option 2 comment).
 
 ## Approach B: Manual Redirect
 
-Use only when you need custom markup. Build a form so POST works (avoids 414):
+**Not just for custom markup — this is the *required* path whenever `psdk-redirect` can't act
+for you.** The big one is the **no-flag case**: with neither `isSameWindowRequired` nor
+`isNewWindowRequired` set, `psdk-redirect` stays inert (builds the form, never submits, no
+button), so Approach A simply doesn't complete the redirect. Real methods hit this (e.g. PayPal in
+sandbox), so you must drive it yourself here. Approach A remains the right choice for the flagged
+cases (`isSameWindowRequired` → auto same-tab, `isNewWindowRequired` → gesture button); Approach B
+covers the no-flag default (same tab) and any time you want same-tab navigation without mounting
+the component.
+
+Build a form so POST works (avoids 414):
 
 ```typescript
 function handleRedirectAction({ data: { redirect } }) {
@@ -180,10 +220,12 @@ When the provider page is opened as a popup and the return page lives on your or
 1. **Do not** branch redirect handling by payment method — one `redirect` path for PayPal, 3DS-redirect, and verification.
 2. **Do not** ignore `method` — POST data forced into a GET URL → **414**.
 3. **Do not** auto-open a new tab when `isNewWindowRequired` — use a click-triggered button.
-4. **Do not** skip `returnUrl` — the user has no way back; 3DS-redirect fails outright.
-5. **Do not** run `form.init()` on the return page — only `init()` + `setToken()` + `psdk-status`.
-6. **Do not** mix `redirect` with the `3DS` (MPI challenge) handler — they are different actions.
-7. **Do not** call `getStatus()` repeatedly when `psdk-status` is mounted — see `payment-status`.
+4. **Do not** pre-open a blank tab on the "Pay" click hoping a `redirect` follows — you can't know the next action in advance, and speculative empty tabs are worse UX than one click. Same-tab (default) or the server-driven new-tab button only.
+5. **Do not** add a "Continue" button for the **no-flag** case — that's the same-tab default; submit the form in the current window (a button there just costs a click).
+6. **Do not** skip `returnUrl` — the user has no way back; 3DS-redirect fails outright.
+7. **Do not** run `form.init()` on the return page — only `init()` + `setToken()` + `psdk-status`.
+8. **Do not** mix `redirect` with the `3DS` (MPI challenge) handler — they are different actions.
+9. **Do not** call `getStatus()` repeatedly when `psdk-status` is mounted — see `payment-status`.
 
 ---
 
@@ -197,6 +239,7 @@ When the provider page is opened as a popup and the return page lives on your or
 | PayPal GET redirect        | `examples/paypal/index.html`                                                                                          |
 | Popup / external page      | `examples/paypal-external-page/`                                                                                      |
 | Return page                | `examples/return.html`                                                                                                |
+| SDK / same-window methods  | `examples/sdk-payment-methods/index.html` (method context → `payment-methods`)                                        |
 | Integrate on app side      | https://developers.xsolla.com/sdk-fuctional-and-ui/headless-checkout/integration-guide/integrate-on-app-side/index.md |
 
 ---
@@ -204,8 +247,9 @@ When the provider page is opened as a popup and the return page lives on your or
 ## Checklist
 
 - [ ] `onNextAction` handles `redirect` — `psdk-redirect` with `data-redirect` JSON (or manual form honoring `method`)
-- [ ] `isNewWindowRequired` → button + click gesture; `isSameWindowRequired` → auto same-tab
+- [ ] Window choice follows the rule: **iframe → new tab**; else `isNewWindowRequired` → new tab; else (incl. **no flag**) → same tab
+- [ ] `isNewWindowRequired` → button + click gesture; `isSameWindowRequired` **and no-flag** → same tab (no button)
 - [ ] `returnUrl` set in `form.init`; return page does `init` + `setToken` + `psdk-status`
 - [ ] POST redirects use a form body (no 414); sandbox redirect completes and returns
 
-**Done?** Status rendering → `payment-status`. MPI in-page challenge → `credit-card-form`. Go-live → `docs`.
+**Done?** Method-specific flows (QR, mobile, cash, PayPal sandbox test) → `payment-methods`. Status rendering → `payment-status`. MPI in-page challenge → `credit-card-form`. Go-live → `docs`.

@@ -38,7 +38,8 @@ Both paths share the same foundation (merchant setup, catalog, Login config, web
 |---|---|
 | `headless-storefront` | Path orchestrator — sequences the headless frontend build (catalog read, cart, login, payment). |
 | `headless-login` | Headless Login code: OAuth client, Widget/API/SDK, JWT validation, guest→Bearer cart switch. |
-| `headless-checkout-integration` | Payments via the embedded Headless Checkout SDK (Pay Station fallback). |
+| `login-styling` | Theme/brand the Login widget (API-based CSS deployment); pairs with `headless-login`. |
+| `headless-checkout-integration` | Payments via the embedded Headless Checkout SDK — cards, Apple Pay, Google Pay, saved methods (Pay Station fallback). |
 
 **Shop Builder branch**
 
