@@ -1,10 +1,4 @@
 ---
-description: Xsolla webhooks-impl skill
-globs: ['**/*']
-alwaysApply: false
----
-
----
 name: webhooks-impl
 description: >-
   Implements and validates the backend that receives Xsolla webhooks for a

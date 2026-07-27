@@ -1,10 +1,4 @@
 ---
-description: Xsolla catalog-design skill
-globs: ['**/*']
-alwaysApply: false
----
-
----
 name: catalog-design
 description: >-
   Configures the Xsolla catalog for a game and wires the full sell-side flow: virtual
