@@ -1,10 +1,4 @@
 ---
-description: Xsolla merchant-setup skill
-globs: ['**/*']
-alwaysApply: false
----
-
----
 name: merchant-setup
 description: Guide for setting up a new Xsolla merchant account and obtaining API credentials. Use this skill whenever a user needs to create an Xsolla Publisher Account, get API keys, understand the difference between merchant-level and project-level API keys, set up sandbox mode for testing, or asks how to start integrating with Xsolla Pay Station. Also trigger when a user says they want to accept payments via Xsolla, start an Xsolla integration, or test Xsolla payments. Claude Code cannot create the account on behalf of the user — this skill provides the exact steps the user must complete manually before integration can begin.
 metadata:

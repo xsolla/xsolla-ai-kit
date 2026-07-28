@@ -1,6 +1,6 @@
 # xsolla-ai-kit — Agent Context
 
-This file is read automatically by most AI coding agents (Cursor, Codex CLI, GitHub Copilot, Windsurf, Amp, Devin, Jules, Aider, Roo Code, Augment). Claude Code users: `CLAUDE.md` is a symlink to this file.
+This file is read automatically by most AI coding agents (Cursor, Codex CLI, GitHub Copilot, Windsurf, Amp, Devin, Jules, Aider, Roo Code, Augment). Claude Code users: `CLAUDE.md` is a copy of this file.
 
 ---
 
@@ -61,8 +61,8 @@ Setup by `merchant-setup` skill.
 | `skills/` | SKILL.md files. One subdirectory per workflow. |
 | `skills/<name>/references/` | Long-form reference docs. Keeps SKILL.md under 200 lines. |
 | `docs/` | Architecture, distribution, and skill-gap guides. |
-| `.github/workflows/` | sync-providers.yml — auto-generates Cursor .mdc files from SKILL.md |
-| `.cursor/rules/` | Auto-generated Cursor rules (do not edit manually) |
+| `.cursor/skills/` | Cursor-native skills (synced copy of `skills/`; do not edit manually) |
+| `.cursor/rules/` | Short always-on Cursor pointer rule |
 
 ---
 

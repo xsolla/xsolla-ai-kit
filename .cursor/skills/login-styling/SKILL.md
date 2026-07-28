@@ -1,10 +1,4 @@
 ---
-description: Xsolla login-styling skill
-globs: ['**/*']
-alwaysApply: false
----
-
----
 name: login-styling
 description: >-
   Applies a custom visual style / theme / brand to the Xsolla Login widget (Login Widget 2.0,

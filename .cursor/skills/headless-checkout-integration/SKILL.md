@@ -1,10 +1,4 @@
 ---
-description: Xsolla headless-checkout-integration skill
-globs: ['**/*']
-alwaysApply: false
----
-
----
 name: headless-checkout-integration
 description: >-
   Integrates Xsolla Headless Checkout — a fully customizable, client-controlled

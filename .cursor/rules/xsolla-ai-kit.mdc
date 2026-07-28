@@ -1,0 +1,20 @@
+---
+description: Xsolla AI Kit — where Cursor skills live and how to use them
+alwaysApply: true
+---
+
+# Xsolla AI Kit (Cursor)
+
+This repository is an **agent skills toolkit** for Xsolla integrations (merchant setup, catalog, Login, Headless Checkout, webhooks, full shop orchestration).
+
+## Where to look
+
+- **Skills (source of truth for Cursor):** `.cursor/skills/<skill-name>/SKILL.md`
+- **Deep how-to:** `.cursor/skills/<skill-name>/references/` — read only what the current phase needs
+- **Canonical tree (same content):** `skills/` (used by other agents / plugins)
+
+Do **not** invent Xsolla integration steps from memory. Open the matching skill, then load the referenced files for that phase.
+
+## Entry point
+
+For an end-to-end shop, start with `shop-setup`. It scopes the work and chains the domain skills.

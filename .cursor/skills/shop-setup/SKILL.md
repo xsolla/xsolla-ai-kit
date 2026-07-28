@@ -1,10 +1,4 @@
 ---
-description: Xsolla shop-setup skill
-globs: ['**/*']
-alwaysApply: false
----
-
----
 name: shop-setup
 description: >-
   Orchestrator and entry point for building a complete Xsolla Headless Shop — an

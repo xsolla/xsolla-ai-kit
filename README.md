@@ -11,7 +11,8 @@ Install the kit in your AI coding tool and your agent can integrate Xsolla's API
 | `skills/` | SKILL.md files — one per Xsolla domain |
 | `AGENTS.md` | Universal context loaded automatically by most agents |
 | `.github/copilot-instructions.md` | GitHub Copilot-specific context |
-| `.cursor/rules/` | Auto-generated Cursor .mdc rules |
+| `.cursor/skills/` | Cursor-native skills (synced from `skills/`) |
+| `.cursor/rules/` | Short always-on Cursor pointer rule |
 | `docs/` | Architecture, distribution, and skill-gap guides |
 
 ## Quick start
@@ -30,6 +31,17 @@ Or in a session:
 /plugin marketplace add xsolla/xsolla-ai-kit
 /plugin install xsolla-ai-kit@xsolla-ai-kit
 ```
+
+### Cursor
+
+Add this repo as a workspace folder (or open it as the project), then use natural language — Cursor loads skills from `.cursor/skills/`.
+
+```text
+# Example
+Integrate Xsolla Headless Checkout and let me pay with a credit card in sandbox
+```
+
+For an end-to-end shop, start with `shop-setup`. A short always-on rule in `.cursor/rules/xsolla-ai-kit.mdc` points the agent at those skills.
 
 ### Codex
 
@@ -80,7 +92,7 @@ specific skill:
 | Agent        | Explicit invocation                                             |
 |--------------|-----------------------------------------------------------------|
 | Claude Code  | `/shop-setup` (slash command; `/xsolla-ai-kit:shop-setup` if names clash) |
-| Cursor       | `@shop-setup` via the Rules picker — or just describe the task  |
+| Cursor       | Describe the task (skills under `.cursor/skills/`) — or `@` a skill by name |
 | Codex CLI    | No per-skill command — describe the task; Codex routes via AGENTS.md |
 | Others       | Natural language; skills load from SKILL.md / generated rules   |
 

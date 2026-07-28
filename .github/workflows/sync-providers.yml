@@ -1,9 +1,10 @@
-name: Sync provider-specific rule files
+name: Sync provider files
 
 on:
   push:
     paths:
-      - 'skills/**/*.md'
+      - 'skills/**'
+      - 'AGENTS.md'
   workflow_dispatch:
 
 jobs:
@@ -12,29 +13,27 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Generate .cursor/rules/ from SKILL.md files
+      - name: Sync skills and CLAUDE.md
         run: |
-          mkdir -p .cursor/rules
+          set -euo pipefail
+
+          rm -rf .cursor/skills
+          mkdir -p .cursor/skills
           for skill_dir in skills/*/; do
             skill_name=$(basename "$skill_dir")
-            skill_file="$skill_dir/SKILL.md"
-            if [ -f "$skill_file" ]; then
-              output_file=".cursor/rules/${skill_name}.mdc"
-              echo "---" > "$output_file"
-              echo "description: Xsolla ${skill_name} skill" >> "$output_file"
-              echo "globs: ['**/*']" >> "$output_file"
-              echo "alwaysApply: false" >> "$output_file"
-              echo "---" >> "$output_file"
-              echo "" >> "$output_file"
-              cat "$skill_file" >> "$output_file"
-              echo "Generated: $output_file"
+            if [ -f "${skill_dir}SKILL.md" ]; then
+              cp -R "$skill_dir" ".cursor/skills/${skill_name}"
+              echo "Synced: .cursor/skills/${skill_name}"
             fi
           done
+
+          cp AGENTS.md CLAUDE.md
+          echo "Synced: CLAUDE.md"
 
       - name: Commit generated files
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add .cursor/rules/
-          git diff --staged --quiet || git commit -m "chore: sync provider rules from SKILL.md files [skip ci]"
+          git add .cursor/skills/ CLAUDE.md
+          git diff --staged --quiet || git commit -m "chore: sync provider files from skills/ and AGENTS.md [skip ci]"
           git push
