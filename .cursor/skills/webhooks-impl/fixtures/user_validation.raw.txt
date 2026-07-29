@@ -1,0 +1,1 @@
+{"notification_type":"user_validation","settings":{"project_id":308077,"merchant_id":887981},"user":{"ip":"8.29.109.241","email":"webhook-e2e@example.com","id":"a1b2c3d4-0000-4000-8000-019fb6caa51e","country":"US","zip":"10001"}}

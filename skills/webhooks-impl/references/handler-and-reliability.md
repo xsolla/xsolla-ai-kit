@@ -125,3 +125,39 @@ https://developers.xsolla.com/webhooks/overview (see "Webhook listener").
 
 If you also use Xsolla **Login** webhooks, allow its additional ranges (see
 docs). Verify the current list before launch — IPs can change.
+
+## Fulfillment — grant what the buyer purchased (ask the developer)
+
+When Xsolla notifies a successful purchase (`order_paid` in Store flows, or
+`payment` for Merchant-only tokens — see [`testing.md`](testing.md) /
+[`events-and-payloads.md`](events-and-payloads.md)), the shop backend must
+**deliver the goods** to that user. Xsolla does not know how the game or shop
+grants inventory: there is no one-size API call the agent can invent.
+
+**Before implementing `grantItemsAtomically` (or equivalent), ask the
+developer:**
+
+1. **What is the “good”?** Virtual item SKU, currency amount, game key, entitlement
+   flag, access tier, email of a code, call into a game server, etc.
+2. **How does a user normally receive it today?** Existing inventory service,
+   wallet DB, CRM, admin tool, message queue, third-party API, manual ops?
+3. **What identifies the user in that system?** Must match the webhook user id
+   (`user.external_id` / `user.id` — usually the Login `sub` / store external id).
+   If they differ, how do you map them?
+4. **What identifies the purchase for idempotency?** Transaction / order id from
+   the webhook (already required above) — confirm it can be stored next to the
+   grant so retries do not double-deliver.
+5. **What happens on refund / `order_canceled`?** Revoke, soft-flag, chargeback
+   queue, or no-op? Who owns that policy?
+6. **Sync or async?** If granting is slow (> ~3s), acknowledge the webhook with
+   `2xx` quickly and finish delivery on a worker — still idempotent.
+
+Wire the handler to **call into that existing path** (or the path the developer
+specifies). Do not invent a parallel inventory unless they ask for a greenfield
+demo store. Skeleton above uses `grantItemsAtomically(txId, userId, evt)` as a
+placeholder — replace it with their real grant operation and keep signature
+checks + idempotency around it.
+
+If the developer has not answered yet: implement verify + route + persist
+“pending grant” / log clearly, and **block** on asking before claiming
+fulfillment is done.

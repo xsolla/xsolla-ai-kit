@@ -24,7 +24,9 @@ This skill is a **draft** authored by the webhooks SME (@e.chernykh).
 Detailed material lives in `references/`:
 - [`references/events-and-payloads.md`](references/events-and-payloads.md) — delivery modes, event types, payload JSON, refund codes
 - [`references/signature-verification.md`](references/signature-verification.md) — SHA-1 algorithm + Node/PHP examples
-- [`references/handler-and-reliability.md`](references/handler-and-reliability.md) — responses, idempotency, retries, IP allowlist, full handler
+- [`references/handler-and-reliability.md`](references/handler-and-reliability.md) — responses, idempotency, retries, IP allowlist, **fulfillment (ask how goods are granted)**, full handler
+- [`references/testing.md`](references/testing.md) — fixture replay vs live tunnel; when `payment` vs `order_paid` arrives
+- [`fixtures/`](fixtures/) — sample `user_validation` / `order_paid` / `payment` bodies (+ `.raw.txt`)
 
 ## When to use
 
@@ -39,8 +41,10 @@ Xsolla catalog + Pay Station, without Site Builder). Trigger conditions:
 - Making webhook processing idempotent or handling retries correctly
 - Reviewing an existing webhook handler before go-live
 
-This skill covers **handler implementation**. Configuring the webhook URL and
-secret on the project is part of `merchant-setup` / `headless-checkout-integration`.
+This skill covers **handler implementation** and how to test it. Enabling
+webhooks + creating the secret in Publisher Account is a **manual** step in
+**Prerequisites** below (not done by `merchant-setup`). Setting the live URL is
+covered in `references/testing.md`.
 
 ## Prerequisites
 
@@ -49,11 +53,38 @@ export XSOLLA_WEBHOOK_SECRET=<project webhook secret key>  # server-side only, n
 export XSOLLA_ENV=sandbox                                  # default; "production" for prod
 ```
 
-- An Xsolla project with **webhooks enabled** and a generated **secret key**
-  (run `merchant-setup` / `headless-checkout-integration` first). The webhook URL must be
-  **HTTPS** — HTTP is rejected.
+### Publisher Account — enable webhooks + secret (human)
+
+The agent cannot create the secret in PA. **Ask the developer** to:
+
+1. Open project webhooks (ids from `.env` per `merchant-setup`):
+
+   ```text
+   https://publisher.xsolla.com/{XSOLLA_MERCHANT_ID}/projects/{XSOLLA_PROJECT_ID}/edit/webhooks
+   ```
+
+2. **Create / generate the webhook secret key** (project secret used to sign
+   notifications).
+3. **Enable webhooks** for the project (Store / required notifications as shown in PA).
+4. Put the secret in the backend `.env` (never the browser / never commit real values):
+
+   ```bash
+   XSOLLA_WEBHOOK_SECRET=<the key from PA>
+   ```
+
+5. Later set the **listener URL** (HTTPS) — local tunnel or deployed host — under the
+   same webhooks settings (store path often
+   `.../edit/webhooks/store`). See `references/testing.md`.
+
+Without the secret in `.env`, signature verification always fails. Without
+webhooks enabled + a reachable HTTPS URL, Xsolla never delivers live events
+(fixtures still work for local replay).
+
+Also needed:
+
 - A backend that can read the **raw request body** (needed for signature
   verification) and a datastore for idempotency keys.
+- Webhook URL must be **HTTPS** when Xsolla calls it — HTTP is rejected.
 
 ## Steps
 
@@ -68,13 +99,19 @@ export XSOLLA_ENV=sandbox                                  # default; "productio
    and compare in constant time. Reject mismatches with `400 INVALID_SIGNATURE`.
    Full Node/PHP examples: `references/signature-verification.md`.
 
-3. **Route by `notification_type` and act:**
+3. **Route by `notification_type` and fulfill:**
    - `user_validation` → confirm the user exists; `204` if yes, `400 INVALID_USER` if no.
-   - `order_paid` → grant items (idempotently). `order_canceled` → revoke items.
+   - `order_paid` → **grant** purchased goods (idempotently). `order_canceled` → revoke
+     per the developer’s policy.
    - In separate mode, `payment` / `refund` also arrive — treat them as financial
      records only; do fulfillment on `order_*` to avoid double-granting.
+   - Merchant-only tokens may send `payment` without a Store order — then fulfill
+     on `payment` if that is the only success signal (see `testing.md`).
    - Subscription events (optional) → start / extend / revoke.
-   See the handler skeleton in `references/handler-and-reliability.md`.
+   **Ask the developer how users receive goods** in their product (inventory API,
+   wallet, game server, …) and wire the handler to that path — do not invent a
+   parallel grant system. Details:
+   `references/handler-and-reliability.md` (Fulfillment).
 
 4. **Make fulfillment idempotent.** Dedupe by transaction id
    (`billing.transaction.id` combined, `transaction.id` separate) using a unique
@@ -85,11 +122,10 @@ export XSOLLA_ENV=sandbox                                  # default; "productio
    heavy work async. Webhooks are delivered **sequentially** — a failing handler
    blocks the rest of the flow.
 
-6. **Harden and validate.** Allowlist Xsolla's source IPs (still verify the
-   signature). Before go-live, test both the success and invalid-signature
-   scenarios, replay a webhook to confirm single fulfillment, and run an
-   end-to-end sandbox purchase + refund. Details:
-   `references/handler-and-reliability.md`.
+6. **Harden and test.** Allowlist Xsolla's source IPs (still verify the signature).
+   Prefer **fixture replay** for signature / routing / idempotency; use a **public
+   tunnel** + sandbox purchase (developer sets the URL in PA) for live delivery.
+   See `references/testing.md`.
 
 ## Common pitfalls
 
@@ -104,16 +140,20 @@ export XSOLLA_ENV=sandbox                                  # default; "productio
   never succeed. Use `400` for permanent problems, `5xx` only for transient ones.
 - **Ignoring or slowing `user_validation`** — a failing/slow validation handler
   blocks every downstream payment webhook; the user sees an error.
+- **Granting without asking how** — inventing a demo inventory while the game
+  already has a real entitlement path. Always ask how the buyer receives goods
+  and map the webhook user id to that system.
 
 ## Agent test
 
 Prompt: "Implement an Xsolla webhook handler for my headless shop that grants
 items after purchase. Use Node.js/Express."
 
-Result: the agent discovered and applied this skill (read `SKILL.md` + all three
-references) and scaffolded a raw-body Express endpoint. A live smoke test
-confirmed, on the first try: `lowercase(sha1(rawBody + secret))` verification
-rejecting tampered bodies with `400 INVALID_SIGNATURE`; `user_validation`
-returning `204`/`400 INVALID_USER`; idempotent `order_paid` granting (replay
-returned `200` with no re-grant); no double-grant in separate mode
-(`payment`/`refund` recorded only); `5xx` reserved for transient errors. ✅
+Result: the agent discovered and applied this skill (read `SKILL.md` + references,
+including `testing.md` / fixtures), asked how goods are granted in the product,
+scaffolded a raw-body Express endpoint, and smoke-tested with fixture POSTs:
+`lowercase(sha1(rawBody + secret))` rejecting tampered bodies with
+`400 INVALID_SIGNATURE`; `user_validation` returning `204`/`400 INVALID_USER`;
+idempotent `order_paid` granting (replay returned `2xx` with no re-grant); no
+double-grant in separate mode (`payment` recorded only); `5xx` reserved for
+transient errors. ✅

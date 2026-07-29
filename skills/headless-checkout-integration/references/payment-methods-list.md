@@ -163,34 +163,6 @@ it instead.
 
 ---
 
-## Country Handling
-
-Available methods depend on country. Two ways to set it:
-
-1. `psdk-payment-methods country="DE"` attribute
-2. `getRegularMethods({ country: 'DE' })` / `getQuickMethods('DE')`
-
-**Dynamic country change** (user picks country):
-
-```html
-
-<psdk-select type="country"></psdk-select>
-```
-
-```typescript
-document.querySelector('psdk-select')?.addEventListener('userCountryChanged', (e) => {
-    const country = e.detail.country;
-    document.querySelector('psdk-payment-methods')?.setAttribute('country', country);
-    // or re-fetch via API for custom UI
-});
-```
-
-See [changing-country](https://raw.githubusercontent.com/xsolla/pay-station-sdk/refs/heads/main/examples/changing-country/index.html)
-and [unsupported-country](https://raw.githubusercontent.com/xsolla/pay-station-sdk/refs/heads/main/examples/unsupported-country/index.html)
-examples.
-
----
-
 ## After Selection: Hand Off to Payment Form
 
 Selecting a method is step 1. Step 2 is `form.init()` — only **one form per page**.
@@ -220,7 +192,7 @@ payment, and reuses it next time. See `saved-methods`.
 ## Sandbox Method IDs
 
 Common IDs from demo (vary by project/country): card `1380`, PayPal `24`, Apple Pay `3175`, Google Pay `3431`, Venmo
-`3636`. Log `getRegularMethods()` to discover methods for the partner's project.
+`3636`. Log `getRegularMethods()` to discover methods for the store’s project.
 
 ---
 

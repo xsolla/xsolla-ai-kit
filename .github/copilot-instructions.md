@@ -16,6 +16,7 @@ This repo contains Xsolla agent skills. You are helping a developer build or int
 - `login-setup` — Xsolla Login / NewID authentication
 - `headless-checkout-integration` — Payments via Headless Checkout
 - `webhooks-impl` — webhook handler code generation
+- `production` — sandbox → live go-live checklist
 
 ## When in doubt
 

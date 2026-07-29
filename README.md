@@ -80,8 +80,9 @@ XSOLLA_PROJECT_API_KEY=<your API key>
 | `merchant-setup` | Merchant and Project setup  | @y.klochikhin | Done    |
 | `catalog-design` | Items, pricing, virtual currency, bundles | @p.sanachev | Planned |
 | `login-setup` | Login / NewID / auth | @mohammed_abujalala | Planned |
-| `headless-checkout-integration` | Payments via Headless Checkout | @y.klochikhin | Draft |
-| `webhooks-impl` | Webhook handler generation | @e.chernykh | Planned |
+| `headless-checkout-integration` | Payments via Headless Checkout | @y.klochikhin | Done |
+| `webhooks-impl` | Webhook handler generation | @e.chernykh | Done |
+| `production` | Sandbox → live / go-live | @y.klochikhin | Done |
 
 ## Invoking a skill
 
@@ -98,7 +99,7 @@ specific skill:
 
 `shop-setup` is the entry point — it scopes the build and chains the domain
 skills (`catalog-design`, `login-setup`, `headless-checkout-integration`,
-`webhooks-impl`).
+`webhooks-impl`, `production`).
 
 ## Contributing
 
