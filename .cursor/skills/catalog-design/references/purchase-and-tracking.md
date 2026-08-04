@@ -30,7 +30,10 @@ discount details are shown to the user only inside the payment UI.
 
 Server-side token generation exists as a separate scenario
 ([Create payment token for purchase](https://developers.xsolla.com/api/catalog/payment-server-side/admin-create-payment-token/)) —
-there you **must** pass `country.value` or the `X-User-Ip` header.
+there you **must** pass `country.value` or the `X-User-Ip` header (422 / `1102` otherwise).
+For a from-scratch shop prefer **`X-User-Ip`** (buyer IP from the trusted proxy) and omit
+`country.value` with `allow_modify: true` — see `headless-checkout-integration` →
+`payment-country`.
 
 Sandbox: pass `"sandbox": true` when creating the order and use
 [test cards](https://developers.xsolla.com/dev-resources/testing/test-cards/). After the

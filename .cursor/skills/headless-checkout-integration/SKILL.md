@@ -8,8 +8,10 @@ description: >-
   "add @xsolla/pay-station-sdk", "accept a credit card payment in sandbox",
   "add a payment method selector", "integrate PayPal / alternative payment methods",
   "add Google Pay / Apple Pay", "render psdk-card-number / psdk-payment-form",
-  "handle onNextAction / NextAction", "do sandbox 3DS", or "show payment status /
-  psdk-status" for a custom checkout.
+  "handle onNextAction / NextAction", "do sandbox 3DS", "show payment status /
+  psdk-status", "add a payment country selector", "change payment country",
+  "getCountryList", "allow_modify", or "filter methods by country"
+  for a custom checkout.
 metadata:
   owner: y.klochikhin
   domain: payments
@@ -30,8 +32,8 @@ webhook fulfillment — see `webhooks-impl` for granting items after `order_paid
 
 The developer wants to accept a payment with their **own** checkout UI (not the hosted Pay
 Station) and is working in **sandbox** — standing up the integration from scratch, adding a
-method selector, adding a payment method (card, PayPal/APM, QR, mobile), or adding the Google
-Pay / Apple Pay wallet buttons.
+method selector, adding a payment method (card, PayPal/APM, QR, mobile), adding the Google
+Pay / Apple Pay wallet buttons, or wiring **payment country** into the method list.
 
 ## Prerequisites
 
@@ -99,8 +101,14 @@ then **ask the user to verify and give feedback** before continuing.
 NextAction-driven — may need CVV / 3DS), and delete them.
 → `saved-methods`. **Done when** the sandbox round trip passes: save → see it → pay with it → delete.
 
-End state: every payment method integrated and working in **sandbox**, with saving/reuse. Only
-**production / go-live** is out of scope here and comes later.
+**Phase 7 — Payment country.** Token country + store selector; pass ISO into methods /
+`form.init` only after an explicit (or persisted) pick.
+→ `payment-country`. **Done when** US vs JP lists differ after a pick and the choice
+survives reload (IP auto-detect: developer checks on a real host).
+
+End state: every payment method integrated and working in **sandbox**, with saving/reuse and
+country-aware methods. **Production / go-live** is Phase 7 of `shop-setup` → skill
+`production` (contract, flip sandbox, deploy, developer live tests).
 
 ## Styling & UX — match the store, don't ship the demo look
 
@@ -149,8 +157,10 @@ Load only what the current phase needs.
 - [`references/initialization.md`](references/initialization.md) — install SDK, `init({ sandbox: true })` +
   `setToken()`, getting a sandbox payment token with **no backend**
 - [`references/payment-methods-list.md`](references/payment-methods-list.md) — `psdk-payment-methods` vs custom API,
-  `selectionChange`, country handling, handoff to `form.init()`; **layout patterns (list / accordion / tabs), method
+  `selectionChange`, handoff to `form.init()`; **layout patterns (list / accordion / tabs), method
   icons, wallet-button placement, back navigation**
+- [`references/payment-country.md`](references/payment-country.md) — token country /
+  `X-User-Ip`, store selector, when to pass ISO into methods / `form.init`
 - [`references/credit-card-form.md`](references/credit-card-form.md) — server-driven fields, field→component mapping,
   `setupAndAwaitFieldsLoading`, the NextActions, two 3DS paths, **the sandbox test matrix + how to drive it headlessly**
 - [`references/redirect-flow.md`](references/redirect-flow.md) — **all redirect mechanics**: `psdk-redirect` vs manual

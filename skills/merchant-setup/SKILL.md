@@ -109,6 +109,7 @@ What requires a **signed licensing agreement** (submit from the **Agreements** t
 - Completing the Tax Interview (W-8 for non-US / W-9 for US)
 
 Contract review typically takes a few business days — submit it well before the planned launch date.
+Full go-live checklist (utils probe, flip sandbox flags, deploy, live payment tests): **`production`**.
 
 ---
 

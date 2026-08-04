@@ -99,7 +99,8 @@ export XSOLLA_PROJECT_API_KEY=<your API key>
 - **Order creation from the server.** Client payment calls resolve country → currency →
   payment methods from the caller's IP. Call them from the client; don't pass
   `currency`/`country`. (Server-side token generation is a separate API that requires
-  `country.value` or `X-User-Ip`.)
+  `country.value` or `X-User-Ip` — prefer `X-User-Ip` for greenfield shops; see
+  `payment-country`.)
 - **Admin API on the storefront.** Admin calls are rate-limited and not for user
   traffic; catalogs are built from Catalog-subsection calls, per item type.
 - **Update wipes fields.** Admin update calls replace, not merge: GET the item first

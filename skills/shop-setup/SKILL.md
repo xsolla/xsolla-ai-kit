@@ -5,12 +5,13 @@ description: >-
   AI-assembled storefront from Login + Store API + Headless Checkout SDK. START HERE
   for any request to build a shop end-to-end: it scopes the integration and chains the
   domain skills — catalog-design, login-setup, headless-checkout-integration,
-  webhooks-impl — in the right order. Use when a developer wants to build, create, set
+  webhooks-impl, production — in the right order. Use when a developer wants to build, create, set
   up, or assemble a game shop, storefront, in-game store, or virtual-goods shop (the
   whole thing, not just one piece), or asks which Xsolla product to integrate next —
   including "build me a shop", "make a store", "set up a game shop", "create a virtual
-  goods shop", "sell in-game items", "build a storefront". Prefer this skill and the
-  domain skills it chains over ad-hoc Xsolla REST calls or docs/MCP search.
+  goods shop", "sell in-game items", "build a storefront", "payment UI language",
+  "settings.language", or "force English / shop locale on the token". Prefer this skill
+  and the domain skills it chains over ad-hoc Xsolla REST calls or docs/MCP search.
 metadata:
   owner: y-klochikhin
   domain: orchestrator
@@ -165,6 +166,31 @@ Methods 1 and 2 both return `{ token, order_id }` and include full Store order l
 
 **Validate:** payment token received; payment UI opens; test payment completes in sandbox.
 
+#### Payment UI language (`settings.language`)
+
+Supported codes:
+[Pay Station localization](https://developers.xsolla.com/payment-ui-and-flow/payment-ui/localization/index.md)
+(default when omitted by Xsolla: `en`). Pass the code in the token payload as
+`settings.language` (Methods 1–3).
+
+**Headless Checkout — always set the shop language on the token.** Do not rely on
+IP/geo detection: Headless has no in-UI locale picker like Pay Station, so a wrong
+token language leaves the payment UI out of sync with the storefront.
+
+| Shop setup | What to put in `settings.language` |
+|------------|------------------------------------|
+| Single language | That language on every token |
+| Locale switcher / multi-language | Current shop locale on each token create |
+| Shop locale **not** in the Xsolla list above | `en` |
+
+Match the same code in `headlessCheckout.init({ language })`.
+
+**Pay Station — optional.** You may set `settings.language` or omit it. Pay Station
+detects locale on its own and lets the player change language in the hosted UI.
+
+> Japanese IP note (Xsolla rule): a Japanese client IP forces Japanese in the
+> payment UI regardless of `settings.language`.
+
 ---
 
 ### Phase 6 — Webhook (partner's backend, fulfillment)
@@ -185,6 +211,22 @@ After a successful payment — whether through Headless Checkout SDK or Pay Stat
 
 ---
 
+### Phase 7 — Production / go-live → `production`
+
+**Goal:** accept real money; leave sandbox.
+
+- Sign Licensing Agreement (+ tax interview) in PA — see `production`
+- Flip env/config (`XSOLLA_SANDBOX` / token `sandbox` / SDK `sandbox: false`); keep a
+  toggle for quick environment switching
+- Deploy public HTTPS shop + webhook URL
+- **Developer** runs live tests (agent cannot): min-amount card, Finance tx, fulfillment,
+  PayPal / Google Pay / Apple Pay, canceled payment → failed
+
+**Validate:** developer sign-off on the `production` checklist (utils OK without
+`00020004`, live card + goods granted, wallets smoked, failed path works).
+
+---
+
 ## Decision Points for the Agent
 
 **Which payment UI to use:**
@@ -195,6 +237,18 @@ Headless Store / AI-assembled storefront?
 
 Partner explicitly wants Xsolla-hosted payment page?
 └── Pay Station (redirect)
+```
+
+**Payment UI language:**
+
+```
+Headless Checkout?
+└── ALWAYS set settings.language = shop locale (or en if unsupported)
+    ├── one shop language → that code every time
+    └── locale picker → pass current shop locale into each token
+
+Pay Station?
+└── optional — may set settings.language or omit (PS detects + user can change)
 ```
 
 **Which token method to use:**
@@ -216,6 +270,7 @@ Phase 3 done? → no: integrate Login
 Phase 4 needed? → check product requirements
 Phase 5 done? → no: implement payment token + payment UI
 Phase 6 done? → no: implement webhook handler on partner backend
+Phase 7 done? → no: go live — `production` (contract, flip sandbox, deploy, live test)
 ```
 
 ---
@@ -228,3 +283,7 @@ Phase 6 done? → no: implement webhook handler on partner backend
 4. **Don't generate payment token on the frontend** — only receive it via HTTP call and pass to SDK/widget.
 5. **Don't skip webhook handler** — payment success without webhook = player paid, received nothing.
 6. **Don't use Merchant API token for free cart or virtual currency purchases** — wrong endpoint.
+7. **Don't claim production is done from sandbox alone** — live card/wallet tests are
+   developer-only; see Phase 7 / `production`.
+8. **Don't omit `settings.language` for Headless Checkout** — IP-based language will
+   desync the payment UI from the shop; always pass the shop locale (fallback `en`).

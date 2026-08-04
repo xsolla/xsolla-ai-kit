@@ -133,7 +133,7 @@ All readable via `web_fetch` on `raw.githubusercontent.com`.
 | `save-payment-method` | `index.html` | `form.init({ savePaymentMethod: true })`; save checkbox (`allowSave` field) during payment |
 | `saved-methods` | `index.html` | `psdk-saved-methods`; `delete-mode="true"`; `deletedSavedMethodStatus` event |
 | `payment-via-saved-method` | `index.html` | `form.init({ paymentWithSavedMethod: true, savedMethodId })`; `TotalComponent` |
-| `changing-country` | `index.html` | `psdk-select type="country"`; `userCountryChanged` event |
+| `changing-country` | `index.html` | SDK demo only — prefer `payment-country.md` (custom store control + `allow_modify`) |
 | `unsupported-country` | `index.html` | `show_errors` NextAction with error code + message display |
 | `default-styles` | `index.html` | `dist/style.css` + `theme: 'default'` in `init()` |
 | `secure-component-styles` | `index.html` | Two-level styling: wrapper CSS + `setSecureComponentStyles()` string into iframe |

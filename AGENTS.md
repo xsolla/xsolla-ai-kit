@@ -23,6 +23,7 @@ Skills call **Xsolla REST APIs directly**. The CLI (`xsolla/xsolla-cli`) is an o
 | `login-styling`                 | Applies a custom visual style / theme / brand to the Login UI (pairs with `login-setup`) |
 | `headless-checkout-integration` | Payments via Headless Checkout                                                           |
 | `webhooks-impl`                 | Generates webhook handler code for order/payment events                                  |
+| `production`                    | Sandbox → live: contract, flip flags, deploy, developer live-payment checklist           |
 
 ---
 
@@ -39,6 +40,9 @@ Configure my Xsolla catalog with items and pricing
 
 Integrate payments into my game
 → triggers: headless-checkout-integration
+
+Go live / leave sandbox
+→ triggers: production
 ```
 
 ---
