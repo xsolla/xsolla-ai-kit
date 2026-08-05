@@ -19,6 +19,7 @@ Skills call **Xsolla REST APIs directly**. The CLI (`xsolla/xsolla-cli`) is an o
 | `shop-setup`                    | **Orchestrator** — coordinates the full zero-to-shop flow, chaining all domain skills    |
 | `merchant-setup`                | Creates and configures an Xsolla account + get API key                                   |
 | `catalog-design`                | Configures the catalog and the client flow: client catalog, purchase, order confirmation |
+| `asset-upload`                  | Uploads item images and attaches them to catalog SKUs (`image_url`)                      |
 | `login-setup`                   | Integrates Xsolla Login / NewID authentication                                           |
 | `login-styling`                 | Applies a custom visual style / theme / brand to the Login UI (pairs with `login-setup`) |
 | `headless-checkout-integration` | Payments via Headless Checkout                                                           |
@@ -37,6 +38,9 @@ Set up a full Xsolla game shop for my project
 
 Configure my Xsolla catalog with items and pricing
 → triggers: catalog-design
+
+Upload images for my catalog items / set image_url
+→ triggers: asset-upload
 
 Integrate payments into my game
 → triggers: headless-checkout-integration
