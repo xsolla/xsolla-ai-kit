@@ -12,9 +12,24 @@ This is the Xsolla guide for writing agent skills for `xsolla/xsolla-ai-kit`.
 1. **One skill per directory** — `skills/<skill-name>/SKILL.md`
 2. **Under 200 lines** — split overflow into `skills/<skill-name>/references/*.md`
 3. **YAML frontmatter required** — see format below
-4. **Pushy description** — cover every trigger scenario; agents use this to decide when to invoke
+4. **Pushy description** — cover every trigger scenario; agents use this to decide when
+   to invoke. Keep it under **1,536 characters**: Claude Code truncates the skill listing
+   at that point, so trailing trigger keywords are silently dropped. Key use case first.
 5. **No raw `curl` commands** — describe intent + Xsolla API endpoint, not raw HTTP
 6. **PR must include agent test** — exact prompt you used + one-line result
+7. **Update both registries** — add a row to `skills/README.md` and an entry plus a
+   trigger line to `AGENTS.md`, or agents can't discover the skill
+8. **Commit the generated files** — `.cursor/skills/**` and `CLAUDE.md` are derived from
+   `skills/**` and `AGENTS.md`; CI fails on drift
+9. **Cross-references must be real** — if you write "→ `shop-setup`" for something, check
+   that `shop-setup` actually covers it. A pointer to guidance that doesn't exist
+   dead-ends the agent at the exact moment it needs help.
+
+Check all of the above locally before opening a PR:
+
+```bash
+python3 .github/scripts/validate_skills.py
+```
 
 ## SKILL.md frontmatter
 

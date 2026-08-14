@@ -1,0 +1,17 @@
+{
+  "known_violations": [
+    "skills/headless-checkout-integration/SKILL.md: missing required section '## Common pitfalls'",
+    "skills/headless-checkout-integration/SKILL.md: missing required section '## Steps'",
+    "skills/merchant-setup/SKILL.md: missing required section '## Common pitfalls'",
+    "skills/merchant-setup/SKILL.md: missing required section '## Prerequisites'",
+    "skills/merchant-setup/SKILL.md: missing required section '## Steps'",
+    "skills/merchant-setup/SKILL.md: missing required section '## When to use'",
+    "skills/production/SKILL.md: missing required section '## Common pitfalls'",
+    "skills/production/SKILL.md: missing required section '## Prerequisites'",
+    "skills/production/SKILL.md: missing required section '## Steps'",
+    "skills/shop-setup/SKILL.md: missing required section '## Common pitfalls'",
+    "skills/shop-setup/SKILL.md: missing required section '## Prerequisites'",
+    "skills/shop-setup/SKILL.md: missing required section '## Steps'",
+    "skills/shop-setup/SKILL.md: missing required section '## When to use'"
+  ]
+}

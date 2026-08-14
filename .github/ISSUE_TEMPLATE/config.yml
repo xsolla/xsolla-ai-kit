@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/xsolla/xsolla-ai-kit/security/advisories/new
+    about: Report privately — never in a public issue. See SECURITY.md.
+  - name: Xsolla developer documentation
+    url: https://developers.xsolla.com
+    about: Questions about the Xsolla APIs themselves, rather than these skills.
