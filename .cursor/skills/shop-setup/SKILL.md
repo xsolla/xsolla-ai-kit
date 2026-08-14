@@ -200,10 +200,10 @@ detects locale on its own and lets the player change language in the hosted UI.
 After a successful payment — whether through Headless Checkout SDK or Pay Station — **Xsolla sends a webhook to the partner's backend**. The partner must:
 
 - Expose an HTTPS endpoint registered in Publisher Account
-- Verify the webhook signature (HMAC-SHA1)
-- Handle `payment` notification type: extract `user.id` and purchased items
-- Grant the item/currency/key in the partner's game system
-- Respond `HTTP 200` to acknowledge receipt
+- Verify the signature over the **raw** body: `lowercase(sha1(rawBody + secret))`, compared in constant time — plain SHA-1 with the secret **appended**, **not** HMAC-SHA1 → `webhooks-impl`
+- Handle the fulfillment event for the token method in use: `order_paid` (Methods 1–2 — items in `items[]`, player in `user.external_id`) or `payment` (Method 3 — items in `custom_parameters`, player in `user.id`); when both arrive (separate delivery), grant on `order_paid` only
+- Grant the item/currency/key in the partner's game system, idempotently by transaction id
+- Respond `2xx` (`200`/`201`/`204`) to acknowledge receipt; `400` + `INVALID_SIGNATURE` on a mismatch
 
 **This step is required for real-money purchases.** Without it, payment succeeds on Xsolla's side but the player receives nothing in the game.
 
