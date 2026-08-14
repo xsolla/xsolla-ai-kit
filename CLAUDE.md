@@ -17,6 +17,7 @@ Skills call **Xsolla REST APIs directly**. The CLI (`xsolla/xsolla-cli`) is an o
 | Skill                           | What it does                                                                             |
 |---------------------------------|------------------------------------------------------------------------------------------|
 | `shop-setup`                    | **Orchestrator** — coordinates the full zero-to-shop flow, chaining all domain skills    |
+| `game-web-portal`               | **Orchestrator** — PC/Steam Game Web Portal: create or resume a portal, verified handoff |
 | `merchant-setup`                | Creates and configures an Xsolla account + get API key                                   |
 | `catalog-design`                | Configures the catalog and the client flow: client catalog, purchase, order confirmation |
 | `login-setup`                   | Integrates Xsolla Login / NewID authentication                                           |
@@ -40,6 +41,9 @@ Configure my Xsolla catalog with items and pricing
 
 Integrate payments into my game
 → triggers: headless-checkout-integration
+
+Set up my PC Game Portal
+→ triggers: game-web-portal
 
 Go live / leave sandbox
 → triggers: production
