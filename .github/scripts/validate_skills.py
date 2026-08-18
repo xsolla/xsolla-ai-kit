@@ -20,9 +20,8 @@ ROOT = Path(__file__).resolve().parents[2]
 SKILLS = ROOT / "skills"
 BASELINE = ROOT / ".github" / "skills-baseline.json"
 
-# CONTRIBUTING-skills.md: soft target. Existing skills already exceed it, so this
-# is reported as a warning and never blocks a merge.
-SOFT_LINE_LIMIT = 200
+# CONTRIBUTING-skills.md: soft target. Reported as a warning, never blocks a merge.
+SOFT_LINE_LIMIT = 500
 
 # Claude Code truncates the combined description + when_to_use text at 1,536
 # characters in the skill listing. Past that, trigger keywords are silently lost,
@@ -153,11 +152,6 @@ def check_skill(skill_dir: Path) -> None:
                 f"{rel}: metadata domain '{domain}' is not one of "
                 f"{', '.join(sorted(VALID_DOMAINS))}"
             )
-
-    # CONTRIBUTING-skills.md required sections
-    for section in ("## When to use", "## Prerequisites", "## Steps", "## Common pitfalls"):
-        if section not in text:
-            error(f"{rel}: missing required section '{section}'")
 
     line_count = len(text.splitlines())
     if line_count > SOFT_LINE_LIMIT:

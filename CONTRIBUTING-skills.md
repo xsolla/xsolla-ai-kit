@@ -10,7 +10,9 @@ This is the Xsolla guide for writing agent skills for `xsolla/xsolla-ai-kit`.
 ## Quick rules
 
 1. **One skill per directory** — `skills/<skill-name>/SKILL.md`
-2. **Under 200 lines** — split overflow into `skills/<skill-name>/references/*.md`
+2. **Under ~500 lines is a good sign** — a soft warning, not a hard rule; some domains
+   genuinely need the space. If it's ballooning past that, consider whether part of it
+   belongs in `skills/<skill-name>/references/*.md`
 3. **YAML frontmatter required** — see format below
 4. **Pushy description** — cover every trigger scenario; agents use this to decide when
    to invoke. Keep it under **1,536 characters**: Claude Code truncates the skill listing
@@ -45,12 +47,15 @@ metadata:
 ---
 ```
 
-## Required sections
+## Structure
 
-1. `## When to use` — trigger keywords + entry conditions
-2. `## Prerequisites` — env vars, existing Xsolla resources required
-3. `## Steps` — numbered steps with API calls or CLI commands
-4. `## Common pitfalls` — top 3–5 failure modes + fixes
+There's no mandated section layout — a skill is free text, and what reads best depends
+on the material: a decision tree, a reference table, a linear procedure. The part CI
+does check is `description` + `metadata`, since that's what an agent actually reads to
+decide whether to invoke the skill at all; how you present the content past that point
+is your call. A few things worth covering somewhere in the file regardless of shape:
+when to use it, prerequisites (env vars, existing Xsolla resources), the steps
+themselves, and common pitfalls.
 
 ## Contribution tiers
 
