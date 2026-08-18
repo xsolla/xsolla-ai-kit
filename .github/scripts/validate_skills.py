@@ -29,6 +29,19 @@ SOFT_LINE_LIMIT = 200
 # so the skill stops matching the requests it was written for.
 DESCRIPTION_LIMIT = 1536
 
+# Internal LDAP-style owner ids currently in use, in whatever format that person's
+# SKILL.md already uses (the repo has never enforced one — see CODEOWNERS note).
+# Add a new person here in the same PR that adds their first `metadata.owner` line,
+# so a typo in either place still fails validation instead of silently routing to no one.
+VALID_OWNERS = {
+    "mohammed_abujalala",
+    "y.klochikhin",
+    "y-klochikhin",
+    "p.sanachev",
+    "elnur_khalilov",
+    "e.chernykh",
+}
+
 VALID_DOMAINS = {
     "catalog",
     "payments",
@@ -123,8 +136,15 @@ def check_skill(skill_dir: Path) -> None:
     if not isinstance(metadata, dict):
         error(f"{rel}: frontmatter is missing a 'metadata:' block")
     else:
-        if not metadata.get("owner"):
+        owner = metadata.get("owner")
+        if not owner:
             error(f"{rel}: metadata is missing 'owner'")
+        elif owner not in VALID_OWNERS:
+            error(
+                f"{rel}: metadata owner '{owner}' is not in the known-owners list "
+                f"({', '.join(sorted(VALID_OWNERS))}) — typo, or a new person who "
+                f"needs adding to VALID_OWNERS in this script"
+            )
         domain = metadata.get("domain")
         if not domain:
             error(f"{rel}: metadata is missing 'domain'")

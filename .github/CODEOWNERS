@@ -5,8 +5,11 @@
 #   gh api repos/xsolla/xsolla-ai-kit/codeowners/errors
 #
 # NOTE: these are GitHub handles, not Xsolla LDAP names. The `metadata.owner` field in
-# each SKILL.md uses the internal `firstname.lastname` form; the two intentionally
-# differ. See CONTRIBUTING-skills.md.
+# each SKILL.md uses an internal LDAP-style id instead — but not one consistent format
+# (existing skills mix `firstname.lastname`, `firstname_lastname`, and `f-lastname`).
+# The two fields intentionally differ; don't "fix" an owner into a format the repo
+# doesn't actually use. See CONTRIBUTING-skills.md and VALID_OWNERS in
+# .github/scripts/validate_skills.py.
 
 # Default owner for everything
 *                                         @JavadManashti
