@@ -1,8 +1,34 @@
-# Default owner for everything — all PRs require review from @j.manashti
-*   @j.manashti
+# Review routing. Every entry must be a GitHub username (or org team) with at least
+# write access to this repository — GitHub silently ignores invalid owners, so a typo
+# here means no review is ever requested. Validate after editing:
+#
+#   gh api repos/xsolla/xsolla-ai-kit/codeowners/errors
+#
+# NOTE: these are GitHub handles, not Xsolla LDAP names. The `metadata.owner` field in
+# each SKILL.md uses an internal LDAP-style id instead — but not one consistent format
+# (existing skills mix `firstname.lastname`, `firstname_lastname`, and `f-lastname`).
+# The two fields intentionally differ; don't "fix" an owner into a format the repo
+# doesn't actually use. See CONTRIBUTING-skills.md and VALID_OWNERS in
+# .github/scripts/validate_skills.py.
+
+# Default owner for everything
+*                                         @JavadManashti
+
+# Repo plumbing — CI, generated-file sync, security policy
+/.github/                                 @JavadManashti
+/CONTRIBUTING-skills.md                   @JavadManashti
+/SECURITY.md                              @JavadManashti
 
 # Skills require the domain SME + Javad
-skills/catalog-design/**   @p.sanachev @j.manashti
-skills/login-setup/**      @mohammed_abujalala @j.manashti
-skills/headless-checkout-integration/**  @y.klochikhin @j.manashti
-skills/webhooks-impl/**    @e.chernykh @j.manashti
+/skills/catalog-design/                   @p-sanachev @JavadManashti
+/skills/login-setup/                      @mabujalala @JavadManashti
+/skills/login-styling/                    @aspringut-xsolla @JavadManashti
+/skills/headless-checkout-integration/    @y-klochikhin @JavadManashti
+/skills/shop-setup/                       @y-klochikhin @JavadManashti
+/skills/merchant-setup/                   @y-klochikhin @JavadManashti
+/skills/production/                       @y-klochikhin @JavadManashti
+
+# TODO: `webhooks-impl` is owned by @e.chernykh, whose GitHub handle could not be
+# resolved and who is not yet a collaborator on this repo. Left to the default owner
+# rather than written as an invalid entry — an unresolvable handle disables routing
+# for the path entirely, which is the bug this file previously had on every line.

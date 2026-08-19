@@ -1,0 +1,65 @@
+name: Validate
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Least privilege: this workflow only ever reads the tree.
+permissions:
+  contents: read
+
+concurrency:
+  group: validate-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  skills:
+    name: Skills, registries and generated files
+    runs-on: ubuntu-latest
+    steps:
+      # Pinned to a commit SHA rather than a moving tag — a compromised tag on a
+      # third-party action would otherwise run with this repo's token.
+      # Dependabot keeps these current (see .github/dependabot.yml).
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Validate skills, registries, links and provider sync
+        run: python3 .github/scripts/validate_skills.py
+
+  workflow-permissions:
+    name: Workflows declare least-privilege permissions
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Every workflow must declare `permissions:` and pin actions to a SHA
+        run: |
+          set -euo pipefail
+          rc=0
+
+          for wf in .github/workflows/*.yml; do
+            if ! grep -q '^permissions:' "$wf"; then
+              echo "::error file=$wf::missing a top-level \`permissions:\` block (defaults are over-privileged)"
+              rc=1
+            fi
+            # Third-party actions must be pinned to a 40-hex commit SHA.
+            while read -r ref; do
+              case "$ref" in
+                *@[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]) ;;
+                ./*) ;;
+                *)
+                  echo "::error file=$wf::action '$ref' is not pinned to a full commit SHA"
+                  rc=1
+                  ;;
+              esac
+            done < <(grep -oE '^\s*-?\s*uses:\s*\S+' "$wf" | sed -E 's/.*uses:\s*//')
+          done
+
+          exit $rc
