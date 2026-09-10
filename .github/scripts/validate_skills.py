@@ -39,6 +39,7 @@ VALID_OWNERS = {
     "p.sanachev",
     "elnur_khalilov",
     "e.chernykh",
+    "s.sadruddin",
 }
 
 VALID_DOMAINS = {

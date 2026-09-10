@@ -16,6 +16,7 @@ Skills call **Xsolla REST APIs directly**. The CLI (`xsolla/xsolla-cli`) is an o
 
 | Skill                           | What it does                                                                             |
 |---------------------------------|------------------------------------------------------------------------------------------|
+| `shop-plan`                     | **Decides the build path** — headless vs Shop Builder, before any account or build work  |
 | `shop-setup`                    | **Orchestrator** — coordinates the full zero-to-shop flow, chaining all domain skills    |
 | `merchant-setup`                | Creates and configures an Xsolla account + get API key                                   |
 | `catalog-design`                | Configures the catalog and the client flow: client catalog, purchase, order confirmation |
@@ -32,8 +33,11 @@ Skills call **Xsolla REST APIs directly**. The CLI (`xsolla/xsolla-cli`) is an o
 Skills are loaded automatically when you open this repo in your agent. To run a specific skill, ask your agent naturally:
 
 ```
+Should I use Shop Builder or build a headless shop?
+→ triggers: shop-plan (weighs five criteria, shows the trade-offs, records the choice)
+
 Set up a full Xsolla game shop for my project
-→ triggers: shop-setup
+→ triggers: shop-setup — which delegates to shop-plan first if no path is recorded
 
 Configure my Xsolla catalog with items and pricing
 → triggers: catalog-design
@@ -55,6 +59,12 @@ XSOLLA_PROJECT_ID=<your project ID>
 XSOLLA_PROJECT_API_KEY=<your API key>
 ```
 Setup by `merchant-setup` skill.
+
+```bash
+XSOLLA_BUILD_PATH=headless|shopbuilder
+```
+Recorded by `shop-plan` once the developer confirms the build path, and read by `shop-setup`
+before it builds anything. One path per shop — `shop-plan` is the only skill that writes it.
 
 ---
 

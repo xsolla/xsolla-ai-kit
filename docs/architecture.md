@@ -1,6 +1,8 @@
 # Architecture
 
 ```
+shop-plan                                → Headless vs Shop Builder, decided and recorded first
+    ↓  (XSOLLA_BUILD_PATH in .env)
 shop-setup (orchestrator)
     ├── merchant-setup                   → Merchant and Project setup
     ├── login-setup                      → Xsolla Login API

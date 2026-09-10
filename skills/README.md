@@ -6,6 +6,7 @@ Each subdirectory contains a `SKILL.md` — a structured workflow file for an Xs
 
 | Skill                                                                     | Domain                                | Owner               | Status |
 |---------------------------------------------------------------------------|---------------------------------------|---------------------|--------|
+| [`shop-plan`](shop-plan/SKILL.md)                                         | Build-path decision — headless vs SB  | @s.sadruddin        | Draft  |
 | [`shop-setup`](shop-setup/SKILL.md)                                       | Orchestrator — full zero-to-shop flow | @y.klochikhin       | Done   |
 | [`merchant-setup`](merchant-setup/SKILL.md)                               | Merchant and Project setup            | @y.klochikhin       | Done   |
 | [`catalog-design`](catalog-design/SKILL.md)                               | Items, purchase & order tracking      | @p.sanachev         | Draft  |

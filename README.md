@@ -76,6 +76,7 @@ XSOLLA_PROJECT_API_KEY=<your API key>
 
 | Skill | Domain | Owner | Status  |
 |-------|--------|-------|---------|
+| `shop-plan` | Build-path decision — headless vs Shop Builder | @s.sadruddin | Draft |
 | `shop-setup` | Orchestrator — full zero-to-shop flow | @y.klochikhin | Done    |
 | `merchant-setup` | Merchant and Project setup  | @y.klochikhin | Done    |
 | `catalog-design` | Items, pricing, virtual currency, bundles | @p.sanachev | Planned |
@@ -97,9 +98,11 @@ specific skill:
 | Codex CLI    | No per-skill command — describe the task; Codex routes via AGENTS.md |
 | Others       | Natural language; skills load from SKILL.md / generated rules   |
 
-`shop-setup` is the entry point — it scopes the build and chains the domain
-skills (`catalog-design`, `login-setup`, `headless-checkout-integration`,
-`webhooks-impl`, `production`).
+`shop-plan` comes first — it settles headless vs Shop Builder with the developer
+and records the choice. `shop-setup` is the build entry point: it reads that
+choice (delegating to `shop-plan` if none is recorded), then scopes the build and
+chains the domain skills (`catalog-design`, `login-setup`,
+`headless-checkout-integration`, `webhooks-impl`, `production`).
 
 ## Contributing
 

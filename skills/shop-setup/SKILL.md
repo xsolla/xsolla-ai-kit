@@ -19,6 +19,22 @@ metadata:
 
 # Xsolla Headless Shop — Architecture Overview
 
+## Step 0 — Check the build path
+
+**Before anything else**, check whether a build path has been decided:
+
+```bash
+grep -qE '^XSOLLA_BUILD_PATH=(headless|shopbuilder)$' .env 2>/dev/null && echo PATH_RECORDED
+```
+
+- **No `PATH_RECORDED`** → invoke `shop-plan` and stop. It asks the developer to weigh headless
+  vs. Shop Builder against five criteria, shows the trade-offs, and records the confirmed choice.
+  This orchestrator never asks the path itself.
+- **`XSOLLA_BUILD_PATH=shopbuilder`** → halt. This kit has no Shop Builder build skills yet
+  (tracked: SB-8786, SB-8787, SB-8784, SB-8796) — say so plainly rather than attempting the
+  headless flow under a Shop Builder decision.
+- **`XSOLLA_BUILD_PATH=headless`** → proceed with the rest of this skill as below.
+
 ## What is Headless Shop
 
 A custom game store assembled from individual Xsolla products and integrated
