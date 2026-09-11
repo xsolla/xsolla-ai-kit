@@ -11,7 +11,6 @@ from xsolla_shop_validation.write_constraints import (
     check_protected_fields,
     check_stored_version,
     check_text_write_target,
-    create_version_unverified,
     expand_dotted_keys,
 )
 
@@ -28,16 +27,29 @@ class TestVersion(unittest.TestCase):
     def test_omitting_the_version_on_a_versioned_module_is_a_finding(self):
         self.assertEqual(check_create_version("footer", MISSING)[0]["expected"], "3")
 
-    def test_the_six_modules_observed_without_a_block_version_are_exempt(self):
-        for module in ("leadGameSales", "newStore", "lead", "bento-grid", "rewards", "federated"):
+    def test_the_ten_versioned_modules_are_the_only_ones_checked(self):
+        from xsolla_shop_validation.native import MODULE_MAX_VERSION
+
+        self.assertEqual(
+            sorted(MODULE_MAX_VERSION),
+            ["description", "faq", "footer", "gallery", "header", "html", "news", "packs",
+             "promocodes", "requirements"],
+        )
+
+    def test_a_module_with_no_versions_list_passes_no_version(self):
+        # These carry no `blockVersion` at all, so demanding one would reject
+        # writes the API accepts.
+        for module in ("newStore", "lead", "leadGameSales", "bento-grid", "rewards",
+                       "hero", "nft", "promoSlider", "subscriptions-packs", "sidebar",
+                       "fast-login", "retailers", "payment-methods", "embed", "federated"):
             self.assertEqual(check_create_version(module, MISSING), [], module)
+            self.assertEqual(check_create_version(module, 1), [], module)
 
-    def test_a_v1_module_with_no_version_passed_is_unjudged_rather_than_failed(self):
-        self.assertEqual(check_create_version("hero", MISSING), [])
-        self.assertTrue(create_version_unverified("hero", MISSING))
-
-    def test_a_wrong_version_on_a_v1_module_is_still_a_finding(self):
-        self.assertEqual(check_create_version("hero", 2)[0]["expected"], "1")
+    def test_an_omitted_version_on_a_versioned_module_is_an_error(self):
+        for module, expected in (("faq", "2"), ("footer", "3"), ("news", "2")):
+            errors = check_create_version(module, MISSING)
+            self.assertEqual(errors[0]["expected"], expected, module)
+            self.assertEqual(errors[0]["got"], "undefined")
 
     def test_a_stored_block_at_an_older_version_is_never_a_finding(self):
         self.assertEqual(check_stored_version("faq", 1), [])

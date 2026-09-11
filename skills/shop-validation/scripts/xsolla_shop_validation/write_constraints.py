@@ -12,52 +12,23 @@ from .native import LAYOUT_MODULES, max_version
 PROTECTED_FIELDS = ("_id", "module", "blockVersion")
 
 
-# Observed live with no ``blockVersion`` key at all -- these modules carry no
-# versions list, so a create has nothing to pass.  The shipped schemas cannot
-# express the difference (an unversioned module and a genuinely v1 module both
-# report ``maxVersion: 1``), so the distinction is recorded here from live
-# blocks rather than inferred.
-UNVERSIONED_MODULES = (
-    "leadGameSales",
-    "newStore",
-    "lead",
-    "bento-grid",
-    "rewards",
-    "federated",
-)
-
-
 def check_create_version(module, version, schemas=None):
     """A create has to pass exactly the module's ``maxVersion``.
 
-    Anything other than ``maxVersion`` is rejected as outdated -- including the
-    version you read off an existing block.
-
-    Absent is the ambiguous case, and it is resolved conservatively.  A module
-    whose ``maxVersion`` is above 1 demonstrably has a versions list, so a
-    missing ``version`` is a finding.  At ``maxVersion: 1`` the shipped schemas
-    cannot tell a v1 module from an unversioned one, so a missing ``version``
-    is returned as *unverified* rather than as a finding: erring the other way
-    would block writes that succeed today on six known modules.
+    Ten modules carry a versions list; every other module has none, and for
+    those a create passes no version at all. That distinction comes from the
+    block metadata, not from the shipped schemas — the schema tool reports
+    ``maxVersion`` as "last version, or 1", which makes an unversioned module
+    indistinguishable from a genuine version 1.
     """
     expected = max_version(module, schemas)
-    if expected is None or module in UNVERSIONED_MODULES:
+    if expected is None:
         return []
     if version is MISSING or version is None:
-        if expected > 1:
-            return [finding("version", str(expected), "undefined")]
-        return []
+        return [finding("version", str(expected), "undefined")]
     if version != expected:
         return [finding("version", str(expected), str(version), version)]
     return []
-
-
-def create_version_unverified(module, version, schemas=None):
-    """True when a missing ``version`` could not be judged either way."""
-    expected = max_version(module, schemas)
-    if expected is None or module in UNVERSIONED_MODULES:
-        return False
-    return (version is MISSING or version is None) and expected == 1
 
 
 def check_stored_version(module, block_version, schemas=None):

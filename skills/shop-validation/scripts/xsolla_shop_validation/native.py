@@ -75,6 +75,26 @@ REMOTE_BLOCK_IDS = (
 # generator rather than growing the list.
 ADVISORY_SUFFIXES = (".quillWrapper",)
 
+# Which modules carry a versions list, and the version a create must pass.
+# Everything not listed here has no versions list at all, so a create passes no
+# version and a stored block carries no `blockVersion` — not a finding either way.
+#
+# Read from the block metadata rather than from the shipped schemas: the schema
+# tool reports `maxVersion: <last version> ?? 1`, which collapses "unversioned"
+# and "version 1" into the same answer and cannot be told apart afterwards.
+MODULE_MAX_VERSION = {
+    "description": 2,
+    "faq": 2,
+    "footer": 3,
+    "gallery": 2,
+    "header": 3,
+    "html": 2,
+    "news": 2,
+    "packs": 2,
+    "promocodes": 2,
+    "requirements": 2,
+}
+
 _cache = {}
 
 
@@ -93,7 +113,16 @@ def module_schema(module, schemas=None):
 
 
 def max_version(module, schemas=None):
-    """The version a create must pass, or ``None`` for an unversioned module."""
+    """The version a create must pass, or ``None`` when the module has none."""
+    return MODULE_MAX_VERSION.get(module)
+
+
+def schema_reported_max_version(module, schemas=None):
+    """What the schema tool reports, including its `?? 1` for unversioned modules.
+
+    Kept separate from :func:`max_version` so the difference stays visible
+    rather than being quietly reconciled.
+    """
     entry = module_schema(module, schemas)
     return entry.get("maxVersion") if entry else None
 

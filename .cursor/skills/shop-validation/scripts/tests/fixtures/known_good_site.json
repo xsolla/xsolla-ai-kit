@@ -160,7 +160,8 @@
          "amount": 0,
          "image": "I:stepimg01"
         }
-       ]
+       ],
+       "offerChainId": null
       },
       "internalBlockValues": {
        "title": "L:oc-title",
@@ -184,7 +185,8 @@
          "amount": 10,
          "image": "I:stepimg02"
         }
-       ]
+       ],
+       "offerChainId": 42
       },
       "resources": {
        "localizedValues": {

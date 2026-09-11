@@ -41,7 +41,6 @@ from xsolla_shop_validation.write_constraints import (
     check_create_version,
     check_not_layout_create,
     check_protected_fields,
-    create_version_unverified,
     expand_dotted_keys,
 )
 
@@ -135,12 +134,11 @@ def cmd_block(args):
         if not args.update:
             version = args.version if args.version is not None else MISSING
             report["errors"].extend(check_create_version(module, version))
-            if create_version_unverified(module, version):
-                report["unverified"].append(
-                    "version omitted and maxVersion is 1 -- the shipped schemas cannot tell an "
-                    "unversioned module from a v1 one, so this is unjudged"
-                )
             report["max_version"] = max_version(module)
+            if report["max_version"] is None:
+                report["unverified"].append(
+                    "module %r carries no versions list, so a create passes no version" % module
+                )
 
     report["ok"] = not report["errors"]
     report["verdict"] = "clean" if report["ok"] else "%d error(s)" % len(report["errors"])

@@ -31,6 +31,18 @@ from .federated import (
     is_custom_block_id,
     resolve_federated_localized_id,
 )
+from .module_checks import (
+    check_lead_v2,
+    check_sidebar,
+    is_daily_reward,
+    is_offer_chain,
+    validate_daily_reward,
+    validate_lead_game_sales,
+    validate_new_store_block,
+    validate_offer_chain,
+    validate_rewards_block,
+    validate_subscriptions_block,
+)
 from .federated import validate_federated
 from .native import (
     FEDERATED_MODULE,
@@ -57,6 +69,18 @@ CATEGORY_SHAPE = "shape"
 CATEGORY_CONTENT = "content"
 CATEGORY_REFERENCE = "reference"
 CATEGORY_SITE = "site"
+
+# The module-specific visitors the editor's block walker registers. Keyed by
+# module so routing is a lookup rather than a chain of ifs -- and so a reader
+# can see the whole set at once.
+MODULE_VISITORS = {
+    "subscriptions-packs": validate_subscriptions_block,
+    "rewards": validate_rewards_block,
+    "leadGameSales": validate_lead_game_sales,
+    "newStore": validate_new_store_block,
+    "lead": check_lead_v2,
+    "sidebar": check_sidebar,
+}
 
 FAMILY_NATIVE = "native"
 FAMILY_FEDERATED = "federated"
@@ -198,6 +222,9 @@ def check_block(record, context=None, unverified=None):
             errors.extend(_tag(validate_footer_v2(block), CATEGORY_CONTENT))
         if block.get("module") == "gallery" and block.get("blockVersion") == 2:
             errors.extend(_tag(validate_gallery_v2(block), CATEGORY_CONTENT))
+        module_check = MODULE_VISITORS.get(block.get("module"))
+        if module_check is not None:
+            errors.extend(_tag(module_check(block), CATEGORY_CONTENT))
         if family == FAMILY_UNKNOWN and block.get("module"):
             unverified.append(
                 "block %s: module %r -- no schema available, structure not checked"
@@ -220,6 +247,11 @@ def check_block(record, context=None, unverified=None):
         )
 
     if family == FAMILY_FEDERATED:
+        if is_daily_reward(block):
+            errors.extend(_tag(validate_daily_reward(block), CATEGORY_CONTENT))
+        elif is_offer_chain(block):
+            errors.extend(_tag(validate_offer_chain(block), CATEGORY_CONTENT))
+
         block_id = values.get("blockId") if isinstance(values, dict) else None
         if block_id not in REMOTE_BLOCK_IDS:
             unverified.append(

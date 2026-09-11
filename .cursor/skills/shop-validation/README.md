@@ -5,7 +5,7 @@ The Site Builder MCP's shop validations, ported to scripts that run from Claude 
 
 - [`SKILL.md`](SKILL.md) — the `validate-shop` gate, where it sits in a write flow, safety rules
 - [`INVENTORY.md`](INVENTORY.md) — every MCP behaviour, the callable that carries it, and status
-- [`EVAL-LOG.md`](EVAL-LOG.md) — the recorded runs behind the metrics
+- [`EVAL-LOG.md`](EVAL-LOG.md) — the recorded runs behind the metrics, and the full-source review
 - `scripts/` — the validators, their tests, and the 23 modules' field schemas
 
 ## Prerequisites
@@ -100,7 +100,7 @@ Exit status: `0` clean · `1` errors · `2` bad invocation.
 
 ```bash
 cd skills/shop-validation/scripts
-python3 -m unittest discover -s tests -t .          # 142 tests, no network
+python3 -m unittest discover -s tests -t .          # 186 tests, no network
 ./live_check.sh --yes                               # live: creates and deletes a landing
 ```
 
@@ -131,13 +131,16 @@ Three groups carry the evidence:
 - **The field schemas go stale.** Generated from a point-in-time copy; a new block or a changed
   field is not reflected until they are regenerated, and no owner for that is agreed yet.
   `payment-methods` publishes no field schema at all. An unknown module passes and says so.
-- **One shipped schema is stricter than the API.** `quillWrapper` is marked required on a
-  localized descriptor; a create without it is accepted and renders. Reported as an advisory.
+- **On `quillWrapper`, Site Builder and the batch API disagree.** The MCP's schema requires it
+  on a rich-text field and the generated schemas are faithful to that, but a create sent to the
+  batch API without it is accepted and renders — verified live. Since these scripts gate the CLI
+  path, it is an advisory rather than an error.
 - **`I:` image ids are collected, never verified.** The landing asset list covers uploads only,
   and federated blocks' images ship with the remote block, so a missing entry is not evidence of
   a broken image.
-- **Eight MCP block checks are not here yet, and that is a materials gap, not an MCP gap.** The
-  MCP implements and registers all eight; their module files were not in the source extract this
-  port was made from. Listed in
-  [`INVENTORY.md`](INVENTORY.md#6--implemented-in-the-mcp-source-not-supplied-for-this-port),
-  with what to ask for.
+- **Two rules deliberately differ from Site Builder, both toward usefulness.** Unknown keys in
+  a `values` object are an error here and silently stripped there, so a misspelled field name is
+  caught instead of producing a write that changes nothing. And the two remote federated blocks
+  report the field and type they expected, where the original returns a bare `false` that the
+  walker renders as "Unknown validation error". Both are marked in
+  [`INVENTORY.md`](INVENTORY.md).

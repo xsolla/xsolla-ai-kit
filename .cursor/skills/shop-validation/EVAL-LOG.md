@@ -9,10 +9,10 @@ and nothing was published.
 
 | Metric | Target | Result |
 |---|---|---|
-| **Ported checks** — % of MCP validations available in the kit | 100% | **100%** of the portable set: 66 of 77 identified behaviours, with all 11 exclusions named and reasoned in [`INVENTORY.md`](INVENTORY.md) — 8 are implemented in the MCP but their source was not supplied for this port, 3 are MCP transport or tool-argument concerns with no equivalent surface here |
-| **Detection** — seeded errors caught | 100% | **100%** — 5 of 5 seeded shops, each defect named exactly once in the right category, plus 10 of 10 seeded defects in the unit suite |
+| **Ported checks** — % of MCP validations available in the kit | 100% | **100%** — 75 of 78 identified behaviours. The 3 not ported are MCP transport and tool-argument concerns with no equivalent surface here. Every shop-validation behaviour in the Site Builder source is ported; see [`INVENTORY.md`](INVENTORY.md) |
+| **Detection** — seeded errors caught | 100% | **100%** — 5 of 5 seeded shops, each defect named exactly once in the right category, plus 10 of 10 seeded defects in the unit suite. 186 unit tests total |
 | **False positives on known-good shops** | 0 | **0** structural errors across 5 known-good shops: 80 blocks, 730 `L:` references, 4 off-page blocks |
-| **Validation runtime per shop** | report | **42–60 ms** per shop, median 47 ms, for 13–27 blocks. Cold interpreter start included; no network in the validation step itself |
+| **Validation runtime per shop** | report | **42–60 ms** per shop, median 47 ms, for 13–27 blocks. Cold interpreter start included; no network in the validation step itself. Unchanged by the eight added checks |
 
 One qualifier on the false-positive number, because it is the one worth reading carefully.
 Zero counts `shape`, `reference` and `site` errors — the categories that block a write. The
@@ -94,6 +94,43 @@ using canvas text always lands with `textRefs: {}`.
 | 16 | `python3 -m unittest discover -s tests -t .` | **142 tests, 0 failures, 0.01 s.** Includes one test per documented false-positive trap (14) and one per seeded defect (10) |
 | 17 | `./live_check.sh --yes` | **15 of 15 checks passed.** Creates a throwaway landing, walks the untouched template, seeds three defects through the CLI, checks three write constraints locally, deletes the landing |
 
+## Re-verification against the complete source — runs 18–21
+
+The first pass worked from a partial source extract. On 11 Sep 2026 the complete Site Builder
+source became available and the whole port was re-checked against it.
+
+| # | Run | Result |
+|---|---|---|
+| 18 | Diff every module this port was derived from against the full source | **All current but one.** The native envelope, field schemas, federated walk, nine code rules, footer, gallery and custom-button checks are byte-identical (one import-path change only, no behaviour). `utils/validations.ts` **differs** — it had been rewritten from regexes to real url parsing |
+| 19 | Port the eight per-module checks and wire them into the walk | **8 of 8 ported**, plus one auth-relevance helper found alongside them. Suite grows 142 → **186 tests**, all passing in 0.011 s. Upstream's own edge cases are mirrored: a string id rejected where a number is required, `0` accepted as a number, an empty `chains` list passing, a `unit` store item skipped |
+| 20 | Re-walk the 5 known-good shops with the eight new checks active | **0 structural errors, unchanged.** Content findings 53 → **55**: the newly ported lead check named two enabled lead-platform rows with empty urls on `xsollacli-shopbuilder-test-store`. Verified against the raw block — `platforms.enable: true` with two enabled items whose `url` is `""`. A second lead block on the same shop has `enable: false` and is correctly left alone |
+| 21 | Re-run the whole suite after fixing what run 19 exposed | **186 passing.** Porting the offer-chain check failed six tests, all one cause: the invented offer-chain block in the known-good fixture carried no `offerChainId`, which a real one must have. The fixture was wrong, not the check |
+
+### Three things this port had wrong
+
+Recorded plainly, because they were found by getting the real source rather than by testing.
+
+1. **The url rules were a version behind.** The ported regex implementation accepted
+   protocol-relative `//host`, urls containing whitespace or backslashes, and hosts with no real
+   TLD — all of which the current implementation rejects. It also accepted `.ogg`, `.mov` and
+   `.m4v` video files where the uploader takes only `.mp4` and `.webm`, and rejected the `:` a
+   page path may now contain. Fixed; the rejection cases are now tests.
+2. **The version rule was a heuristic.** It could not tell an unversioned module from a real
+   version 1, because the schema tool reports `maxVersion` as "last version **or 1**". The block
+   metadata answers it outright: ten modules carry a versions list, everything else is exempt.
+   The heuristic and its "unjudged" state are gone.
+3. **The known-good fixture was not known-good.** It contained an offer-chain block the editor
+   would reject. For one commit, the fixture that exists to prove there are no false positives
+   held a block with a real defect.
+
+### And one claim that needed softening
+
+The earlier note that "one shipped schema is stricter than the API" read as a generator bug. It
+is not. The MCP's schema genuinely requires `quillWrapper` on a rich-text field, and the
+generated schemas are faithful to it. The disagreement is between the MCP and the batch API,
+which accepts a create without it — verified live. These scripts gate the CLI path, so the
+advisory behaviour stays, but the framing was wrong.
+
 ## Manual interventions and failures
 
 Recorded because a log with none of these is not a log.
@@ -110,6 +147,10 @@ Recorded because a log with none of these is not a log.
   behind. Fixed in the script; the stray landing was deleted by hand.
 - **The gallery content check needed narrowing to `blockVersion == 2`** to match where the
   editor applies it, after the seed landed on a v2 gallery.
+- **The eight per-module checks were reported as unportable for one commit,** on the basis that
+  their source was missing. That was true of the extract and not of the product, and the wording
+  was corrected before the full source arrived. Worth not repeating: say "I do not have this"
+  rather than "this does not exist".
 - **No Loom yet.** The end-to-end recording the common DoD asks for is a human step; runs 7–11
   and 17 are the script it should follow.
 

@@ -9,10 +9,10 @@ with a behaviour change stated in the row · `source not supplied` — **impleme
 but its module file is not in the source extract this port was made from, so there was nothing
 to read · `n/a` — deliberately out of scope, with the reason in the row.
 
-**Totals.** 77 behaviours identified · **66 ported** — 57 straight, 4 diverging (each stated in
-its own row) and 5 that this kit adds and the MCP does not have · **11 not ported**: 8 whose
-source was not supplied, 3 `n/a`. Of the behaviours whose source was available, **100%** are
-ported.
+**Totals.** 78 behaviours identified · **75 ported** — 65 straight, 5 diverging (each stated in
+its own row) and 5 that this kit adds and Site Builder does not have · **3 not ported**, all
+`n/a`: MCP transport and tool-argument concerns with no equivalent surface here. Every
+shop-validation behaviour in the source is now ported — **75 of 75**.
 
 Every callable below is `python3 scripts/validate_shop.py …` or a function in
 `scripts/xsolla_shop_validation/`. Run `python3 -m unittest discover -s tests -t .` from
@@ -102,37 +102,39 @@ Every callable below is `python3 scripts/validate_shop.py …` or a function in
 | 56 | action `subscription` — subscription id set | same | ported |
 | 57 | a localized reference's id must exist in the landing's localization set | `site_walk.check_localized_ids` | ported |
 | 58 | scan a structure for every localized reference id | `component_checks.scan_localized_reference_ids` | ported |
-| 59 | url and identifier rules — lightbox providers, relative urls, YouTube, Vimeo, Steam, Epic, video files, site name, page path | `url_rules` | ported |
+| 59 | url and identifier rules — lightbox providers, relative urls, YouTube, Vimeo, Steam, Epic, video files, site name, page path | `url_rules` | ported · follows the current parser-based implementation, not the regex one it replaced: whitespace, protocol-relative `//host`, backslashes, missing scheme and hosts with no real TLD are all rejected, `.mp4`/`.webm` are the only video extensions, and a page path may contain `:` |
 | 60 | the walker visits every action node anywhere in a block, not only under `components` | `component_checks.validate_actions_anywhere` | ported |
 | 61 | validation context — site, SKUs, bundles, localization set | `component_checks.ValidationContext` | diverged · a check whose context is missing reports *unverified* instead of throwing "context is not set" |
 | 62 | path segments for array indices | `errors.format_path` | diverged · `components.0.value.1` rather than the walker's `components.[0].value.[1]`, so one report reads one way |
 | 63 | packs v1 — delegates to the components walk | covered by 42 | ported |
 
-## 6 · Implemented in the MCP, source not supplied for this port
+## 6 · Per-module block checks
 
-**These eight are not gaps in the MCP.** Its block walker imports and registers all eight, so
-they exist and run in Site Builder today — the walker would not compile otherwise. What is
-missing is on this side: the module files were not part of the source extract this port was
-made from, so there was nothing to read and nothing to port.
+The module-specific visitors the editor's block walker registers. **All eight were ported on
+11 Sep 2026**, once the complete source was available; the first pass worked from an extract
+that did not contain them. Each is routed by module key in `site_walk.MODULE_VISITORS` (or, for
+the two remote blocks, on the federated branch), and each carries the editor's own message
+alongside `expected`/`got` so the platform's wording can be matched by eye.
 
-Named here so the remaining 8 can be requested and finished deliberately, rather than someone
-later assuming they were skipped. Each slots in beside the checks in section 5, and the
-registration site names exactly which function each one exposes.
+Where the editor's own test suite pins an edge case — a string id rejected where a number is
+required, an empty `chains` list passing, a `unit` store item skipped — the same case is
+asserted in `tests/test_module_checks.py`.
 
-| # | MCP behaviour | Status |
-|---|---|---|
-| 64 | subscriptions block — authentication requirement | source not supplied |
-| 65 | daily-reward federated block — its own check | source not supplied |
-| 66 | offer-chain federated block — its own check | source not supplied |
-| 67 | lead-game-sales block | source not supplied |
-| 68 | new-store block | source not supplied |
-| 69 | rewards block | source not supplied |
-| 70 | lead block, v2 | source not supplied |
-| 71 | sidebar block | source not supplied |
+| # | MCP behaviour | Here | Status |
+|---|---|---|---|
+| 64 | subscriptions block — every `plan` component must name a `planId` | `module_checks.validate_subscriptions_block` | ported |
+| 65 | daily-reward federated block — `internalBlockValues.dailyRewardId` must be a number | `module_checks.validate_daily_reward` | diverged · returns the field's path and type; the original returns a bare `false`, which the walker renders as "Unknown validation error" at whatever path it had reached |
+| 66 | offer-chain federated block — `internalBlockValues.offerChainId` must be a number | `module_checks.validate_offer_chain` | diverged · same reason as row 65 |
+| 67 | leadGameSales — enabled `values.platforms` must carry at least one item | `module_checks.validate_lead_game_sales` | ported |
+| 68 | newStore — each non-`unit` store section item needs a real catalog group, and not one of the six demo groups a fresh project ships with | `module_checks.validate_new_store_block` | ported |
+| 69 | rewards — every entry in `values.chains` must carry a `rewardChainId`; an empty list passes | `module_checks.validate_rewards_block` | ported |
+| 70 | lead block v2 — enabled store platforms must each point at their own storefront's host over https, and at least one row must be enabled | `module_checks.check_lead_v2` | ported |
+| 71 | sidebar — enabled store buttons must point at their own storefront; enabled social networks need a non-empty link | `module_checks.check_sidebar` | ported |
+| 78 | subscriptions — whether auth still needs wiring for this block (a configured Login project or a deeplink flow means it does not) | `module_checks.is_auth_relevant_for_subscriptions` | ported · lives with the checks above but is not registered on the walker |
 
-**To finish these:** ask for the eight module files that the block walker imports alongside the
-footer, gallery and custom-button checks that *were* supplied. With them, section 5's pattern
-applies directly and the count moves from 66 to 74.
+**Found by porting these:** on a real sandbox shop, `check_lead_v2` named two enabled lead
+platform rows whose urls are empty strings, on a block whose `platforms.enable` is `true`. A
+second lead block on the same shop has `enable: false` and is correctly left alone.
 
 ## 7 · Write constraints — adjacent, and they reject a write just as hard
 
@@ -141,7 +143,7 @@ them and from the user's side a rejected write is a rejected write.
 
 | # | Behaviour | Here | Status |
 |---|---|---|---|
-| 72 | a create must pass the module's `maxVersion` | `write_constraints.check_create_version` | diverged · a missing `version` where `maxVersion` is 1 is unjudged rather than an error — the shipped schemas cannot tell a v1 module from one of the six that carry no `blockVersion` at all |
+| 72 | a create must pass the module's `maxVersion`; a module with no versions list passes none | `write_constraints.check_create_version` + `native.MODULE_MAX_VERSION` | ported · ten modules carry a versions list (`description`, `faq`, `footer`, `gallery`, `header`, `html`, `news`, `packs`, `promocodes`, `requirements`); every other module has none and is exempt. Read from the block metadata, because the schema tool reports `maxVersion` as "last version **or 1**", which makes an unversioned module indistinguishable from a real v1 |
 | 73 | layout modules cannot be created or duplicated | `write_constraints.check_not_layout_create` | ported |
 | 74 | `_id`, `module`, `blockVersion` cannot be patched | `write_constraints.check_protected_fields` | ported |
 | 75 | dotted update keys expand to nested objects before validation | `write_constraints.expand_dotted_keys` | ported |
@@ -167,9 +169,17 @@ Reading this before quoting a clean run matters more than the totals above.
   against its own module schema fails every time; the site walk therefore does not apply them.
   Auditing an existing site is structural, reference-level and content-level, never
   field-level.
-- **One shipped schema is stricter than the API.** `quillWrapper` is marked required on a
-  localized descriptor, but a create that omits it is accepted and the text renders. Reported
-  as an advisory, not an error. Belongs back in the schema generator.
+- **On `quillWrapper`, the MCP and the batch API disagree, and this port sides with the API.**
+  The MCP's schema genuinely requires it on a rich-text field (`quillWrapper: z.literal('h2')`
+  on a FAQ title, `'p'` on an answer) — the generated schemas are faithful. But a create sent
+  straight to the batch API without it is accepted and the text renders, verified live. Since
+  these scripts gate the CLI path, it is reported as an advisory rather than an error, so it
+  cannot block a write the API accepts. Confined to a one-entry exception list in `native.py`.
+- **Unknown keys are rejected here and stripped by the MCP.** Every `values` object in the
+  generated schemas is closed, so `questionMod` for `questionMode` is an error. The MCP's zod
+  objects are not strict, so the same payload passes there and the misspelled field is silently
+  dropped on the way to the API. Stricter on purpose: a silently dropped field is a write that
+  appears to succeed and changes nothing.
 - **`payment-methods` publishes no field schema**, and the schemas go stale as new blocks ship.
   An unknown module passes and says so.
 - **The nine code rules are textual.** A violation split across lines, generated dynamically,
@@ -179,3 +189,34 @@ Reading this before quoting a clean run matters more than the totals above.
 - **`I:` image ids are collected, never verified.** The landing asset list covers uploads only,
   and federated blocks' images ship with the remote block, so a missing entry is not evidence
   of a broken image.
+
+---
+
+## What the full source changed
+
+The first pass of this port worked from a partial source extract. Re-running it against the
+complete tree produced four outcomes worth recording, because two of them were defects in this
+port rather than gaps in the platform.
+
+**Confirmed current.** Every module the extract did contain is byte-identical to the full
+source, with one exception that is an import-path change only (localization moved to its own
+package). So the native envelope, the field schemas, the federated walk, the nine code rules,
+the footer, gallery and custom-button checks were all ported from current code.
+
+**Corrected — the url rules were a version behind.** `validations.ts` had been rewritten from
+regexes to real url parsing. The ported regex version accepted three classes of url the editor
+now rejects: protocol-relative `//host`, anything containing whitespace or a backslash, and
+hosts with no real TLD. It also accepted `.ogg`, `.mov` and `.m4v` video files where the
+uploader takes only `.mp4` and `.webm`, and rejected the `:` that a page path may now contain.
+Fixed, with the rejection cases pinned as tests.
+
+**Corrected — the version rule was a guess.** The first pass could not tell an unversioned
+module from a genuine version 1, because the schema tool collapses both to `maxVersion: 1`, so
+it exempted six modules observed live and left the rest unjudged. The block metadata answers it
+outright: ten modules carry a versions list and everything else is exempt. The heuristic and
+the "unjudged" state are both gone.
+
+**Corrected — a test fixture was not actually known-good.** The invented offer-chain block in
+`tests/fixtures/known_good_site.json` carried no `offerChainId`, which a real one must have.
+Porting row 66 failed six tests until the fixture was fixed. Worth stating plainly: for one
+release the "known-good" fixture contained a block the editor would reject.

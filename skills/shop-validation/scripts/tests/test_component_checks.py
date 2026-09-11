@@ -156,3 +156,65 @@ class TestUrlRules(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestUrlRulesAgainstTheCurrentImplementation(unittest.TestCase):
+    """The url rules were rewritten upstream from regexes to real parsing.
+
+    These are the cases the regex version got wrong, so a regression back to it
+    fails here rather than quietly accepting a url the editor rejects.
+    """
+
+    def test_protocol_relative_and_whitespace_and_backslashes_are_rejected(self):
+        from xsolla_shop_validation.url_rules import validate_url_with_relative
+
+        for url in ("//evil.example.com", "https://exa mple.com", "C:\\Users\\x", " ", "/"):
+            self.assertFalse(validate_url_with_relative(url), url)
+
+    def test_a_url_with_no_scheme_is_rejected(self):
+        from xsolla_shop_validation.url_rules import validate_url_with_relative
+
+        self.assertFalse(validate_url_with_relative("example.com/x"))
+
+    def test_only_http_https_and_ftp_are_absolute_schemes(self):
+        from xsolla_shop_validation.url_rules import validate_url_with_relative
+
+        self.assertTrue(validate_url_with_relative("ftp://files.example.com/a"))
+        self.assertFalse(validate_url_with_relative("javascript:alert(1)"))
+
+    def test_a_host_with_no_real_tld_is_rejected(self):
+        from xsolla_shop_validation.url_rules import validate_url_with_relative
+
+        self.assertFalse(validate_url_with_relative("http://localhost"))
+        self.assertFalse(validate_url_with_relative("https://a.b"))
+
+    def test_only_mp4_and_webm_are_accepted_video_files(self):
+        from xsolla_shop_validation.url_rules import ACCEPT_VIDEO_FORMATS, validate_video_url
+
+        self.assertEqual(ACCEPT_VIDEO_FORMATS, (".mp4", ".webm"))
+        self.assertTrue(validate_video_url("https://cdn.example.com/a.mp4?v=2"))
+        self.assertTrue(validate_video_url("https://cdn.example.com/a.webm"))
+        for ext in (".mov", ".ogg", ".m4v", ".avi"):
+            self.assertFalse(validate_video_url("https://cdn.example.com/a%s" % ext), ext)
+
+    def test_a_page_path_may_contain_a_colon(self):
+        from xsolla_shop_validation.url_rules import validate_page_path
+
+        self.assertTrue(validate_page_path("/store:sale"))
+
+    def test_a_store_link_must_be_https_on_its_own_host_and_not_the_preset(self):
+        from xsolla_shop_validation.url_rules import validate_lead_platform_url
+
+        self.assertTrue(
+            validate_lead_platform_url({"platform": "steam", "url": "https://store.steampowered.com/app/1"})
+        )
+        self.assertFalse(
+            validate_lead_platform_url({"platform": "steam", "url": "http://store.steampowered.com/app/1"})
+        )
+        self.assertFalse(
+            validate_lead_platform_url({"platform": "steam", "url": "https://store.steampowered.com/"})
+        )
+        self.assertFalse(
+            validate_lead_platform_url({"platform": "steam", "url": "https://play.google.com/store/apps"})
+        )
+        self.assertFalse(validate_lead_platform_url({"platform": "not-a-platform", "url": "https://x.com/y"}))

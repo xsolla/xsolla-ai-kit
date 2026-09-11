@@ -11,8 +11,9 @@ description: >-
   a CLI-built shop meets the same bar as an MCP-built one. Covers native block payload shape
   and the 23 modules' field schemas, the federated structural walk, the nine static-analysis
   rules for custom/AI block source, the editor's content assertions (empty links, unset SKUs,
-  missing slide media), `L:` reference resolution across a whole site, and the write
-  constraints that reject a block just as hard as a bad shape — `version` must equal
+  missing slide media), the per-module checks (subscription plans, reward chains, store groups,
+  lead and sidebar storefront links), `L:` reference resolution across a whole site, and the
+  write constraints that reject a block just as hard as a bad shape — `version` must equal
   `maxVersion`, layout modules cannot be created, `_id`/`module`/`blockVersion` cannot be
   patched, and batch patch paths are segment arrays. Block-based Site Builder sites only; it
   does not cover the headless storefront that `shop-setup` builds.
@@ -24,10 +25,11 @@ metadata:
 
 ## What this is
 
-The Site Builder MCP's validations, ported to scripts you can run from Claude Code. The rules
-live in code, not prose: [`INVENTORY.md`](INVENTORY.md) maps every MCP behaviour to the
-callable that carries it, and each module's docstring says why its checks exist and what they
-miss. [`README.md`](README.md) has prerequisites, one happy path, and the known limitations.
+The Site Builder MCP's validations, ported to scripts you can run from Claude Code — all 75 of
+the shop-validation behaviours in the source. The rules live in code, not prose:
+[`INVENTORY.md`](INVENTORY.md) maps every behaviour to the callable that carries it, records
+the five deliberate divergences, and lists what re-verifying against the complete source
+corrected. Each module's docstring says why its checks exist and what they miss. [`README.md`](README.md) has prerequisites, one happy path, and the known limitations.
 
 Python 3.9+, standard library only. No install step, no build, no dependencies.
 
