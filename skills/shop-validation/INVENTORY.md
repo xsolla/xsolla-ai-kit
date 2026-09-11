@@ -1,13 +1,17 @@
 # Inventory — MCP validation behaviours, and where each one lives here
 
-Every validation behaviour found in the Site Builder MCP source available for this port, one
-row each, with the callable that carries it in this kit. Written so a reviewer can check the "ported 100%"
-claim by reading the Status column rather than taking it on trust.
+Every validation behaviour in the Site Builder source, one row each, with the callable that
+carries it in this kit. Written so a reviewer can check the "ported 100%" claim by reading the
+Status column rather than taking it on trust.
+
+Re-verified 11 Sep 2026 against the **complete** Site Builder source. The first pass worked
+from a partial extract; the full tree confirmed every module it contained was current, supplied
+the eight that were missing, and corrected three things this port had got wrong — see
+[What the full source changed](#what-the-full-source-changed).
 
 **Status key.** `ported` — same inputs, same outputs, covered by a test · `diverged` — ported,
-with a behaviour change stated in the row · `source not supplied` — **implemented in the MCP**,
-but its module file is not in the source extract this port was made from, so there was nothing
-to read · `n/a` — deliberately out of scope, with the reason in the row.
+with a behaviour change stated in the row · `n/a` — deliberately out of scope, with the reason
+in the row.
 
 **Totals.** 78 behaviours identified · **75 ported** — 65 straight, 5 diverging (each stated in
 its own row) and 5 that this kit adds and Site Builder does not have · **3 not ported**, all

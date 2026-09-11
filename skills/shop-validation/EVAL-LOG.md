@@ -10,9 +10,9 @@ and nothing was published.
 | Metric | Target | Result |
 |---|---|---|
 | **Ported checks** — % of MCP validations available in the kit | 100% | **100%** — 75 of 78 identified behaviours. The 3 not ported are MCP transport and tool-argument concerns with no equivalent surface here. Every shop-validation behaviour in the Site Builder source is ported; see [`INVENTORY.md`](INVENTORY.md) |
-| **Detection** — seeded errors caught | 100% | **100%** — 5 of 5 seeded shops, each defect named exactly once in the right category, plus 10 of 10 seeded defects in the unit suite. 186 unit tests total |
-| **False positives on known-good shops** | 0 | **0** structural errors across 5 known-good shops: 80 blocks, 730 `L:` references, 4 off-page blocks |
-| **Validation runtime per shop** | report | **42–60 ms** per shop, median 47 ms, for 13–27 blocks. Cold interpreter start included; no network in the validation step itself. Unchanged by the eight added checks |
+| **Detection** — seeded errors caught | 100% | **100%** — **10 of 10** seeded shops across two independent rounds, each defect named exactly once in the right category with no collateral, plus 10 of 10 seeded defects in the unit suite. 186 unit tests total |
+| **False positives on known-good shops** | 0 | **0** structural errors across **10** known-good shops in two independent rounds: **159 blocks, 1,492 `L:` references**, 4 off-page blocks, landing types `topup`, `store` and `sellingpage`, one two-page site, one site carrying a custom block |
+| **Validation runtime per shop** | report | **41–64 ms** per shop, median 48 ms, for 13–27 blocks, measured over 20 shops. Cold interpreter start included; no network in the validation step itself |
 
 One qualifier on the false-positive number, because it is the one worth reading carefully.
 Zero counts `shape`, `reference` and `site` errors — the categories that block a write. The
@@ -91,7 +91,7 @@ using canvas text always lands with `textRefs: {}`.
 
 | # | Run | Result |
 |---|---|---|
-| 16 | `python3 -m unittest discover -s tests -t .` | **142 tests, 0 failures, 0.01 s.** Includes one test per documented false-positive trap (14) and one per seeded defect (10) |
+| 16 | `python3 -m unittest discover -s tests -t .` | **186 tests, 0 failures, 0.01 s.** Includes one test per documented false-positive trap (14) and one per seeded defect (10) |
 | 17 | `./live_check.sh --yes` | **15 of 15 checks passed.** Creates a throwaway landing, walks the untouched template, seeds three defects through the CLI, checks three write constraints locally, deletes the landing |
 
 ## Re-verification against the complete source — runs 18–21
@@ -131,10 +131,71 @@ generated schemas are faithful to it. The disagreement is between the MCP and th
 which accepts a create without it — verified live. These scripts gate the CLI path, so the
 advisory behaviour stays, but the framing was wrong.
 
+## Second round — ten shops built for it — runs 22–31
+
+The first round reused existing sandbox landings for the known-good set. This round builds all
+ten from scratch on the current code, with all 75 checks active, and varies the known-good five
+on purpose so the set is not five copies of one template.
+
+### Known-good — runs 22–26
+
+| # | Shop | Built as | Blocks | `L:` refs | Runtime | shape / reference / site | content |
+|---|---|---|---|---|---|---|---|
+| 22 | `aikit-kg1-09111110` | `topup`, one page | 13 | 127 | 64 ms | **0** | 10 |
+| 23 | `aikit-kg2-09111110` | `store` type | 13 | 127 | 56 ms | **0** | 10 |
+| 24 | `aikit-kg3-09111110` | `sellingpage` type | 13 | 127 | 52 ms | **0** | 10 |
+| 25 | `aikit-kg4-09111110` | `topup`, **two pages** | 26 | 254 | 55 ms | **0** | 20 |
+| 26 | `aikit-kg5-09111110` | `topup` + a **clean custom block** | 14 | 127 | 49 ms | **0** | 10 |
+|  | **Total** |  | **79** | **762** |  | **0** | 60 |
+
+All 60 content findings are the four placeholder kinds the template ships with: 30 enabled
+social rows with an empty url, 18 buy actions with an empty SKU, 6 lightbox buttons with no
+url, 6 cloud-gaming buttons with a null game id.
+
+Two results worth calling out:
+
+- **Run 26 is the counterpoint to the `textRefs` gap.** A custom block created through the CLI lands
+  clean *when its source uses no canvas text* — validated before the write and again after
+  fetching it back, clean both times, and routed as the `custom` family. The gap only bites blocks
+  that call `localizedText()` or render a `TextEditor`.
+- **Run 25 reports its own blind spot.** On the two-page site, page reachability came back
+  *unverified* rather than clean: the structure carries no navigation to check the paths
+  against. That is the intended behaviour — an unanswerable question must not read as a pass.
+
+### Seeded — runs 27–31
+
+The same five defect classes as the first round, one per shop, every seed re-fetched and
+confirmed present before its walk ran.
+
+| # | Shop | Seeded defect | Named | Categories |
+|---|---|---|---|---|
+| 27 | `aikit-sd1-09111110` | a block's whole `values` replaced with a JSON string | **yes**, once | `shape` 1 · content 10 |
+| 28 | `aikit-sd2-09111110` | title pointed at an `L:` uuid with no entry in the store | **yes**, once | `reference` 1 · content 10 |
+| 29 | `aikit-sd3-09111110` | a non-existent id appended to the site-level block list | **yes**, once | `site` 1 · content 10 |
+| 30 | `aikit-sd4-09111110` | a gallery slide's image emptied, its type left as `image` | **yes**, once | content 11 |
+| 31 | `aikit-sd5-09111110` | custom-block source carrying seven rule violations | **yes** — below | content 10 |
+
+Run 31 in two steps, the same shape as the first round and one violation richer:
+
+- The source gate named **7** violations before any write: `forbidden-import`, `export-default-class`, `undeclared-text-fields`, `missing-text-fields`, `use-controls-object-arg`, `control-factory-object-arg` and `text-control-with-localized-text`.
+- Submitted anyway, the platform **rejected** it for exactly one of the seven — *Compilation
+  failed: the symbol "localizedText" has already been declared*. A variant with only that one
+  fixed was **accepted**, and landed with an empty `textRefs`: 5 violations on the stored block,
+  including `empty-text-refs`.
+
+**Combined across both rounds: 20 shops · 10 known-good with 0 structural errors · 10 seeded
+with 10 of 10 defects named.**
+
 ## Manual interventions and failures
 
 Recorded because a log with none of these is not a log.
 
+- **The CLI is flaky enough to need retries everywhere, and it bit this round twice.** One
+  create-website and one add-page silently did not take, and my loop printed "created" without
+  checking — so one shop did not exist and another had no page. A third call failed with
+  `context deadline exceeded` while bootstrapping the publisher session. All recovered on retry. Same
+  lesson as the line below, which I had not applied: **verify by re-reading the resource, never
+  by trusting the command's own output.**
 - **5 of 10 CLI fetches failed on first attempt** while fetching the seeded shops, with no
   usable error. A retry loop of 3 fixed all of them. Anything scripting these commands needs
   retries; `live_check.sh` fetches one shop at a time and has not hit it.
