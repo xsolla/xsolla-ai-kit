@@ -113,6 +113,21 @@ Three groups carry the evidence:
 - `tests/fixtures/known_good_site.json` — a shop exercising every trap at once. It must walk
   clean; any error on it is a bug in the rules, not in the shop.
 
+## Code conventions
+
+This skill is the first executable code in a repository that was markdown-only, so it carries
+its own conventions rather than inheriting any. They are enforced in CI by the
+`Skill scripts` job in `.github/workflows/validate.yml`, not left to review:
+
+| | |
+|---|---|
+| **Standard library only** | No dependency may be added. The point is that a partner, an agent and the CLI can all run this with nothing installed. The JSON Schema subset in `schema_subset.py` exists for exactly this reason. |
+| **Python 3.9** | The oldest interpreter this has to run on: no `match` statement, no PEP 604 union annotations, no dict-merge operator. |
+| **100 columns** | PEP 8 otherwise: `snake_case` functions, `CapWords` classes, four-space indent, no tabs, no trailing whitespace. Checked in CI over every `.py` file under `skills/`. |
+| **A docstring on every module** | Saying what the module checks and, more usefully, what it misses. The rules live in code here, so the code is where the reasoning has to live too. |
+| **No `print` outside the CLI** | Library modules return errors; only `validate_shop.py` renders them. |
+| **Tests beside the code** | `tests/` mirrors the module layout, runs with `unittest` and no network, and a new rule ships with the test that pins it. |
+
 ## Known limitations
 
 - **The gate sits beside the write path, not inside it.** It exits non-zero and has tests

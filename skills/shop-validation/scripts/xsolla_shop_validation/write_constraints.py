@@ -136,7 +136,13 @@ def check_batch_change_set(change_set):
             out.append(finding("%s.id" % base, "string", js_type(change.get("id", MISSING))))
         patches = change.get("patches")
         if not isinstance(patches, list):
-            out.append(finding("%s.patches" % base, "array", js_type(patches if patches is not None else MISSING)))
+            out.append(
+                finding(
+                    "%s.patches" % base,
+                    "array",
+                    js_type(patches if patches is not None else MISSING),
+                )
+            )
             continue
         for index, patch in enumerate(patches):
             path = "%s.patches.%d" % (base, index)

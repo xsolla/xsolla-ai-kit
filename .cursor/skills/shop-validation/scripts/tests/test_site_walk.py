@@ -9,8 +9,13 @@ from xsolla_shop_validation.site_walk import enumerate_blocks, route_block, walk
 
 class TestRouting(unittest.TestCase):
     def test_the_literal_federated_module_plus_the_ai_prefix(self):
-        self.assertEqual(route_block({"module": "federated", "values": {"blockId": "sb-offer-chain"}}), "federated")
-        self.assertEqual(route_block({"module": "federated", "values": {"blockId": "ai_1_2_3"}}), "custom")
+        self.assertEqual(
+            route_block({"module": "federated", "values": {"blockId": "sb-offer-chain"}}),
+            "federated",
+        )
+        self.assertEqual(
+            route_block({"module": "federated", "values": {"blockId": "ai_1_2_3"}}), "custom"
+        )
 
     def test_native_layout_and_unknown(self):
         self.assertEqual(route_block({"module": "faq"}), "native")

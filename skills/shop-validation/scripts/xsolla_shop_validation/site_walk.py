@@ -210,11 +210,15 @@ def check_block(record, context=None, unverified=None):
         if isinstance(block.get("components"), list):
             errors.extend(
                 _tag(
-                    validate_block_components(block["components"], context=context, unverified=unverified),
+                    validate_block_components(
+                        block["components"], context=context, unverified=unverified
+                    ),
                     CATEGORY_CONTENT,
                 )
             )
-        errors.extend(_tag(validate_actions_anywhere(block, [], context, unverified), CATEGORY_CONTENT))
+        errors.extend(
+            _tag(validate_actions_anywhere(block, [], context, unverified), CATEGORY_CONTENT)
+        )
         # Gated on the module, not on blockVersion 2: an enabled social item
         # with an empty url renders a dead icon at every footer version, and the
         # editor's own check happens to be written against v2 only.
@@ -242,7 +246,9 @@ def check_block(record, context=None, unverified=None):
             "block %s: federated walk skipped -- %s"
             % (
                 record["id"],
-                "no internalBlockValues" if internal is MISSING or internal is None else "no defaultData",
+                "no internalBlockValues"
+                if internal is MISSING or internal is None
+                else "no defaultData",
             )
         )
 
@@ -352,7 +358,8 @@ def check_duplicate_layouts(records, unverified=None):
             continue
         key = (record["module"], record["page_id"])
         per_page.setdefault(key, []).append(record["id"])
-    for (module, page_id), ids in sorted(per_page.items(), key=lambda kv: (kv[0][0], str(kv[0][1]))):
+    ordered = sorted(per_page.items(), key=lambda kv: (kv[0][0], str(kv[0][1])))
+    for (module, page_id), ids in ordered:
         if len(ids) > 1:
             errors.append(
                 {

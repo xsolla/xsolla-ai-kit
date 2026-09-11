@@ -17,7 +17,9 @@ from xsolla_shop_validation.url_rules import (
     validate_url_with_relative,
 )
 
-CTX = ValidationContext(site={"_id": "s1", "pages": [{"_id": "p1"}]}, skus=["sku-a"], bundles=["b-1"])
+CTX = ValidationContext(
+    site={"_id": "s1", "pages": [{"_id": "p1"}]}, skus=["sku-a"], bundles=["b-1"]
+)
 
 
 class TestActions(unittest.TestCase):
@@ -35,12 +37,21 @@ class TestActions(unittest.TestCase):
         self.assertEqual(len(unverified), 1)
 
     def test_a_lightbox_action_needs_a_player_url(self):
-        errors = validate_action({"action": "lightbox", "url": "https://example.com/x"}, ["a"], CTX, [])
+        errors = validate_action(
+            {"action": "lightbox", "url": "https://example.com/x"}, ["a"], CTX, []
+        )
         self.assertTrue(errors)
-        self.assertEqual(validate_action({"action": "lightbox", "url": "https://vimeo.com/1"}, ["a"], CTX, []), [])
+        self.assertEqual(
+            validate_action(
+                {"action": "lightbox", "url": "https://vimeo.com/1"}, ["a"], CTX, []
+            ),
+            [],
+        )
 
     def test_a_page_action_must_point_at_a_page_that_exists(self):
-        errors = validate_action({"action": "page", "landingId": "s1", "pageId": "p9"}, ["a"], CTX, [])
+        errors = validate_action(
+            {"action": "page", "landingId": "s1", "pageId": "p9"}, ["a"], CTX, []
+        )
         self.assertEqual(errors[0]["path"], "a.pageId")
 
     def test_a_cross_site_page_link_is_not_validated(self):
@@ -81,15 +92,25 @@ class TestComponentWalk(unittest.TestCase):
 
     def test_a_store_section_without_a_type_is_caught(self):
         components = [{"type": "storeSection", "enable": True, "storeItemsGroup": "g"}]
-        self.assertEqual(validate_block_components(components, context=CTX)[0]["path"], "components.0.storeItemsType")
+        self.assertEqual(
+            validate_block_components(components, context=CTX)[0]["path"],
+            "components.0.storeItemsType",
+        )
 
     def test_a_game_keys_store_section_needs_no_group(self):
-        components = [{"type": "storeSection", "enable": True, "storeItemsType": "gk", "storeItemsGroup": ""}]
+        components = [
+            {"type": "storeSection", "enable": True, "storeItemsType": "gk", "storeItemsGroup": ""}
+        ]
         self.assertEqual(validate_block_components(components, context=CTX), [])
 
     def test_the_error_group_sentinel_is_a_finding(self):
         components = [
-            {"type": "storeSection", "enable": True, "storeItemsType": "vi", "storeItemsGroup": "__error__"}
+            {
+                "type": "storeSection",
+                "enable": True,
+                "storeItemsType": "vi",
+                "storeItemsGroup": "__error__",
+            }
         ]
         self.assertTrue(validate_block_components(components, context=CTX))
 
@@ -110,11 +131,19 @@ class TestComponentWalk(unittest.TestCase):
 
 class TestFooterAndGallery(unittest.TestCase):
     def test_an_enabled_social_item_with_an_empty_url(self):
-        block = {"components": [{"type": "social", "enable": True, "value": [{"enable": True, "url": ""}]}]}
+        block = {
+            "components": [
+                {"type": "social", "enable": True, "value": [{"enable": True, "url": ""}]}
+            ]
+        }
         self.assertEqual(validate_footer_v2(block)[0]["path"], "components.0.value.0.url")
 
     def test_a_disabled_social_item_with_an_empty_url_is_fine(self):
-        block = {"components": [{"type": "social", "enable": True, "value": [{"enable": False, "url": ""}]}]}
+        block = {
+            "components": [
+                {"type": "social", "enable": True, "value": [{"enable": False, "url": ""}]}
+            ]
+        }
         self.assertEqual(validate_footer_v2(block), [])
 
     def test_a_gallery_slide_missing_its_declared_media(self):
@@ -206,15 +235,25 @@ class TestUrlRulesAgainstTheCurrentImplementation(unittest.TestCase):
         from xsolla_shop_validation.url_rules import validate_lead_platform_url
 
         self.assertTrue(
-            validate_lead_platform_url({"platform": "steam", "url": "https://store.steampowered.com/app/1"})
+            validate_lead_platform_url(
+                {"platform": "steam", "url": "https://store.steampowered.com/app/1"}
+            )
         )
         self.assertFalse(
-            validate_lead_platform_url({"platform": "steam", "url": "http://store.steampowered.com/app/1"})
+            validate_lead_platform_url(
+                {"platform": "steam", "url": "http://store.steampowered.com/app/1"}
+            )
         )
         self.assertFalse(
-            validate_lead_platform_url({"platform": "steam", "url": "https://store.steampowered.com/"})
+            validate_lead_platform_url(
+                {"platform": "steam", "url": "https://store.steampowered.com/"}
+            )
         )
         self.assertFalse(
-            validate_lead_platform_url({"platform": "steam", "url": "https://play.google.com/store/apps"})
+            validate_lead_platform_url(
+                {"platform": "steam", "url": "https://play.google.com/store/apps"}
+            )
         )
-        self.assertFalse(validate_lead_platform_url({"platform": "not-a-platform", "url": "https://x.com/y"}))
+        self.assertFalse(
+            validate_lead_platform_url({"platform": "not-a-platform", "url": "https://x.com/y"})
+        )

@@ -30,7 +30,8 @@ def rules(*args, **kwargs):
 
 class TestCleanSource(unittest.TestCase):
     def test_a_correct_block_produces_nothing(self):
-        self.assertEqual(collect_violations(CLEAN, "export default () => <AutoControls />;", CLEAN_FIELDS), [])
+        settings = "export default () => <AutoControls />;"
+        self.assertEqual(collect_violations(CLEAN, settings, CLEAN_FIELDS), [])
 
     def test_numbers_options_object_in_third_position_is_legitimate(self):
         self.assertNotIn("control-factory-object-arg", rules(CLEAN, None, CLEAN_FIELDS))
@@ -52,7 +53,11 @@ class TestRules(unittest.TestCase):
     def test_2_texteditor_used_without_its_import(self):
         self.assertIn(
             "missing-texteditor-import",
-            rules("export default () => <TextEditor id={localizedText('t')} />;", None, CLEAN_FIELDS),
+            rules(
+                "export default () => <TextEditor id={localizedText('t')} />;",
+                None,
+                CLEAN_FIELDS,
+            ),
         )
 
     def test_2_the_import_may_live_in_the_settings_source(self):
@@ -73,7 +78,9 @@ class TestRules(unittest.TestCase):
         )
 
     def test_4_export_default_class(self):
-        self.assertIn("export-default-class", rules("export default class B extends React.Component {}"))
+        self.assertIn(
+            "export-default-class", rules("export default class B extends React.Component {}")
+        )
 
     def test_4_export_default_class_in_the_settings_source(self):
         self.assertIn(
@@ -95,7 +102,8 @@ class TestRules(unittest.TestCase):
         )
 
     def test_6_texteditor_with_no_declared_fields(self):
-        found = rules("import { TextEditor } from '@site-builder/block-utils'; const a = <TextEditor />;", None, [])
+        source = "import { TextEditor } from '@site-builder/block-utils'; const a = <TextEditor />;"
+        found = rules(source, None, [])
         self.assertIn("missing-text-fields", found)
 
     def test_7_use_controls_with_an_object_literal(self):
@@ -108,7 +116,11 @@ class TestRules(unittest.TestCase):
     def test_9_text_control_bound_to_localized_text(self):
         self.assertIn(
             "text-control-with-localized-text",
-            rules("const v = useControls(text('Heading', localizedText('title')));", None, CLEAN_FIELDS),
+            rules(
+                "const v = useControls(text('Heading', localizedText('title')));",
+                None,
+                CLEAN_FIELDS,
+            ),
         )
 
 

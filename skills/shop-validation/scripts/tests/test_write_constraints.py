@@ -106,13 +106,21 @@ class TestBatchChangeSet(unittest.TestCase):
         self.assertEqual(check_batch_change_set(change_set), [])
 
     def test_a_dotted_string_path_is_a_finding(self):
-        change_set = {"r1": {"type": "block", "id": "b1", "patches": [{"op": "replace", "path": "values.title"}]}}
+        change_set = {
+            "r1": {
+                "type": "block",
+                "id": "b1",
+                "patches": [{"op": "replace", "path": "values.title"}],
+            }
+        }
         errors = check_batch_change_set(change_set)
         self.assertEqual(errors[0]["path"], "r1.patches.0.path")
         self.assertEqual(errors[0]["got"], "string")
 
     def test_a_bad_op_and_a_bad_type_are_both_reported(self):
-        change_set = {"r1": {"type": "blok", "id": "b1", "patches": [{"op": "set", "path": ["values"]}]}}
+        change_set = {
+            "r1": {"type": "blok", "id": "b1", "patches": [{"op": "set", "path": ["values"]}]}
+        }
         paths = {f["path"] for f in check_batch_change_set(change_set)}
         self.assertEqual(paths, {"r1.type", "r1.patches.0.op"})
 

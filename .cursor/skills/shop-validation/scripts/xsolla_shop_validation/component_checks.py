@@ -116,24 +116,37 @@ def validate_action(action, path, context, unverified):
     elif kind == "page":
         landing_id = action.get("landingId")
         if not landing_id:
-            out.append(finding(format_path(path + ["landingId"]), "a landing id", "empty", landing_id))
+            out.append(
+                finding(format_path(path + ["landingId"]), "a landing id", "empty", landing_id)
+            )
         elif context.site_id and landing_id != context.site_id:
             # Cross-site links are not validated.
             unverified.append("%s: cross-site page link" % format_path(path))
         else:
             page_id = action.get("pageId")
             if not page_id:
-                out.append(finding(format_path(path + ["pageId"]), "a page id", "undefined", page_id))
+                out.append(
+                    finding(format_path(path + ["pageId"]), "a page id", "undefined", page_id)
+                )
             elif context.page_ids is None:
                 unverified.append("%s: page id exists on the site" % format_path(path + ["pageId"]))
             elif page_id not in context.page_ids:
                 out.append(
-                    finding(format_path(path + ["pageId"]), "a page id on this site", page_id, page_id)
+                    finding(
+                        format_path(path + ["pageId"]),
+                        "a page id on this site",
+                        page_id,
+                        page_id,
+                    )
                 )
 
     elif kind == "cloud-gaming":
         if not action.get("gameId"):
-            out.append(finding(format_path(path + ["gameId"]), "a game id", "empty", action.get("gameId")))
+            out.append(
+                finding(
+                    format_path(path + ["gameId"]), "a game id", "empty", action.get("gameId")
+                )
+            )
 
     elif kind == "subscription":
         if not action.get("subscriptionId"):
@@ -182,10 +195,14 @@ def _validate_legacy_custom_button(component, path, context, unverified):
                 out.append(finding(format_path(base), "a bundle in the catalog", item_id, item_id))
     elif subtype == "link":
         if not (value.get("link") or {}).get("link"):
-            out.append(finding(format_path(path + ["value", "link", "link"]), "a link", "empty", None))
+            out.append(
+                finding(format_path(path + ["value", "link", "link"]), "a link", "empty", None)
+            )
     elif subtype == "preset":
         if not (value.get("preset") or {}).get("link"):
-            out.append(finding(format_path(path + ["value", "preset", "link"]), "a link", "empty", None))
+            out.append(
+                finding(format_path(path + ["value", "preset", "link"]), "a link", "empty", None)
+            )
 
     return out
 
@@ -204,7 +221,14 @@ def _validate_subscribe(component, path):
     if component.get("type") != "subscribe" or not _is_enabled(component):
         return []
     if not component.get("value"):
-        return [finding(format_path(path + ["value"]), "a subscribe value", "empty", component.get("value"))]
+        return [
+            finding(
+                format_path(path + ["value"]),
+                "a subscribe value",
+                "empty",
+                component.get("value"),
+            )
+        ]
     return []
 
 
@@ -216,7 +240,11 @@ def _validate_store_section(component, path):
     items_type = component.get("storeItemsType")
     items_group = component.get("storeItemsGroup")
     if not items_type:
-        out.append(finding(format_path(path + ["storeItemsType"]), "a store items type", "empty", items_type))
+        out.append(
+            finding(
+                format_path(path + ["storeItemsType"]), "a store items type", "empty", items_type
+            )
+        )
         return out
     if items_group == "" and items_type not in (GK_TYPE, BUNDLE_TYPE):
         out.append(
@@ -229,7 +257,12 @@ def _validate_store_section(component, path):
         )
     if items_group == ERROR_VC_GROUP:
         out.append(
-            finding(format_path(path + ["storeItemsGroup"]), "a valid store items group", items_group, items_group)
+            finding(
+                format_path(path + ["storeItemsGroup"]),
+                "a valid store items group",
+                items_group,
+                items_group,
+            )
         )
     return out
 
@@ -251,7 +284,9 @@ def validate_block_components(components, path=None, context=None, unverified=No
 
         nested = component.get("components")
         if isinstance(nested, list) and nested:
-            out.extend(validate_block_components(nested, here + ["components"], context, unverified))
+            out.extend(
+                validate_block_components(nested, here + ["components"], context, unverified)
+            )
 
         out.extend(_validate_legacy_custom_button(component, here, context, unverified))
         out.extend(_validate_component_with_link(component, here))
@@ -327,7 +362,9 @@ def validate_gallery_v2(block, context=None, unverified=None):
         base = "values.slides.%d.image" % index
         image = slide.get("image") if isinstance(slide, dict) else None
         if not isinstance(image, dict):
-            out.append(finding(base, "object", js_type(image if image is not None else MISSING), image))
+            out.append(
+                finding(base, "object", js_type(image if image is not None else MISSING), image)
+            )
             continue
         kind = image.get("type")
         if kind == "video":

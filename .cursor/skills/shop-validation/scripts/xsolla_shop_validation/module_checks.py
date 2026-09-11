@@ -162,12 +162,21 @@ def validate_new_store_block(block):
         path = "components.%d.section.item" % index
         if "group" not in item:
             out.append(
-                _error(path, "an object carrying a group", "no group key", "Invalid store item structure")
+                _error(
+                    path,
+                    "an object carrying a group",
+                    "no group key",
+                    "Invalid store item structure",
+                )
             )
             continue
         group = item.get("group")
         if not group:
-            out.append(_error("%s.group" % path, "a catalog group", "empty", "Store group is missing", group))
+            out.append(
+                _error(
+                    "%s.group" % path, "a catalog group", "empty", "Store group is missing", group
+                )
+            )
         elif is_fake_group(group):
             out.append(
                 _error(
@@ -301,7 +310,8 @@ def check_sidebar(block):
                 out.append(
                     _error(
                         "values.storeButtons.%s.link" % key,
-                        "an https url on %s's own host" % (button.get("platform") or "that platform"),
+                        "an https url on %s's own host"
+                        % (button.get("platform") or "that platform"),
                         button.get("link") or "empty",
                         "Sidebar store button link is not valid for its platform",
                         button.get("link"),

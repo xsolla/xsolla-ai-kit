@@ -95,7 +95,12 @@ def cmd_site(args):
 def cmd_block(args):
     payload = expand_dotted_keys(_load_json(args.payload))
     module = args.module
-    report = {"module": module, "mode": "update" if args.update else "create", "errors": [], "unverified": []}
+    report = {
+        "module": module,
+        "mode": "update" if args.update else "create",
+        "errors": [],
+        "unverified": [],
+    }
 
     if not args.update:
         report["errors"].extend(check_not_layout_create(module))
@@ -104,7 +109,8 @@ def cmd_block(args):
 
     if module == FEDERATED_MODULE:
         values = payload.get("values") if isinstance(payload, dict) else None
-        values = values if isinstance(values, dict) else payload if isinstance(payload, dict) else {}
+        if not isinstance(values, dict):
+            values = payload if isinstance(payload, dict) else {}
         internal = values.get("internalBlockValues", MISSING)
         defaults = values.get("defaultData", MISSING)
         result = validate_federated(internal, defaults)
@@ -112,7 +118,8 @@ def cmd_block(args):
         report["family"] = route_block({"module": module, "values": values})
         if not result["walked"]:
             report["unverified"].append(
-                "federated walk skipped -- no internalBlockValues or no defaultData to compare against"
+                "federated walk skipped -- no internalBlockValues or no defaultData "
+                "to compare against"
             )
         report["unverified"].append(
             "federated walk compares types only: required fields, enums and array item shapes "
@@ -125,7 +132,8 @@ def cmd_block(args):
         for advisory in result.get("advisories") or []:
             report["unverified"].append(
                 "%s: %s -- the shipped schema requires this key, but the API accepts a create "
-                "without it (verified live), so it is advisory" % (advisory["path"], advisory["expected"])
+                "without it (verified live), so it is advisory"
+                % (advisory["path"], advisory["expected"])
             )
         if not result["schema_available"]:
             report["unverified"].append(
@@ -266,9 +274,13 @@ def main(argv=None):
     sub = parser.add_subparsers(dest="command")
 
     p_site = sub.add_parser("site", help="whole-site walk", parents=[common])
-    p_site.add_argument("--structure", required=True, help="xsolla shopbuilder get-structure --json")
+    p_site.add_argument(
+        "--structure", required=True, help="xsolla shopbuilder get-structure --json"
+    )
     p_site.add_argument("--localization", help="xsolla shopbuilder get-localization --json")
-    p_site.add_argument("--off-page-blocks", help="directory of get-block payloads, or one JSON file")
+    p_site.add_argument(
+        "--off-page-blocks", help="directory of get-block payloads, or one JSON file"
+    )
     p_site.add_argument("--skus", help="JSON array of catalog SKUs, for buy-action checks")
     p_site.add_argument("--bundles", help="JSON array of bundle SKUs")
     p_site.set_defaults(func=cmd_site)
@@ -280,13 +292,17 @@ def main(argv=None):
     p_block.add_argument("--version", type=int, help="the version the create will pass")
     p_block.set_defaults(func=cmd_block)
 
-    p_code = sub.add_parser("ai-code", help="the nine rules on custom-block source", parents=[common])
+    p_code = sub.add_parser(
+        "ai-code", help="the nine rules on custom-block source", parents=[common]
+    )
     p_code.add_argument("--component", required=True)
     p_code.add_argument("--settings")
     p_code.add_argument("--text-fields", help='JSON [{"name": ..., "default": ...}]')
     p_code.set_defaults(func=cmd_ai_code)
 
-    p_ai = sub.add_parser("ai-block", help="a fetched custom block (get-ai-block --json)", parents=[common])
+    p_ai = sub.add_parser(
+        "ai-block", help="a fetched custom block (get-ai-block --json)", parents=[common]
+    )
     p_ai.add_argument("--block", required=True)
     p_ai.set_defaults(func=cmd_ai_block)
 

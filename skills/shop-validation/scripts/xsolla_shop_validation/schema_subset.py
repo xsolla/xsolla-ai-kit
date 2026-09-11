@@ -39,6 +39,11 @@ def _quote(value):
     return json.dumps(value)
 
 
+def _is_number(value):
+    """A JSON number: an int or float, but never a bool."""
+    return isinstance(value, (int, float)) and not isinstance(value, bool)
+
+
 def _matches_type(value, type_kw):
     names = type_kw if isinstance(type_kw, list) else [type_kw]
     for name in names:
@@ -126,15 +131,25 @@ def validate(instance, schema, path=None, partial=False):
             # Wrong type at this node: its children are meaningless.
             return out
 
-    if "minimum" in schema and isinstance(instance, (int, float)) and not isinstance(instance, bool):
+    if "minimum" in schema and _is_number(instance):
         if instance < schema["minimum"]:
             out.append(
-                finding(format_path(path), ">= %s" % schema["minimum"], describe_got(instance), instance)
+                finding(
+                    format_path(path),
+                    ">= %s" % schema["minimum"],
+                    describe_got(instance),
+                    instance,
+                )
             )
-    if "maximum" in schema and isinstance(instance, (int, float)) and not isinstance(instance, bool):
+    if "maximum" in schema and _is_number(instance):
         if instance > schema["maximum"]:
             out.append(
-                finding(format_path(path), "<= %s" % schema["maximum"], describe_got(instance), instance)
+                finding(
+                    format_path(path),
+                    "<= %s" % schema["maximum"],
+                    describe_got(instance),
+                    instance,
+                )
             )
 
     if isinstance(instance, dict):

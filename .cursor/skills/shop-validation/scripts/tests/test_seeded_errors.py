@@ -91,7 +91,10 @@ class TestSeededWriteDefects(unittest.TestCase):
         self.assertEqual(errors[0]["path"], "version")
 
     def test_use_controls_with_an_object_in_custom_source(self):
-        source = "export default function B() { const { a } = useControls({ a: text('A') }); return a; }"
+        source = (
+            "export default function B() { "
+            "const { a } = useControls({ a: text('A') }); return a; }"
+        )
         rules = [v["rule"] for v in collect_violations(source)]
         self.assertIn("use-controls-object-arg", rules)
 

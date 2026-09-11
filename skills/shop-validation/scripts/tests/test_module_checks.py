@@ -126,7 +126,10 @@ class TestNewStore(unittest.TestCase):
         errors = validate_new_store_block(
             {
                 "components": [
-                    {"type": "newStoreSection", "section": {"item": {"type": "bundle", "group": ""}}}
+                    {
+                        "type": "newStoreSection",
+                        "section": {"item": {"type": "bundle", "group": ""}},
+                    }
                 ]
             }
         )
@@ -138,7 +141,9 @@ class TestNewStore(unittest.TestCase):
                 "components": [
                     {
                         "type": "newStoreSection",
-                        "section": {"item": {"type": "virtual_good", "group": "test-group/virtual_good"}},
+                        "section": {
+                            "item": {"type": "virtual_good", "group": "test-group/virtual_good"}
+                        },
                     }
                 ]
             }
@@ -199,8 +204,10 @@ class TestFederatedRemoteBlocks(unittest.TestCase):
         self.assertEqual((errors[0]["expected"], errors[0]["got"]), ("number", "string"))
 
     def test_null_and_missing_are_rejected(self):
-        self.assertEqual(validate_daily_reward(self.block("sb-daily-reward", dailyRewardId=None))[0]["got"], "null")
-        self.assertEqual(validate_daily_reward(self.block("sb-daily-reward"))[0]["got"], "undefined")
+        null_id = self.block("sb-daily-reward", dailyRewardId=None)
+        self.assertEqual(validate_daily_reward(null_id)[0]["got"], "null")
+        missing = self.block("sb-daily-reward")
+        self.assertEqual(validate_daily_reward(missing)[0]["got"], "undefined")
 
     def test_a_boolean_is_not_a_number(self):
         self.assertTrue(validate_offer_chain(self.block("sb-offer-chain", offerChainId=True)))
@@ -221,7 +228,11 @@ class TestLeadV2(unittest.TestCase):
                         "platforms": {
                             "enable": True,
                             "items": [
-                                {"enable": True, "platform": "steam", "url": "https://store.steampowered.com/app/1"}
+                                {
+                                    "enable": True,
+                                    "platform": "steam",
+                                    "url": "https://store.steampowered.com/app/1",
+                                }
                             ],
                         }
                     }
@@ -236,7 +247,13 @@ class TestLeadV2(unittest.TestCase):
                 "values": {
                     "platforms": {
                         "enable": True,
-                        "items": [{"enable": True, "platform": "steam", "url": "https://store.steampowered.com/"}],
+                        "items": [
+                            {
+                                "enable": True,
+                                "platform": "steam",
+                                "url": "https://store.steampowered.com/",
+                            }
+                        ],
                     }
                 }
             }
@@ -249,7 +266,13 @@ class TestLeadV2(unittest.TestCase):
                 "values": {
                     "platforms": {
                         "enable": True,
-                        "items": [{"enable": True, "platform": "steam", "url": "https://play.google.com/store/apps"}],
+                        "items": [
+                            {
+                                "enable": True,
+                                "platform": "steam",
+                                "url": "https://play.google.com/store/apps",
+                            }
+                        ],
                     }
                 }
             }
@@ -258,7 +281,11 @@ class TestLeadV2(unittest.TestCase):
 
     def test_enabled_with_every_row_disabled_is_an_error(self):
         errors = check_lead_v2(
-            {"values": {"platforms": {"enable": True, "items": [{"enable": False, "platform": "steam"}]}}}
+            {
+                "values": {
+                    "platforms": {"enable": True, "items": [{"enable": False, "platform": "steam"}]}
+                }
+            }
         )
         self.assertEqual(errors[0]["path"], "values.platforms.items")
 
@@ -269,7 +296,13 @@ class TestSidebar(unittest.TestCase):
             {
                 "values": {
                     "platforms": {"enable": True},
-                    "storeButtons": {"steam": {"enable": True, "platform": "steam", "link": "https://example.com/x"}},
+                    "storeButtons": {
+                        "steam": {
+                            "enable": True,
+                            "platform": "steam",
+                            "link": "https://example.com/x",
+                        }
+                    },
                 }
             }
         )
@@ -291,14 +324,27 @@ class TestSidebar(unittest.TestCase):
     def test_store_buttons_are_only_checked_when_platforms_are_enabled(self):
         self.assertEqual(
             check_sidebar(
-                {"values": {"storeButtons": {"steam": {"enable": True, "platform": "steam", "link": ""}}}}
+                {
+                    "values": {
+                        "storeButtons": {
+                            "steam": {"enable": True, "platform": "steam", "link": ""}
+                        }
+                    }
+                }
             ),
             [],
         )
 
     def test_an_enabled_social_with_an_empty_link(self):
         errors = check_sidebar(
-            {"values": {"socials": {"enable": True, "socialNetworks": {"x": {"enable": True, "link": ""}}}}}
+            {
+                "values": {
+                    "socials": {
+                        "enable": True,
+                        "socialNetworks": {"x": {"enable": True, "link": ""}},
+                    }
+                }
+            }
         )
         self.assertEqual(errors[0]["path"], "values.socials.socialNetworks.x.link")
 
