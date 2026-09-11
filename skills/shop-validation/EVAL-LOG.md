@@ -9,7 +9,7 @@ and nothing was published.
 
 | Metric | Target | Result |
 |---|---|---|
-| **Ported checks** — % of MCP validations available in the kit | 100% | **100%** of the portable set: 66 of 77 identified behaviours, with all 11 exclusions named and reasoned in [`INVENTORY.md`](INVENTORY.md) — 8 are absent from the prototype, 3 are MCP transport or tool-argument concerns with no equivalent surface here |
+| **Ported checks** — % of MCP validations available in the kit | 100% | **100%** of the portable set: 66 of 77 identified behaviours, with all 11 exclusions named and reasoned in [`INVENTORY.md`](INVENTORY.md) — 8 are implemented in the MCP but their source was not supplied for this port, 3 are MCP transport or tool-argument concerns with no equivalent surface here |
 | **Detection** — seeded errors caught | 100% | **100%** — 5 of 5 seeded shops, each defect named exactly once in the right category, plus 10 of 10 seeded defects in the unit suite |
 | **False positives on known-good shops** | 0 | **0** structural errors across 5 known-good shops: 80 blocks, 730 `L:` references, 4 off-page blocks |
 | **Validation runtime per shop** | report | **42–60 ms** per shop, median 47 ms, for 13–27 blocks. Cold interpreter start included; no network in the validation step itself |

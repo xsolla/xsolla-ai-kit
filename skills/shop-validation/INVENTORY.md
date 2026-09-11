@@ -1,17 +1,18 @@
 # Inventory — MCP validation behaviours, and where each one lives here
 
-Every validation behaviour found in the Site Builder MCP prototype, one row each, with the
-callable that carries it in this kit. Written so a reviewer can check the "ported 100%"
+Every validation behaviour found in the Site Builder MCP source available for this port, one
+row each, with the callable that carries it in this kit. Written so a reviewer can check the "ported 100%"
 claim by reading the Status column rather than taking it on trust.
 
 **Status key.** `ported` — same inputs, same outputs, covered by a test · `diverged` — ported,
-with a behaviour change stated in the row · `absent` — named by the MCP's block walker but not
-present in the prototype, so there is nothing to port · `n/a` — deliberately out of scope,
-with the reason in the row.
+with a behaviour change stated in the row · `source not supplied` — **implemented in the MCP**,
+but its module file is not in the source extract this port was made from, so there was nothing
+to read · `n/a` — deliberately out of scope, with the reason in the row.
 
 **Totals.** 77 behaviours identified · **66 ported** — 57 straight, 4 diverging (each stated in
-its own row) and 5 that this kit adds and the MCP does not have · **11 excluded**: 8 `absent`,
-3 `n/a`. Of the behaviours that *can* be ported from the prototype, **100%** are.
+its own row) and 5 that this kit adds and the MCP does not have · **11 not ported**: 8 whose
+source was not supplied, 3 `n/a`. Of the behaviours whose source was available, **100%** are
+ported.
 
 Every callable below is `python3 scripts/validate_shop.py …` or a function in
 `scripts/xsolla_shop_validation/`. Run `python3 -m unittest discover -s tests -t .` from
@@ -107,22 +108,31 @@ Every callable below is `python3 scripts/validate_shop.py …` or a function in
 | 62 | path segments for array indices | `errors.format_path` | diverged · `components.0.value.1` rather than the walker's `components.[0].value.[1]`, so one report reads one way |
 | 63 | packs v1 — delegates to the components walk | covered by 42 | ported |
 
-## 6 · Named by the walker, absent from the prototype
+## 6 · Implemented in the MCP, source not supplied for this port
 
-Eight visitors the block walker registers whose implementations are not in the prototype
-copy. Nothing to port, and named here so the gap can be closed deliberately rather than
-discovered later. Each would slot in beside the checks in section 5.
+**These eight are not gaps in the MCP.** Its block walker imports and registers all eight, so
+they exist and run in Site Builder today — the walker would not compile otherwise. What is
+missing is on this side: the module files were not part of the source extract this port was
+made from, so there was nothing to read and nothing to port.
+
+Named here so the remaining 8 can be requested and finished deliberately, rather than someone
+later assuming they were skipped. Each slots in beside the checks in section 5, and the
+registration site names exactly which function each one exposes.
 
 | # | MCP behaviour | Status |
 |---|---|---|
-| 64 | subscriptions block — authentication requirement | absent |
-| 65 | daily-reward federated block — its own check | absent |
-| 66 | offer-chain federated block — its own check | absent |
-| 67 | lead-game-sales block | absent |
-| 68 | new-store block | absent |
-| 69 | rewards block | absent |
-| 70 | lead block, v2 | absent |
-| 71 | sidebar block | absent |
+| 64 | subscriptions block — authentication requirement | source not supplied |
+| 65 | daily-reward federated block — its own check | source not supplied |
+| 66 | offer-chain federated block — its own check | source not supplied |
+| 67 | lead-game-sales block | source not supplied |
+| 68 | new-store block | source not supplied |
+| 69 | rewards block | source not supplied |
+| 70 | lead block, v2 | source not supplied |
+| 71 | sidebar block | source not supplied |
+
+**To finish these:** ask for the eight module files that the block walker imports alongside the
+footer, gallery and custom-button checks that *were* supplied. With them, section 5's pattern
+applies directly and the count moves from 66 to 74.
 
 ## 7 · Write constraints — adjacent, and they reject a write just as hard
 

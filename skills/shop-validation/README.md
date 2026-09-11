@@ -136,5 +136,8 @@ Three groups carry the evidence:
 - **`I:` image ids are collected, never verified.** The landing asset list covers uploads only,
   and federated blocks' images ship with the remote block, so a missing entry is not evidence of
   a broken image.
-- **Eight MCP block checks could not be ported** — they are named by the MCP's walker but absent
-  from the prototype. Listed in [`INVENTORY.md`](INVENTORY.md#6--named-by-the-walker-absent-from-the-prototype).
+- **Eight MCP block checks are not here yet, and that is a materials gap, not an MCP gap.** The
+  MCP implements and registers all eight; their module files were not in the source extract this
+  port was made from. Listed in
+  [`INVENTORY.md`](INVENTORY.md#6--implemented-in-the-mcp-source-not-supplied-for-this-port),
+  with what to ask for.
