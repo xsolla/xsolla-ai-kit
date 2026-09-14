@@ -24,6 +24,7 @@ Skills call **Xsolla REST APIs directly**. The CLI (`xsolla/xsolla-cli`) is an o
 | `headless-checkout-integration` | Payments via Headless Checkout                                                           |
 | `webhooks-impl`                 | Generates webhook handler code for order/payment events                                  |
 | `production`                    | Sandbox → live: contract, flip flags, deploy, developer live-payment checklist           |
+| `description-to-shop`           | Builds a Shop Builder shop from a plain-language description — guided intake, no spec    |
 
 ---
 
@@ -43,6 +44,9 @@ Integrate payments into my game
 
 Go live / leave sandbox
 → triggers: production
+
+Build me a shop from this description — I have no design or spec
+→ triggers: description-to-shop
 ```
 
 ---
