@@ -1,0 +1,1095 @@
+{
+  "version": 2,
+  "source": "UI-created multi-page web portal contract lab, 2026-09-11",
+  "landing_type": "topup",
+  "modules": [
+    {
+      "module": "bento-grid",
+      "observed_instances": 4,
+      "block_versions": [],
+      "block_version_missing": true,
+      "block_value_types": {
+        "background": [
+          "object"
+        ],
+        "description": [
+          "object"
+        ],
+        "grid": [
+          "object"
+        ],
+        "gridComponents": [
+          "object"
+        ],
+        "sliderOnMobile": [
+          "boolean"
+        ],
+        "title": [
+          "object"
+        ]
+      },
+      "component_item_fields": []
+    },
+    {
+      "module": "common-layout",
+      "observed_instances": 1,
+      "block_versions": [],
+      "block_version_missing": true,
+      "block_value_types": {
+        "footers": [
+          "array"
+        ],
+        "headers": [
+          "array"
+        ]
+      },
+      "component_item_fields": []
+    },
+    {
+      "module": "description",
+      "observed_instances": 1,
+      "block_versions": [
+        2
+      ],
+      "block_version_missing": false,
+      "block_value_types": {
+        "align": [
+          "string"
+        ],
+        "background": [
+          "object"
+        ],
+        "components": [
+          "object"
+        ],
+        "componentsIds": [
+          "array"
+        ],
+        "hideFullDescription": [
+          "boolean"
+        ],
+        "readMoreButton": [
+          "object"
+        ],
+        "showLessButton": [
+          "object"
+        ],
+        "template": [
+          "string"
+        ],
+        "title": [
+          "object"
+        ]
+      },
+      "component_item_fields": []
+    },
+    {
+      "module": "embed",
+      "observed_instances": 1,
+      "block_versions": [],
+      "block_version_missing": true,
+      "block_value_types": {
+        "background": [
+          "object"
+        ],
+        "enable": [
+          "boolean"
+        ],
+        "template": [
+          "string"
+        ],
+        "title": [
+          "object"
+        ]
+      },
+      "component_item_fields": []
+    },
+    {
+      "module": "faq",
+      "observed_instances": 2,
+      "block_versions": [
+        2
+      ],
+      "block_version_missing": false,
+      "block_value_types": {
+        "background": [
+          "object"
+        ],
+        "enable": [
+          "boolean"
+        ],
+        "questionMode": [
+          "boolean"
+        ],
+        "script": [
+          "object"
+        ],
+        "template": [
+          "string"
+        ],
+        "title": [
+          "object"
+        ]
+      },
+      "component_item_fields": [
+        "_id",
+        "answer",
+        "enable",
+        "question",
+        "type",
+        "value"
+      ]
+    },
+    {
+      "module": "fast-login",
+      "observed_instances": 1,
+      "block_versions": [],
+      "block_version_missing": true,
+      "block_value_types": {
+        "customBackground": [
+          "object"
+        ],
+        "deeplinkButton": [
+          "object"
+        ],
+        "description": [
+          "object"
+        ],
+        "instructionLink": [
+          "object"
+        ],
+        "loginButtonOther": [
+          "object"
+        ],
+        "loginButtonUserId": [
+          "object"
+        ],
+        "placeholder": [
+          "object"
+        ],
+        "script": [
+          "object"
+        ],
+        "title": [
+          "object"
+        ]
+      },
+      "component_item_fields": []
+    },
+    {
+      "module": "footer",
+      "observed_instances": 1,
+      "block_versions": [
+        2
+      ],
+      "block_version_missing": false,
+      "block_value_types": {
+        "background": [
+          "object"
+        ],
+        "description": [
+          "object"
+        ],
+        "layout": [
+          "string"
+        ],
+        "logo": [
+          "object"
+        ],
+        "script": [
+          "object"
+        ]
+      },
+      "component_item_fields": [
+        "_id",
+        "enable",
+        "type",
+        "value"
+      ]
+    },
+    {
+      "module": "header",
+      "observed_instances": 1,
+      "block_versions": [
+        3
+      ],
+      "block_version_missing": false,
+      "block_value_types": {
+        "background": [
+          "object"
+        ],
+        "components": [
+          "object"
+        ],
+        "fixedComponents": [
+          "array"
+        ],
+        "fixedWidth": [
+          "boolean"
+        ],
+        "headerFixed": [
+          "object"
+        ],
+        "isOverlap": [
+          "boolean"
+        ],
+        "leftComponents": [
+          "array"
+        ],
+        "rightComponents": [
+          "array"
+        ],
+        "script": [
+          "object"
+        ]
+      },
+      "component_item_fields": []
+    },
+    {
+      "module": "hero",
+      "observed_instances": 1,
+      "block_versions": [],
+      "block_version_missing": true,
+      "block_value_types": {
+        "affiliate": [
+          "object"
+        ],
+        "background": [
+          "object"
+        ],
+        "description": [
+          "object"
+        ],
+        "enable": [
+          "boolean"
+        ],
+        "logo": [
+          "object"
+        ],
+        "template": [
+          "string"
+        ],
+        "title": [
+          "object"
+        ]
+      },
+      "component_item_fields": [
+        "_id",
+        "background",
+        "enable",
+        "label",
+        "subtype",
+        "textColor",
+        "type",
+        "value",
+        "values"
+      ]
+    },
+    {
+      "module": "html",
+      "observed_instances": 1,
+      "block_versions": [
+        2
+      ],
+      "block_version_missing": false,
+      "block_value_types": {
+        "css": [
+          "string"
+        ],
+        "enable": [
+          "boolean"
+        ],
+        "html": [
+          "string"
+        ],
+        "javascript": [
+          "string"
+        ]
+      },
+      "component_item_fields": []
+    },
+    {
+      "module": "lead",
+      "observed_instances": 10,
+      "block_versions": [],
+      "block_version_missing": true,
+      "block_value_types": {
+        "align": [
+          "string"
+        ],
+        "background": [
+          "object"
+        ],
+        "cardsQuantity": [
+          "number"
+        ],
+        "developer": [
+          "object"
+        ],
+        "enable": [
+          "boolean"
+        ],
+        "iconTop": [
+          "boolean"
+        ],
+        "logo": [
+          "object"
+        ],
+        "platforms": [
+          "object"
+        ],
+        "script": [
+          "object"
+        ],
+        "showCards": [
+          "boolean"
+        ],
+        "showDescriptions": [
+          "boolean"
+        ],
+        "showHeadings": [
+          "boolean"
+        ],
+        "showIcons": [
+          "boolean"
+        ],
+        "showVerificationIcon": [
+          "boolean"
+        ],
+        "title": [
+          "object"
+        ]
+      },
+      "component_item_fields": [
+        "_id",
+        "description",
+        "enable",
+        "title",
+        "type",
+        "value"
+      ]
+    },
+    {
+      "module": "newStore",
+      "observed_instances": 3,
+      "block_versions": [],
+      "block_version_missing": true,
+      "block_value_types": {
+        "alignment": [
+          "string"
+        ],
+        "background": [
+          "object"
+        ],
+        "description": [
+          "object"
+        ],
+        "enable": [
+          "boolean"
+        ],
+        "loginButton": [
+          "object"
+        ],
+        "script": [
+          "object"
+        ],
+        "tabs": [
+          "object"
+        ],
+        "title": [
+          "object"
+        ]
+      },
+      "component_item_fields": [
+        "_id",
+        "card",
+        "enable",
+        "section",
+        "type"
+      ]
+    },
+    {
+      "module": "news",
+      "observed_instances": 2,
+      "block_versions": [
+        2
+      ],
+      "block_version_missing": false,
+      "block_value_types": {
+        "allNewsTab": [
+          "object"
+        ],
+        "background": [
+          "object"
+        ],
+        "categories": [
+          "array"
+        ],
+        "enable": [
+          "boolean"
+        ],
+        "infiniteScroll": [
+          "boolean"
+        ],
+        "launcherId": [
+          "string"
+        ],
+        "newsItemCategoryTag": [
+          "boolean"
+        ],
+        "newsItemText": [
+          "boolean"
+        ],
+        "tabs": [
+          "boolean"
+        ],
+        "template": [
+          "string"
+        ],
+        "title": [
+          "object"
+        ],
+        "viewMoreButton": [
+          "object"
+        ]
+      },
+      "component_item_fields": []
+    },
+    {
+      "module": "offerwall-block",
+      "observed_instances": 1,
+      "block_versions": [],
+      "block_version_missing": true,
+      "block_value_types": {
+        "_isMobileViewport": [
+          "boolean"
+        ],
+        "backgroundColor": [
+          "string"
+        ],
+        "backgroundFillMode": [
+          "string"
+        ],
+        "backgroundImage": [
+          "string"
+        ],
+        "backgroundOverlay": [
+          "string"
+        ],
+        "backgroundPosition": [
+          "string"
+        ],
+        "backgroundPositionMobile": [
+          "string"
+        ],
+        "backgroundRepeat": [
+          "string"
+        ],
+        "backgroundRepeatMobile": [
+          "string"
+        ],
+        "backgroundSize": [
+          "string"
+        ],
+        "backgroundSizeMobile": [
+          "string"
+        ],
+        "blockBorderColor": [
+          "string"
+        ],
+        "blockBorderRadius": [
+          "number"
+        ],
+        "blockBorderWidth": [
+          "number"
+        ],
+        "blockHeight": [
+          "number"
+        ],
+        "blockPaddingBottom": [
+          "number"
+        ],
+        "blockPaddingLeft": [
+          "number"
+        ],
+        "blockPaddingRight": [
+          "number"
+        ],
+        "blockPaddingTop": [
+          "number"
+        ],
+        "blockSpacingBottom": [
+          "number"
+        ],
+        "blockSpacingTop": [
+          "number"
+        ],
+        "blockWidth": [
+          "string"
+        ],
+        "buttonAlignment": [
+          "string"
+        ],
+        "buttonBackgroundColor": [
+          "string"
+        ],
+        "buttonBorderRadius": [
+          "number"
+        ],
+        "buttonFontFamily": [
+          "string"
+        ],
+        "buttonHeight": [
+          "number"
+        ],
+        "buttonShadowBlur": [
+          "number"
+        ],
+        "buttonShadowColor": [
+          "string"
+        ],
+        "buttonShadowEnabled": [
+          "boolean"
+        ],
+        "buttonShadowOffsetX": [
+          "number"
+        ],
+        "buttonShadowOffsetY": [
+          "number"
+        ],
+        "buttonShadowSpread": [
+          "number"
+        ],
+        "buttonText": [
+          "string"
+        ],
+        "buttonTextColor": [
+          "string"
+        ],
+        "buttonTextSize": [
+          "number"
+        ],
+        "buttonTextWeight": [
+          "string"
+        ],
+        "buttonWidth": [
+          "number"
+        ],
+        "coinImage": [
+          "string"
+        ],
+        "currencySize": [
+          "number"
+        ],
+        "headerAlignment": [
+          "string"
+        ],
+        "hideImageOnDesktop": [
+          "boolean"
+        ],
+        "hideImageOnMobile": [
+          "boolean"
+        ],
+        "imageBlur": [
+          "number"
+        ],
+        "imageBrightness": [
+          "number"
+        ],
+        "imageContrast": [
+          "number"
+        ],
+        "imageGap": [
+          "number"
+        ],
+        "imageGrayscale": [
+          "number"
+        ],
+        "imageObjectFit": [
+          "string"
+        ],
+        "imageOpacity": [
+          "number"
+        ],
+        "mobileBackgroundColor": [
+          "string"
+        ],
+        "mobileBackgroundFillMode": [
+          "string"
+        ],
+        "mobileBackgroundImage": [
+          "string"
+        ],
+        "mobileBackgroundOverlay": [
+          "string"
+        ],
+        "mobileBackgroundPosition": [
+          "string"
+        ],
+        "mobileBackgroundRepeat": [
+          "string"
+        ],
+        "mobileBackgroundSize": [
+          "string"
+        ],
+        "mobileBlockPaddingBottom": [
+          "number"
+        ],
+        "mobileBlockPaddingLeft": [
+          "number"
+        ],
+        "mobileBlockPaddingRight": [
+          "number"
+        ],
+        "mobileBlockPaddingTop": [
+          "number"
+        ],
+        "mobileCurrencySize": [
+          "number"
+        ],
+        "mobileImageBlur": [
+          "number"
+        ],
+        "mobileImageBrightness": [
+          "number"
+        ],
+        "mobileImageContrast": [
+          "number"
+        ],
+        "mobileImageGap": [
+          "number"
+        ],
+        "mobileImageGrayscale": [
+          "number"
+        ],
+        "mobileImageObjectFit": [
+          "string"
+        ],
+        "mobileImageOpacity": [
+          "number"
+        ],
+        "mobileOverlayColor": [
+          "string"
+        ],
+        "mobileOverlayOpacity": [
+          "number"
+        ],
+        "overlayColor": [
+          "string"
+        ],
+        "overlayOpacity": [
+          "number"
+        ],
+        "placement_id": [
+          "string"
+        ],
+        "selectedVirtualCurrencyPackage": [
+          "string"
+        ],
+        "showDescription": [
+          "boolean"
+        ],
+        "showHeader": [
+          "boolean"
+        ],
+        "title": [
+          "string"
+        ],
+        "titleCase": [
+          "string"
+        ],
+        "titleFontFamily": [
+          "string"
+        ],
+        "titleTextColor": [
+          "string"
+        ],
+        "titleTextSize": [
+          "string"
+        ]
+      },
+      "component_item_fields": [],
+      "transport_modules": [
+        "federated"
+      ],
+      "package_versions": [
+        "4.0.0"
+      ]
+    },
+    {
+      "module": "promoSlider",
+      "observed_instances": 1,
+      "block_versions": [],
+      "block_version_missing": true,
+      "block_value_types": {
+        "description": [
+          "object"
+        ],
+        "enable": [
+          "boolean"
+        ],
+        "logo": [
+          "object"
+        ],
+        "slideArrow": [
+          "object"
+        ],
+        "sliderLoop": [
+          "object"
+        ]
+      },
+      "component_item_fields": [
+        "_id",
+        "components",
+        "enable",
+        "type",
+        "value"
+      ]
+    },
+    {
+      "module": "promocodes",
+      "observed_instances": 2,
+      "block_versions": [
+        2
+      ],
+      "block_version_missing": false,
+      "block_value_types": {
+        "background": [
+          "object"
+        ],
+        "description": [
+          "object"
+        ],
+        "placeholder": [
+          "object"
+        ],
+        "redeemButton": [
+          "object"
+        ],
+        "script": [
+          "object"
+        ],
+        "title": [
+          "object"
+        ]
+      },
+      "component_item_fields": []
+    },
+    {
+      "module": "rewards",
+      "observed_instances": 1,
+      "block_versions": [],
+      "block_version_missing": true,
+      "block_value_types": {
+        "chains": [
+          "array"
+        ],
+        "script": [
+          "object"
+        ],
+        "tabs": [
+          "boolean"
+        ]
+      },
+      "component_item_fields": []
+    },
+    {
+      "module": "sb-daily-reward",
+      "observed_instances": 1,
+      "block_versions": [],
+      "block_version_missing": true,
+      "block_value_types": {
+        "chainSettings": [
+          "object"
+        ],
+        "dailyRewardId": [
+          "null"
+        ],
+        "stepsSettings": [
+          "object"
+        ],
+        "translations": [
+          "object"
+        ]
+      },
+      "component_item_fields": [],
+      "transport_modules": [
+        "federated"
+      ],
+      "package_versions": [
+        "0.9.4"
+      ]
+    },
+    {
+      "module": "sb-offer-chain",
+      "observed_instances": 2,
+      "block_versions": [],
+      "block_version_missing": true,
+      "block_value_types": {
+        "chainSettings": [
+          "object"
+        ],
+        "offerChainId": [
+          "null"
+        ],
+        "stepsSettings": [
+          "object"
+        ],
+        "translations": [
+          "object"
+        ]
+      },
+      "component_item_fields": [],
+      "transport_modules": [
+        "federated"
+      ],
+      "package_versions": [
+        "0.12.4"
+      ]
+    },
+    {
+      "module": "side-by-side-layout",
+      "observed_instances": 1,
+      "block_versions": [],
+      "block_version_missing": true,
+      "block_value_types": {
+        "blocks": [
+          "array"
+        ]
+      },
+      "component_item_fields": []
+    },
+    {
+      "module": "sidebar",
+      "observed_instances": 1,
+      "block_versions": [],
+      "block_version_missing": true,
+      "block_value_types": {
+        "background": [
+          "object"
+        ],
+        "description": [
+          "object"
+        ],
+        "logo": [
+          "object"
+        ],
+        "menu": [
+          "object"
+        ],
+        "platforms": [
+          "object"
+        ],
+        "showVerificationIcon": [
+          "boolean"
+        ],
+        "socials": [
+          "object"
+        ],
+        "storeButtonIds": [
+          "array"
+        ],
+        "storeButtons": [
+          "object"
+        ],
+        "title": [
+          "object"
+        ]
+      },
+      "component_item_fields": []
+    },
+    {
+      "module": "social-quests",
+      "observed_instances": 1,
+      "block_versions": [],
+      "block_version_missing": true,
+      "block_value_types": {
+        "bannerImageHeight": [
+          "number"
+        ],
+        "bannerImageHeightMobile": [
+          "number"
+        ],
+        "completedColor": [
+          "string"
+        ],
+        "completedIcon": [
+          "string"
+        ],
+        "discordQuestOrder": [
+          "array"
+        ],
+        "dmErrorImage": [
+          "string"
+        ],
+        "dmErrorImageHeight": [
+          "number"
+        ],
+        "dmErrorImageWidth": [
+          "number"
+        ],
+        "enableDiscordJoinQuest": [
+          "boolean"
+        ],
+        "enableDiscordMembershipQuest": [
+          "boolean"
+        ],
+        "enableDmErrorModal": [
+          "boolean"
+        ],
+        "enableViewQuest": [
+          "boolean"
+        ],
+        "enableVisitYoutubeChannelQuest": [
+          "boolean"
+        ],
+        "enableWhatsappViewQuest": [
+          "boolean"
+        ],
+        "enableYoutubeLinkQuest": [
+          "boolean"
+        ],
+        "enableYoutubeQuest": [
+          "boolean"
+        ],
+        "image": [
+          "string"
+        ],
+        "joinQuestBannerHeight": [
+          "number"
+        ],
+        "joinQuestBannerHeightMobile": [
+          "number"
+        ],
+        "joinQuestBannerWidth": [
+          "number"
+        ],
+        "joinQuestImage": [
+          "string"
+        ],
+        "membershipQuestBannerHeight": [
+          "number"
+        ],
+        "membershipQuestBannerHeightMobile": [
+          "number"
+        ],
+        "membershipQuestImage": [
+          "string"
+        ],
+        "modalImageHeight": [
+          "number"
+        ],
+        "modalImageWidth": [
+          "number"
+        ],
+        "questsEnabled": [
+          "object"
+        ],
+        "questsVersion": [
+          "number"
+        ],
+        "successModal": [
+          "object"
+        ],
+        "successModalDescription": [
+          "string"
+        ],
+        "successModalHeading": [
+          "string"
+        ],
+        "tempQuestImageRef": [
+          "string"
+        ],
+        "translations": [
+          "object"
+        ],
+        "viewQuestBannerHeight": [
+          "number"
+        ],
+        "viewQuestBannerHeightMobile": [
+          "number"
+        ],
+        "viewQuestBannerWidth": [
+          "number"
+        ],
+        "viewQuestImage": [
+          "string"
+        ],
+        "whatsappQuestOrder": [
+          "array"
+        ],
+        "whatsappViewQuestBannerHeight": [
+          "number"
+        ],
+        "whatsappViewQuestBannerHeightMobile": [
+          "number"
+        ],
+        "whatsappViewQuestBannerWidth": [
+          "number"
+        ],
+        "whatsappViewQuestImage": [
+          "string"
+        ],
+        "youtubeChannelQuestBannerHeight": [
+          "number"
+        ],
+        "youtubeChannelQuestBannerHeightMobile": [
+          "number"
+        ],
+        "youtubeChannelQuestBannerWidth": [
+          "number"
+        ],
+        "youtubeChannelQuestImage": [
+          "string"
+        ],
+        "youtubeLinkQuestBannerHeight": [
+          "number"
+        ],
+        "youtubeLinkQuestBannerHeightMobile": [
+          "number"
+        ],
+        "youtubeLinkQuestBannerWidth": [
+          "number"
+        ],
+        "youtubeLinkQuestImage": [
+          "string"
+        ],
+        "youtubeLinkUrl": [
+          "string"
+        ],
+        "youtubeQuestBannerHeight": [
+          "number"
+        ],
+        "youtubeQuestBannerHeightMobile": [
+          "number"
+        ],
+        "youtubeQuestBannerWidth": [
+          "number"
+        ],
+        "youtubeQuestImage": [
+          "string"
+        ],
+        "youtubeQuestOrder": [
+          "array"
+        ],
+        "youtubeVideoUrl": [
+          "string"
+        ]
+      },
+      "component_item_fields": [],
+      "transport_modules": [
+        "federated"
+      ],
+      "package_versions": [
+        "5.0.0"
+      ]
+    }
+  ],
+  "site_settings": {
+    "cart": {
+      "enable": "boolean",
+      "isRequiredAuth": "boolean",
+      "showPromocodeField": "boolean"
+    }
+  }
+}

@@ -30,6 +30,11 @@ jobs:
       - name: Validate skills, registries, links and provider sync
         run: python3 .github/scripts/validate_skills.py
 
+      - name: Test Shop Builder assembly helpers
+        env:
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: python3 -m unittest discover -s skills/shop-builder-assembly/tests -p 'test_*.py' -v
+
   workflow-permissions:
     name: Workflows declare least-privilege permissions
     runs-on: ubuntu-latest

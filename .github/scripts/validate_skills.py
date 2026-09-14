@@ -37,6 +37,7 @@ VALID_OWNERS = {
     "y.klochikhin",
     "y-klochikhin",
     "p.sanachev",
+    "k.shah",
     "elnur_khalilov",
     "e.chernykh",
 }

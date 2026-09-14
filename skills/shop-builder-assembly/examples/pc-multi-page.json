@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "project": {
+    "merchant_id": 12345,
+    "project_id": 67890,
+    "environment": "sandbox"
+  },
+  "game": {
+    "name": "Iron Frontier",
+    "platforms": ["pc"],
+    "lifecycle": "evergreen"
+  },
+  "site": {
+    "name": "Iron Frontier Portal",
+    "slug": "iron-frontier-portal",
+    "preset": "pc-multi-page",
+    "primary_locale": "en-US",
+    "locales": ["en-US"]
+  },
+  "catalog": {
+    "groups": [
+      {
+        "external_id": "pc-editions",
+        "type": "bundle",
+        "placement": "primary"
+      }
+    ],
+    "featured_skus": []
+  },
+  "brand": {},
+  "content": {
+    "requirements": {
+      "platform": "pc",
+      "status": "publisher-approved"
+    }
+  },
+  "sources": [
+    {
+      "kind": "publisher_answers"
+    }
+  ]
+}

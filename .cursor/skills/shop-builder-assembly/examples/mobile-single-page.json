@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "project": {
+    "merchant_id": 12345,
+    "project_id": 67890,
+    "environment": "sandbox"
+  },
+  "game": {
+    "name": "Space Legends",
+    "platforms": ["mobile"],
+    "lifecycle": "launch"
+  },
+  "site": {
+    "name": "Space Legends Web Shop",
+    "slug": "space-legends-shop",
+    "preset": "auto",
+    "primary_locale": "en-US",
+    "locales": ["en-US"]
+  },
+  "catalog": {
+    "groups": [
+      {
+        "external_id": "__all__",
+        "type": "virtual_currency",
+        "placement": "primary"
+      }
+    ],
+    "featured_skus": []
+  },
+  "brand": {},
+  "content": {},
+  "sources": [
+    {
+      "kind": "publisher_answers"
+    }
+  ]
+}

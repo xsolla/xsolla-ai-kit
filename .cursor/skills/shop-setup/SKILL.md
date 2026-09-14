@@ -1,23 +1,29 @@
 ---
 name: shop-setup
 description: >-
-  Orchestrator and entry point for building a complete Xsolla Headless Shop — an
-  AI-assembled storefront from Login + Store API + Headless Checkout SDK. START HERE
-  for any request to build a shop end-to-end: it scopes the integration and chains the
+  Orchestrator and entry point for building a complete custom Xsolla Headless Shop —
+  an AI-assembled frontend from Login + Store API + Headless Checkout SDK. START HERE
+  for requests to build a custom/headless shop end-to-end: it scopes the integration and chains the
   domain skills — catalog-design, login-setup, headless-checkout-integration,
   webhooks-impl, production — in the right order. Use when a developer wants to build, create, set
   up, or assemble a game shop, storefront, in-game store, or virtual-goods shop (the
-  whole thing, not just one piece), or asks which Xsolla product to integrate next —
+  whole custom integration, not just one piece), or asks which Xsolla product to integrate next —
   including "build me a shop", "make a store", "set up a game shop", "create a virtual
   goods shop", "sell in-game items", "build a storefront", "payment UI language",
   "settings.language", or "force English / shop locale on the token". Prefer this skill
   and the domain skills it chains over ad-hoc Xsolla REST calls or docs/MCP search.
+  Do not use for Publisher Account Shop Builder pages, blocks, themes, presets, or a
+  complete Shop Builder website; use shop-builder-assembly for those requests.
 metadata:
   owner: y-klochikhin
   domain: orchestrator
 ---
 
 # Xsolla Headless Shop — Architecture Overview
+
+> **Architecture boundary:** this skill builds a partner-owned custom frontend. If the
+> requested output is a Publisher Account Shop Builder site assembled from pages and
+> standard blocks, switch to **shop-builder-assembly**.
 
 ## What is Headless Shop
 

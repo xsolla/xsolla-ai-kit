@@ -8,7 +8,9 @@ This file is read automatically by most AI coding agents (Cursor, Codex CLI, Git
 
 `xsolla/xsolla-ai-kit` is the Xsolla agent skills toolkit — a collection of `SKILL.md` files (agentskills.io format) that teach AI coding agents how to execute Xsolla-specific workflows end-to-end, without requiring the Xsolla CLI as a dependency.
 
-Skills call **Xsolla REST APIs directly**. The CLI (`xsolla/xsolla-cli`) is an optional shortcut once it ships to production.
+Most skills call **Xsolla REST APIs directly**. Shop Builder assembly is the explicit
+exception: the SB AI epics require its writes to go through pre-written workflows in
+`xsolla/xsolla-cli`, including CLI login and approved-test-environment safety checks.
 
 ---
 
@@ -17,6 +19,7 @@ Skills call **Xsolla REST APIs directly**. The CLI (`xsolla/xsolla-cli`) is an o
 | Skill                           | What it does                                                                             |
 |---------------------------------|------------------------------------------------------------------------------------------|
 | `shop-setup`                    | **Orchestrator** — coordinates the full zero-to-shop flow, chaining all domain skills    |
+| `shop-builder-assembly`         | Assembles a complete Shop Builder site from a game brief, presets, pages, and blocks     |
 | `merchant-setup`                | Creates and configures an Xsolla account + get API key                                   |
 | `catalog-design`                | Configures the catalog and the client flow: client catalog, purchase, order confirmation |
 | `login-setup`                   | Integrates Xsolla Login / NewID authentication                                           |
@@ -34,6 +37,9 @@ Skills are loaded automatically when you open this repo in your agent. To run a 
 ```
 Set up a full Xsolla game shop for my project
 → triggers: shop-setup
+
+Assemble a complete Shop Builder site for my mobile, PC, or live-service game
+→ triggers: shop-builder-assembly
 
 Configure my Xsolla catalog with items and pricing
 → triggers: catalog-design
