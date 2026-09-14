@@ -29,6 +29,7 @@ Two ways to build a shop, for different goals. Before building, find out whether
 | `shop-setup`                    | **In code** — a shop the user writes, deploys, and reviews. Chains the headless skills   |
 | `nocode-shop-setup`             | **In Shop Builder** — a hosted site. Store, or a PC game home around the store           |
 | `shop-builder-assembly`         | Assembles a Shop Builder store from a shop brief — reached via nocode-shop-setup        |
+| `localization`                  | Translates catalog + LiveOps content (items, bundles, promotions, chains) via one CSV    |
 | `merchant-setup`                | Creates and configures an Xsolla account + get API key                                   |
 | `catalog-design`                | Configures the catalog and the client flow: client catalog, purchase, order confirmation |
 | `login-setup`                   | Integrates Xsolla Login / NewID authentication                                           |
@@ -66,6 +67,10 @@ Configure my Xsolla catalog with items and pricing
 
 Integrate payments into my game
 → triggers: headless-checkout-integration
+
+Translate my catalog / localize item names / translate promotions / add a language
+→ triggers: localization
+   (catalog + LiveOps content — payment UI language is shop-setup, Login is login-styling)
 
 Go live / leave sandbox
 → triggers: production
