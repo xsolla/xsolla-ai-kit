@@ -24,16 +24,27 @@ metadata:
 **Before anything else**, check whether a build path has been decided:
 
 ```bash
-grep -qE '^XSOLLA_BUILD_PATH=(headless|shopbuilder)$' .env 2>/dev/null && echo PATH_RECORDED
+raw=$(grep -E '^XSOLLA_BUILD_PATH=' .env 2>/dev/null | tail -n 1 | cut -d= -f2-)
+case "$raw" in
+  "")                   echo NO_DECISION ;;
+  headless|shopbuilder) echo "DECIDED:$raw" ;;
+  *)                    echo "INVALID:$raw" ;;
+esac
 ```
 
-- **No `PATH_RECORDED`** → invoke `shop-plan` and stop. It asks the developer to weigh headless
-  vs. Shop Builder against five criteria, shows the trade-offs, and records the confirmed choice.
+- **`NO_DECISION`** → invoke `shop-plan` and stop. It asks the developer to weigh headless vs.
+  Shop Builder against five criteria, shows the trade-offs, and records the confirmed choice.
   This orchestrator never asks the path itself.
-- **`XSOLLA_BUILD_PATH=shopbuilder`** → halt. This kit has no Shop Builder build skills yet
-  (tracked: SB-8786, SB-8787, SB-8784, SB-8796) — say so plainly rather than attempting the
-  headless flow under a Shop Builder decision.
-- **`XSOLLA_BUILD_PATH=headless`** → proceed with the rest of this skill as below.
+- **`DECIDED:headless`** → proceed with the rest of this skill as below.
+- **`DECIDED:shopbuilder`** → halt. This kit has no Shop Builder build skills yet (tracked:
+  SB-8786, SB-8787, SB-8784, SB-8796) — say so plainly rather than attempting the headless flow
+  under a Shop Builder decision.
+- **`INVALID:<value>`** → halt and show the value. `.env` was hand-edited to something that isn't
+  a recognised path. Do **not** fall through to `shop-plan` as if nothing had been decided — that
+  discards a choice the developer already made. Point them at `shop-plan` to correct it.
+
+The full contract — allowed values, who may write the key, what other skills must do with it —
+is in [`shop-plan/references/build-path-contract.md`](../shop-plan/references/build-path-contract.md).
 
 ## What is Headless Shop
 

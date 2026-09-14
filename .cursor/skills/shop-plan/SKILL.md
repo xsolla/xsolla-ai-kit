@@ -60,15 +60,33 @@ don't hide that it isn't buildable here today.
 ### 1. Check for an existing decision
 
 ```bash
-grep -qE '^XSOLLA_BUILD_PATH=(headless|shopbuilder)$' .env 2>/dev/null && echo PLAN_RECORDED
+raw=$(grep -E '^XSOLLA_BUILD_PATH=' .env 2>/dev/null | tail -n 1 | cut -d= -f2-)
+case "$raw" in
+  "")                   echo NO_DECISION ;;
+  headless|shopbuilder) echo "DECIDED:$raw" ;;
+  *)                    echo "INVALID:$raw" ;;
+esac
 ```
 
-On `PLAN_RECORDED`, unless the developer explicitly asked to reconsider ("replan",
-"reconsider", "change the path"), report it and stop:
+**`DECIDED`** — unless the developer explicitly asked to reconsider ("replan", "reconsider",
+"change the path"), report it and stop:
 
 ```
 Already decided: Shop Builder. Say "reconsider" to redo it, or run shop-setup to build.
 ```
+
+**`INVALID`** — `.env` holds a value that isn't one of the two (a hand-edit, a typo, a stray
+quote). **Do not treat this as undecided and start interviewing.** Somebody made a decision
+here; silently re-asking throws it away. Show the value and ask which they meant:
+
+```
+.env has XSOLLA_BUILD_PATH=Headless, which isn't a value I recognise — it must be exactly
+`headless` or `shopbuilder`. Did you mean headless? I'll correct it if you confirm.
+```
+
+**`NO_DECISION`** — nothing recorded (or no `.env` at all). Continue to step 2.
+
+Full rules, including what every other skill must do with this key: `references/build-path-contract.md`.
 
 **A build already in flight is not a fresh decision.** If no path is recorded but Xsolla
 credentials already are (`XSOLLA_PROJECT_ID` / `XSOLLA_PROJECT_API_KEY` in `.env`), this project
