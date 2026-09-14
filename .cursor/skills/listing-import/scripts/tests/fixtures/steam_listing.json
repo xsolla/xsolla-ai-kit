@@ -1,0 +1,67 @@
+{
+  "source": "steam",
+  "source_url": "https://store.steampowered.com/app/812140/",
+  "fetched_at": "2026-09-14T13:32:16Z",
+  "rights_confirmed": true,
+  "fields": {
+    "title": "Assassin's Creed® Odyssey",
+    "developer": "Ubisoft Quebec, Ubisoft Montreal, Ubisoft Bucharest, Ubisoft Singapore, Ubisoft Montpellier, Ubisoft Kiev, Ubisoft Shanghai",
+    "short_description": "In this action-adventure game, set sail for Ancient Greece to alter its fate. Fight in visceral battles on land and sea, shape your destiny from outcast to legend, and uncover secrets of your past.",
+    "long_description_html": "<h2 class=\"bb_tag\" >FIGHT AS A SPARTAN WARRIOR</h2>Forge your own odyssey in a world on the brink of chaos and become a legendary Spartan hero, fighting mythical creatures along the way. Charge into epic clashes between Sparta and Athens, with battles pitting 150v150 soldiers against each other.<br><span class=\"bb_img_ctn\"><video class=\"bb_img\" autoplay muted loop playsinline poster=\"https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/812140/extras/eaa6f1cc43fec99430fae0d3eb602271.poster.avif?t=1786633104\" width=600 height=344 ><source src=\"https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/812140/extras/eaa6f1cc43fec99430fae0d3eb602271.webm?t=1786633104\" type=\"video/webm; codecs=vp9\"><source src=\"https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/812140/extras/eaa6f1cc43fec99430fae0d3eb602271.mp4?t=1786633104\" type=\"video/mp4\"></video></span><h2 class=\"bb_tag\" >TRAVEL TO ANCIENT GREECE</h2>Make your way through wild landscapes, vibrant cities, and iconic historical sites. Sail across shimmering seas, climb towering mountains, and discover the heart of a civilization.<br><span class=\"bb_img_ctn\"><video class=\"bb_img\" autoplay muted loop playsinline poster=\"https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/812140/extras/f022a99a01686b412a956953309a0441.poster.avif?t=1786633104\" width=600 height=344 ><source src=\"https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/812140/extras/f022a99a01686b412a956953309a0441.webm?t=1786633104\" type=\"video/webm; codecs=vp9\"><source src=\"https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/812140/extras/f022a99a01686b412a956953309a0441.mp4?t=1786633104\" type=\"video/mp4\"></video></span><h2 class=\"bb_tag\" >CHOOSE YOUR PATH</h2>Your choices shape the world around you. Play in a living world that constantly reacts to your every decision: forge alliances, spark conflicts, and determine the fate of characters. Customize your gear, ship, and special abilities to become a legend.<br><span class=\"bb_img_ctn\"><video class=\"bb_img\" autoplay muted loop playsinline poster=\"https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/812140/extras/646cf9e9db25b449a6b05445dc04af0a.poster.avif?t=1786633104\" width=600 height=344 ><source src=\"https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/812140/extras/646cf9e9db25b449a6b05445dc04af0a.webm?t=1786633104\" type=\"video/webm; codecs=vp9\"><source src=\"https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/812140/extras/646cf9e9db25b449a6b05445dc04af0a.mp4?t=1786633104\" type=\"video/mp4\"></video></span>",
+    "icon": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/812140/capsule_231x87.jpg?t=1786633104",
+    "key_art": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/812140/header.jpg?t=1786633104",
+    "screenshots": [
+      "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/812140/ss_0ef33c0f230da6ebac94f5959f0e0a8bbc48cf8a.1920x1080.jpg?t=1786633104",
+      "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/812140/ss_3f8f4a09fb1d69648a8c20aae19ca2924ba275bd.1920x1080.jpg?t=1786633104",
+      "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/812140/ss_6dc9f95cfb6d264c3535b53ce08f36ee07066550.1920x1080.jpg?t=1786633104",
+      "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/812140/ss_458b7cc7392b6fd073bbd679868fd486013cb474.1920x1080.jpg?t=1786633104",
+      "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/812140/ss_71f5c2052a6bfb94486e929db3d6b92c06696843.1920x1080.jpg?t=1786633104",
+      "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/812140/ss_c334fed07712111399ab1951eee432ec9ed46d28.1920x1080.jpg?t=1786633104",
+      "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/812140/ss_16fc551879ac299dca68839da90f89d9e624db48.1920x1080.jpg?t=1786633104",
+      "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/812140/ss_23039e3003448ee760030faf5e3bf8637f8d4063.1920x1080.jpg?t=1786633104"
+    ],
+    "genres": [
+      "Action",
+      "Adventure",
+      "RPG"
+    ],
+    "platforms": [
+      "windows"
+    ],
+    "age_rating": "PEGI 18",
+    "iap_items": [
+      {
+        "name": "Standard Edition",
+        "price": {
+          "amount": 59.99,
+          "currency": "EUR"
+        }
+      },
+      {
+        "name": "Deluxe Edition",
+        "price": {
+          "amount": 74.99,
+          "currency": "EUR"
+        }
+      },
+      {
+        "name": "Gold Edition",
+        "price": {
+          "amount": 99.99,
+          "currency": "EUR"
+        }
+      },
+      {
+        "name": "Ultimate Edition",
+        "price": {
+          "amount": 114.99,
+          "currency": "EUR"
+        }
+      }
+    ]
+  },
+  "not_found": [
+    "tags"
+  ],
+  "notes": "tags are rendered on the store page but absent from the appdetails response; this extraction used the API."
+}
