@@ -13,7 +13,7 @@ another skill.
 | **Location** | `.env` in the project root |
 | **Values** | exactly `headless` or `shopbuilder` — lowercase, no other spelling, no quotes, no surrounding whitespace |
 | **Written by** | `shop-plan`, and only after the developer explicitly confirms the choice |
-| **Read by** | any skill whose behaviour depends on the path |
+| **Read by** | any skill whose behavior depends on the path |
 
 If the key somehow appears more than once, the **last** occurrence wins, matching how `.env`
 loaders normally behave. `shop-plan` replaces in place rather than appending, so this should

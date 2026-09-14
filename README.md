@@ -76,7 +76,7 @@ XSOLLA_PROJECT_API_KEY=<your API key>
 
 | Skill | Domain | Owner | Status  |
 |-------|--------|-------|---------|
-| `shop-plan` | Build-path decision — headless vs Shop Builder | @s.sadruddin | Draft |
+| `shop-plan` | Orchestrator — build-path decision | @s.sadruddin | Draft   |
 | `shop-setup` | Orchestrator — full zero-to-shop flow | @y.klochikhin | Done    |
 | `merchant-setup` | Merchant and Project setup  | @y.klochikhin | Done    |
 | `catalog-design` | Items, pricing, virtual currency, bundles | @p.sanachev | Planned |

@@ -40,7 +40,7 @@ esac
   SB-8786, SB-8787, SB-8784, SB-8796) — say so plainly rather than attempting the headless flow
   under a Shop Builder decision.
 - **`INVALID:<value>`** → halt and show the value. `.env` was hand-edited to something that isn't
-  a recognised path. Do **not** fall through to `shop-plan` as if nothing had been decided — that
+  a recognized path. Do **not** fall through to `shop-plan` as if nothing had been decided — that
   discards a choice the developer already made. Point them at `shop-plan` to correct it.
 
 The full contract — allowed values, who may write the key, what other skills must do with it —

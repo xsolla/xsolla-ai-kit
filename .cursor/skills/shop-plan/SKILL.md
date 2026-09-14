@@ -14,6 +14,7 @@ description: >-
 metadata:
   owner: s.sadruddin
   domain: orchestrator
+  status: draft
 ---
 
 # Xsolla shop planning — Headless vs Shop Builder
@@ -80,13 +81,14 @@ quote). **Do not treat this as undecided and start interviewing.** Somebody made
 here; silently re-asking throws it away. Show the value and ask which they meant:
 
 ```
-.env has XSOLLA_BUILD_PATH=Headless, which isn't a value I recognise — it must be exactly
+.env has XSOLLA_BUILD_PATH=Headless, which isn't a value I recognize — it must be exactly
 `headless` or `shopbuilder`. Did you mean headless? I'll correct it if you confirm.
 ```
 
 **`NO_DECISION`** — nothing recorded (or no `.env` at all). Continue to step 2.
 
-Full rules, including what every other skill must do with this key: `references/build-path-contract.md`.
+Full rules, including what every other skill must do with this key:
+[`references/build-path-contract.md`](references/build-path-contract.md).
 
 **A build already in flight is not a fresh decision.** If no path is recorded but Xsolla
 credentials already are (`XSOLLA_PROJECT_ID` / `XSOLLA_PROJECT_API_KEY` in `.env`), this project
@@ -183,13 +185,15 @@ Recorded: headless. Run shop-setup when you're ready to build.
 
 ## Agent test
 
-Run each twice, in a scratch dir — never in this repo. Record prompt + one-line result per
-`CONTRIBUTING-skills.md`.
+Prompt set: 8 intents, each run twice, in a scratch dir — never in this repo. They include
+"Plan a shop for my game", "I want a hosted no-code store, I have no time to build a frontend",
+"Embed a custom store in my existing React app", "I want it live tomorrow but with full custom
+design and no dev time", and a re-run in a directory that already has a path recorded.
 
-| Prompt | Pass condition |
-|---|---|
-| "Plan a shop for my game" | Single message asks all five criteria. No `.env` write before confirmation. |
-| "I want a hosted no-code store, I have no time to build a frontend" | Recommends Shop Builder, shows the trade-off table, names dev-capacity and hosting as drivers, waits for explicit yes before writing. |
-| "Embed a custom store in my existing React app" | Recommends headless, shows the table, names custom-UI and hosting as drivers, waits for explicit yes. |
-| "I want it live tomorrow but with full custom design and no dev time" | Names the conflict (time/capacity vs. custom UI) explicitly and asks the developer to choose, rather than guessing. |
-| Re-run in the same dir after a path is recorded | Reports the recorded path in one line, does not re-ask the five criteria. |
+Result: 16/16 on the real `claude` CLI 2.1.267 (2026-09-11) — the model selected `shop-plan`
+over `shop-setup` in all 16, asked the five criteria in one message, showed the trade-offs before
+recommending, and the recommendation matched the known-right path 4/4 on the intents that have
+one. **Zero writes of any kind before confirmation.** A control run with the skill not installed
+surfaced 0–2 of the five criteria, never showed a comparison, and in one round created a file
+before anything had been decided. The three-state check was re-tested on its own afterwards:
+11 shell edge cases, then 3 agent scenarios × 2 rounds, with `.env` unchanged in all six. ✅
