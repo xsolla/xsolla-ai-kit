@@ -9,18 +9,26 @@ call in this round was a `GET`.
 
 | Metric | Target | Result |
 |---|---|---|
-| Field coverage — extraction (Steam) | ≥ 80% | **90.9%** (10/11) |
-| Field coverage — delivered (Steam) | ≥ 80% | **63.6%** (7/11) — at the 63.6% ceiling |
-| Unit tests | pass | **139 pass**, no network, 0.02 s |
+| Field coverage — extraction, Steam | ≥ 80% | **90.9%** (10/11) |
+| Field coverage — extraction, App Store | ≥ 80% | **88.9%** (8/9) |
+| Field coverage — extraction, Google Play | ≥ 80% | **88.9%** (8/9) |
+| Field coverage — mapping, all three | — | **100%** — every extracted field has a destination |
+| Field coverage — delivered, Steam | ≥ 80% | **90.9%** (10/11) |
+| Field coverage — delivered, Play / App Store | ≥ 80% | **72.7%** (8/11) |
+| Unit tests | pass | **222 pass**, no network, 0.04 s |
+| Sources extracted | 3 | **3** |
 | Sources with a working server-side import | 3 | **1** (Steam) |
 | Manual interventions, Steam dry run | ≤ 2 | **2** (see below) |
 | Time, URL → mapping preview | report | **~4 s** of tool time; ~0.4 s of it API latency |
 
-The delivered figure misses the target and is **not** a bug to fix here. Four target fields
-have no native block destination, capping landing-only delivery at 7/11. The extraction
-number is the one this skill controls, and it clears the bar. Both are reported rather than
-blended, because a blended 64% reads as an extraction failure and sends the reader to the
-wrong half.
+Extraction clears the target on all three sources. Delivered sits below it for Play and the
+App Store for a reason neither this skill nor Xsolla controls: neither storefront publishes
+`key_art` or `tags` at all. Those are excluded from each source's own extraction denominator
+so they are not scored as parser failures, but they still count against the eleven-field
+target list, which is what `delivered` measures.
+
+The earlier version of this log reported a **7/11 = 64% ceiling** on delivery and called it a
+gap in the block set. That was wrong — it is recorded below with the other corrections.
 
 ## Live runs
 
@@ -43,6 +51,60 @@ packs · description · bento-grid · bento-grid · gallery · packs · requirem
 footer`. That confirms the count and, more usefully, shows what is **absent** — no `sidebar`
 and no `lead`, which is why `platforms` and `developer` report as unresolved on a default
 import rather than being written somewhere approximate.
+
+## The ceiling that was not real
+
+The first round reported that four target fields — `genres`, `tags`, `age_rating`,
+`iap_items` — had no destination, and concluded that landing delivery was capped at 7/11 =
+64%. It was presented as a product gap to escalate.
+
+It was a measurement artefact. Only *structured native block fields* were being counted. Once
+"copied" is read as "the content reaches the shop", all four land:
+
+- `genres`, `tags`, `age_rating` → one appended TEXT component in the `description` block.
+  Copy rather than a typed field, and a reader of the finished page cannot tell which one
+  delivered it.
+- `iap_items` → catalog virtual items.
+
+Mapping coverage is now 100% on all three sources and the ceiling is 11/11. The lesson worth
+keeping: a metric that reports a product as broken deserves suspicion of the metric first.
+
+## Google Play did not need a browser
+
+Play's page is React-rendered, a plain `WebFetch` returns nothing usable, and the obvious
+conclusion — recorded in the first round — was that extraction needed a headless browser.
+
+Wrong. A plain request with a browser User-Agent returns **1.3 MB of HTML with every field
+already in it**: the `og:` meta tags, a `data-g-id="description"` container holding the full
+long description, the image CDN URLs, the developer and category links, and the rating. Play
+extraction is a regex-and-parser job, not a browser job.
+
+What Play genuinely does not publish: named in-app items (only a range, `$0.29 – $239.99`)
+and the feature graphic — no image on the page has its 1024x500 shape, so the documented
+`key_art` availability was corrected from ALWAYS to NEVER.
+
+## Apple's API has everything except the thing you want
+
+`itunes.apple.com/lookup` returns title, developer, description, icon, screenshots, genres and
+the age rating. It returns **no in-app purchases at all** — no key in the response contains
+"purchase", "iap" or "inApp". The IAP list is on the web page only, truncated to roughly ten
+entries, with duplicate names at different prices (`Gold Pass` at both $4.99 and $6.99).
+
+So the App Store path needs two fetches, and its in-app item list is partial by construction.
+
+## No storefront publishes a quantity
+
+The decisive finding for the catalog half. Every source gives an item **name and a price**:
+"Pocketful of Gems", $0.99. None gives what is inside it.
+
+A catalog currency package or bundle requires `--content '[{"sku":"gems","quantity":1200}]'`.
+That number is not public anywhere. So nothing can create a correct package or bundle from a
+listing, and everything is created as a **virtual item** priced in real money — the only
+catalog entity whose whole body a public listing can fill. A package with a guessed quantity
+would be worse than none, because it looks finished.
+
+Also missing, and filed rather than worked around: there is **no `consumable` flag** on
+catalog item create or update. Most mobile in-app purchases are consumables.
 
 ## Four things this plan had wrong
 
@@ -71,9 +133,9 @@ returns `{developer, icon, title}`. Worth a one-line docs PR against `xsolla/xso
 not distinguishing them — it does not recognise the target host. So the thing to file is a
 question about the accepted host list, not two bug reports.
 
-## Two bugs the real fixture caught
+## Three bugs the real fixtures caught
 
-Both would have passed a hand-written fixture.
+All three would have passed a hand-written fixture.
 
 **The sanitiser ate 90% of the description.** `<source>` and `<img>` are void elements — they
 never send a close tag. Treating them as containers left the parser cutting to the end of the
@@ -81,6 +143,19 @@ document, so the real 2,635-character description came out **284 characters** wi
 three headings. Fixed by listing every HTML void element, and pinned by
 `test_sanitize.TestVoidElementRegression`, which asserts against the real description rather
 than a snippet.
+
+**The Play description extractor took the whole document.** Same bug, different module:
+`_Subtree` counted `<img>` and `<br>` as nesting levels, so the depth never unwound and the
+capture ran past the description to the end of the page — **271 KB instead of 3.8 KB**. It
+did not raise; it returned plausible-looking HTML that happened to contain the entire store
+page. Pinned by
+`test_extract.TestGooglePlay.test_long_description_is_the_description_subtree_only`.
+
+**The rendered catalog commands were not runnable.** `--name '{"en": "Assassin's Creed
+Odyssey"}'` — the apostrophe in the game's own title closed the shell quote and split the
+argument. Hand-wrapping JSON in single quotes produced commands that looked right and were
+not, for the very first real title through the code. Fixed with `shlex.quote`, and the test
+now round-trips through `shlex.split` and `json.loads` rather than eyeballing the string.
 
 **The preview crashed on a companion patch.** `values.background.enable` is a boolean, and the
 renderer called `.replace()` on it. An `AttributeError` mid-render, after fourteen lines of
@@ -118,13 +193,18 @@ Recorded because a log with none of these is not a log.
   patch to a path that does not exist returns `ok: true` and changes nothing, these fail
   *silently* if wrong. Confirming them needs a write-and-read-back per path on a throwaway
   landing — the obvious next round, and `scripts/` is structured for it.
-- **Google Play and App Store extraction are untested end to end.** The field tables in
-  [`references/google-play.md`](references/google-play.md) and
-  [`references/app-store.md`](references/app-store.md) are written from page structure, not
-  from a run. The DoD's "≥ 3 games per source" is met for zero sources so far; Steam has one.
+- **No catalog entity has been created.** The rendered commands parse (checked with `bash -n`
+  and `shlex.split`) but have not been run against the sandbox, so the exact `create-items`
+  acceptance is unconfirmed.
+- **One game per source.** The DoD asks for ≥ 3. Fixtures exist for Assassin's Creed Odyssey
+  (Steam) and Clash of Clans (Play, App Store); the extractors are field-by-field tolerant,
+  but a second and third title per source is what would show it.
 - **`enable-preview` / `preview-link` were not exercised.** Reported elsewhere as 403 on some
   publisher accounts, apparently staff-gated. That gates the "time to preview-ready shop"
   metric and needs checking early on the fixture project.
+- **The overflow component's write is untested end to end.** `plan.py` produces the HTML and
+  the path; whether appending a TEXT component to a `description` block through
+  `update-block` works as expected has not been tried.
 
 ## Reproducing this
 
@@ -132,8 +212,27 @@ Recorded because a log with none of these is not a log.
 xsolla auth login
 xsolla shopbuilder get-listing --slug <existing landing> --type sellingpage \
     --target 'https://store.steampowered.com/app/812140/' --verbose
-cd scripts && python3 -m unittest discover -s tests -t . -v
-python3 listing_import.py coverage --listing tests/fixtures/steam_listing.json
+
+cd scripts
+python3 -m unittest discover -s tests -t . -v
+
+# the three-source metric table, from the committed fixtures
+python3 - <<'PY'
+from xsolla_listing_import import (coverage, extract_appstore, extract_play,
+                                  extract_steam)
+from tests.fixtures.load import appstore_lookup, play_page, steam_appdetails
+rows = [
+    ("Steam", extract_steam.to_listing(steam_appdetails(), "https://s/app/812140/")),
+    ("App Store", extract_appstore.to_listing(appstore_lookup(), "https://a/id1",
+     iap_items=[{"name": "Gold Pass"}])),
+    ("Play", extract_play.to_listing(play_page(), "https://p?id=x")),
+]
+for label, doc in rows:
+    r = coverage.measure(doc)
+    print(label, r["extraction"], r["mapping"])
+PY
+
 python3 listing_import.py preview --listing tests/fixtures/steam_listing.json \
     --structure tests/fixtures/steam_structure.json
+python3 listing_import.py catalog --listing tests/fixtures/steam_listing.json
 ```

@@ -195,3 +195,69 @@ class TestMalformedInputToAPublicEntryPoint(unittest.TestCase):
 
     def test_an_empty_screenshot_list_produces_no_operations(self):
         self.assertEqual(self._build({"screenshots": []})["operations"], [])
+
+
+class TestOverflowAndCatalogRouting(unittest.TestCase):
+    """The four fields that used to be reported as unmappable."""
+
+    def _plan(self, values, modules=("description", "gallery")):
+        document = {"source": "steam",
+                    "source_url": "https://store.steampowered.com/app/1/",
+                    "rights_confirmed": True, "fields": values}
+        structure = {"pages": [{"_id": "p", "blocks": [
+            {"_id": "b%d" % i, "module": m} for i, m in enumerate(modules)]}]}
+        return plan.build(document, structure)[0]
+
+    def test_three_overflow_fields_become_one_component(self):
+        built = self._plan({"genres": ["RPG"], "tags": ["Co-op"],
+                            "age_rating": "PEGI 18"})
+        overflow_ops = [o for o in built["operations"] if o["kind"] == "overflow"]
+        self.assertEqual(len(overflow_ops), 1)
+        self.assertEqual(overflow_ops[0]["field"], "genres+tags+age_rating")
+
+    def test_the_component_targets_the_description_block(self):
+        built = self._plan({"genres": ["RPG"]})
+        op = [o for o in built["operations"] if o["kind"] == "overflow"][0]
+        self.assertEqual(op["module"], "description")
+        self.assertEqual(op["path"], ["values", "components"])
+
+    def test_no_description_block_reports_each_field_unresolved(self):
+        built = self._plan({"genres": ["RPG"], "age_rating": "PEGI 18"},
+                           modules=("gallery",))
+        unresolved = {u["field"] for u in built["unresolved"]}
+        self.assertIn("genres", unresolved)
+        self.assertIn("age_rating", unresolved)
+
+    def test_overflow_comes_after_localization_before_assets(self):
+        built = self._plan({"title": "T", "genres": ["RPG"],
+                            "screenshots": ["https://x.test/a.jpg"]},
+                           modules=("leadGameSales", "description", "gallery"))
+        kinds = [o["kind"] for o in built["operations"]]
+        self.assertLess(kinds.index("overflow"), kinds.index("asset"))
+
+    def test_iap_items_become_catalog_operations_not_page_operations(self):
+        built = self._plan({"iap_items": [
+            {"name": "Gold Pass", "price": {"amount": 4.99, "currency": "USD"}}]})
+        self.assertEqual(len(built["catalog_operations"]), 1)
+        self.assertEqual(built["catalog_operations"][0]["entity"], "virtual_item")
+        self.assertFalse([o for o in built["operations"]
+                          if o["field"] == "iap_items"])
+
+    def test_catalog_warnings_state_the_quantity_limitation(self):
+        built = self._plan({"iap_items": [{"name": "Pocketful of Gems"}]})
+        self.assertTrue(any("quantity" in w for w in built["catalog_warnings"]))
+
+    def test_no_iap_items_means_no_catalog_work(self):
+        built = self._plan({"genres": ["RPG"]})
+        self.assertEqual(built["catalog_operations"], [])
+        self.assertEqual(built["catalog_warnings"], [])
+
+    def test_counts_include_the_new_kinds(self):
+        built = self._plan({"genres": ["RPG"], "iap_items": [{"name": "X"}]})
+        self.assertEqual(built["counts"]["overflow"], 1)
+        self.assertEqual(built["counts"]["catalog"], 1)
+
+    def test_nothing_falls_through_to_manual(self):
+        built = self._plan({"genres": ["RPG"], "tags": ["Co-op"],
+                            "age_rating": "PEGI 18", "iap_items": [{"name": "X"}]})
+        self.assertEqual(built["manual_follow_up"], [])

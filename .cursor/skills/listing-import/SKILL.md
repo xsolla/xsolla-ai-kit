@@ -8,13 +8,14 @@ description: >-
   "import my store listing", "clone my store page", "build a shop from my App Store entry",
   "reuse my game's screenshots and description". Extracts title, short and long description,
   icon, key art, screenshots, genres, tags, platform, age rating and publicly listed in-app
-  items, shows the extracted-to-shop mapping, and only then writes via the CLI. Steam has a
+  items, shows the extracted-to-shop mapping, and only then writes via the CLI. Copies
+  everything the listing publishes, not just marketing: genres, tags and age rating are
+  carried as page copy, and in-app items become priced catalog entities. Steam also has a
   server-side import (`xsolla shopbuilder import-listing`); Google Play and the App Store are
-  rejected by that endpoint and go through the agent-extraction path instead. Public pages
-  only, marketing content only — priced catalog items are `catalog-admin`'s job, landing
-  mechanics are `shopbuilder`'s, and block payload shape is `shop-validation`'s. Always
-  confirms the partner holds the rights to the copy and artwork before writing, and never
-  publishes.
+  rejected by that endpoint, so all three run through extraction here. Public pages only.
+  Landing mechanics are `shopbuilder`'s and block payload shape is `shop-validation`'s.
+  Always confirms the partner holds the rights to the copy and artwork before writing, and
+  never publishes.
 metadata:
   owner: n.budhwani
   domain: store
@@ -26,11 +27,15 @@ metadata:
 A listing is content a publisher already wrote. This skill moves it into a Shop Builder
 landing without retyping it, and puts a confirmation step in front of the write.
 
-The work splits in two. **Extraction** is the agent's: read the public page, produce a
-`listing.json`. **Everything after that is deterministic** and lives in `scripts/` — validate
-the document, measure coverage, map fields onto blocks, emit the ordered write plan. Keeping
-the seam there means an extraction bug and a mapping bug fail in different places with
-different messages.
+The work splits in two. **Extraction** turns a public page into a `listing.json`; three
+extractors do it, one per storefront. **Everything after that is deterministic** — validate
+the document, measure coverage, map fields onto blocks and catalog entities, emit the ordered
+plan. Keeping the seam there means an extraction bug and a mapping bug fail in different
+places with different messages.
+
+Nothing here fetches. Each extractor takes content the caller already has, so a rate limit, a
+redirect or a geo-block surfaces where it happened instead of inside a parser — and the tests
+run offline.
 
 Python 3.9+, standard library only. No install step.
 
@@ -38,11 +43,15 @@ Python 3.9+, standard library only. No install step.
 
 Verified live against merchant 936601 on 2026-09-14:
 
-| Source | Server-side import | What this skill does |
-|---|---|---|
-| [Steam](references/steam.md) | **Works.** `import-listing` builds ~13 blocks including real screenshots | Wraps it: rights gate, preview, backup, then fills what the import leaves unset |
-| [Google Play](references/google-play.md) | **HTTP 400** `request_body_validation_error` | Agent extraction, then the same write plan |
-| [Apple App Store](references/app-store.md) | **HTTP 400**, identical error | Agent extraction, then the same write plan |
+| Source | Extract from | Server-side import | Extraction coverage |
+|---|---|---|---|
+| [Steam](references/steam.md) | `appdetails` JSON | **Works** — ~13 blocks | **90.9%** (10/11) |
+| [Google Play](references/google-play.md) | The page's HTML | HTTP 400 | **88.9%** (8/9) |
+| [Apple App Store](references/app-store.md) | `lookup` JSON + page for IAPs | HTTP 400 | **88.9%** (8/9) |
+
+Play's page is React-rendered, which suggests it needs a headless browser. It does not — a
+plain request returns 1.3 MB of HTML with every field already in it. Apple's API carries
+everything **except** in-app purchases, which are on the page only.
 
 Play and the App Store fail *indistinguishably* — the endpoint is not reporting "Play is
 broken" and "Apple is unsupported", it is saying it does not recognise the target host. Filed
@@ -56,9 +65,9 @@ Never reorder steps 1–5. Never skip step 6.
 1. **Rights gate.** Ask: is this your own game's listing? A public store page can be parsed
    by anyone — nothing upstream checks ownership — so this is the only check that the copy and
    artwork are the partner's to reuse. A no ends the run.
-2. **Extract.** Read the public page and write `listing.json`
-   ([the schema](references/listing-json.md)). Declare what you looked for and could not find
-   in `not_found`; do not leave a field silently absent.
+2. **Extract.** `fetch` says what to request; `extract` turns it into `listing.json`
+   ([the schema](references/listing-json.md)). What was looked for and not found lands in
+   `not_found`, so an absent field is never ambiguous.
 3. **Back up.** `get-structure` and `get-localization` to files, kept. Before the first write,
    not before the first fix.
 4. **Preview.** `preview` renders the mapping. This is what the user approves.
@@ -79,10 +88,13 @@ From `scripts/`. All read-only; `--json` gives the machine-readable report in
 
 | About to | Run |
 |---|---|
+| Find out what to fetch | `python3 listing_import.py fetch --url <store url>` |
+| Turn a response into a listing | `python3 listing_import.py extract --input raw.json --url <store url>` |
 | Check the extraction | `python3 listing_import.py validate --listing listing.json` |
 | Report field coverage | `python3 listing_import.py coverage --listing listing.json` |
 | Show the mapping for approval | `python3 listing_import.py preview --listing listing.json --structure structure.json` |
 | Get the operations to execute | `python3 listing_import.py plan --listing listing.json --structure structure.json` |
+| Create the in-app items | `python3 listing_import.py catalog --listing listing.json` |
 | Convert pasted Steam BBCode | `python3 listing_import.py bbcode --file description.txt` |
 
 Pass `--localization` (from `get-localization`) to `preview`/`plan` as well; without it, `L:`
@@ -107,20 +119,42 @@ are rejected by the live API.
 
 ## Reading the coverage report
 
-Three numbers, because one cannot be honest:
+Three numbers, because they fail for different reasons and have different owners:
 
 | | Means | Who owns a miss |
 |---|---|---|
-| `extraction` | Of the fields this source publishes, how many were read | The extraction step. **This is the number to hold to a target.** |
-| `mapping` | Of those, how many have a native block field | Nobody here — see below |
-| `delivered` | Of the whole target list, what lands on the page | The product of the two |
+| `extraction` | Of the fields this source publishes, how many were read | The extractor. **This is the number to hold to a target.** |
+| `mapping` | Of those, how many have somewhere to go | Structural — the landing is missing a block |
+| `delivered` | Of the whole target list, what the partner gets | The product of the two |
 
-**Landing-only delivery is capped at 7/11 = 64%**, and that is not a defect in this skill
-([why, field by field](references/block-mapping.md)).
-Four target fields have nowhere native to go: `genres` and `tags` (no module has the field),
-`age_rating` (the footer takes rating *ids* it already holds, not free text) and `iap_items`
-(catalog, not a landing → `catalog-admin`). Report the ceiling alongside the score, or a
-correct run reads as a failure.
+Extraction clears 80% on all three sources. Mapping is 100%: **every** target field has a
+destination. An earlier version of this skill reported a 7/11 = 64% ceiling — that was an
+artefact of counting only structured block fields, and it is gone
+([why, field by field](references/block-mapping.md)):
+
+- **`genres`, `tags`, `age_rating`** → one appended TEXT component in the `description`
+  block. Copy rather than a typed field, and a reader of the page cannot tell the difference.
+- **`iap_items`** → catalog virtual items priced in real money.
+
+`delivered` is still below `extraction` for Play and Apple, because neither publishes
+`key_art` or `tags` at all. Those are excluded from each source's own denominator, so they
+are not scored as extraction misses.
+
+## In-app items — what you get, and what you cannot
+
+`catalog` renders the commands. Two limits are not fixable by better code:
+
+- **No storefront publishes the quantity behind an item name.** "Pocketful of Gems" never
+  says 1200. So everything is created as a **virtual item**, never a currency package or a
+  bundle — both need a `content` array of `{sku, quantity}`. A package with a guessed
+  quantity would be worse than none, because it looks finished.
+- **The lists are partial.** Steam publishes editions and DLC, never consumables. Apple's
+  page shows roughly the top ten, with duplicate names at different prices. Play publishes a
+  **price range** only (`$0.29 – $239.99`) and no names, so nothing is created from it.
+
+Everything lands in one `imported_listing` group, flagged `needs_review`, for a human to
+reclassify in one pass. Also unavailable: there is **no `consumable` flag** on catalog item
+create or update, and most mobile IAPs are consumables — filed, not worked around.
 
 ## Safety rules
 
@@ -131,7 +165,9 @@ correct run reads as a failure.
 5. **Never patch a remote image URL into a block.** `upload-asset` takes a local file: fetch,
    upload, then write the returned CDN url. Writing the source URL hotlinks another
    storefront from the partner's page.
-6. **Never publish.** A clean preview is not permission to make a shop live.
+6. **Never auto-enable an unpriced catalog item.** Created disabled, so a mis-parsed
+   listing cannot put a broken item on sale.
+7. **Never publish.** A clean preview is not permission to make a shop live.
 
 Sandbox or test project only — never a partner's live project.
 
@@ -148,7 +184,8 @@ Shop Builder authorizes separately from the Store `XSOLLA_PROJECT_API_KEY` that
 
 - [`shop-validation`](../shop-validation/SKILL.md) — run its `validate-shop` gate on the
   resulting blocks. This skill checks the *mapping*; that one checks the *payload*.
-- [`catalog-design`](../catalog-design/SKILL.md) — where `iap_items` goes.
+- [`catalog-design`](../catalog-design/SKILL.md) — regional pricing, groups and the
+  reclassification the imported items need.
 - [`shop-setup`](../shop-setup/SKILL.md) — the headless storefront, which has no blocks and
   so is not an import target.
 
@@ -163,11 +200,23 @@ Prompt: "Build me an Xsolla shop from my Steam page:
 https://store.steampowered.com/app/812140/"
 
 Live run on merchant `936601` / project `314771` (2026-09-14): the agent asked the rights
-question first, called `get-listing` read-only and got `{developer, icon, title}`, extracted
-the remaining eight fields from the public listing into `listing.json` (validated clean),
-and rendered a 15-operation mapping against the real 13-block structure a prior
-`import-listing` had produced — 3 localization writes, 10 asset uploads, 2 companion
-patches, with `platforms` and `developer` correctly reported as unplaceable on that template
-and `genres`/`age_rating`/`iap_items` as manual follow-up. Coverage: extraction 90.9%,
-delivered 63.6% against a 63.6% ceiling. No writes were made: the run stopped at the
-confirmation step, which is where it is supposed to stop. ✅
+question first, called `get-listing` read-only and got `{developer, icon, title}`, then
+extracted all eleven target fields from the public `appdetails` response (`tags` correctly
+declared in `not_found` — they render on the page but are absent from the API). The mapping
+preview against the real 13-block structure a prior `import-listing` produced: 3 localization
+writes, 1 overflow component carrying genres and the PEGI rating, 10 asset uploads, 2
+companion patches, and 4 catalog items for the editions — with `platforms` and `developer`
+correctly reported as unplaceable on that template, which has no `sidebar` or `lead` block.
+Coverage: extraction 90.9%, mapping 100%, delivered 90.9%. No writes were made: the run
+stopped at the confirmation step, which is where it is supposed to stop. ✅
+
+Second prompt: "Same thing from my Play listing and my App Store listing"
+— `https://play.google.com/store/apps/details?id=com.supercell.clashofclans` and
+`https://apps.apple.com/us/app/clash-of-clans/id529479190`.
+
+Both extracted at 88.9% (8/9), mapping 100%. Play came from the page's raw HTML with no
+browser; Apple from the lookup API plus the page for its truncated in-app list. Both
+correctly declared `key_art` and `tags` as not published, and Play carried its
+`$0.29 – $239.99` price range in `notes` rather than inventing items from it. ✅
+
+222 unit tests, offline, on the real fixtures from all three stores.

@@ -30,25 +30,52 @@ paired with a read-back and why `preview` prints `[path unconfirmed]`.
 | `key_art` | `leadGameSales` | asset | `values.background.img` ✅ |
 | `screenshots` | `gallery` | asset | `values.slides[i].image.img` ✅ |
 | `platforms` | `sidebar` | patch | `values.storeButtons` |
-| `age_rating` | `footer` | manual | `values.ageRatingIds` |
-| `genres` | — | manual | — |
-| `tags` | — | manual | — |
-| `iap_items` | — | external | → `catalog-design` |
+| `age_rating` | `description` | overflow | `values.components` |
+| `genres` | `description` | overflow | `values.components` |
+| `tags` | `description` | overflow | `values.components` |
+| `iap_items` | — | catalog | virtual items, via `create-items` |
 
-## Why four fields have nowhere to go
+## The four fields with no structured field
 
-Not an oversight here — a gap in the block set:
+They have no *typed* block field. That is not the same as having nowhere to go, and the first
+version of this table confused the two — it reported them unmappable and put a 7/11 = 64%
+ceiling on the whole skill. The ceiling was an artefact of the measurement.
 
-- **`genres`, `tags`** — no module has the field. Genres can be folded into description copy
-  or a `bento-grid` card if the partner wants them visible. Steam user tags are usually worth
-  dropping outright: they are Steam's taxonomy of the game, not the publisher's positioning
-  of it.
-- **`age_rating`** — `footer.values.ageRatingIds` takes *ids the site already holds*, not
-  free text, and no CLI command creates one. A Publisher Account step.
-- **`iap_items`** — a landing holds no prices. Catalog entities.
+**`genres`, `tags`, `age_rating` → overflow.** One appended TEXT component in the
+`description` block, rendered by `overflow.py`:
 
-This caps landing-only delivery at 7/11 = 64%. `coverage` reports that ceiling explicitly so
-a correct run is not read as a failing one.
+```html
+<p><strong>Genres:</strong> Action, Adventure, RPG</p><p><strong>Rating:</strong> PEGI 18</p>
+```
+
+One component, not three: three stacked one-line paragraphs read like a debug dump. Values are
+escaped — this is third-party text bound for a partner's rendered page.
+
+The `footer.values.ageRatingIds` field still exists and still takes *ids the site already
+holds*, which no command creates. So the rating **badge** remains a Publisher Account step;
+the rating **text** does not wait for it.
+
+**`iap_items` → catalog**, as virtual items priced in real money. Never a currency package or
+a bundle: both need a `content` array of `{sku, quantity}`, and no storefront publishes the
+quantity behind a name like "Pocketful of Gems". See `catalog.py`.
+
+Mapping coverage is now 100% on all three sources.
+
+## Store item types — uppercase or lowercase
+
+Resolved against the Site Builder MCP's shipped runtime (v1.0.2), because the CLI's
+`wire-a-store.md` and the editor's Zod schema disagree. **Both are right, at different
+layers:**
+
+- **Uppercase** — `BUNDLE`, `UNIT`, `VIRTUAL_CURRENCY`, `VIRTUAL_GOOD`, `UPSELL` — is what a
+  `newStore` block's `components[].section.item.type` takes. Live in the shipped bundle.
+- **Lowercase** — `bundle`, `unit`, `virtual_currency_package` — is what the *storefront API*
+  returns for items.
+
+Do not hardcode one for both. Two related facts from the same source: a virtual currency
+package is a **bundle** with `bundle_type: 'virtual_currency_package'` (the discriminator is
+`bundle_type`, not `type`), and read and write field names differ — the API returns
+`virtual_prices` where the CLI flag is `--vc-prices`.
 
 ## Companion patches
 

@@ -166,3 +166,71 @@ class TestBbcodeCommand(CliCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestFetchExtractCatalogCommands(CliCase):
+
+    STEAM_URL = "https://store.steampowered.com/app/812140/"
+
+    def test_fetch_names_the_api_url(self):
+        status, out = self.run_cli(["fetch", "--url", self.STEAM_URL])
+        self.assertEqual(status, CLEAN)
+        self.assertIn("appids=812140", out)
+
+    def test_fetch_warns_that_apple_needs_the_page_too(self):
+        _status, out = self.run_cli([
+            "fetch", "--url",
+            "https://apps.apple.com/us/app/clash-of-clans/id529479190"])
+        self.assertIn("does not publish one", out)
+
+    def test_fetch_on_an_unsupported_host_exits_two(self):
+        status, _out = self.run_cli(["fetch", "--url", "https://example.test/x"])
+        self.assertEqual(status, USAGE)
+
+    def test_extract_emits_a_valid_listing(self):
+        from .fixtures.load import steam_appdetails
+        path = self.write("raw.json", steam_appdetails())
+        status, out = self.run_cli(["extract", "--input", path,
+                                    "--url", self.STEAM_URL])
+        self.assertEqual(status, CLEAN)
+        document = json.loads(out)
+        self.assertEqual(document["source"], "steam")
+        self.assertFalse(document["rights_confirmed"])
+
+    def test_extract_output_pipes_straight_into_validate(self):
+        from .fixtures.load import steam_appdetails
+        raw = self.write("raw.json", steam_appdetails())
+        _status, out = self.run_cli(["extract", "--input", raw,
+                                     "--url", self.STEAM_URL])
+        listing = self.write("l.json", json.loads(out))
+        status, _out = self.run_cli(["validate", "--listing", listing])
+        self.assertEqual(status, CLEAN)
+
+    def test_catalog_renders_runnable_commands(self):
+        document = steam_listing()
+        path = self.write("l.json", document)
+        status, out = self.run_cli(["catalog", "--listing", path])
+        self.assertEqual(status, CLEAN)
+        self.assertIn("admin-create-group", out)
+        self.assertIn("create-items", out)
+
+    def test_catalog_on_a_listing_with_no_items_says_so(self):
+        document = steam_listing()
+        document["fields"].pop("iap_items", None)
+        path = self.write("l.json", document)
+        status, out = self.run_cli(["catalog", "--listing", path])
+        self.assertEqual(status, CLEAN)
+        self.assertIn("nothing to create", out)
+
+    def test_catalog_json_carries_warnings(self):
+        path = self.write("l.json", steam_listing())
+        _status, out = self.run_cli(["catalog", "--listing", path, "--json"])
+        self.assertTrue(json.loads(out)["warnings"])
+
+    def test_preview_shows_the_catalog_section(self):
+        listing = self.write("l.json", steam_listing())
+        structure = self.write("s.json", steam_structure())
+        _status, out = self.run_cli(["preview", "--listing", listing,
+                                     "--structure", structure])
+        self.assertIn("Catalog —", out)
+        self.assertIn("catalog item(s)", out)

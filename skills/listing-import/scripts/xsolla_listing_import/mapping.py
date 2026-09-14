@@ -32,8 +32,15 @@ from . import fields as field_model
 LOCALIZATION = "localization"
 PATCH = "patch"
 ASSET = "asset"
+OVERFLOW = "overflow"
+CATALOG = "catalog"
 MANUAL = "manual"
-EXTERNAL = "external"
+
+# Actions that put the content somewhere the partner can see it.  OVERFLOW and
+# CATALOG count: a genre rendered as a line of copy in the description block is
+# copied, and an in-app item created as a catalog entity is copied.  Only MANUAL
+# does not -- it means a human has to finish the job by hand.
+DELIVERABLE = (LOCALIZATION, PATCH, ASSET, OVERFLOW, CATALOG)
 
 CONFIRMED = "confirmed"
 SCHEMA = "schema"
@@ -90,18 +97,27 @@ TARGETS = (
     Target("platforms", "sidebar", PATCH, ("values", "storeButtons"), SCHEMA,
            "platform is an enum (steam, app_store, google, playstation, xbox, "
            "...) plus a link. Where 'also available on' buttons belong."),
-    Target("age_rating", "footer", MANUAL, ("values", "ageRatingIds"), NONE,
-           "The footer takes rating *ids* it already holds, not free text. No "
-           "command creates one, so this is a Publisher Account step."),
-    Target("genres", None, MANUAL, None, NONE,
-           "No module has a genre field. Carry into the description copy, or a "
-           "bento-grid card, if the partner wants it visible."),
-    Target("tags", None, MANUAL, None, NONE,
-           "Steam user tags have no destination. Usually worth dropping: they "
-           "are Steam's taxonomy, not the partner's."),
-    Target("iap_items", None, EXTERNAL, None, NONE,
-           "Catalog, not a landing. Route to catalog-admin; a store block then "
-           "shows them via shopbuilder's wire-a-store flow."),
+    # These four have no *structured* block field, which is not the same as
+    # having nowhere to go.  Routed rather than dropped -- see overflow.py and
+    # catalog.py.  The earlier version reported them as unmappable and put a
+    # 7/11 ceiling on the whole skill; that ceiling was an artefact of only
+    # counting native fields.
+    Target("age_rating", "description", OVERFLOW, ("values", "components"), SCHEMA,
+           "Rendered as a line of copy. The footer's ageRatingIds field takes "
+           "rating *ids* the site already holds and no command creates one, so "
+           "the badge itself stays a Publisher Account step."),
+    Target("genres", "description", OVERFLOW, ("values", "components"), SCHEMA,
+           "Rendered as a line of copy in the description block. No module has a "
+           "structured genre field."),
+    Target("tags", "description", OVERFLOW, ("values", "components"), SCHEMA,
+           "Rendered as a line of copy. Worth asking before carrying Steam user "
+           "tags over: they are Steam's taxonomy of the game, not the "
+           "publisher's positioning of it."),
+    Target("iap_items", None, CATALOG, None, SCHEMA,
+           "Created as catalog virtual items priced in real money. Not currency "
+           "packages or bundles: those need a content array with quantities, and "
+           "no storefront publishes the quantity behind a name like 'Pocketful "
+           "of Gems'."),
 )
 
 TARGETS_BY_FIELD = {target.field: target for target in TARGETS}
@@ -120,11 +136,16 @@ def target_for(field):
 
 
 def unmapped_fields():
-    """DoD fields with nowhere native to go -- the block-set gap, listed once."""
+    """DoD fields with nowhere at all to go.  Empty since overflow routing."""
     return tuple(
         target.field for target in TARGETS
-        if target.action in (MANUAL, EXTERNAL) and target.field in field_model.dod_fields()
+        if target.action == MANUAL and target.field in field_model.dod_fields()
     )
+
+
+def overflow_fields():
+    """Fields carried as copy because no structured block field exists."""
+    return tuple(t.field for t in TARGETS if t.action == OVERFLOW)
 
 
 def source_matches_url(source, url):

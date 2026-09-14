@@ -18,19 +18,33 @@ class TestTable(unittest.TestCase):
                      if t.confidence == mapping.CONFIRMED}
         self.assertEqual(confirmed, {"key_art", "screenshots"})
 
-    def test_unmapped_fields_are_the_block_set_gap(self):
-        self.assertEqual(set(mapping.unmapped_fields()),
-                         {"genres", "tags", "age_rating", "iap_items"})
+    def test_nothing_is_unmapped_any_more(self):
+        """These four used to have nowhere to go, which put a 7/11 ceiling on
+        the skill. genres/tags/age_rating are now carried as copy and iap_items
+        become catalog entities, so the ceiling is 11/11."""
+        self.assertEqual(mapping.unmapped_fields(), ())
+
+    def test_overflow_carries_the_three_fields_with_no_structured_field(self):
+        self.assertEqual(set(mapping.overflow_fields()),
+                         {"genres", "tags", "age_rating"})
+
+    def test_iap_items_route_to_the_catalog_not_the_landing(self):
+        self.assertEqual(mapping.target_for("iap_items").action, mapping.CATALOG)
+
+    def test_every_dod_field_has_a_deliverable_action(self):
+        for name in fields.dod_fields():
+            self.assertIn(mapping.target_for(name).action, mapping.DELIVERABLE, name)
 
     def test_a_writable_row_names_a_module_and_a_path(self):
         for target in mapping.TARGETS:
-            if target.action in (mapping.LOCALIZATION, mapping.PATCH, mapping.ASSET):
+            if target.action in (mapping.LOCALIZATION, mapping.PATCH, mapping.ASSET,
+                                 mapping.OVERFLOW):
                 self.assertIsNotNone(target.module, target.field)
                 self.assertTrue(target.path, target.field)
 
-    def test_unwritable_rows_carry_a_note_saying_why(self):
+    def test_every_row_that_is_not_a_plain_patch_explains_itself(self):
         for target in mapping.TARGETS:
-            if target.action in (mapping.MANUAL, mapping.EXTERNAL):
+            if target.action in (mapping.OVERFLOW, mapping.CATALOG, mapping.MANUAL):
                 self.assertTrue(target.note.strip(), target.field)
 
     def test_as_dict_is_json_safe(self):

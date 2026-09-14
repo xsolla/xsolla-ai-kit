@@ -39,13 +39,40 @@ File that against Shop Builder with the endpoint, the API version and the two re
 above. Per the scope guard, gaps in the SB API are filed and linked, **not** patched from
 this side. Do not add a client-side fetch to work around it.
 
-## The path that works meanwhile
+## Play does not need a browser
 
-Both sources go through agent extraction, which is the same path the App Store would need
-even if Play were fixed:
+Worth stating plainly, because the opposite conclusion is the intuitive one. Play's page is
+React-rendered and a plain `WebFetch` returns nothing usable, which suggests a headless
+browser. It does not: a plain request with a browser User-Agent returns **1.3 MB of HTML with
+every target field already in it.** Verified 2026-09-14 for `com.supercell.clashofclans`.
 
-1. Read the public page. Produce `listing.json`
-   ([schema](listing-json.md)), `source` set to `google_play` or `app_store`.
+| Field | Where in the HTML |
+|---|---|
+| `title` | `og:title`, minus the ` - Apps on Google Play` suffix |
+| `short_description` | `og:description` |
+| `long_description_html` | the `data-g-id="description"` container's subtree |
+| `icon` | `og:image` |
+| `screenshots` | `play-lh.googleusercontent.com/...=w1052-h592-rw` |
+| `developer` | the first `/store/apps/dev?id=` link's text |
+| `age_rating` | the rating badge — `Everyone`, `Everyone 10+`, `Teen`, … |
+| `genres` | the `/store/apps/category/<SLUG>` link |
+
+`extract_play.py` does this, and fails **field by field** on purpose: a renamed class costs
+one field, declared in `not_found`, rather than raising and losing the other ten. It is the
+one extractor reading markup instead of a JSON contract, so it is the one that will break.
+
+Two things Play genuinely does not publish:
+
+- **Named in-app items.** Only a range — `$0.29 – $239.99` for Clash of Clans. A range is not
+  an item list, so the range is carried in `notes` and nothing is created from it.
+- **The feature graphic.** No image on the page has its documented 1024x500 shape; Play
+  appears to have stopped rendering it. `key_art` availability was corrected from ALWAYS to
+  NEVER so it stays out of Play's coverage denominator.
+
+## The path both sources take
+
+1. `fetch` names what to request; `extract` turns it into `listing.json`
+   ([schema](listing-json.md)).
 2. `create-website`, then `add-page`, then `set-landing-type`. There is no import to
    no-op against, so the ordering trap that applies to Steam does not apply here — but the
    landing still needs blocks before anything can be placed, and a freshly created landing
@@ -56,8 +83,8 @@ even if Play were fixed:
 
 | Field | Google Play | App Store |
 |---|---|---|
-| `short_description` | The store's own short description | The subtitle, when the app has one |
-| `key_art` | Feature graphic, 1024×500 | **Not published.** Excluded from the denominator |
+| `short_description` | `og:description` | The subtitle — **not in the lookup API**, often absent |
+| `key_art` | **Not published on the page** any more | **Not published.** Both excluded from the denominator |
 | `tags` | No user tags | No user tags |
 | `age_rating` | Content rating (ESRB/PEGI/USK as shown) | Age rating (4+, 9+, 12+, 17+) |
 | `iap_items` | Real IAP list, usually with a price range | In-app purchase list with prices |

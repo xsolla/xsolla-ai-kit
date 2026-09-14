@@ -1,7 +1,6 @@
 {
   "source": "steam",
   "source_url": "https://store.steampowered.com/app/812140/",
-  "fetched_at": "2026-09-14T13:32:16Z",
   "rights_confirmed": true,
   "fields": {
     "title": "Assassin's Creed® Odyssey",
@@ -31,28 +30,28 @@
     "age_rating": "PEGI 18",
     "iap_items": [
       {
-        "name": "Standard Edition",
+        "name": "Assassin's Creed Odyssey - Standard Edition",
         "price": {
           "amount": 59.99,
           "currency": "EUR"
         }
       },
       {
-        "name": "Deluxe Edition",
+        "name": "Assassin's Creed Odyssey - Deluxe Edition",
         "price": {
           "amount": 74.99,
           "currency": "EUR"
         }
       },
       {
-        "name": "Gold Edition",
+        "name": "Assassin's Creed Odyssey - Gold Edition",
         "price": {
           "amount": 99.99,
           "currency": "EUR"
         }
       },
       {
-        "name": "Ultimate Edition",
+        "name": "Assassin's Creed Odyssey - Ultimate Edition",
         "price": {
           "amount": 114.99,
           "currency": "EUR"
@@ -63,5 +62,6 @@
   "not_found": [
     "tags"
   ],
-  "notes": "tags are rendered on the store page but absent from the appdetails response; this extraction used the API."
+  "notes": "Steam user tags render on the store page but are absent from the appdetails response; this extraction used the API. iap_items are editions and DLC -- Steam publishes no in-game item list.",
+  "fetched_at": "2026-09-14T13:32:16Z"
 }

@@ -10,17 +10,20 @@ because two independent things can go wrong and they have different owners:
     holding to a target.
 
 *mapping* coverage
-    Of the fields extracted, how many have somewhere in a Shop Builder page to
-    go?  A miss here is not fixable from this repo at all -- four DoD fields
-    (``genres``, ``tags``, ``age_rating``, ``iap_items``) have no native block
-    field, so landing-only mapping coverage is capped at 7/11 = 64%.  Reporting
-    a blended number would read as an extraction failure and send someone to
-    fix the wrong half.
+    Of the fields extracted, how many have somewhere to go?  This was capped at
+    7/11 = 64% while only native block fields counted.  It no longer is:
+    ``genres``, ``tags`` and ``age_rating`` are carried as copy in the
+    description block and ``iap_items`` become catalog entities, so every target
+    field has a destination and the ceiling is 11/11.  The 64% was an artefact
+    of the measurement, not a limit of the product -- a genre rendered as a line
+    of copy is on the page, and a reader cannot tell which kind of field
+    delivered it.
 
-*delivered* coverage, the product of the two, is what a partner actually sees
-on the page.  Quote all three.  A run that extracts everything Steam publishes
-and still delivers 64% is working correctly and hitting a ceiling in the block
-set, and those two facts should not be summed into one disappointing figure.
+    A miss here now means a *structural* one: the landing has no block of the
+    kind a field needs, which ``unresolved`` names separately.
+
+*delivered* coverage, the product of the two, is what a partner actually gets.
+Quote all three: they fail for different reasons and have different owners.
 
 What this module misses: it counts fields, not quality.  A ``long_description``
 that converted badly counts the same as one that converted cleanly, and a
@@ -70,9 +73,7 @@ def measure(document):
     manual = []
     for name in extracted:
         target = mapping.target_for(name)
-        if target is not None and target.action in (
-            mapping.LOCALIZATION, mapping.PATCH, mapping.ASSET
-        ):
+        if target is not None and target.action in mapping.DELIVERABLE:
             deliverable.append(name)
         else:
             manual.append(name)

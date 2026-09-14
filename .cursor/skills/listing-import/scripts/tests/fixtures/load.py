@@ -28,3 +28,25 @@ def steam_listing():
 
 def steam_structure():
     return load("steam_structure.json")
+
+
+def steam_appdetails():
+    """The live `appdetails` response for app 812140, 2026-09-14."""
+    return load("steam_appdetails.json")
+
+
+def appstore_lookup():
+    """The live iTunes lookup response for id 529479190, 2026-09-14."""
+    return load("appstore_lookup.json")
+
+
+def play_page():
+    """A trimmed excerpt of the live Play page for com.supercell.clashofclans.
+
+    Every region the extractor reads, with the real markup preserved -- the
+    ``og:`` meta tags, the developer and category links, the rating, the
+    screenshot URLs, the price range and the whole ``data-g-id="description"``
+    subtree.  The full page is 1.3 MB, which is not a fixture.
+    """
+    with open(os.path.join(HERE, "play_page.html"), "r", encoding="utf-8") as handle:
+        return handle.read()

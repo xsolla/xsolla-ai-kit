@@ -17,14 +17,18 @@ class TestRealFixture(unittest.TestCase):
     def test_extraction_beats_the_eighty_percent_target(self):
         self.assertGreaterEqual(self.report["extraction"]["pct"], 80.0)
 
-    def test_delivered_is_capped_by_the_block_set_not_the_extraction(self):
-        """The finding worth keeping: a perfect extraction still delivers 64%."""
-        self.assertEqual(self.report["delivered"]["pct"],
-                         self.report["mapping_ceiling"]["pct"])
+    def test_the_ceiling_is_no_longer_a_ceiling(self):
+        """It read 7/11 while only native block fields counted. Every target
+        field now has a destination, so mapping loss is structural only."""
+        self.assertEqual(self.report["mapping_ceiling"]["pct"], 100.0)
+        self.assertEqual(self.report["mapping"]["pct"], 100.0)
 
-    def test_manual_follow_up_names_the_unmapped_fields(self):
-        for name in ("genres", "age_rating", "iap_items"):
-            self.assertIn(name, self.report["manual_follow_up"])
+    def test_nothing_is_left_for_a_human_to_place(self):
+        self.assertEqual(self.report["manual_follow_up"], [])
+
+    def test_delivered_now_tracks_extraction(self):
+        self.assertEqual(self.report["delivered"]["filled"],
+                         self.report["extraction"]["filled"])
 
     def test_long_description_form_is_carried_through(self):
         self.assertEqual(self.report["long_description_form"], "html")

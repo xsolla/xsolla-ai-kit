@@ -6,10 +6,13 @@ shell: ``0`` clean, ``1`` something to fix, ``2`` bad invocation.
 
 Subcommands:
 
+``fetch``     what to fetch for a store URL, and how
+``extract``   a store response or page into a listing.json
 ``validate``  the agent's listing.json against the schema
 ``coverage``  the field-coverage metric, split three ways
 ``preview``   the extracted-to-shop mapping, for the confirmation step
 ``plan``      the same mapping as ordered operations, for execution
+``catalog``   the CLI commands that create the in-app items
 ``bbcode``    Steam BBCode to Shop Builder HTML, on its own
 
 The only module that prints.  Everything it renders comes from the library,
@@ -23,7 +26,9 @@ import argparse
 import json
 import sys
 
+from xsolla_listing_import import catalog as catalog_plan
 from xsolla_listing_import import coverage as coverage_metric
+from xsolla_listing_import import extract as extractor
 from xsolla_listing_import import fields as field_model
 from xsolla_listing_import import mapping, plan as planner
 from xsolla_listing_import.bbcode import to_html
@@ -106,8 +111,10 @@ def _preview_human(plan, blockers):
         _print_errors(blockers)
         print("")
     counts = plan["counts"]
-    print("  %d localization write(s), %d asset upload(s), %d companion patch(es)"
-          % (counts["localization"], counts["asset"], counts["patch"]))
+    print("  %d localization write(s), %d overflow component(s), %d asset "
+          "upload(s), %d companion patch(es), %d catalog item(s)"
+          % (counts["localization"], counts["overflow"], counts["asset"],
+             counts["patch"], counts["catalog"]))
     print("")
     for op in plan["operations"]:
         path = ".".join(str(segment) for segment in op["path"])
@@ -125,6 +132,16 @@ def _preview_human(plan, blockers):
             print("      %s" % preview)
         for item in op.get("dropped") or []:
             print("      dropped: %s" % item)
+    if plan["catalog_operations"]:
+        print("")
+        print("  Catalog — in-app items, created as priced virtual items:")
+        for op in plan["catalog_operations"]:
+            price = op["prices"][0] if op["prices"] else None
+            shown = ("%s %s" % (price["amount"], price["currency"])) if price \
+                else "no price"
+            print("    - %-46s %s" % (op["sku"], shown))
+        for warning in plan["catalog_warnings"]:
+            print("      note: %s" % warning)
     if plan["unresolved"]:
         print("")
         print("  Not placed — the landing has no such block:")
@@ -177,6 +194,59 @@ def cmd_plan(args):
     return EXIT_ERRORS if blockers else EXIT_CLEAN
 
 
+def cmd_fetch(args):
+    source, url, kind = extractor.fetch_hint(args.url)
+    if args.json:
+        print(json.dumps({"source": source, "fetch_url": url, "kind": kind},
+                         indent=2))
+        return EXIT_CLEAN
+    print("source:    %s" % field_model.SOURCE_LABELS.get(source, source))
+    print("fetch:     %s" % url)
+    print("as:        %s" % kind)
+    if source == field_model.APP_STORE:
+        print("")
+        print("Also fetch the store page itself for the in-app purchase list —")
+        print("Apple's API does not publish one. Pass it with --iap.")
+    return EXIT_CLEAN
+
+
+def cmd_extract(args):
+    with open(args.input, "r", encoding="utf-8") as handle:
+        raw = handle.read()
+    iap_items = _load(args.iap) if args.iap else None
+    document = extractor.to_listing(raw, args.url, iap_items=iap_items)
+    errors = validate_listing(document)
+    if errors:
+        print("extraction produced an invalid document:", file=sys.stderr)
+        for error in errors:
+            print("  %s: expected %s, got %s"
+                  % (error["path"], error["expected"], error["got"]),
+                  file=sys.stderr)
+        return EXIT_ERRORS
+    print(json.dumps(document, indent=2, ensure_ascii=False))
+    print("", file=sys.stderr)
+    print("rights_confirmed is false. Ask the partner whether this is their own "
+          "game's listing, and set it only on a yes.", file=sys.stderr)
+    return EXIT_CLEAN
+
+
+def cmd_catalog(args):
+    document = _load(args.listing)
+    items = (document.get("fields") or {}).get("iap_items") or []
+    if not items:
+        print("No in-app items in this listing; nothing to create.")
+        return EXIT_CLEAN
+    operations, warnings = catalog_plan.build_operations(items, document.get("source"))
+    if args.json:
+        print(json.dumps({"operations": operations, "warnings": warnings}, indent=2))
+        return EXIT_CLEAN
+    print(catalog_plan.render_commands(operations))
+    print("")
+    for warning in warnings:
+        print("# %s" % warning)
+    return EXIT_CLEAN
+
+
 def cmd_bbcode(args):
     with open(args.file, "r", encoding="utf-8") as handle:
         source = handle.read()
@@ -221,6 +291,23 @@ def build_parser():
     plan_cmd.add_argument("--structure", required=True)
     plan_cmd.add_argument("--localization")
     plan_cmd.set_defaults(handler=cmd_plan)
+
+    fetch = subparsers.add_parser("fetch", help="what to fetch for a store URL")
+    fetch.add_argument("--url", required=True)
+    fetch.add_argument("--json", action="store_true")
+    fetch.set_defaults(handler=cmd_fetch)
+
+    ext = subparsers.add_parser("extract", help="store response/page to listing.json")
+    ext.add_argument("--input", required=True,
+                     help="the already-fetched JSON body or page HTML")
+    ext.add_argument("--url", required=True, help="the public store page URL")
+    ext.add_argument("--iap", help="JSON array of in-app items (App Store only)")
+    ext.set_defaults(handler=cmd_extract)
+
+    cat = subparsers.add_parser("catalog", help="commands to create the in-app items")
+    cat.add_argument("--listing", required=True)
+    cat.add_argument("--json", action="store_true")
+    cat.set_defaults(handler=cmd_catalog)
 
     bbcode_cmd = subparsers.add_parser("bbcode", help="Steam BBCode to HTML")
     bbcode_cmd.add_argument("--file", required=True)
