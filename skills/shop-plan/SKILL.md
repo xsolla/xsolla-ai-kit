@@ -197,3 +197,6 @@ one. **Zero writes of any kind before confirmation.** A control run with the ski
 surfaced 0–2 of the five criteria, never showed a comparison, and in one round created a file
 before anything had been decided. The three-state check was re-tested on its own afterwards:
 11 shell edge cases, then 3 agent scenarios × 2 rounds, with `.env` unchanged in all six. ✅
+Build in flight (credentials, no path; 2026-09-14, CLI 2.1.270): "Build me the shop" and "Plan my
+shop", ×2 each, then "yes" — one-line headless confirm, no interview, 0 writes until "yes", then
+`headless` recorded once and stopped with no build step, 4/4. ✅
