@@ -148,6 +148,13 @@ Confirmed against the installed CLI. Each is filed rather than patched from here
 - **No payload validation on any write path.** `add-block` takes a template name and no values;
   `update-block` passes free-form JSON straight to the batch API. Verified: a block whose
   `values` is a JSON *string* is accepted. These scripts are the only check in front of that.
+- **The batch API answers `ok: true` to writes it does not perform.** Three known cases, and
+  they are the reason this gate has to run *before* the request rather than reading the
+  response: a patch to a path that does not exist, a patch whose path addresses `_id`,
+  `module` or `blockVersion` (probed live 2026-09-16 — `ok: true`, block unchanged), and
+  `update-many-localization` given a bare string instead of `{"translation": "<html>"}`,
+  which returns `200` and writes an **empty string**. An author is told the write succeeded
+  in all three.
 - **`verify-website` is broken** — every call is rejected with `draftPagesIds must be an array`
   and there is no flag to supply one. It looks like the publish-readiness check you want; it is
   not available. This gate is the only pre-publish check there is.

@@ -218,6 +218,9 @@ the batch API, so the unguarded path was the one a CLI-built shop writes through
 [`INVENTORY.md`](INVENTORY.md) claimed the rule as ported, and the existing test exercised only
 the payload shape, which is how it survived two rounds of review.
 
+The first version of this entry said the API *rejects* such a patch. Run 40 below shows it
+does not, and the correction matters to the reasoning rather than just the wording.
+
 Fixed by `write_constraints.check_patch_path_target`, called from the batch walk on the branch
 where the path is well formed. Only the **first** segment is protected — `["values", "_id"]`
 addresses an ordinary field and still passes. On a page or a site only `_id` is protected;
@@ -234,6 +237,55 @@ them:
 - The validator rejected a payload the author (me) believed was correct, twice: `version: 3`
   where `faq`'s `maxVersion` is 2, and a `QUESTION_v2` component missing its required `value`.
   Both rejections were right. That is the case these checks exist for.
+
+## Run 33–40 — the live half, after re-authenticating
+
+Session renewed on 2026-09-16 and the live work that run 32 could not do was done. Merchant
+`936601`, project `314771`. Two throwaway landings, both created and deleted by these runs;
+no existing landing was touched and nothing was published.
+
+`./live_check.sh --yes` — **15 passed, 0 failed**, on landing
+`aikit-livecheck-0916213412`:
+
+| Checked | Result |
+|---|---|
+| A fresh landing | no pages, no blocks — as documented |
+| First page added | **13 blocks** arrived as a template |
+| Baseline walk on the untouched template | 0 shape, 0 reference, 0 site errors |
+| | 10 `content` errors — template placeholders, reported as such, not as defects |
+| Seed 1: a block's `values` sent as a JSON string | API accepted it; the walk caught it as one shape error |
+| Seed 2: an `L:` reference with no localization entry | the dangling id was named |
+| Seed 3: custom-block source that compiles and breaks at runtime | every seeded violation named before any write; the platform accepted the faulty block, and the stored block reports empty `textRefs` |
+| Seed 4: write constraints | version-behind create, layout-module create and dotted patch path all rejected |
+| Cleanup | landing deleted |
+
+### Run 40 — and the assumption it corrected
+
+The fix in run 32 was written on the belief that the batch API *rejects* a patch addressing a
+protected field. Probed directly on a second throwaway landing
+(`aikit-protected-0916213502`), patching the first block's `_id`, `module` and `blockVersion`
+one at a time through `update-block`:
+
+| Patch | API response | Block afterwards |
+|---|---|---|
+| `path: ["_id"]` | `ok: true` | unchanged |
+| `path: ["module"]` | `ok: true` | unchanged |
+| `path: ["blockVersion"]` | `ok: true` | unchanged |
+
+**The API accepts all three and silently does nothing.** The block was still addressable by
+its original `_id`, still `module: header`, still `blockVersion: 3`. No error, no warning, no
+change.
+
+That is a better justification for the check than the one it was written with. A rejected
+write tells the author something is wrong. A write that returns `ok` and changes nothing
+tells them it worked — so this gate is the only thing standing between an author patching
+`_id` and believing they succeeded. The docstrings and row 74's reasoning were corrected to
+say so.
+
+It also puts the rule in the same family as the two silent no-ops already documented here: a
+patch to a path that does not exist, and `update-many-localization` with a bare string.
+Shop Builder's batch API answers `ok` to a surprising number of writes it does not perform,
+and every one of them has to be caught before the request, not after.
 
 ## Manual interventions and failures
 

@@ -102,6 +102,15 @@ def check_patch_path_target(change_type, patch_path, where):
     form that matters more, because ``xsolla shopbuilder update-block`` is the
     batch API.
 
+    **The API does not reject these.**  Probed live on 2026-09-16 against a
+    throwaway landing on merchant 936601: all three of ``["_id"]``,
+    ``["module"]`` and ``["blockVersion"]`` came back ``ok: true``, and reading
+    the block afterwards showed nothing had changed.  So the write is a silent
+    no-op, not an error -- which is a stronger reason to stop it here than
+    rejection would have been.  An author who patches ``_id``, is told ``ok``,
+    and moves on has no way to discover the write did nothing; this gate is the
+    only thing that can tell them.
+
     Only the **first** segment is protected. ``["values", "_id"]`` addresses a
     field called ``_id`` inside ``values``, which is an ordinary field and none
     of this rule's business.
@@ -158,8 +167,8 @@ def check_batch_change_set(change_set):
     segment array belongs addresses a field literally named ``values.title``,
     which does not exist -- and depending on the endpoint that is a silent no-op
     rather than an error. A path whose first segment is a protected field is
-    rejected by the API, and used to report clean here; see
-    :func:`check_patch_path_target`.
+    accepted by the API and silently does nothing, and used to report clean here
+    too; see :func:`check_patch_path_target`.
     """
     out = []
     if not isinstance(change_set, dict):
