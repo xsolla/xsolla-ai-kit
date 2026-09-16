@@ -10,7 +10,7 @@ and nothing was published.
 | Metric | Target | Result |
 |---|---|---|
 | **Ported checks** — % of MCP validations available in the kit | 100% | **100%** — 75 of 78 identified behaviours. The 3 not ported are MCP transport and tool-argument concerns with no equivalent surface here. Every shop-validation behaviour in the Site Builder source is ported; see [`INVENTORY.md`](INVENTORY.md) |
-| **Detection** — seeded errors caught | 100% | **100%** — **10 of 10** seeded shops across two independent rounds, each defect named exactly once in the right category with no collateral, plus 10 of 10 seeded defects in the unit suite. 186 unit tests total |
+| **Detection** — seeded errors caught | 100% | **100%** — **10 of 10** seeded shops across two independent rounds, each defect named exactly once in the right category with no collateral, plus 10 of 10 seeded defects in the unit suite. 195 unit tests total |
 | **False positives on known-good shops** | 0 | **0** structural errors across **10** known-good shops in two independent rounds: **159 blocks, 1,492 `L:` references**, 4 off-page blocks, landing types `topup`, `store` and `sellingpage`, one two-page site, one site carrying a custom block |
 | **Validation runtime per shop** | report | **41–64 ms** per shop, median 48 ms, for 13–27 blocks, measured over 20 shops. Cold interpreter start included; no network in the validation step itself |
 
@@ -185,6 +185,55 @@ Run 31 in two steps, the same shape as the first round and one violation richer:
 
 **Combined across both rounds: 20 shops · 10 known-good with 0 structural errors · 10 seeded
 with 10 of 10 defects named.**
+
+## Run 32 — re-run before merge, and the gap it found
+
+Re-run on 2026-09-15, ahead of merging the PR. The live half could not run: the Shop Builder
+session had expired at `15:00:48` and re-authenticating needs an interactive
+`xsolla auth login`. The `pa-v4-token` fallback is the documented gap this skill says to
+record and stop at, so it was not used. **No shop was created or fetched in that run.**
+
+What did run: the unit suite, the known-good site walk, and all six entry points driven by
+hand.
+
+| # | Checked | Result |
+|---|---|---|
+| 32 | Unit suite | **186 passing** (pre-fix), 0.010 s |
+| 33 | Known-good site walk with off-page blocks | **clean** — 8 blocks, 1 off-page, 12 `L:` ids, 0 dangling, 3 unverified printed |
+| 34 | `block` create, correct `faq` payload at `version: 2` | **clean** |
+| 35 | `block` create, 3 seeded faults | **exactly 3 errors**, each named once, no collateral |
+| 36 | `block --update` with `_id` present | **caught** |
+| 37 | `ai-code` on a custom block | **clean** — correct; see below |
+| 38 | `patch` with a dotted string path | **caught** |
+| 39 | `patch` with `path: ["_id"]` | **reported clean — the gap** |
+
+**The gap.** A batch patch whose path *addresses* a protected field was not caught, for any of
+`_id`, `module` or `blockVersion`. `check_protected_fields` looks for those as top-level keys
+of a payload — the `block --update` shape. The batch API expresses the same write as a segment
+array, `{"op": "replace", "path": ["_id"]}`, and nothing joined the two. The key lookup finds
+nothing, so a forbidden write reported clean.
+
+It is the worse half to have missed: `xsolla shopbuilder update-block --data '{"r1":{…}}'` *is*
+the batch API, so the unguarded path was the one a CLI-built shop writes through. Row 74 of
+[`INVENTORY.md`](INVENTORY.md) claimed the rule as ported, and the existing test exercised only
+the payload shape, which is how it survived two rounds of review.
+
+Fixed by `write_constraints.check_patch_path_target`, called from the batch walk on the branch
+where the path is well formed. Only the **first** segment is protected — `["values", "_id"]`
+addresses an ordinary field and still passes. On a page or a site only `_id` is protected;
+`module` and `blockVersion` are block concepts, and a page field that happened to share the
+name would be a false positive, which in a gate is worse than a miss. Suite 186 → **195**.
+
+**Two results that looked like findings and were not.** Worth recording so nobody re-opens
+them:
+
+- `ai-code` reported clean on source containing a `fetch()` call, a hard-coded `1200px` width
+  and a `window.top.location` assignment. Correct: the nine rules cover the custom-block
+  *authoring contract* — imports, `textFields`, `textRefs`, control factories — not general
+  code review. The run printed its own caveat saying the checks are textual.
+- The validator rejected a payload the author (me) believed was correct, twice: `version: 3`
+  where `faq`'s `maxVersion` is 2, and a `QUESTION_v2` component missing its required `value`.
+  Both rejections were right. That is the case these checks exist for.
 
 ## Manual interventions and failures
 

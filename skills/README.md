@@ -14,7 +14,7 @@ Each subdirectory contains a `SKILL.md` — a structured workflow file for an Xs
 | [`headless-checkout-integration`](headless-checkout-integration/SKILL.md) | Payments via Headless Checkout        | @y.klochikhin       | Done   |
 | [`webhooks-impl`](webhooks-impl/SKILL.md)                                 | Webhook handler generation            | @e.chernykh         | Done   |
 | [`production`](production/SKILL.md)                                       | Sandbox → live / go-live checklist    | @y.klochikhin       | Done   |
-| [`shop-validation`](shop-validation/SKILL.md)                             | `validate-shop` gate for block shops  | @n.budhwani         | Draft  |
+| [`shop-validation`](shop-validation/SKILL.md)                             | `validate-shop` gate for block shops  | @n.budhwani         | Done   |
 
 ## Adding a skill
 

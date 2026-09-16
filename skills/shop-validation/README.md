@@ -100,7 +100,7 @@ Exit status: `0` clean · `1` errors · `2` bad invocation.
 
 ```bash
 cd skills/shop-validation/scripts
-python3 -m unittest discover -s tests -t .          # 186 tests, no network
+python3 -m unittest discover -s tests -t .          # 195 tests, no network
 ./live_check.sh --yes                               # live: creates and deletes a landing
 ```
 

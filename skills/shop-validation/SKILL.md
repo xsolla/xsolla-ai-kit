@@ -20,7 +20,6 @@ description: >-
 metadata:
   owner: n.budhwani
   domain: store
-  status: draft
 ---
 
 ## What this is

@@ -149,7 +149,7 @@ them and from the user's side a rejected write is a rejected write.
 |---|---|---|---|
 | 72 | a create must pass the module's `maxVersion`; a module with no versions list passes none | `write_constraints.check_create_version` + `native.MODULE_MAX_VERSION` | ported · ten modules carry a versions list (`description`, `faq`, `footer`, `gallery`, `header`, `html`, `news`, `packs`, `promocodes`, `requirements`); every other module has none and is exempt. Read from the block metadata, because the schema tool reports `maxVersion` as "last version **or 1**", which makes an unversioned module indistinguishable from a real v1 |
 | 73 | layout modules cannot be created or duplicated | `write_constraints.check_not_layout_create` | ported |
-| 74 | `_id`, `module`, `blockVersion` cannot be patched | `write_constraints.check_protected_fields` | ported |
+| 74 | `_id`, `module`, `blockVersion` cannot be patched | `write_constraints.check_protected_fields` (payload-shaped update) and `write_constraints.check_patch_path_target` (batch segment array) | ported |
 | 75 | dotted update keys expand to nested objects before validation | `write_constraints.expand_dotted_keys` | ported |
 | 76 | batch patch paths are arrays of segments, not dotted strings | `write_constraints.check_batch_change_set` | ported |
 

@@ -77,6 +77,50 @@ def check_protected_fields(patch):
     return out
 
 
+def protected_for(change_type):
+    """Which fields a patch of this ``type`` may not address.
+
+    A page and a site carry an ``_id`` too, and patching it is no more valid
+    there than on a block.  ``module`` and ``blockVersion`` are block concepts,
+    so they are not applied to a page or a site: a field that happened to share
+    the name would be a false positive, and a gate that cries wolf is worse than
+    one that misses.
+    """
+    if change_type == "block":
+        return PROTECTED_FIELDS
+    return ("_id",)
+
+
+def check_patch_path_target(change_type, patch_path, where):
+    """A batch patch may not *address* a protected field either.
+
+    The companion to :func:`check_protected_fields`, which only sees the
+    payload-shaped update -- ``{"_id": "abc", "values": {...}}``.  The batch API
+    says the same thing a different way, as a segment array
+    (``{"op": "replace", "path": ["_id"]}``), and that form went unchecked: the
+    key lookup finds nothing, so a forbidden write reported clean.  It is the
+    form that matters more, because ``xsolla shopbuilder update-block`` is the
+    batch API.
+
+    Only the **first** segment is protected. ``["values", "_id"]`` addresses a
+    field called ``_id`` inside ``values``, which is an ordinary field and none
+    of this rule's business.
+    """
+    protected = protected_for(change_type)
+    first = patch_path[0]
+    if not isinstance(first, str) or first not in protected:
+        return []
+    return [
+        finding(
+            "%s.path" % where,
+            "a path that does not start at a protected field (%s)"
+            % ", ".join(protected),
+            first,
+            list(patch_path),
+        )
+    ]
+
+
 def expand_dotted_keys(payload):
     """Expand ``{"a.b.c": v}`` into nested objects before validating.
 
@@ -108,11 +152,14 @@ def expand_dotted_keys(payload):
 
 
 def check_batch_change_set(change_set):
-    """The batch API's convention: patch paths are arrays of segments.
+    """The batch API's shape, and what its patches are allowed to address.
 
-    A dotted string where a segment array belongs addresses a field literally
-    named ``values.title``, which does not exist -- and depending on the
-    endpoint that is a silent no-op rather than an error, which is worse.
+    Two rules, and they fail in the same invisible way. A dotted string where a
+    segment array belongs addresses a field literally named ``values.title``,
+    which does not exist -- and depending on the endpoint that is a silent no-op
+    rather than an error. A path whose first segment is a protected field is
+    rejected by the API, and used to report clean here; see
+    :func:`check_patch_path_target`.
     """
     out = []
     if not isinstance(change_set, dict):
@@ -176,6 +223,10 @@ def check_batch_change_set(change_set):
                         js_type(patch_path if patch_path is not None else MISSING),
                         patch_path,
                     )
+                )
+            else:
+                out.extend(
+                    check_patch_path_target(change.get("type"), patch_path, path)
                 )
     return out
 
