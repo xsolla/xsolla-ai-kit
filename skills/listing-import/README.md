@@ -93,7 +93,7 @@ Exit status: `0` clean · `1` errors or blockers · `2` bad invocation.
 cd scripts && python3 -m unittest discover -s tests -t . -v
 ```
 
-275 tests, no network. Every fixture is real, not hand-written: the live `appdetails`
+298 tests, no network. Every fixture is real, not hand-written: the live `appdetails`
 response for Steam app 812140, the live iTunes lookup for id 529479190, a trimmed excerpt of
 the live Play page for `com.supercell.clashofclans`, and the block spine of a landing
 `import-listing` actually produced. A synthetic fixture would have agreed with whatever the
@@ -121,6 +121,14 @@ carries its own conventions rather than inheriting any. They are enforced by the
   (`--landing-id` was taking the block id; `icon` pointed at a `values` field that does not
   exist). Both fixed and pinned. What is still unproven is every *other* `schema`-confidence
   path — only `icon`, `key_art` and `screenshots` have been watched to land.
+- **The buy button's SKU is set, not verified.** The catalog create is ordered first, but
+  nothing reads the catalog back to confirm it landed. A button pointing at a SKU that failed
+  to create renders without a price.
+- **Edition copy is cleaned by the agent, not the code.** `description_clean` is preferred
+  when present; without it the storefront's raw copy goes on the card, entities and all.
+- **A long run outlives the CLI's session.** A 42-operation run lost 19 calls to
+  `session bootstrap failed`. There is now a bounded retry (4 attempts) for that signature
+  only — a 422 still returns on the first attempt.
 - **A gallery's `slides` array is finite.** Screenshots are capped at the block's existing
   slide count and the surplus reported, because a patch to `slides[3]` on a three-slide block
   is accepted and changes nothing. An imported Steam gallery has ten slides; the default

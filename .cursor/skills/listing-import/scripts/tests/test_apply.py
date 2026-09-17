@@ -538,3 +538,33 @@ class TestLandingIdIsTheLandingsNotTheBlocks(unittest.TestCase):
                 applier.apply_plan(plan_with(patch_op()), "s", confirmed=True,
                                    call=cli, backup_dir=d)
         self.assertIn("no _id", str(caught.exception))
+
+
+class TestTransientSessionRetry(unittest.TestCase):
+    """A 42-operation run lost 19 calls to the session flapping.
+
+    The CLI re-bootstraps its Shop Builder session from the stored token, and on
+    a long run some calls land while that is happening. Nothing is wrong with
+    the request. The CLI's own --max-retries covers transient HTTP errors; this
+    happens before the request goes out.
+    """
+
+    def test_the_session_signatures_are_recognised(self):
+        for text in ("publisher session bootstrap failed (HTTP 500)",
+                     "session bootstrap did not yield a cookie",
+                     "auto-bootstrapping publisher session from stored token",
+                     "authentication required for this command"):
+            self.assertTrue(applier.is_transient({"code": 1, "stderr": text}), text)
+
+    def test_a_real_error_is_not_retried(self):
+        self.assertFalse(applier.is_transient(
+            {"code": 1, "stderr": '{"code":"http_422","message":"Item exists"}'}))
+        self.assertFalse(applier.is_transient(
+            {"code": 1, "stderr": "HTTP 404 the requested resource does not exist"}))
+
+    def test_success_is_never_transient(self):
+        self.assertFalse(applier.is_transient({"code": 0, "stderr": ""}))
+
+    def test_retry_is_bounded(self):
+        self.assertGreaterEqual(applier.MAX_ATTEMPTS, 2)
+        self.assertLessEqual(applier.MAX_ATTEMPTS, 6)

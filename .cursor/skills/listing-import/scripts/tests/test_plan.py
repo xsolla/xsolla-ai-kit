@@ -199,8 +199,13 @@ class TestMalformedInputToAPublicEntryPoint(unittest.TestCase):
         built = self._build({"screenshots": ["https://x.test/a.jpg", "  ", None, 7]})
         self.assertEqual(len(built["operations"]), 1)
 
-    def test_an_empty_screenshot_list_produces_no_operations(self):
-        self.assertEqual(self._build({"screenshots": []})["operations"], [])
+    def test_an_empty_screenshot_list_places_nothing_and_hides_the_gallery(self):
+        built = self._build({"screenshots": []})
+        self.assertEqual([o for o in built["operations"]
+                          if o["field"] == "screenshots"], [])
+        # Nothing was written to the gallery, so it still holds template copy.
+        hides = [o for o in built["operations"] if o["field"].startswith("unfilled.")]
+        self.assertEqual([o["module"] for o in hides], ["gallery"])
 
 
 class TestOverflowAndCatalogRouting(unittest.TestCase):
@@ -368,3 +373,195 @@ class TestGallerySlotsAreFinite(unittest.TestCase):
                           if o["field"] == "screenshots"], [])
         self.assertTrue([u for u in built["unresolved"]
                          if u["field"] == "screenshots"])
+
+
+class TestEditionsOnThePage(unittest.TestCase):
+    """Editions went to the catalog and nowhere else, leaving the page showing
+    `Edition name / Provide your players with detailed…`."""
+
+    def _card(self, ref_suffix):
+        return {"image": {"img": ""}, "content": [
+            {"type": "label", "enable": True, "text": {"id": "L:lbl%s" % ref_suffix}},
+            {"type": "title", "enable": True, "text": {"id": "L:ttl%s" % ref_suffix}},
+            {"type": "description", "enable": True,
+             "text": {"id": "L:dsc%s" % ref_suffix}},
+            {"type": "advantages", "enable": True, "items": []},
+            {"type": "button", "enable": True, "button": {"variant": "primary"}},
+        ]}
+
+    def _plan(self, editions, cards=3, extra_packs=0):
+        document = {"source": "steam",
+                    "source_url": "https://store.steampowered.com/app/1/",
+                    "rights_confirmed": True, "fields": {"iap_items": editions}}
+        blocks = [{"_id": "p-main", "module": "packs",
+                   "values": {"packs": [self._card(str(i)) for i in range(cards)]}}]
+        for n in range(extra_packs):
+            blocks.append({"_id": "p-x%d" % n, "module": "packs",
+                           "values": {"packs": [self._card("x%d" % n)]}})
+        return plan.build(document, {"pages": [{"_id": "pg", "blocks": blocks}]})[0]
+
+    def _editions(self, count):
+        return [{"name": "Edition %d" % i,
+                 "price": {"amount": 9.99 + i, "currency": "EUR"},
+                 "image": "https://x.test/%d.jpg" % i} for i in range(count)]
+
+    def test_each_edition_name_is_written_to_a_card_title(self):
+        built = self._plan(self._editions(3))
+        titles = [o for o in built["operations"] if o["field"] == "edition.title"]
+        self.assertEqual(len(titles), 3)
+        self.assertEqual([o["value"] for o in titles],
+                         ["Edition 0", "Edition 1", "Edition 2"])
+
+    def test_the_title_targets_the_content_rows_own_l_id(self):
+        built = self._plan(self._editions(1))
+        op = [o for o in built["operations"] if o["field"] == "edition.title"][0]
+        self.assertEqual(op["localized_id"], "L:ttl0")
+        self.assertEqual(op["path"], ["values", "packs", 0, "content", 1, "text"])
+
+    def test_an_edition_with_no_description_falls_back_to_its_price(self):
+        built = self._plan(self._editions(1))
+        op = [o for o in built["operations"]
+              if o["field"] == "edition.description"][0]
+        self.assertEqual(op["value"], "9.99 EUR")
+
+    def test_a_real_description_wins_over_the_price(self):
+        editions = self._editions(1)
+        editions[0]["description"] = "Unlock every Legend."
+        built = self._plan(editions)
+        op = [o for o in built["operations"]
+              if o["field"] == "edition.description"][0]
+        self.assertEqual(op["value"], "Unlock every Legend.")
+
+    def test_the_editions_artwork_is_uploaded_to_its_card(self):
+        built = self._plan(self._editions(2))
+        ops = [o for o in built["operations"] if o["field"] == "edition.image"]
+        self.assertEqual([o["path"] for o in ops],
+                         [["values", "packs", 0, "image", "img"],
+                          ["values", "packs", 1, "image", "img"]])
+
+    def test_rows_with_no_source_data_are_disabled(self):
+        built = self._plan(self._editions(1))
+        disabled = [o for o in built["operations"]
+                    if o["field"] in ("edition.label", "edition.advantages")]
+        self.assertTrue(disabled)
+        self.assertTrue(all(o["value"] is False for o in disabled))
+
+    def test_a_card_with_no_edition_is_hidden(self):
+        built = self._plan(self._editions(1), cards=3)
+        hidden = [o for o in built["operations"] if o["field"] == "edition.unused"]
+        self.assertEqual([o["path"] for o in hidden],
+                         [["values", "packs", 1, "hidden"],
+                          ["values", "packs", 2, "hidden"]])
+
+    def test_more_editions_than_cards_reports_the_surplus(self):
+        built = self._plan(self._editions(5), cards=3)
+        surplus = [u for u in built["unresolved"] if u["field"] == "iap_items"]
+        self.assertEqual(len(surplus), 1)
+        self.assertIn("2 cannot be shown", surplus[0]["reason"])
+        self.assertIn("Edition 3", surplus[0]["note"])
+
+    def test_cards_across_every_packs_block_are_used(self):
+        """An earlier version filled only the widest block, which hid editions
+        the listing publishes — Steam's five became three. A landing's three
+        blocks hold 1 + 3 + 1 = exactly five cards."""
+        built = self._plan(self._editions(5), cards=3, extra_packs=2)
+        titles = [o for o in built["operations"] if o["field"] == "edition.title"]
+        self.assertEqual(len(titles), 5)
+        self.assertEqual({o["block_id"] for o in titles},
+                         {"p-main", "p-x0", "p-x1"})
+        self.assertEqual([u for u in built["unresolved"]
+                          if u["field"] == "iap_items"], [])
+
+    def test_a_packs_block_that_received_an_edition_is_not_hidden(self):
+        built = self._plan(self._editions(5), cards=3, extra_packs=2)
+        self.assertEqual([o for o in built["operations"]
+                          if o["field"] == "unfilled.packs"], [])
+
+    def test_the_buy_button_points_at_the_editions_catalog_sku(self):
+        """The price on the button comes from the catalog item, not the page."""
+        built = self._plan(self._editions(2))
+        buttons = [o for o in built["operations"] if o["field"] == "edition.button"]
+        self.assertEqual(len(buttons), 2)
+        self.assertEqual(buttons[0]["path"][-3:], ["button", "action", "sku"])
+        skus = [o["sku"] for o in built["catalog_operations"]]
+        self.assertEqual([b["value"] for b in buttons], skus[:2])
+
+    def test_the_catalog_item_is_created_before_the_button_references_it(self):
+        built = self._plan(self._editions(1))
+        self.assertTrue(built["catalog_operations"])
+        button = [o for o in built["operations"]
+                  if o["field"] == "edition.button"][0]
+        self.assertEqual(button["value"], built["catalog_operations"][0]["sku"])
+
+    def test_a_cleaned_description_is_preferred_over_the_storefronts_own(self):
+        editions = self._editions(1)
+        editions[0]["description"] = "BUY NOW!!! Available on Steam, PS4, Xbox!"
+        editions[0]["description_clean"] = "Unlock every Legend, present and future."
+        built = self._plan(editions)
+        op = [o for o in built["operations"]
+              if o["field"] == "edition.description"][0]
+        self.assertEqual(op["value"], "Unlock every Legend, present and future.")
+
+
+class TestHidingWhatNothingFilled(unittest.TestCase):
+    """Nine of thirteen blocks kept their template copy in every shop."""
+
+    def _plan(self, modules, fields=None):
+        document = {"source": "steam",
+                    "source_url": "https://store.steampowered.com/app/1/",
+                    "rights_confirmed": True,
+                    "fields": fields if fields is not None else {"title": "T"}}
+        blocks = []
+        for index, module in enumerate(modules):
+            doc = {"_id": "b%d" % index, "module": module}
+            if module == "leadGameSales":
+                doc["values"] = {"title": {"id": "L:t"}}
+            elif module == "gallery":
+                doc["values"] = {"slides": [{"id": "s"}]}
+            blocks.append(doc)
+        return plan.build(document, {"pages": [{"_id": "p", "blocks": blocks}]})[0]
+
+    def test_an_untouched_block_is_hidden(self):
+        built = self._plan(["leadGameSales", "faq", "requirements", "bento-grid"])
+        hidden = {o["module"] for o in built["operations"]
+                  if o["field"].startswith("unfilled.")}
+        self.assertEqual(hidden, {"faq", "requirements", "bento-grid"})
+
+    def test_a_written_block_is_not_hidden(self):
+        built = self._plan(["leadGameSales", "faq"])
+        hidden = {o["block_id"] for o in built["operations"]
+                  if o["field"].startswith("unfilled.")}
+        self.assertNotIn("b0", hidden)
+
+    def test_the_header_and_footer_are_never_hidden(self):
+        """Hiding those removes navigation, not placeholder copy."""
+        built = self._plan(["header", "footer", "faq"])
+        hidden = {o["module"] for o in built["operations"]
+                  if o["field"].startswith("unfilled.")}
+        self.assertEqual(hidden, {"faq"})
+
+    def test_layout_modules_are_never_hidden(self):
+        built = self._plan(["common-layout", "side-by-side-layout", "faq"])
+        hidden = {o["module"] for o in built["operations"]
+                  if o["field"].startswith("unfilled.")}
+        self.assertEqual(hidden, {"faq"})
+
+    def test_an_already_hidden_block_is_left_alone(self):
+        document = {"source": "steam",
+                    "source_url": "https://store.steampowered.com/app/1/",
+                    "rights_confirmed": True, "fields": {"title": "T"}}
+        structure = {"pages": [{"_id": "p", "blocks": [
+            {"_id": "a", "module": "leadGameSales",
+             "values": {"title": {"id": "L:t"}}},
+            {"_id": "b", "module": "faq", "hidden": True}]}]}
+        built = plan.build(document, structure)[0]
+        self.assertEqual([o for o in built["operations"]
+                          if o["field"].startswith("unfilled.")], [])
+
+    def test_hiding_patches_the_blocks_own_hidden_flag(self):
+        built = self._plan(["leadGameSales", "faq"])
+        op = [o for o in built["operations"]
+              if o["field"] == "unfilled.faq"][0]
+        self.assertEqual(op["path"], ["hidden"])
+        self.assertIs(op["value"], True)
+        self.assertEqual(op["confidence"], "confirmed")

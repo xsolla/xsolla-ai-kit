@@ -51,13 +51,30 @@ _EXPECTED_KIND_TYPES = {
 }
 
 
+IAP_KEYS = ("name", "price", "description", "description_clean", "image")
+
+
 def _check_iap_items(items, errors):
-    """Each IAP entry needs a name; a price is optional but must be well formed."""
+    """Each IAP entry needs a name; everything else is optional.
+
+    ``description`` is the storefront's own copy.  ``description_clean`` is that
+    copy rewritten by the agent for a card -- preferred when present, because a
+    storefront's description is written to sell on that storefront and arrives
+    with marketing furniture and a length a card cannot hold.
+    """
     for index, item in enumerate(items):
         path = "fields.iap_items.%d" % index
         if not isinstance(item, dict):
             errors.append(finding(path, "object", js_type(item)))
             continue
+        unknown = set(item) - set(IAP_KEYS)
+        for extra in sorted(unknown):
+            errors.append(finding(path + "." + extra, "a known in-app item key",
+                                  "unknown key"))
+        for text_key in ("description", "description_clean", "image"):
+            if text_key in item and not isinstance(item[text_key], str):
+                errors.append(finding(path + "." + text_key, "string",
+                                      js_type(item[text_key])))
         if not item.get("name"):
             errors.append(finding(path + ".name", "non-empty string",
                                   describe_got(item.get("name", MISSING))))

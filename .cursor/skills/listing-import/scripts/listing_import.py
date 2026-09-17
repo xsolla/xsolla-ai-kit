@@ -215,7 +215,9 @@ def cmd_extract(args):
     with open(args.input, "r", encoding="utf-8") as handle:
         raw = handle.read()
     iap_items = _load(args.iap) if args.iap else None
-    document = extractor.to_listing(raw, args.url, iap_items=iap_items)
+    dlc = _load(args.dlc) if args.dlc else None
+    document = extractor.to_listing(raw, args.url, iap_items=iap_items,
+                                    dlc_details=dlc)
     errors = validate_listing(document)
     if errors:
         print("extraction produced an invalid document:", file=sys.stderr)
@@ -303,6 +305,9 @@ def build_parser():
                      help="the already-fetched JSON body or page HTML")
     ext.add_argument("--url", required=True, help="the public store page URL")
     ext.add_argument("--iap", help="JSON array of in-app items (App Store only)")
+    ext.add_argument("--dlc", help="JSON array of Steam appdetails responses for "
+                                   "the ids in dlc[] — without these the edition "
+                                   "list is only the page's buy options")
     ext.set_defaults(handler=cmd_extract)
 
     cat = subparsers.add_parser("catalog", help="commands to create the in-app items")

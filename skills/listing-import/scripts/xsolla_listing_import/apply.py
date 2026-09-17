@@ -70,22 +70,56 @@ FORBIDDEN_HINT = (
 IMAGE_MAX_BYTES = 10 * 1024 * 1024  # upload-asset's documented limit
 FETCH_TIMEOUT = 30
 
+# The CLI re-bootstraps its Shop Builder session from the stored token, and on a
+# run of any length some calls land while that is happening.  A 42-operation
+# Steam run lost 19 calls to it -- nothing wrong with the request, the session
+# just was not there for a moment.  The CLI's own --max-retries covers transient
+# HTTP errors; this happens before the request, so it needs retrying here.
+TRANSIENT_SIGNATURES = (
+    "session bootstrap failed",
+    "session bootstrap did not yield",
+    "auto-bootstrapping publisher session",
+    "authentication required",
+)
+MAX_ATTEMPTS = 4
+RETRY_BACKOFF = 2.0
+
+
+def is_transient(result):
+    """Whether a failure is the session flapping rather than a bad request."""
+    if result.get("code") == 0:
+        return False
+    text = ((result.get("stderr") or "") + (result.get("stdout") or "")).lower()
+    return any(sig in text for sig in TRANSIENT_SIGNATURES)
+
 
 class Refused(Exception):
     """A guard stopped the run.  Carries a reason meant for a human."""
 
 
 def cli_call(product, action, args, timeout=120):
-    """Invoke one `xsolla` subcommand.  The default caller; injectable."""
+    """Invoke one `xsolla` subcommand, retrying a flapping session.
+
+    The default caller; injectable.  Retries only failures matching
+    ``TRANSIENT_SIGNATURES``: a bad request is returned on the first attempt,
+    because retrying a 422 four times is just four 422s and a slower report.
+    """
     if (product, action) not in ALLOWED:
         raise Refused(
             "%s %s is not in this module's allowlist (never: %s)"
             % (product, action, FORBIDDEN_HINT)
         )
     cmd = ["xsolla", product, action] + list(args) + ["--json"]
-    proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
-    return {"cmd": cmd, "code": proc.returncode,
-            "stdout": proc.stdout, "stderr": proc.stderr}
+    result = None
+    for attempt in range(1, MAX_ATTEMPTS + 1):
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+        result = {"cmd": cmd, "code": proc.returncode, "stdout": proc.stdout,
+                  "stderr": proc.stderr, "attempts": attempt}
+        if not is_transient(result):
+            return result
+        if attempt < MAX_ATTEMPTS:
+            time.sleep(RETRY_BACKOFF * attempt)
+    return result
 
 
 def fetch_image(url, directory, timeout=FETCH_TIMEOUT):

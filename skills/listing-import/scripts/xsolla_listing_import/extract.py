@@ -73,7 +73,7 @@ def fetch_hint(url):
     raise ValueError("not a supported storefront: %s" % url)
 
 
-def to_listing(raw, url, iap_items=None):
+def to_listing(raw, url, iap_items=None, dlc_details=None):
     """Extract from already-fetched content, routing on the URL's host.
 
     ``raw`` is a ``dict`` (a parsed JSON response), or a ``str`` -- JSON text for
@@ -90,5 +90,5 @@ def to_listing(raw, url, iap_items=None):
 
     document = json.loads(raw) if isinstance(raw, str) else raw
     if source == field_model.STEAM:
-        return extract_steam.to_listing(document, url)
+        return extract_steam.to_listing(document, url, dlc_details=dlc_details)
     return extract_appstore.to_listing(document, url, iap_items=iap_items)

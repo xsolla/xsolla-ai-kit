@@ -17,8 +17,12 @@ What it misses:
 * ``categories[]`` is deliberately not mapped to ``tags``.  It looks like tags
   and is not: it is Steam's own feature list (Single-player, Steam Achievements,
   Trading Cards), which means nothing on a partner's site.
-* ``package_groups`` yields editions and DLC, not consumables.  Steam publishes
-  no in-game item list, so ``iap_items`` from Steam is always editions.
+* ``package_groups`` alone is not the edition list.  It holds the page's buy
+  options; the "Content For This Game" table is ``dlc``, which is app **ids**
+  only and needs one lookup each.  Pass those responses as ``dlc_details`` or
+  the result under-reports -- for Brawlhalla, one entry instead of five.
+* Steam publishes no in-game item list at all, so ``iap_items`` here is always
+  editions and DLC, never consumables.
 """
 
 from __future__ import annotations
@@ -52,28 +56,79 @@ def _age_rating(data):
     return None
 
 
-def _iap_items(data):
-    """Editions from ``package_groups``, priced from the discounted cents field."""
+def _iap_items(data, dlc_details=None):
+    """Everything Steam sells alongside the game.
+
+    Two sources, and using only the first is why an earlier version found one
+    edition where the store page shows five:
+
+    ``package_groups``
+        The buy options rendered at the top of the page -- for Brawlhalla, just
+        "All Legends Pack". For a paid game, its editions.
+    ``dlc``
+        A list of **app ids only**. The "Content For This Game" table on the
+        page is these, and their names and prices need one ``appdetails``
+        lookup each. The caller fetches them and passes them in; this module
+        does not make requests.
+
+    An entry carries ``image`` where the source has one, so the edition can be
+    given its own artwork rather than inheriting the game's.
+    """
+    # A free-to-play app has no `price_overview`, so its buy options carry cents
+    # with no currency.  The DLC came from the same storefront in the same
+    # round of requests, so its currency is the right one to borrow.
+    currency = (data.get("price_overview") or {}).get("currency")
+    if not currency:
+        for dlc in dlc_details or []:
+            found = (dlc or {}).get("price_overview", {}).get("currency")
+            if found:
+                currency = found
+                break
+
     items = []
     for group in data.get("package_groups") or []:
         for sub in group.get("subs") or []:
             text = (sub.get("option_text") or "").strip()
             if not text:
                 continue
-            # Steam renders "Edition Name - 59,99€"; the price is already a
-            # separate field, so the trailing copy is noise in a catalog name.
+            # Steam renders "Edition Name - 59,99€"; the price is a separate
+            # field, so the trailing copy is noise in a catalog name.
             name = text.rsplit(" - ", 1)[0] if " - " in text else text
             entry = {"name": name}
             cents = sub.get("price_in_cents_with_discount")
-            currency = data.get("price_overview", {}).get("currency")
             if cents and currency:
                 entry["price"] = {"amount": round(cents / 100.0, 2),
                                   "currency": currency}
             items.append(entry)
+
+    seen = {i["name"] for i in items}
+    for dlc in dlc_details or []:
+        if not isinstance(dlc, dict):
+            continue
+        name = (dlc.get("name") or "").strip()
+        if not name or name in seen:
+            continue
+        seen.add(name)
+        entry = {"name": name}
+        price = dlc.get("price_overview") or {}
+        if price.get("final") and price.get("currency"):
+            entry["price"] = {"amount": round(price["final"] / 100.0, 2),
+                              "currency": price["currency"]}
+        if dlc.get("header_image"):
+            entry["image"] = dlc["header_image"]
+        if dlc.get("short_description"):
+            entry["description"] = dlc["short_description"]
+        items.append(entry)
     return items
 
 
-def to_listing(document, source_url):
+def dlc_ids(document):
+    """The DLC app ids a listing references, for the caller to fetch."""
+    data = unwrap(document) or {}
+    return [int(i) for i in (data.get("dlc") or []) if str(i).isdigit()]
+
+
+def to_listing(document, source_url, dlc_details=None):
     """Build a listing document.  ``rights_confirmed`` is left false on purpose.
 
     Only the caller has asked the partner whether the game is theirs, so only
@@ -96,7 +151,7 @@ def to_listing(document, source_url):
                    if g.get("description")],
         "platforms": [name for name, on in (data.get("platforms") or {}).items() if on],
         "age_rating": _age_rating(data),
-        "iap_items": _iap_items(data),
+        "iap_items": _iap_items(data, dlc_details),
     }
     not_found = ["tags"]
     for name, value in list(values.items()):

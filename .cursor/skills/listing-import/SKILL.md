@@ -99,6 +99,7 @@ From `scripts/`. All read-only; `--json` gives the machine-readable report in
 | Rehearse the write | `python3 apply_plan.py --plan plan.json --slug <slug>` |
 | Actually write | `python3 apply_plan.py --plan plan.json --slug <slug> --yes` |
 | Create the in-app items | `python3 listing_import.py catalog --listing listing.json` |
+| Extract Steam with its editions | `python3 listing_import.py extract --input raw.json --url <url> --dlc dlc.json` |
 | Convert pasted Steam BBCode | `python3 listing_import.py bbcode --file description.txt` |
 
 Pass `--localization` (from `get-localization`) to `preview`/`plan` as well; without it, `L:`
@@ -144,6 +145,30 @@ artefact of counting only structured block fields, and it is gone
 `key_art` or `tags` at all. Those are excluded from each source's own denominator, so they
 are not scored as extraction misses.
 
+## Editions on the page, and the copy that goes on them
+
+An edition becomes two things: a **catalog item**, which carries the price, and a **card** on
+a `packs` block, which carries the name, artwork and description. The card's buy button points
+at the catalog SKU — that is how a price reaches the button, since a landing holds none.
+
+**Clean the edition copy before it goes on a card. This step is yours, not the scripts'.**
+A storefront's own description is written to sell on that storefront and arrives with things a
+card cannot hold. Real examples from one Steam listing:
+
+- HTML entities left in: `Collectors &quot;Asgardian Elite&quot; Weapon Skins`
+- Pipe-separated lists: `3500 Mammoth Coins | The All Legends Pack | …`
+- Price puffery tied to another store: `Over $15 value for only $4.99!`
+- Inline dash bullets: `- Ezio Legend Unlock - Asgardian Ezio Skin - 140 Mammoth Coins`
+
+Put the rewritten copy in each item's `description_clean` and the planner prefers it over
+`description`. Keep it to a sentence or two, resolve entities, turn lists into prose, and drop
+anything naming another storefront or its pricing. Leave `description` as extracted so a
+reviewer can see what it was.
+
+Steam's edition list needs two fetches, not one. `package_groups` is only the page's buy
+options; the "Content For This Game" table is `dlc`, which is **app ids** — pass their
+`appdetails` responses as `--dlc` or you get one edition where the page shows five.
+
 ## In-app items — what you get, and what you cannot
 
 `catalog` renders the commands. Two limits are not fixable by better code:
@@ -171,7 +196,11 @@ create or update, and most mobile IAPs are consumables — filed, not worked aro
    storefront from the partner's page.
 6. **Never auto-enable an unpriced catalog item.** Created disabled, so a mis-parsed
    listing cannot put a broken item on sale.
-7. **Never publish.** A clean preview is not permission to make a shop live.
+7. **Hide what you did not fill.** A block nothing was written to still holds the template's
+   copy, and a shop showing `Edition name / Provide your players with detailed…` reads as
+   broken. Unfilled blocks get `hidden: true` — reversible, and `delete-block` is not in the
+   runner's allowlist.
+8. **Never publish.** A clean preview is not permission to make a shop live.
 
 Sandbox or test project only — never a partner's live project.
 

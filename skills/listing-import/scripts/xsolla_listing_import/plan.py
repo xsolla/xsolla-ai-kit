@@ -39,6 +39,7 @@ from . import catalog as catalog_plan
 from . import fields as field_model
 from . import mapping
 from . import overflow
+from . import packs as packs_plan
 from . import sanitize
 from .bbcode import to_html as bbcode_to_html
 from .errors import finding
@@ -263,6 +264,24 @@ def build(document, structure, localization=None):
                     })
             continue
 
+        localized = resolve_localized_id(block_doc, target.path)
+        if name == "long_description" and localized is None:
+            # The description block keeps its text on a TEXT component's
+            # `label`, one level below `values.components`. The original path
+            # stopped at the components dict, found no id, and the runner
+            # correctly refused -- leaving "About the game" as template copy.
+            component = resolve_component_path(block_doc, "text", "label")
+            if component is not None:
+                localized = resolve_localized_id(block_doc, component)
+                if localized is not None:
+                    target_path = component
+                else:
+                    target_path = list(target.path)
+            else:
+                target_path = list(target.path)
+        else:
+            target_path = list(target.path)
+
         if name == "long_description":
             raw, form = long_description(document)
             if form == "bbcode":
@@ -283,8 +302,8 @@ def build(document, structure, localization=None):
             "module": target.module,
             "block_id": block_id,
             "page_id": page_id,
-            "path": list(target.path),
-            "localized_id": resolve_localized_id(block_doc, target.path),
+            "path": target_path,
+            "localized_id": localized,
             "value": text,
             "dropped": dropped,
             "confidence": target.confidence,
@@ -323,11 +342,45 @@ def build(document, structure, localization=None):
                     "note": target.note,
                 })
 
-    # Catalog: in-app items become priced virtual items.
+    # Catalog first: in-app items become priced virtual items, and a pack
+    # card's buy button points at the SKU, which is where its price comes from.
     catalog_ops, catalog_warnings = [], []
-    if values.get("iap_items"):
+    editions = values.get("iap_items") or []
+    if editions:
         catalog_ops, catalog_warnings = catalog_plan.build_operations(
-            values["iap_items"], source)
+            editions, source)
+
+    # Editions onto the "Game editions" cards.
+    pack_ops = []
+    pack_blocks = set()
+    if editions:
+        slots = packs_plan.all_slots(blocks.get("packs") or [])
+        if not slots:
+            unresolved.append({
+                "field": "iap_items",
+                "module": "packs",
+                "reason": "no packs block with a card to show the editions on",
+                "note": "They still become catalog items.",
+            })
+        else:
+            pack_ops, unplaced, pack_blocks = packs_plan.plan_writes(
+                slots, editions, skus=[op["sku"] for op in catalog_ops])
+            if unplaced:
+                unresolved.append({
+                    "field": "iap_items",
+                    "module": "packs",
+                    "reason": "%d card(s) across the packs blocks, %d edition(s) "
+                              "extracted, so %d cannot be shown"
+                              % (len(slots), len(editions), len(unplaced)),
+                    "note": "Unshown editions still become catalog items: %s"
+                            % ", ".join(e.get("name", "?") for e in unplaced),
+                })
+
+    # Anything nothing was written to still carries the template's copy.
+    written_blocks = {op["block_id"] for op in
+                      (localization_ops + overflow_ops + asset_ops + pack_ops)
+                      if op.get("block_id")} | set(pack_blocks)
+    hide_ops = packs_plan.hide_operations(structure, written_blocks)
 
     unverified = []
     if localization is None:
@@ -348,7 +401,8 @@ def build(document, structure, localization=None):
         "source": source,
         "source_label": field_model.SOURCE_LABELS.get(source, str(source)),
         "source_url": document.get("source_url"),
-        "operations": localization_ops + overflow_ops + asset_ops,
+        "operations": (localization_ops + overflow_ops + pack_ops
+                       + asset_ops + hide_ops),
         "catalog_operations": catalog_ops,
         "catalog_warnings": catalog_warnings,
         "manual_follow_up": manual,
@@ -357,8 +411,13 @@ def build(document, structure, localization=None):
         "counts": {
             "localization": len(localization_ops),
             "overflow": len(overflow_ops),
+            "editions_on_page": len([o for o in pack_ops
+                                     if o["field"].startswith("edition.")
+                                     and o["kind"] != "patch"]),
+            "hidden_unfilled": len(hide_ops),
             "asset": len([o for o in asset_ops if o["kind"] == "asset"]),
-            "patch": len([o for o in asset_ops if o["kind"] == "patch"]),
+            "patch": len([o for o in (asset_ops + pack_ops + hide_ops)
+                          if o["kind"] == "patch"]),
             "catalog": len(catalog_ops),
             "manual": len(manual),
             "unresolved": len(unresolved),
