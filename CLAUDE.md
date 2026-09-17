@@ -81,6 +81,7 @@ its deletes to its own keys.
 | `skills/` | SKILL.md files. One subdirectory per workflow. |
 | `skills/<name>/references/` | Long-form reference docs. Keeps SKILL.md under 200 lines. |
 | `docs/` | Architecture, distribution, and skill-gap guides. |
+| `evals/<skill>/` | Agent evals for a skill — runner, fixed intents, recorded results. A development tool; never installed with the skills. See [evals/shop-plan/README.md](evals/shop-plan/README.md). |
 | `.cursor/skills/` | Cursor-native skills (synced copy of `skills/`; do not edit manually) |
 | `.cursor/rules/` | Short always-on Cursor pointer rule |
 

@@ -1,0 +1,48 @@
+{
+  "generated": "2026-09-16T11:21:23",
+  "results_file": "2026-09-16-path.jsonl",
+  "cases_sha256": "aef1221829d46e1b2051d154b7fc849201dd105c07f30f4171f989e21d3d77db",
+  "skills_under_test": "worktree@69bc175",
+  "rounds": 2,
+  "runs": 20,
+  "models": [
+    "claude-opus-5"
+  ],
+  "cli_versions": [
+    "2.1.272"
+  ],
+  "metric_1_recommendation_accuracy": {
+    "passed": 20,
+    "scored": 20,
+    "errors": 0,
+    "infrastructure_errors": 0,
+    "rate": 1.0,
+    "target": ">= 0.9",
+    "met": true
+  },
+  "metric_2_premature_writes": {
+    "premature_write_runs": [],
+    "count": 0,
+    "scored": 20,
+    "errors": 0,
+    "target": "0",
+    "met": true
+  },
+  "metric_3_cost_and_regression": {
+    "target": "report; headless selection rate must not drop",
+    "headless_selection_branch": {
+      "passed": 0,
+      "scored": 0,
+      "errors": 0,
+      "infrastructure_errors": 0,
+      "rate": null
+    },
+    "headless_selection_baseline": {
+      "passed": 0,
+      "scored": 0,
+      "errors": 0,
+      "infrastructure_errors": 0,
+      "rate": null
+    }
+  }
+}

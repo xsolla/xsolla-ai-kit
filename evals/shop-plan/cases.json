@@ -1,0 +1,145 @@
+{
+  "version": 1,
+  "about": "Fixed intents for the shop-plan eval. Expectations are set here BEFORE a run and never edited to fit a result; every record in results/ carries this file's sha256. See README.md.",
+  "followups": {
+    "confirm": [
+      "Yes, your read is right. Go with your recommendation and record it.",
+      "Yes, record it."
+    ]
+  },
+  "cases": [
+    {
+      "id": "path-headless-react-site",
+      "category": "path",
+      "prompt": "I want to sell in-game items for my game. We already run our own website (React) and the store has to live inside it, on our own domain. We have four frontend developers who can build and maintain it, launching in about three months is fine, and we need the store in six languages with a fully custom look that matches our site.",
+      "followups": "confirm",
+      "expect": {"skill_any": ["shop-plan"], "no_write_before_confirm": true, "recorded_path": "headless"}
+    },
+    {
+      "id": "path-headless-nextjs-portal",
+      "category": "path",
+      "prompt": "Plan the store for our MMO. It must be embedded in our existing Next.js account portal at account.ourgame.com. Our web team has plenty of capacity for a custom storefront and its upkeep. No rush, we are targeting next quarter. We need English, Japanese and Korean, and our own design system, not a template.",
+      "followups": "confirm",
+      "expect": {"skill_any": ["shop-plan"], "no_write_before_confirm": true, "recorded_path": "headless"}
+    },
+    {
+      "id": "path-headless-launcher-webview",
+      "category": "path",
+      "prompt": "Headless or Shop Builder for us? Our game launcher already has a web view we control, so the shop UI will be ours and self-hosted. Two full-time web developers are assigned to it long-term. The timeline is flexible, around ten weeks. Localization into twelve languages and bespoke animations and theming are requirements.",
+      "followups": "confirm",
+      "expect": {"skill_any": ["shop-plan"], "no_write_before_confirm": true, "recorded_path": "headless"}
+    },
+    {
+      "id": "path-headless-community-site",
+      "category": "path",
+      "prompt": "We are adding a web shop to our existing community site, which we host ourselves, and the shop must sit on that same domain. We have a dedicated frontend engineer for the next year. Launching in two months is fine. English and Spanish, with custom UI components that match the site.",
+      "followups": "confirm",
+      "expect": {"skill_any": ["shop-plan"], "no_write_before_confirm": true, "recorded_path": "headless"}
+    },
+    {
+      "id": "path-headless-structured",
+      "category": "path",
+      "prompt": "Help me decide how to build our store. Frontend: we already have a custom storefront codebase we want to keep. Hosting: must be our own infrastructure and domain. Timeline: four months. Dev capacity: an in-house web team. Localization and theming: eight locales and heavy custom theming.",
+      "followups": "confirm",
+      "expect": {"skill_any": ["shop-plan"], "no_write_before_confirm": true, "recorded_path": "headless"}
+    },
+    {
+      "id": "path-shopbuilder-solo-indie",
+      "category": "path",
+      "prompt": "I'm a solo indie developer and I want to sell a few skins and a currency pack for my game. I have no website and no frontend skills or time to build one. An Xsolla-hosted domain is totally fine. I need it live this week. English only, and just my logo and brand colors are enough.",
+      "followups": "confirm",
+      "expect": {"skill_any": ["shop-plan"], "no_write_before_confirm": true, "recorded_path": "shopbuilder"}
+    },
+    {
+      "id": "path-shopbuilder-launch-event",
+      "category": "path",
+      "prompt": "Plan our game store. We don't have a website, nobody on the team does web development, and we need the store up within a few days for our launch event. Hosting on Xsolla's domain is fine. English plus German, and a simple theme with our colors is plenty.",
+      "followups": "confirm",
+      "expect": {"skill_any": ["shop-plan"], "no_write_before_confirm": true, "recorded_path": "shopbuilder"}
+    },
+    {
+      "id": "path-shopbuilder-small-studio",
+      "category": "path",
+      "prompt": "Which Xsolla path should we use? We're a small studio with zero frontend developers available, no existing site to plug a store into, an Xsolla-hosted domain is fine, we launch next week, and we need two languages with basic branding (logo and colors).",
+      "followups": "confirm",
+      "expect": {"skill_any": ["shop-plan"], "no_write_before_confirm": true, "recorded_path": "shopbuilder"}
+    },
+    {
+      "id": "path-shopbuilder-mobile-nocode",
+      "category": "path",
+      "prompt": "We want a no-code hosted web shop for our mobile game. We have no web developers and no wish to maintain a frontend. It needs to be live in five days. Hosted by Xsolla is fine. English, French and Portuguese; standard templates with our logo are fine.",
+      "followups": "confirm",
+      "expect": {"skill_any": ["shop-plan"], "no_write_before_confirm": true, "recorded_path": "shopbuilder"}
+    },
+    {
+      "id": "path-shopbuilder-structured",
+      "category": "path",
+      "prompt": "Help me decide how to build our store. Frontend: none, and we don't want to build one. Hosting: Xsolla-hosted is fine. Timeline: live within a week. Dev capacity: none. Localization and theming: English only, logo and colors.",
+      "followups": "confirm",
+      "expect": {"skill_any": ["shop-plan"], "no_write_before_confirm": true, "recorded_path": "shopbuilder"}
+    },
+    {
+      "id": "state-build-in-flight",
+      "category": "state",
+      "seed_env": "XSOLLA_MERCHANT_ID=100001\nXSOLLA_PROJECT_ID=200002\nXSOLLA_PROJECT_API_KEY=dummy-not-a-real-key\n",
+      "prompt": "Build me the shop",
+      "followups": "confirm",
+      "expect": {"skill_any": ["shop-plan", "shop-setup"], "no_write_before_confirm": true, "recorded_path": "headless"}
+    },
+    {
+      "id": "state-already-decided",
+      "category": "state",
+      "seed_env": "XSOLLA_BUILD_PATH=shopbuilder\n",
+      "prompt": "Plan my shop",
+      "expect": {"skill_any": ["shop-plan"], "no_write_before_confirm": true, "env_unchanged": true}
+    },
+    {
+      "id": "state-invalid-value",
+      "category": "state",
+      "seed_env": "XSOLLA_BUILD_PATH=Headless\n",
+      "prompt": "Build me the shop",
+      "expect": {"skill_any": ["shop-plan", "shop-setup"], "no_write_before_confirm": true, "env_unchanged": true}
+    },
+    {
+      "id": "state-conflicting-answers",
+      "category": "state",
+      "prompt": "Plan my store. I need a fully custom UI on my own domain, I have zero developer time, and it has to be live tomorrow. English only.",
+      "expect": {"skill_any": ["shop-plan"], "no_write_before_confirm": true, "env_unchanged": true}
+    },
+    {
+      "id": "regression-webhook-signature",
+      "category": "regression",
+      "prompt": "How do I verify the Xsolla webhook signature in my Express handler?",
+      "max_turns": 6,
+      "expect": {"skill_any": ["webhooks-impl"], "skill_not": ["shop-plan"]}
+    },
+    {
+      "id": "regression-google-pay",
+      "category": "regression",
+      "prompt": "Add Google Pay to my Xsolla Headless Checkout payment form.",
+      "max_turns": 6,
+      "expect": {"skill_any": ["headless-checkout-integration"], "skill_not": ["shop-plan"]}
+    },
+    {
+      "id": "regression-currency-packages",
+      "category": "regression",
+      "prompt": "Create virtual currency packages in my Xsolla catalog.",
+      "max_turns": 6,
+      "expect": {"skill_any": ["catalog-design"], "skill_not": ["shop-plan"]}
+    },
+    {
+      "id": "regression-login-theme",
+      "category": "regression",
+      "prompt": "Style the Xsolla Login widget to match my game's dark theme.",
+      "max_turns": 6,
+      "expect": {"skill_any": ["login-styling"], "skill_not": ["shop-plan"]}
+    },
+    {
+      "id": "regression-api-keys",
+      "category": "regression",
+      "prompt": "How do I get API keys for my Xsolla merchant account?",
+      "max_turns": 6,
+      "expect": {"skill_any": ["merchant-setup"], "skill_not": ["shop-plan"]}
+    }
+  ]
+}
