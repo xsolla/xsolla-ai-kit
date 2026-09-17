@@ -117,8 +117,12 @@ def _preview_human(plan, blockers):
           % (counts["localization"], counts["overflow"], counts["asset"],
              counts["patch"], counts["catalog"]))
     print("")
-    for op in plan["operations"]:
-        path = ".".join(str(segment) for segment in op["path"])
+    # Deletes are listed separately and last, because they are the only
+    # irreversible thing in a plan and a reader approving it has to see them as
+    # their own decision rather than as line 34 of a long list.
+    deletes = [op for op in plan["operations"] if op["kind"] == "delete"]
+    for op in [o for o in plan["operations"] if o["kind"] != "delete"]:
+        path = ".".join(str(segment) for segment in op["path"] or [])
         flag = "" if op["confidence"] == mapping.CONFIRMED else "  [path unconfirmed]"
         print("  %2d. %-17s %-14s %s%s"
               % (op["step"], op["field"], op["module"], path, flag))
@@ -133,6 +137,14 @@ def _preview_human(plan, blockers):
             print("      %s" % preview)
         for item in op.get("dropped") or []:
             print("      dropped: %s" % item)
+    if deletes:
+        print("")
+        print("  REMOVES %d block(s) — the listing publishes nothing they can"
+              % len(deletes))
+        print("  show. Recoverable only from the backup taken before the first")
+        print("  write:")
+        for op in deletes:
+            print("    - %-16s %s" % (op["module"], op["block_id"]))
     if plan["catalog_operations"]:
         print("")
         print("  Catalog — in-app items, created as priced virtual items:")
@@ -145,9 +157,12 @@ def _preview_human(plan, blockers):
             print("      note: %s" % warning)
     if plan["unresolved"]:
         print("")
-        print("  Not placed — the landing has no such block:")
+        print("  Not placed:")
         for item in plan["unresolved"]:
-            print("    - %-13s wants a %s block" % (item["field"], item["module"]))
+            # The plan records why; print that rather than a stock phrase. The
+            # earlier version said "wants a <module> block" for every entry,
+            # which reported a full gallery as a missing one.
+            print("    - %-13s %s" % (item["field"], item["reason"]))
     if plan["manual_follow_up"]:
         print("")
         print("  Manual follow-up — extracted, but no block field exists:")

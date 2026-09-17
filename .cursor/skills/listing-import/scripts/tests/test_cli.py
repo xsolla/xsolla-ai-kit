@@ -234,3 +234,38 @@ class TestFetchExtractCatalogCommands(CliCase):
                                      "--structure", structure])
         self.assertIn("Catalog —", out)
         self.assertIn("catalog item(s)", out)
+
+
+class TestUnresolvedRendering(CliCase):
+    """The preview must print the reason the plan recorded, not a stock phrase.
+
+    The earlier version printed "wants a <module> block" for every unresolved
+    entry, so a gallery that was present but full reported as a missing one.
+    A preview that contradicts its own plan is worse than a terse one.
+    """
+
+    def test_the_recorded_reason_is_printed(self):
+        listing = self.write("l.json", steam_listing())
+        structure = self.write("s.json", steam_structure())
+        _status, out = self.run_cli(["preview", "--listing", listing,
+                                     "--structure", structure])
+        self.assertNotIn("wants a", out)
+
+    def test_a_capped_gallery_does_not_read_as_a_missing_one(self):
+        document = steam_listing()
+        document["fields"]["screenshots"] = ["https://x.test/%d.jpg" % i
+                                             for i in range(20)]
+        listing = self.write("l.json", document)
+        structure = self.write("s.json", steam_structure())
+        _status, out = self.run_cli(["preview", "--listing", listing,
+                                     "--structure", structure])
+        self.assertIn("slide(s)", out)
+        self.assertIn("cannot be placed", out)
+
+    def test_deletes_are_listed_on_their_own(self):
+        listing = self.write("l.json", steam_listing())
+        structure = self.write("s.json", steam_structure())
+        _status, out = self.run_cli(["preview", "--listing", listing,
+                                     "--structure", structure])
+        self.assertIn("REMOVES", out)
+        self.assertIn("Recoverable only from the backup", out)

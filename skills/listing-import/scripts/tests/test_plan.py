@@ -192,20 +192,23 @@ class TestMalformedInputToAPublicEntryPoint(unittest.TestCase):
 
     def test_a_string_where_screenshots_wants_a_list_is_not_iterated(self):
         built = self._build({"screenshots": "https://x.test/a.jpg"})
-        urls = [op["source_url"] for op in built["operations"]]
+        urls = [op["source_url"] for op in built["operations"]
+                if op["kind"] == "asset"]
         self.assertEqual(urls, ["https://x.test/a.jpg"])
 
     def test_blank_and_non_string_entries_are_skipped(self):
         built = self._build({"screenshots": ["https://x.test/a.jpg", "  ", None, 7]})
-        self.assertEqual(len(built["operations"]), 1)
+        # One upload, plus the companion patches that make the slide visible.
+        self.assertEqual(len([o for o in built["operations"]
+                              if o["kind"] == "asset"]), 1)
 
-    def test_an_empty_screenshot_list_places_nothing_and_hides_the_gallery(self):
+    def test_an_empty_screenshot_list_places_nothing_and_prunes_the_gallery(self):
         built = self._build({"screenshots": []})
         self.assertEqual([o for o in built["operations"]
                           if o["field"] == "screenshots"], [])
-        # Nothing was written to the gallery, so it still holds template copy.
-        hides = [o for o in built["operations"] if o["field"].startswith("unfilled.")]
-        self.assertEqual([o["module"] for o in hides], ["gallery"])
+        # Nothing to show in the gallery, so the gallery goes.
+        pruned = [o for o in built["operations"] if o["kind"] == "delete"]
+        self.assertEqual([o["module"] for o in pruned], ["gallery"])
 
 
 class TestOverflowAndCatalogRouting(unittest.TestCase):
@@ -350,7 +353,8 @@ class TestGallerySlotsAreFinite(unittest.TestCase):
 
     def test_screenshots_are_capped_at_the_slide_count(self):
         built = self._plan(["https://x.test/%d.jpg" % i for i in range(6)], 3)
-        ops = [o for o in built["operations"] if o["field"] == "screenshots"]
+        ops = [o for o in built["operations"]
+               if o["field"] == "screenshots" and o["kind"] == "asset"]
         self.assertEqual(len(ops), 3)
         self.assertEqual([o["path"][2] for o in ops], [0, 1, 2])
 
@@ -363,7 +367,8 @@ class TestGallerySlotsAreFinite(unittest.TestCase):
     def test_enough_slots_means_no_surplus(self):
         built = self._plan(["https://x.test/%d.jpg" % i for i in range(3)], 10)
         self.assertEqual(len([o for o in built["operations"]
-                              if o["field"] == "screenshots"]), 3)
+                              if o["field"] == "screenshots"
+                              and o["kind"] == "asset"]), 3)
         self.assertEqual([u for u in built["unresolved"]
                           if u["field"] == "screenshots"], [])
 
@@ -472,10 +477,10 @@ class TestEditionsOnThePage(unittest.TestCase):
         self.assertEqual([u for u in built["unresolved"]
                           if u["field"] == "iap_items"], [])
 
-    def test_a_packs_block_that_received_an_edition_is_not_hidden(self):
+    def test_a_packs_block_that_received_an_edition_is_not_pruned(self):
         built = self._plan(self._editions(5), cards=3, extra_packs=2)
         self.assertEqual([o for o in built["operations"]
-                          if o["field"] == "unfilled.packs"], [])
+                          if o["kind"] == "delete" and o["module"] == "packs"], [])
 
     def test_the_buy_button_points_at_the_editions_catalog_sku(self):
         """The price on the button comes from the catalog item, not the page."""
@@ -503,8 +508,13 @@ class TestEditionsOnThePage(unittest.TestCase):
         self.assertEqual(op["value"], "Unlock every Legend, present and future.")
 
 
-class TestHidingWhatNothingFilled(unittest.TestCase):
-    """Nine of thirteen blocks kept their template copy in every shop."""
+class TestPruningWhatTheListingCannotFill(unittest.TestCase):
+    """Nine of thirteen blocks kept their template copy in every shop.
+
+    Hiding them left a Play shop carrying three invisible "Game editions"
+    sections. A block the listing cannot fill is now removed instead, so it is
+    absent rather than merely unseen.
+    """
 
     def _plan(self, modules, fields=None):
         document = {"source": "steam",
@@ -521,47 +531,97 @@ class TestHidingWhatNothingFilled(unittest.TestCase):
             blocks.append(doc)
         return plan.build(document, {"pages": [{"_id": "p", "blocks": blocks}]})[0]
 
-    def test_an_untouched_block_is_hidden(self):
+    def _pruned(self, built):
+        return {o["module"] for o in built["operations"] if o["kind"] == "delete"}
+
+    def test_an_untouched_block_is_pruned(self):
         built = self._plan(["leadGameSales", "faq", "requirements", "bento-grid"])
-        hidden = {o["module"] for o in built["operations"]
-                  if o["field"].startswith("unfilled.")}
-        self.assertEqual(hidden, {"faq", "requirements", "bento-grid"})
+        self.assertEqual(self._pruned(built),
+                         {"faq", "requirements", "bento-grid"})
 
-    def test_a_written_block_is_not_hidden(self):
+    def test_a_written_block_is_not_pruned(self):
         built = self._plan(["leadGameSales", "faq"])
-        hidden = {o["block_id"] for o in built["operations"]
-                  if o["field"].startswith("unfilled.")}
-        self.assertNotIn("b0", hidden)
+        pruned = {o["block_id"] for o in built["operations"]
+                  if o["kind"] == "delete"}
+        self.assertNotIn("b0", pruned)
 
-    def test_the_header_and_footer_are_never_hidden(self):
-        """Hiding those removes navigation, not placeholder copy."""
+    def test_the_header_and_footer_are_never_pruned(self):
+        """Deleting those removes navigation, not placeholder copy."""
         built = self._plan(["header", "footer", "faq"])
-        hidden = {o["module"] for o in built["operations"]
-                  if o["field"].startswith("unfilled.")}
-        self.assertEqual(hidden, {"faq"})
+        self.assertEqual(self._pruned(built), {"faq"})
 
-    def test_layout_modules_are_never_hidden(self):
+    def test_layout_modules_are_never_pruned(self):
         built = self._plan(["common-layout", "side-by-side-layout", "faq"])
-        hidden = {o["module"] for o in built["operations"]
-                  if o["field"].startswith("unfilled.")}
-        self.assertEqual(hidden, {"faq"})
+        self.assertEqual(self._pruned(built), {"faq"})
 
-    def test_an_already_hidden_block_is_left_alone(self):
+    def test_deletes_come_after_every_write(self):
+        """A block is only removed once anything with something to say has
+        said it."""
+        built = self._plan(["leadGameSales", "faq"])
+        kinds = [o["kind"] for o in built["operations"]]
+        self.assertEqual(kinds[-1], "delete")
+        self.assertNotIn("delete", kinds[:-1])
+
+    def test_a_delete_names_the_block_and_its_page(self):
+        built = self._plan(["leadGameSales", "faq"])
+        op = [o for o in built["operations"] if o["kind"] == "delete"][0]
+        self.assertEqual(op["field"], "unsupported.faq")
+        self.assertEqual(op["page_id"], "p")
+        self.assertTrue(op["block_id"])
+        self.assertIsNone(op["path"])
+        self.assertIn("backup", op["note"])
+
+    def test_the_count_matches_the_delete_operations(self):
+        built = self._plan(["leadGameSales", "faq", "bento-grid"])
+        self.assertEqual(built["counts"]["delete"],
+                         len([o for o in built["operations"]
+                              if o["kind"] == "delete"]))
+
+
+class TestSlideOverlayCompanions(unittest.TestCase):
+    """The bug the Play and App Store shops showed.
+
+    A slide's media object carries a colour layer over the image, and the
+    default block template ships it at `rgba(23, 19, 32, 0.85)` — an 85% opaque
+    dark wash. Three screenshots uploaded, patched, and read back as correct,
+    all invisible. A landing built by `import-listing` has it transparent
+    already, which is why Steam looked right and the other two did not.
+    """
+
+    def _plan(self, count=2):
         document = {"source": "steam",
                     "source_url": "https://store.steampowered.com/app/1/",
-                    "rights_confirmed": True, "fields": {"title": "T"}}
+                    "rights_confirmed": True,
+                    "fields": {"screenshots": ["https://x.test/%d.jpg" % i
+                                               for i in range(count)]}}
         structure = {"pages": [{"_id": "p", "blocks": [
-            {"_id": "a", "module": "leadGameSales",
-             "values": {"title": {"id": "L:t"}}},
-            {"_id": "b", "module": "faq", "hidden": True}]}]}
-        built = plan.build(document, structure)[0]
-        self.assertEqual([o for o in built["operations"]
-                          if o["field"].startswith("unfilled.")], [])
+            {"_id": "g", "module": "gallery",
+             "values": {"slides": [{"id": "s%d" % i} for i in range(4)]}}]}]}
+        return plan.build(document, structure)[0]
 
-    def test_hiding_patches_the_blocks_own_hidden_flag(self):
-        built = self._plan(["leadGameSales", "faq"])
-        op = [o for o in built["operations"]
-              if o["field"] == "unfilled.faq"][0]
-        self.assertEqual(op["path"], ["hidden"])
-        self.assertIs(op["value"], True)
-        self.assertEqual(op["confidence"], "confirmed")
+    def test_each_slide_image_brings_its_companions(self):
+        built = self._plan(2)
+        patches = [o for o in built["operations"]
+                   if o["field"] == "screenshots" and o["kind"] == "patch"]
+        self.assertEqual(len(patches), 4)
+
+    def test_the_overlay_is_set_transparent(self):
+        built = self._plan(1)
+        colour = [o for o in built["operations"]
+                  if o["kind"] == "patch" and o["path"][-1] == "color"]
+        self.assertEqual(len(colour), 1)
+        self.assertEqual(colour[0]["value"], "transparent")
+
+    def test_the_companions_target_the_same_slide(self):
+        built = self._plan(2)
+        for index in (0, 1):
+            paths = [o["path"] for o in built["operations"]
+                     if o["field"] == "screenshots" and o["path"][2] == index]
+            self.assertEqual(len(paths), 3)
+            self.assertEqual({tuple(p[:4]) for p in paths},
+                             {("values", "slides", index, "image")})
+
+    def test_the_image_write_comes_before_its_companions(self):
+        built = self._plan(1)
+        ops = [o for o in built["operations"] if o["field"] == "screenshots"]
+        self.assertEqual(ops[0]["kind"], "asset")

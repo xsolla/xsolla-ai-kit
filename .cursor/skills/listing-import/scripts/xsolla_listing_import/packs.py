@@ -213,36 +213,63 @@ def _price_line(edition):
     return "%.2f %s" % (price["amount"], price["currency"])
 
 
-def hide_operations(structure, keep_block_ids):
-    """Hide every block the import did not fill.
+def prune_operations(structure, keep_block_ids):
+    """Delete every block the listing does not support.
 
-    ``keep_block_ids`` are the blocks something was written to.  Everything
-    else on the page still carries the template's copy, which is what makes an
-    imported shop look unfinished even when the extraction went well.
+    Content-first, arrived at the long way.  The first version hid unfilled
+    blocks, which left a Play shop carrying three invisible "Game editions"
+    sections.  The obvious alternative -- tear the template down and add back
+    only what the listing supports -- turned out to be worse, and the reason is
+    worth recording because it is not guessable:
 
-    Layout blocks are never hidden -- hiding a ``header`` or a layout wrapper
-    removes navigation rather than placeholder text.
+    A freshly added block does not arrive the way the template's does.
+    Verified on a throwaway landing, 2026-09-17:
+
+    ======================  ====================================
+    ``add-block gallery``   3 slides, real ``L:`` refs -- usable
+    ``add-block packs``     **0 cards** -- nothing to put an edition on
+    ``add-block description``  **componentsIds: []** -- no text component
+    ``add-block faq``       1 component
+    ======================  ====================================
+
+    So rebuilding would break exactly the two blocks that carry the most
+    content.  The template's ``packs`` blocks are the only source of usable
+    cards, and the template's ``description`` is the only one with somewhere to
+    put the description.
+
+    Pruning gets the same result the rebuild was for -- a block the listing
+    cannot fill is *absent*, not hidden -- without losing the structure that
+    only the template provides.
+
+    Layout blocks are never pruned: deleting a ``header`` or ``footer`` removes
+    navigation rather than placeholder copy.
+
+    What this misses: it prunes by "was anything written to it", so a block that
+    a *future* field would fill is deleted today and has to be re-added by hand.
+    And a delete is not reversible from here -- the pre-write backup is the only
+    way back, which is why ``apply.py`` takes one before the first write.
     """
-    never_hide = {"header", "common-layout", "side-by-side-layout", "footer"}
+    never_prune = {"header", "footer", "common-layout", "side-by-side-layout"}
     operations = []
     for page in (structure or {}).get("pages") or []:
         for block in page.get("blocks") or []:
             if not isinstance(block, dict):
                 continue
             module = block.get("module")
-            if not module or module in never_hide:
+            if not module or module in never_prune:
                 continue
             if block.get("_id") in keep_block_ids:
                 continue
-            if block.get("hidden") is True:
-                continue
             operations.append({
-                "kind": "patch", "field": "unfilled.%s" % module,
-                "module": module, "block_id": block["_id"],
-                "page_id": page.get("_id"), "path": ["hidden"], "value": True,
+                "kind": "delete",
+                "field": "unsupported.%s" % module,
+                "module": module,
+                "block_id": block["_id"],
+                "page_id": page.get("_id"),
+                "path": None,
                 "confidence": "confirmed",
-                "note": "Nothing was written to this block, so it still holds "
-                        "the template's copy. Hidden rather than deleted: "
-                        "reversible, and delete-block is not in the allowlist.",
+                "note": "The listing publishes nothing this block can show, so "
+                        "it is removed rather than left holding the template's "
+                        "copy. Recoverable only from the pre-write backup.",
             })
     return operations

@@ -142,6 +142,18 @@ KEY_ART_COMPANIONS = (
     (("values", "background", "size"), "cover"),
 )
 
+# A gallery slide's media object carries a colour layer over the image.  The
+# default block template ships it at ``rgba(23, 19, 32, 0.85)`` -- an 85%
+# opaque dark wash, meant for artwork sitting behind text.  Write a screenshot
+# underneath it and the slide looks empty, which is exactly how the Play and
+# App Store shops came out: three uploaded images each, none of them visible.
+# A landing built by `import-listing` has it transparent already, which is why
+# Steam looked right and the other two did not.
+SLIDE_COMPANIONS = (
+    ("color", "transparent"),
+    ("enable", True),
+)
+
 
 def target_for(field):
     """The destination for one field, or ``None`` if the field is unknown."""

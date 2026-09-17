@@ -128,6 +128,23 @@ def _asset_ops(field, urls, target, block_id, page_id, path_override=None):
             "note": ("Fetch to a local file, upload-asset, then patch the returned "
                      "CDN url. Never patch the source URL directly."),
         })
+        if field == "screenshots":
+            # The slide's colour layer sits over the image, and the template
+            # ships it 85% opaque. Without these the screenshot is uploaded,
+            # patched, read back as correct -- and invisible.
+            for key, value in mapping.SLIDE_COMPANIONS:
+                ops.append({
+                    "kind": "patch",
+                    "field": field,
+                    "module": target.module,
+                    "block_id": block_id,
+                    "page_id": page_id,
+                    "path": path[:-1] + [key],
+                    "value": value,
+                    "confidence": mapping.CONFIRMED,
+                    "note": "Companion to the slide image; the template's dark "
+                            "overlay hides it otherwise.",
+                })
     return ops
 
 
@@ -376,11 +393,11 @@ def build(document, structure, localization=None):
                             % ", ".join(e.get("name", "?") for e in unplaced),
                 })
 
-    # Anything nothing was written to still carries the template's copy.
+    # A block nothing was written to has nothing from this listing to show.
     written_blocks = {op["block_id"] for op in
                       (localization_ops + overflow_ops + asset_ops + pack_ops)
                       if op.get("block_id")} | set(pack_blocks)
-    hide_ops = packs_plan.hide_operations(structure, written_blocks)
+    prune_ops = packs_plan.prune_operations(structure, written_blocks)
 
     unverified = []
     if localization is None:
@@ -401,8 +418,10 @@ def build(document, structure, localization=None):
         "source": source,
         "source_label": field_model.SOURCE_LABELS.get(source, str(source)),
         "source_url": document.get("source_url"),
+        # Deletes last: a block is only removed once everything that had
+        # something to write has written it.
         "operations": (localization_ops + overflow_ops + pack_ops
-                       + asset_ops + hide_ops),
+                       + asset_ops + prune_ops),
         "catalog_operations": catalog_ops,
         "catalog_warnings": catalog_warnings,
         "manual_follow_up": manual,
@@ -414,10 +433,11 @@ def build(document, structure, localization=None):
             "editions_on_page": len([o for o in pack_ops
                                      if o["field"].startswith("edition.")
                                      and o["kind"] != "patch"]),
-            "hidden_unfilled": len(hide_ops),
+            "pruned_unsupported": len(prune_ops),
             "asset": len([o for o in asset_ops if o["kind"] == "asset"]),
-            "patch": len([o for o in (asset_ops + pack_ops + hide_ops)
+            "patch": len([o for o in (asset_ops + pack_ops)
                           if o["kind"] == "patch"]),
+            "delete": len(prune_ops),
             "catalog": len(catalog_ops),
             "manual": len(manual),
             "unresolved": len(unresolved),
