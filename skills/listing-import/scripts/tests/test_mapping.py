@@ -14,9 +14,11 @@ class TestTable(unittest.TestCase):
             self.assertIsNotNone(mapping.target_for(name), name)
 
     def test_confirmed_rows_are_the_ones_exercised_live(self):
+        """key_art and screenshots landed on the Steam run; icon on the Play run
+        once its path was resolved from the block rather than guessed."""
         confirmed = {t.field for t in mapping.TARGETS
                      if t.confidence == mapping.CONFIRMED}
-        self.assertEqual(confirmed, {"key_art", "screenshots"})
+        self.assertEqual(confirmed, {"key_art", "screenshots", "icon"})
 
     def test_nothing_is_unmapped_any_more(self):
         """These four used to have nowhere to go, which put a 7/11 ceiling on

@@ -24,12 +24,22 @@ def fail(msg="boom", code=1):
     return {"cmd": [], "code": code, "stdout": "", "stderr": msg}
 
 
+LANDING = "L-landing-id"
+BLOCK = "b1"
+
+
 class FakeCli(object):
-    """Records calls and answers from a scripted queue."""
+    """Records calls and answers from a scripted queue.
+
+    ``get-structure`` answers with an ``_id`` by default, because every run
+    resolves the landing id before it does anything else.
+    """
 
     def __init__(self, answers=None, default=None):
         self.calls = []
         self.answers = dict(answers or {})
+        self.answers.setdefault(("shopbuilder", "get-structure"),
+                                ok({"_id": LANDING, "pages": []}))
         self.default = default or ok()
 
     def __call__(self, product, action, args, timeout=120):
@@ -73,19 +83,21 @@ def patch_op(step=1, value=True):
 class TestTheConfirmationGate(unittest.TestCase):
     """--yes is the whole gate; a forgotten flag must cost nothing."""
 
-    def test_a_rehearsal_invokes_nothing(self):
+    def test_a_rehearsal_invokes_nothing_at_all(self):
+        """Not even a read. A rehearsal has to work from a plan file alone."""
         cli = FakeCli()
         out = applier.apply_plan(plan_with(loc_op(), asset_op()), "s", call=cli,
                                  fetch=lambda u, d: "/tmp/x.jpg")
         self.assertEqual(cli.calls, [])
         self.assertFalse(out["confirmed"])
         self.assertTrue(out["commands"])
+        self.assertEqual(out["landing_id"], applier.PLACEHOLDER_LANDING)
 
     def test_a_rehearsal_takes_no_backup_either(self):
         cli = FakeCli()
         out = applier.apply_plan(plan_with(loc_op()), "s", call=cli)
         self.assertIsNone(out["backup"])
-        self.assertNotIn("shopbuilder get-structure", cli.actions())
+        self.assertEqual(cli.actions(), [])
 
     def test_confirmed_invokes(self):
         cli = FakeCli()
@@ -104,13 +116,15 @@ class TestBackupHappensFirst(unittest.TestCase):
             applier.apply_plan(plan_with(loc_op()), "s", confirmed=True, call=cli,
                                backup_dir=d)
         actions = cli.actions()
-        self.assertEqual(actions[0], "shopbuilder get-structure")
-        self.assertEqual(actions[1], "shopbuilder get-localization")
+        # get-structure twice: once to resolve the landing id, once as the backup.
+        self.assertEqual(actions[:3], ["shopbuilder get-structure",
+                                       "shopbuilder get-structure",
+                                       "shopbuilder get-localization"])
         self.assertLess(actions.index("shopbuilder get-localization"),
                         actions.index("shopbuilder update-localization"))
 
     def test_both_files_land_on_disk(self):
-        cli = FakeCli(default=ok({"pages": []}))
+        cli = FakeCli(default=ok({"_id": LANDING, "pages": []}))
         with tempfile.TemporaryDirectory() as d:
             out = applier.apply_plan(plan_with(), "s", confirmed=True, call=cli,
                                      backup_dir=d)
@@ -118,11 +132,11 @@ class TestBackupHappensFirst(unittest.TestCase):
                 self.assertTrue(os.path.exists(path), path)
 
     def test_a_failed_backup_stops_the_run_before_any_write(self):
-        cli = FakeCli(answers={("shopbuilder", "get-structure"): fail("401")})
+        cli = FakeCli(answers={("shopbuilder", "get-localization"): fail("401")})
         with tempfile.TemporaryDirectory() as d:
             with self.assertRaises(applier.Refused) as caught:
                 applier.apply_plan(plan_with(loc_op()), "s", confirmed=True,
-                                   call=cli, backup_dir=d)
+                                   call=cli, backup_dir=d, landing=LANDING)
         self.assertIn("not writing without one", str(caught.exception))
         self.assertNotIn("shopbuilder update-localization", cli.actions())
 
@@ -441,3 +455,86 @@ class TestApplyPlanCli(unittest.TestCase):
         code, _out = self.run_cli(["--plan", os.path.join(self.tmp, "no.json"),
                                    "--slug", "s"])
         self.assertEqual(code, self.apply_plan.EXIT_USAGE)
+
+
+class TestLandingIdIsTheLandingsNotTheBlocks(unittest.TestCase):
+    """The bug a live run found after the mocked tests had passed.
+
+    ``upload-asset`` and ``update-block`` both take the *landing* id as a flag
+    and address the block inside ``--data``. The first version passed the block
+    id to the flag; every asset and patch write came back HTTP 404. A fake CLI
+    accepts whatever argument you hand it, so the mock could not catch it —
+    these assertions check the value, not just that the call happened.
+    """
+
+    def _cli(self):
+        return FakeCli(answers={
+            ("shopbuilder", "get-structure"): ok({"_id": LANDING, "pages": []}),
+            ("shopbuilder", "upload-asset"): ok({"url": "https://cdn.test/x.jpg"}),
+            ("shopbuilder", "get-block"): ok(
+                {"values": {"background": {"img": "https://cdn.test/x.jpg",
+                                           "enable": True}}}),
+        })
+
+    def _flag(self, args, name):
+        return args[args.index(name) + 1]
+
+    def test_the_landing_id_is_resolved_before_anything_is_written(self):
+        cli = self._cli()
+        with tempfile.TemporaryDirectory() as d:
+            out = applier.apply_plan(plan_with(patch_op()), "s", confirmed=True,
+                                     call=cli, backup_dir=d)
+        self.assertEqual(out["landing_id"], LANDING)
+        self.assertEqual(cli.actions()[0], "shopbuilder get-structure")
+
+    def test_update_block_gets_the_landing_id_not_the_block_id(self):
+        cli = self._cli()
+        with tempfile.TemporaryDirectory() as d:
+            applier.apply_plan(plan_with(patch_op()), "s", confirmed=True,
+                               call=cli, backup_dir=d)
+        args = [c for c in cli.calls if c[1] == "update-block"][0][2]
+        self.assertEqual(self._flag(args, "--landing-id"), LANDING)
+        self.assertNotEqual(self._flag(args, "--landing-id"), BLOCK)
+
+    def test_the_block_is_addressed_inside_the_data_payload(self):
+        cli = self._cli()
+        with tempfile.TemporaryDirectory() as d:
+            applier.apply_plan(plan_with(patch_op()), "s", confirmed=True,
+                               call=cli, backup_dir=d)
+        args = [c for c in cli.calls if c[1] == "update-block"][0][2]
+        data = json.loads(self._flag(args, "--data"))
+        self.assertEqual(data["r1"]["id"], BLOCK)
+
+    def test_upload_asset_gets_the_landing_id_too(self):
+        cli = self._cli()
+        with tempfile.TemporaryDirectory() as d:
+            applier.apply_plan(plan_with(asset_op()), "s", confirmed=True, call=cli,
+                               backup_dir=d, fetch=lambda u, w: "/tmp/a.jpg",
+                               workdir=d)
+        args = [c for c in cli.calls if c[1] == "upload-asset"][0][2]
+        self.assertEqual(self._flag(args, "--landing-id"), LANDING)
+
+    def test_a_rehearsal_shows_a_placeholder_rather_than_guessing(self):
+        """It resolves nothing, so it must not imply it knows the id."""
+        cli = self._cli()
+        out = applier.apply_plan(plan_with(patch_op()), "s", call=cli,
+                                 fetch=lambda u, w: "/tmp/a.jpg")
+        block = [c for c in out["commands"] if c[1] == "update-block"][0]
+        self.assertEqual(self._flag(block, "--landing-id"),
+                         applier.PLACEHOLDER_LANDING)
+        self.assertEqual(cli.calls, [])
+
+    def test_a_caller_may_supply_the_landing_id_directly(self):
+        cli = self._cli()
+        out = applier.apply_plan(plan_with(patch_op()), "s", call=cli,
+                                 landing="L-given")
+        self.assertEqual(out["landing_id"], "L-given")
+        self.assertEqual(cli.calls, [])
+
+    def test_an_unresolvable_landing_id_stops_a_real_run(self):
+        cli = FakeCli(answers={("shopbuilder", "get-structure"): ok({"pages": []})})
+        with tempfile.TemporaryDirectory() as d:
+            with self.assertRaises(applier.Refused) as caught:
+                applier.apply_plan(plan_with(patch_op()), "s", confirmed=True,
+                                   call=cli, backup_dir=d)
+        self.assertIn("no _id", str(caught.exception))

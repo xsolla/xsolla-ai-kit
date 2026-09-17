@@ -1,0 +1,426 @@
+{
+  "ok": true,
+  "blockers": [],
+  "plan": {
+    "source": "steam",
+    "source_label": "Steam",
+    "source_url": "https://store.steampowered.com/app/812140/",
+    "operations": [
+      {
+        "kind": "localization",
+        "field": "title",
+        "module": "leadGameSales",
+        "block_id": "6aa1a3e66060c5c228be2eca",
+        "page_id": "6aa1a3e66060c5c228be2ec5",
+        "path": [
+          "values",
+          "title"
+        ],
+        "localized_id": "L:0ac56494-5087-4ddf-8fa5-485e3e094376",
+        "value": "Assassin's Creed\u00ae Odyssey",
+        "dropped": [],
+        "confidence": "schema",
+        "note": "h3 wrapper. The import fills this already; overwrite only on request.",
+        "step": 1
+      },
+      {
+        "kind": "localization",
+        "field": "short_description",
+        "module": "leadGameSales",
+        "block_id": "6aa1a3e66060c5c228be2eca",
+        "page_id": "6aa1a3e66060c5c228be2ec5",
+        "path": [
+          "values",
+          "subtitle"
+        ],
+        "localized_id": "L:356b13fe-9e0f-4fbd-906b-dcafdfd3655a",
+        "value": "In this action-adventure game, set sail for Ancient Greece to alter its fate. Fight in visceral battles on land and sea, shape your destiny from outcast to legend, and uncover secrets of your past.",
+        "dropped": [],
+        "confidence": "schema",
+        "note": "p wrapper.",
+        "step": 2
+      },
+      {
+        "kind": "localization",
+        "field": "long_description",
+        "module": "description",
+        "block_id": "6aa1a3e66060c5c228be2ecb",
+        "page_id": "6aa1a3e66060c5c228be2ec5",
+        "path": [
+          "values",
+          "components"
+        ],
+        "localized_id": null,
+        "value": "<h2>FIGHT AS A SPARTAN WARRIOR</h2>Forge your own odyssey in a world on the brink of chaos and become a legendary Spartan hero, fighting mythical creatures along the way. Charge into epic clashes between Sparta and Athens, with battles pitting 150v150 soldiers against each other.<br><h2>TRAVEL TO ANCIENT GREECE</h2>Make your way through wild landscapes, vibrant cities, and iconic historical sites. Sail across shimmering seas, climb towering mountains, and discover the heart of a civilization.<br><h2>CHOOSE YOUR PATH</h2>Your choices shape the world around you. Play in a living world that constantly reacts to your every decision: forge alliances, spark conflicts, and determine the fate of characters. Customize your gear, ship, and special abilities to become a legend.<br>",
+        "dropped": [
+          "span",
+          "video"
+        ],
+        "confidence": "schema",
+        "note": "A keyed TEXT component, not a bare string. Read the block first: the component id is generated, and the L: ref has to already exist.",
+        "step": 3
+      },
+      {
+        "kind": "overflow",
+        "field": "genres+age_rating",
+        "module": "description",
+        "block_id": "6aa1a3e66060c5c228be2ecb",
+        "page_id": "6aa1a3e66060c5c228be2ec5",
+        "path": [
+          "values",
+          "components"
+        ],
+        "value": "<p><strong>Genres:</strong> Action, Adventure, RPG</p><p><strong>Rating:</strong> PEGI 18</p>",
+        "dropped": [],
+        "confidence": "schema",
+        "note": "One appended TEXT component carrying genres, age_rating. Needs a generated component id; read the block first.",
+        "step": 4
+      },
+      {
+        "kind": "asset",
+        "field": "icon",
+        "module": "header",
+        "block_id": "6aa1a3e66060c5c228be2ec9",
+        "page_id": "6aa1a3e66060c5c228be2ec5",
+        "path": [
+          "values",
+          "logo",
+          "img"
+        ],
+        "source_url": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/812140/capsule_231x87.jpg?t=1786633104",
+        "confidence": "schema",
+        "note": "Fetch to a local file, upload-asset, then patch the returned CDN url. Never patch the source URL directly.",
+        "step": 5
+      },
+      {
+        "kind": "asset",
+        "field": "key_art",
+        "module": "leadGameSales",
+        "block_id": "6aa1a3e66060c5c228be2eca",
+        "page_id": "6aa1a3e66060c5c228be2ec5",
+        "path": [
+          "values",
+          "background",
+          "img"
+        ],
+        "source_url": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/812140/header.jpg?t=1786633104",
+        "confidence": "confirmed",
+        "note": "Fetch to a local file, upload-asset, then patch the returned CDN url. Never patch the source URL directly.",
+        "step": 6
+      },
+      {
+        "kind": "patch",
+        "field": "key_art",
+        "module": "leadGameSales",
+        "block_id": "6aa1a3e66060c5c228be2eca",
+        "page_id": "6aa1a3e66060c5c228be2ec5",
+        "path": [
+          "values",
+          "background",
+          "enable"
+        ],
+        "value": true,
+        "confidence": "confirmed",
+        "note": "Companion to the key-art write; without it the background stays hidden.",
+        "step": 7
+      },
+      {
+        "kind": "patch",
+        "field": "key_art",
+        "module": "leadGameSales",
+        "block_id": "6aa1a3e66060c5c228be2eca",
+        "page_id": "6aa1a3e66060c5c228be2ec5",
+        "path": [
+          "values",
+          "background",
+          "size"
+        ],
+        "value": "cover",
+        "confidence": "confirmed",
+        "note": "Companion to the key-art write; without it the background stays hidden.",
+        "step": 8
+      },
+      {
+        "kind": "asset",
+        "field": "screenshots",
+        "module": "gallery",
+        "block_id": "6aa1a3e66060c5c228be2ed1",
+        "page_id": "6aa1a3e66060c5c228be2ec5",
+        "path": [
+          "values",
+          "slides",
+          0,
+          "image",
+          "img"
+        ],
+        "source_url": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/812140/ss_0ef33c0f230da6ebac94f5959f0e0a8bbc48cf8a.1920x1080.jpg?t=1786633104",
+        "confidence": "confirmed",
+        "note": "Fetch to a local file, upload-asset, then patch the returned CDN url. Never patch the source URL directly.",
+        "step": 9
+      },
+      {
+        "kind": "asset",
+        "field": "screenshots",
+        "module": "gallery",
+        "block_id": "6aa1a3e66060c5c228be2ed1",
+        "page_id": "6aa1a3e66060c5c228be2ec5",
+        "path": [
+          "values",
+          "slides",
+          1,
+          "image",
+          "img"
+        ],
+        "source_url": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/812140/ss_3f8f4a09fb1d69648a8c20aae19ca2924ba275bd.1920x1080.jpg?t=1786633104",
+        "confidence": "confirmed",
+        "note": "Fetch to a local file, upload-asset, then patch the returned CDN url. Never patch the source URL directly.",
+        "step": 10
+      },
+      {
+        "kind": "asset",
+        "field": "screenshots",
+        "module": "gallery",
+        "block_id": "6aa1a3e66060c5c228be2ed1",
+        "page_id": "6aa1a3e66060c5c228be2ec5",
+        "path": [
+          "values",
+          "slides",
+          2,
+          "image",
+          "img"
+        ],
+        "source_url": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/812140/ss_6dc9f95cfb6d264c3535b53ce08f36ee07066550.1920x1080.jpg?t=1786633104",
+        "confidence": "confirmed",
+        "note": "Fetch to a local file, upload-asset, then patch the returned CDN url. Never patch the source URL directly.",
+        "step": 11
+      },
+      {
+        "kind": "asset",
+        "field": "screenshots",
+        "module": "gallery",
+        "block_id": "6aa1a3e66060c5c228be2ed1",
+        "page_id": "6aa1a3e66060c5c228be2ec5",
+        "path": [
+          "values",
+          "slides",
+          3,
+          "image",
+          "img"
+        ],
+        "source_url": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/812140/ss_458b7cc7392b6fd073bbd679868fd486013cb474.1920x1080.jpg?t=1786633104",
+        "confidence": "confirmed",
+        "note": "Fetch to a local file, upload-asset, then patch the returned CDN url. Never patch the source URL directly.",
+        "step": 12
+      },
+      {
+        "kind": "asset",
+        "field": "screenshots",
+        "module": "gallery",
+        "block_id": "6aa1a3e66060c5c228be2ed1",
+        "page_id": "6aa1a3e66060c5c228be2ec5",
+        "path": [
+          "values",
+          "slides",
+          4,
+          "image",
+          "img"
+        ],
+        "source_url": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/812140/ss_71f5c2052a6bfb94486e929db3d6b92c06696843.1920x1080.jpg?t=1786633104",
+        "confidence": "confirmed",
+        "note": "Fetch to a local file, upload-asset, then patch the returned CDN url. Never patch the source URL directly.",
+        "step": 13
+      },
+      {
+        "kind": "asset",
+        "field": "screenshots",
+        "module": "gallery",
+        "block_id": "6aa1a3e66060c5c228be2ed1",
+        "page_id": "6aa1a3e66060c5c228be2ec5",
+        "path": [
+          "values",
+          "slides",
+          5,
+          "image",
+          "img"
+        ],
+        "source_url": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/812140/ss_c334fed07712111399ab1951eee432ec9ed46d28.1920x1080.jpg?t=1786633104",
+        "confidence": "confirmed",
+        "note": "Fetch to a local file, upload-asset, then patch the returned CDN url. Never patch the source URL directly.",
+        "step": 14
+      },
+      {
+        "kind": "asset",
+        "field": "screenshots",
+        "module": "gallery",
+        "block_id": "6aa1a3e66060c5c228be2ed1",
+        "page_id": "6aa1a3e66060c5c228be2ec5",
+        "path": [
+          "values",
+          "slides",
+          6,
+          "image",
+          "img"
+        ],
+        "source_url": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/812140/ss_16fc551879ac299dca68839da90f89d9e624db48.1920x1080.jpg?t=1786633104",
+        "confidence": "confirmed",
+        "note": "Fetch to a local file, upload-asset, then patch the returned CDN url. Never patch the source URL directly.",
+        "step": 15
+      },
+      {
+        "kind": "asset",
+        "field": "screenshots",
+        "module": "gallery",
+        "block_id": "6aa1a3e66060c5c228be2ed1",
+        "page_id": "6aa1a3e66060c5c228be2ec5",
+        "path": [
+          "values",
+          "slides",
+          7,
+          "image",
+          "img"
+        ],
+        "source_url": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/812140/ss_23039e3003448ee760030faf5e3bf8637f8d4063.1920x1080.jpg?t=1786633104",
+        "confidence": "confirmed",
+        "note": "Fetch to a local file, upload-asset, then patch the returned CDN url. Never patch the source URL directly.",
+        "step": 16
+      }
+    ],
+    "catalog_operations": [
+      {
+        "kind": "catalog",
+        "entity": "virtual_item",
+        "sku": "steam_assassin_s_creed_odyssey_standard_edition",
+        "name": {
+          "en": "Assassin's Creed Odyssey - Standard Edition"
+        },
+        "description": {
+          "en": "Imported from the steam listing. Review before selling."
+        },
+        "prices": [
+          {
+            "amount": 59.99,
+            "currency": "EUR",
+            "is_default": true,
+            "is_enabled": true
+          }
+        ],
+        "groups": [
+          "imported_listing"
+        ],
+        "is_enabled": true,
+        "is_show_in_store": true,
+        "needs_review": true,
+        "review_reason": "type guessed as a virtual item; the listing does not publish what the item contains"
+      },
+      {
+        "kind": "catalog",
+        "entity": "virtual_item",
+        "sku": "steam_assassin_s_creed_odyssey_deluxe_edition",
+        "name": {
+          "en": "Assassin's Creed Odyssey - Deluxe Edition"
+        },
+        "description": {
+          "en": "Imported from the steam listing. Review before selling."
+        },
+        "prices": [
+          {
+            "amount": 74.99,
+            "currency": "EUR",
+            "is_default": true,
+            "is_enabled": true
+          }
+        ],
+        "groups": [
+          "imported_listing"
+        ],
+        "is_enabled": true,
+        "is_show_in_store": true,
+        "needs_review": true,
+        "review_reason": "type guessed as a virtual item; the listing does not publish what the item contains"
+      },
+      {
+        "kind": "catalog",
+        "entity": "virtual_item",
+        "sku": "steam_assassin_s_creed_odyssey_gold_edition",
+        "name": {
+          "en": "Assassin's Creed Odyssey - Gold Edition"
+        },
+        "description": {
+          "en": "Imported from the steam listing. Review before selling."
+        },
+        "prices": [
+          {
+            "amount": 99.99,
+            "currency": "EUR",
+            "is_default": true,
+            "is_enabled": true
+          }
+        ],
+        "groups": [
+          "imported_listing"
+        ],
+        "is_enabled": true,
+        "is_show_in_store": true,
+        "needs_review": true,
+        "review_reason": "type guessed as a virtual item; the listing does not publish what the item contains"
+      },
+      {
+        "kind": "catalog",
+        "entity": "virtual_item",
+        "sku": "steam_assassin_s_creed_odyssey_ultimate_edition",
+        "name": {
+          "en": "Assassin's Creed Odyssey - Ultimate Edition"
+        },
+        "description": {
+          "en": "Imported from the steam listing. Review before selling."
+        },
+        "prices": [
+          {
+            "amount": 114.99,
+            "currency": "EUR",
+            "is_default": true,
+            "is_enabled": true
+          }
+        ],
+        "groups": [
+          "imported_listing"
+        ],
+        "is_enabled": true,
+        "is_show_in_store": true,
+        "needs_review": true,
+        "review_reason": "type guessed as a virtual item; the listing does not publish what the item contains"
+      }
+    ],
+    "catalog_warnings": [
+      "4 item(s) created as virtual items. None is a currency package or a bundle: those need a content array, and no storefront publishes the quantity behind an item name."
+    ],
+    "manual_follow_up": [],
+    "unresolved": [
+      {
+        "field": "platforms",
+        "module": "sidebar",
+        "reason": "no sidebar block on this landing",
+        "note": "platform is an enum (steam, app_store, google, playstation, xbox, ...) plus a link. Where 'also available on' buttons belong."
+      },
+      {
+        "field": "developer",
+        "module": "lead",
+        "reason": "no lead block on this landing",
+        "note": "Falls back to the footer description when no lead block exists."
+      }
+    ],
+    "unverified": [
+      "L: reference existence -- pass --localization (from `xsolla shopbuilder get-localization`) to check that every id a localization write targets already exists",
+      "patch paths not confirmed against the live API, so a write may silently no-op: icon, long_description, short_description, title"
+    ],
+    "counts": {
+      "localization": 3,
+      "overflow": 1,
+      "asset": 10,
+      "patch": 2,
+      "catalog": 4,
+      "manual": 0,
+      "unresolved": 2
+    }
+  }
+}

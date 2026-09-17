@@ -122,6 +122,26 @@ def _payload(result):
     return body.get("data", body) if isinstance(body, dict) else None
 
 
+def landing_id(slug, call=cli_call):
+    """The landing's own ``_id``, which is what ``--landing-id`` wants.
+
+    Not the block's.  ``upload-asset`` and ``update-block`` both take the
+    *landing* id as a flag and address the block inside ``--data``; passing the
+    block id to the flag returns HTTP 404, which is how this was found -- on a
+    live run, after the mocked tests had passed, because a fake CLI accepts any
+    argument you hand it.
+    """
+    result = call("shopbuilder", "get-structure", ["--slug", slug])
+    if result["code"] != 0:
+        raise Refused("cannot resolve the landing id for %s: get-structure exited %s"
+                      % (slug, result["code"]))
+    body = _payload(result) or {}
+    found = body.get("_id")
+    if not found:
+        raise Refused("get-structure returned no _id for %s" % slug)
+    return found
+
+
 def back_up(slug, directory, call=cli_call):
     """Read the current structure and localization to files, before any write.
 
@@ -183,8 +203,12 @@ def _read_back(slug, block_id, path, expected, call):
     return True, "confirmed"
 
 
+PLACEHOLDER_LANDING = "<landing id, resolved at write time>"
+
+
 def apply_plan(plan, slug, locale="en-US", confirmed=False, call=cli_call,
-               fetch=fetch_image, backup_dir=None, workdir=None):
+               fetch=fetch_image, backup_dir=None, workdir=None,
+               landing=None):
     """Execute a plan against ``slug``.
 
     ``confirmed`` false is a rehearsal: the commands are assembled and
@@ -196,7 +220,16 @@ def apply_plan(plan, slug, locale="en-US", confirmed=False, call=cli_call,
     behind it renders as a 500.
     """
     outcome = {"slug": slug, "confirmed": bool(confirmed), "backup": None,
-               "performed": [], "skipped": [], "failed": [], "commands": []}
+               "landing_id": None, "performed": [], "skipped": [],
+               "failed": [], "commands": []}
+
+    # Every asset and patch write needs the landing's own id.  A rehearsal
+    # resolves nothing: it must work from a plan file alone, with no session and
+    # no network, so it substitutes a visible placeholder instead of pretending
+    # to know.  A real run resolves it before touching anything.
+    if landing is None:
+        landing = landing_id(slug, call=call) if confirmed else PLACEHOLDER_LANDING
+    outcome["landing_id"] = landing
 
     if confirmed:
         directory = backup_dir or os.path.join(
@@ -207,7 +240,8 @@ def apply_plan(plan, slug, locale="en-US", confirmed=False, call=cli_call,
     created_temp = workdir is None
     try:
         for op in plan.get("operations") or []:
-            _apply_one(op, slug, locale, confirmed, call, fetch, temp, outcome)
+            _apply_one(op, slug, landing, locale, confirmed, call, fetch, temp,
+                       outcome)
         for item in plan.get("catalog_operations") or []:
             _apply_catalog(item, confirmed, call, outcome)
     finally:
@@ -221,7 +255,7 @@ def _skip(outcome, op, reason):
                                "kind": op.get("kind"), "reason": reason})
 
 
-def _apply_one(op, slug, locale, confirmed, call, fetch, temp, outcome):
+def _apply_one(op, slug, landing, locale, confirmed, call, fetch, temp, outcome):
     kind = op.get("kind")
 
     if kind == "overflow":
@@ -259,7 +293,7 @@ def _apply_one(op, slug, locale, confirmed, call, fetch, temp, outcome):
 
     if kind == "patch":
         data = _patch_data(op["block_id"], op["path"], op.get("value"))
-        args = ["--landing-id", op["block_id"], "--data", data]
+        args = ["--landing-id", landing, "--data", data]
         outcome["commands"].append(["shopbuilder", "update-block"] + args)
         if not confirmed:
             return
@@ -273,12 +307,12 @@ def _apply_one(op, slug, locale, confirmed, call, fetch, temp, outcome):
             outcome["failed"].append({"step": op.get("step"), "field": op["field"],
                                       "reason": "fetch failed: %s" % exc})
             return
-        upload_args = ["--landing-id", op["block_id"], "--file", local,
+        upload_args = ["--landing-id", landing, "--file", local,
                        "--type", "image"]
         outcome["commands"].append(["shopbuilder", "upload-asset"] + upload_args)
         if not confirmed:
             outcome["commands"].append(
-                ["shopbuilder", "update-block", "--landing-id", op["block_id"],
+                ["shopbuilder", "update-block", "--landing-id", landing,
                  "--data", _patch_data(op["block_id"], op["path"], "<uploaded cdn url>")])
             return
         result = call("shopbuilder", "upload-asset", upload_args)
@@ -293,7 +327,7 @@ def _apply_one(op, slug, locale, confirmed, call, fetch, temp, outcome):
             outcome["failed"].append({"step": op.get("step"), "field": op["field"],
                                       "reason": "upload returned no url"})
             return
-        patch_args = ["--landing-id", op["block_id"],
+        patch_args = ["--landing-id", landing,
                       "--data", _patch_data(op["block_id"], op["path"], cdn)]
         _write_and_verify(op, slug, patch_args, cdn, call, outcome)
         return

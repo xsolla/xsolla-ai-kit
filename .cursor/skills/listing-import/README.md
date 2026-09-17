@@ -93,7 +93,7 @@ Exit status: `0` clean · `1` errors or blockers · `2` bad invocation.
 cd scripts && python3 -m unittest discover -s tests -t . -v
 ```
 
-264 tests, no network. Every fixture is real, not hand-written: the live `appdetails`
+275 tests, no network. Every fixture is real, not hand-written: the live `appdetails`
 response for Steam app 812140, the live iTunes lookup for id 529479190, a trimmed excerpt of
 the live Play page for `com.supercell.clashofclans`, and the block spine of a landing
 `import-listing` actually produced. A synthetic fixture would have agreed with whatever the
@@ -117,10 +117,19 @@ carries its own conventions rather than inheriting any. They are enforced by the
 
 ## Known limitations
 
-- **The write path has never been run against a live landing.** `apply_plan.py` and its 35
-  tests exercise ordering, refusals, backup-first and the read-back against an injected CLI,
-  which is what keeps them offline — but no real shop has been written to. Until that
-  happens, treat the runner as reviewed, not proven.
+- **Three shops have been written live**, which found two bugs the mocked tests could not
+  (`--landing-id` was taking the block id; `icon` pointed at a `values` field that does not
+  exist). Both fixed and pinned. What is still unproven is every *other* `schema`-confidence
+  path — only `icon`, `key_art` and `screenshots` have been watched to land.
+- **A gallery's `slides` array is finite.** Screenshots are capped at the block's existing
+  slide count and the surplus reported, because a patch to `slides[3]` on a three-slide block
+  is accepted and changes nothing. An imported Steam gallery has ten slides; the default
+  template has three, so Play and App Store runs place three screenshots and report the rest.
+- **Asset I/O dominates the runtime.** One Steam shop took 107 s, almost all of it twelve
+  download-upload-patch-readback round trips at roughly 9 s each.
+- **The CLI re-bootstraps its session mid-run.** Several uploads failed with
+  `auto-bootstrapping publisher session from stored token` on a long run. Transient, but it
+  means a long run needs a re-run of the failed operations rather than assuming completion.
 - **The overflow copy and the long description are refused, not written.** Both need a
   generated component id the runner will not invent, so they are reported as manual work on
   every run. Two of eleven fields therefore land by hand.

@@ -184,8 +184,10 @@ class TestMalformedInputToAPublicEntryPoint(unittest.TestCase):
         document = {"source": "steam",
                     "source_url": "https://store.steampowered.com/app/1/",
                     "rights_confirmed": True, "fields": values}
+        # A real gallery carries a slides array; the screenshot cap counts it.
         structure = {"pages": [{"_id": "p", "blocks": [
-            {"_id": "b", "module": "gallery"}]}]}
+            {"_id": "b", "module": "gallery",
+             "values": {"slides": [{"id": "s%d" % i} for i in range(4)]}}]}]}
         return plan.build(document, structure)[0]
 
     def test_a_string_where_screenshots_wants_a_list_is_not_iterated(self):
@@ -208,8 +210,15 @@ class TestOverflowAndCatalogRouting(unittest.TestCase):
         document = {"source": "steam",
                     "source_url": "https://store.steampowered.com/app/1/",
                     "rights_confirmed": True, "fields": values}
+
+        def block(index, module):
+            doc = {"_id": "b%d" % index, "module": module}
+            if module == "gallery":
+                doc["values"] = {"slides": [{"id": "s%d" % i} for i in range(4)]}
+            return doc
+
         structure = {"pages": [{"_id": "p", "blocks": [
-            {"_id": "b%d" % i, "module": m} for i, m in enumerate(modules)]}]}
+            block(i, m) for i, m in enumerate(modules)]}]}
         return plan.build(document, structure)[0]
 
     def test_three_overflow_fields_become_one_component(self):
@@ -312,3 +321,50 @@ class TestLocalizedIdResolution(unittest.TestCase):
         built, _ = plan.build(document, structure)
         op = [o for o in built["operations"] if o["field"] == "title"][0]
         self.assertIsNone(op["localized_id"])
+
+
+class TestGallerySlotsAreFinite(unittest.TestCase):
+    """The bug the Play and Apple runs found.
+
+    A gallery's `slides` array already exists and has a fixed length. A patch to
+    `slides[3].image.img` on a three-slide block is accepted and changes
+    nothing — Steam's imported gallery has ten slides and took all ten
+    screenshots, while the default template has three and silently dropped the
+    rest.
+    """
+
+    def _plan(self, screenshots, slots):
+        document = {"source": "steam",
+                    "source_url": "https://store.steampowered.com/app/1/",
+                    "rights_confirmed": True,
+                    "fields": {"screenshots": screenshots}}
+        structure = {"pages": [{"_id": "p", "blocks": [
+            {"_id": "g", "module": "gallery",
+             "values": {"slides": [{"id": str(i)} for i in range(slots)]}}]}]}
+        return plan.build(document, structure)[0]
+
+    def test_screenshots_are_capped_at_the_slide_count(self):
+        built = self._plan(["https://x.test/%d.jpg" % i for i in range(6)], 3)
+        ops = [o for o in built["operations"] if o["field"] == "screenshots"]
+        self.assertEqual(len(ops), 3)
+        self.assertEqual([o["path"][2] for o in ops], [0, 1, 2])
+
+    def test_the_surplus_is_reported_not_dropped(self):
+        built = self._plan(["https://x.test/%d.jpg" % i for i in range(6)], 3)
+        surplus = [u for u in built["unresolved"] if u["field"] == "screenshots"]
+        self.assertEqual(len(surplus), 1)
+        self.assertIn("3 cannot be placed", surplus[0]["reason"])
+
+    def test_enough_slots_means_no_surplus(self):
+        built = self._plan(["https://x.test/%d.jpg" % i for i in range(3)], 10)
+        self.assertEqual(len([o for o in built["operations"]
+                              if o["field"] == "screenshots"]), 3)
+        self.assertEqual([u for u in built["unresolved"]
+                          if u["field"] == "screenshots"], [])
+
+    def test_a_gallery_with_no_slides_places_nothing(self):
+        built = self._plan(["https://x.test/a.jpg"], 0)
+        self.assertEqual([o for o in built["operations"]
+                          if o["field"] == "screenshots"], [])
+        self.assertTrue([u for u in built["unresolved"]
+                         if u["field"] == "screenshots"])

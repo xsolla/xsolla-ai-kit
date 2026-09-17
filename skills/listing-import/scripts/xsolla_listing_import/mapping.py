@@ -50,15 +50,21 @@ NONE = "none"
 class Target(object):
     """One field's destination.  A plain object so it reads in a traceback."""
 
-    __slots__ = ("field", "module", "action", "path", "confidence", "note")
+    __slots__ = ("field", "module", "action", "path", "confidence", "note",
+                 "component_type")
 
-    def __init__(self, field, module, action, path, confidence, note=""):
+    def __init__(self, field, module, action, path, confidence, note="",
+                 component_type=None):
         self.field = field
         self.module = module
         self.action = action
         self.path = path
         self.confidence = confidence
         self.note = note
+        # When set, `path` is not literal: the last segment is a field on the
+        # first component of this type, whose key the editor generated. The
+        # planner resolves it from the block.
+        self.component_type = component_type
 
     def as_dict(self):
         return {
@@ -68,6 +74,7 @@ class Target(object):
             "path": list(self.path) if self.path else None,
             "confidence": self.confidence,
             "note": self.note,
+            "component_type": self.component_type,
         }
 
     def __repr__(self):
@@ -85,8 +92,14 @@ TARGETS = (
            ("values", "components"), SCHEMA,
            "A keyed TEXT component, not a bare string. Read the block first: the "
            "component id is generated, and the L: ref has to already exist."),
-    Target("icon", "header", ASSET, ("values", "logo", "img"), SCHEMA,
-           "Upload first, then patch the returned CDN url."),
+    # `values.logo.img` was the first guess and it does not exist: the header's
+    # logo is a component of type "logo" inside values.components, under a key
+    # the editor generated. The first live run patched the guessed path, got
+    # ok:true, changed nothing, and the read-back caught it.
+    Target("icon", "header", ASSET, ("values", "components", "logo"), CONFIRMED,
+           "Resolved against the block: the first component of type \"logo\". "
+           "Upload the file first, then patch the returned CDN url.",
+           component_type="logo"),
     Target("key_art", "leadGameSales", ASSET, ("values", "background", "img"),
            CONFIRMED,
            "Set background.enable true and background.size cover with it, and a "

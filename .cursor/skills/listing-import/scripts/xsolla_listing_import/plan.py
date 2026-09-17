@@ -71,6 +71,31 @@ def resolve_localized_id(block, path):
     return None
 
 
+def resolve_component_path(block, component_type, field):
+    """The path to ``field`` on the first component of ``component_type``.
+
+    The header's logo is not a ``values`` field.  It is a component of
+    ``type: "logo"`` inside ``values.components``, keyed by a UUID the editor
+    generated -- so no static path can reach it, which is how the first live
+    run found ``values.logo.img`` to be wrong: the patch was accepted and
+    changed nothing, and the read-back caught it.
+
+    Returns ``None`` when no such component exists.  The caller must not fall
+    back to a guessed path: that is the failure this function exists to stop.
+    """
+    components = ((block or {}).get("values") or {}).get("components")
+    if isinstance(components, dict):
+        pairs = sorted(components.items())
+    elif isinstance(components, list):
+        pairs = list(enumerate(components))
+    else:
+        return None
+    for key, component in pairs:
+        if isinstance(component, dict) and component.get("type") == component_type:
+            return ["values", "components", key, field]
+    return None
+
+
 def index_blocks(structure):
     """Map module name -> list of ``(page_id, block_id)``, in page order."""
     found = {}
@@ -83,11 +108,11 @@ def index_blocks(structure):
     return found
 
 
-def _asset_ops(field, urls, target, block_id, page_id):
+def _asset_ops(field, urls, target, block_id, page_id, path_override=None):
     """One fetch-then-upload-then-patch triple per image."""
     ops = []
     for index, url in enumerate(urls):
-        path = list(target.path)
+        path = list(path_override if path_override is not None else target.path)
         if field == "screenshots":
             path = path + [index, "image", "img"]
         ops.append({
@@ -179,14 +204,49 @@ def build(document, structure, localization=None):
         page_id, block_id, block_doc = placements[0]
 
         if target.action == mapping.ASSET:
+            resolved_path = target.path
+            if target.component_type:
+                resolved_path = resolve_component_path(
+                    block_doc, target.component_type, target.path[-1])
+                if resolved_path is None:
+                    unresolved.append({
+                        "field": name,
+                        "module": target.module,
+                        "reason": "no %s component on the %s block to carry it"
+                                  % (target.component_type, target.module),
+                        "note": target.note,
+                    })
+                    continue
             raw = values.get(name)
             # A string here would otherwise be iterated character by character,
             # emitting one bogus operation per letter.  The CLI validates before
             # calling, but this is a public entry point.
             urls = raw if isinstance(raw, list) else [raw]
-            asset_ops.extend(_asset_ops(name, [u for u in urls
-                                               if isinstance(u, str) and u.strip()],
-                                        target, block_id, page_id))
+            usable = [u for u in urls if isinstance(u, str) and u.strip()]
+
+            # A gallery's `slides` array is finite and pre-existing: a patch to
+            # slides[3] on a three-slide block is accepted and changes nothing.
+            # Found live -- Steam's imported gallery has ten slides and took all
+            # ten screenshots, while the default template has three and silently
+            # dropped screenshots four upward. Cap at what the block has and
+            # report the surplus rather than writing into nothing.
+            if name == "screenshots":
+                slots = len(((block_doc.get("values") or {}).get("slides")) or [])
+                if len(usable) > slots:
+                    unresolved.append({
+                        "field": "screenshots",
+                        "module": target.module,
+                        "reason": "the %s block has %d slide(s); %d screenshot(s) "
+                                  "were extracted, so %d cannot be placed"
+                                  % (target.module, slots, len(usable),
+                                     len(usable) - slots),
+                        "note": "Add slides in Site Builder, or accept the first "
+                                "%d." % slots,
+                    })
+                usable = usable[:slots]
+
+            asset_ops.extend(_asset_ops(name, usable, target, block_id, page_id,
+                                        path_override=resolved_path))
             if name == "key_art":
                 for path, value in mapping.KEY_ART_COMPANIONS:
                     asset_ops.append({
