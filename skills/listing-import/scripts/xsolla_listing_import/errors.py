@@ -1,16 +1,16 @@
 """The error shape this skill emits.
 
-Deliberately the same ``{path, expected, got, value?}`` shape as
-``shop-validation``'s ``errors.py``, and for the same reason its docstring
-gives: the key is ``got``, not ``actual``.  Two skills that both stand in front
-of a Shop Builder write should produce reports a reader -- or the CLI -- can
-concatenate without translating one into the other.
+``{path, expected, got, value?}`` -- matching what the Site Builder tooling
+already emits, which is why the key is ``got`` and not ``actual``.  Server-side
+validation is moving to an ``actual`` envelope in a separate effort; until that
+lands, emitting the key the existing tooling uses means two reports can be read
+side by side without translating one of them.
 
-It is a copy rather than an import on purpose.  Reaching across skill
-directories would make ``listing-import`` unrunnable wherever only one of the
-two is installed, and skills are distributed per-directory.  The cost is that
-the shape is now pinned in two places; ``tests/test_errors.py`` asserts the
-fields so a change here fails loudly rather than drifting quietly.
+Self-contained on purpose.  Nothing here imports from a sibling skill: skills
+are distributed per-directory, so reaching across would make this one
+unrunnable wherever it is installed alone.  The cost is that the shape is
+pinned in more than one place across the kit; ``tests/test_errors.py`` asserts
+the fields so a change here fails loudly rather than drifting quietly.
 """
 
 from __future__ import annotations
@@ -52,7 +52,7 @@ def describe_got(value):
 
 
 def finding(path, expected, got, value=MISSING):
-    """One error, in the shape ``shop-validation`` emits."""
+    """One error, in the shape the Site Builder tooling emits."""
     out = {"path": path if path else "(root)", "expected": expected, "got": got}
     if value is not MISSING:
         out["value"] = value

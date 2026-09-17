@@ -13,7 +13,7 @@ description: >-
   carried as page copy, and in-app items become priced catalog entities. Steam also has a
   server-side import (`xsolla shopbuilder import-listing`); Google Play and the App Store are
   rejected by that endpoint, so all three run through extraction here. Public pages only.
-  Landing mechanics are `shopbuilder`'s and block payload shape is `shop-validation`'s.
+  Landing mechanics belong to the CLI's own `shopbuilder` skill.
   Always confirms the partner holds the rights to the copy and artwork before writing, and
   never publishes.
 metadata:
@@ -182,8 +182,6 @@ Shop Builder authorizes separately from the Store `XSOLLA_PROJECT_API_KEY` that
 
 ## Related skills
 
-- [`shop-validation`](../shop-validation/SKILL.md) — run its `validate-shop` gate on the
-  resulting blocks. This skill checks the *mapping*; that one checks the *payload*.
 - [`catalog-design`](../catalog-design/SKILL.md) — regional pricing, groups and the
   reclassification the imported items need.
 - [`shop-setup`](../shop-setup/SKILL.md) — the headless storefront, which has no blocks and

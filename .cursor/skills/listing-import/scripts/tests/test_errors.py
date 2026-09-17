@@ -1,7 +1,8 @@
 """The error shape, pinned.
 
-It is a copy of ``shop-validation``'s so two reports concatenate. A copy can
-drift, so these assertions are what makes drift fail loudly.
+The shape is pinned in more than one place across the kit so two reports can
+be read side by side. Duplication drifts, so these assertions are what makes
+drift fail loudly instead of quietly.
 """
 
 from __future__ import annotations

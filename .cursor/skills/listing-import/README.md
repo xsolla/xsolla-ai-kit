@@ -60,8 +60,9 @@ python3 -c 'import json;json.dump(json.load(open("localization_raw.json"))["data
 
 ## The report contract
 
-`--json` on any subcommand. `xsolla-cli` is the intended second consumer, so the keys are
-stable and match [`shop-validation`](../shop-validation/README.md)'s where they overlap.
+`--json` on any subcommand. `xsolla-cli` is the intended second consumer, so the keys are stable. The error shape
+deliberately matches what Site Builder's own tooling emits — the key is `got`, not
+`actual` — so two reports can be read side by side without translating one of them.
 
 | Key | Type | Meaning |
 |---|---|---|
@@ -96,7 +97,9 @@ assumption. See [`EVAL-LOG.md`](EVAL-LOG.md).
 
 ## Code conventions
 
-Inherited from [`shop-validation`](../shop-validation/README.md), enforced by the same CI job:
+This skill is the first executable code in a repository that was markdown-only, so it
+carries its own conventions rather than inheriting any. They are enforced by the
+`Skill scripts` job in `.github/workflows/validate.yml`, not left to review:
 
 | | |
 |---|---|
@@ -140,5 +143,5 @@ Inherited from [`shop-validation`](../shop-validation/README.md), enforced by th
 - **Field availability is per storefront, not per page.** `PARTIAL` means "ask the page", and
   nothing here can ask it.
 - **The block field names are not validated against Shop Builder.** If a module reships with
-  a renamed field the mapping goes stale silently — the same problem
-  `shop-validation/scripts/data/block-schemas.json` has, with the same lack of an owner.
+  a renamed field the mapping goes stale silently, and no owner for keeping them current
+  is agreed.

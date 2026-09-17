@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Command line entry point for the listing-to-shop mapping.
 
-Exit status matches ``shop-validation``'s, so the two can be chained in one
-shell: ``0`` clean, ``1`` something to fix, ``2`` bad invocation.
+Exit status is the shell convention the rest of this kit's scripts use, so
+several can be chained in one command: ``0`` clean, ``1`` something to fix,
+``2`` bad invocation.
 
 Subcommands:
 
