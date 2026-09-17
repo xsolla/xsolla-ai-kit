@@ -39,6 +39,12 @@ hasn't asked to reconsider it, report it in one line and stop — don't re-inter
 **None.** No Xsolla account, project, or API key is needed — that is the point of deciding
 before building.
 
+## Happy path
+
+"I'm a solo indie dev, no website, need a store live this week" → no path in `.env`, so ask the five
+criteria in one message → show the comparison, recommend Shop Builder and name the criteria that
+drove it → developer says yes → `XSOLLA_BUILD_PATH=shopbuilder` recorded → stop.
+
 ## What actually differs
 
 | | **Headless** | **Shop Builder** |
@@ -182,6 +188,15 @@ Recorded: headless. Run shop-setup when you're ready to build.
   The developer should know before they commit to a path with nothing to build it with today.
 - **Averaging conflicting answers into a guess.** Name the conflict and ask, rather than picking
   the side with more signals.
+
+## Known limitations
+
+- **Only the build path is planned.** Catalog and images/themes are not gathered here yet.
+- **Shop Builder can be recorded but not built** with this kit today (see "What actually differs").
+- **Only `shop-setup` checks the recorded path.** No other skill reads it, so invoking one directly
+  (e.g. `headless-checkout-integration` on a `shopbuilder` project) isn't stopped.
+- **The step 1 and step 5 snippets are compound shell commands**, so Claude Code may ask the
+  developer to approve them.
 
 ## Agent test
 
