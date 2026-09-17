@@ -1,0 +1,33 @@
+{
+ "b-common-layout": {
+  "_id": "b-common-layout",
+  "module": "common-layout",
+  "parent": {
+   "type": "site",
+   "id": "current-site"
+  },
+  "values": {
+   "background": {
+    "type": "image",
+    "img": "https://cdn.example/bg.png",
+    "enable": true
+   }
+  },
+  "components": [
+   {
+    "type": "social",
+    "enable": true,
+    "value": [
+     {
+      "enable": true,
+      "url": "https://discord.gg/x"
+     },
+     {
+      "enable": false,
+      "url": ""
+     }
+    ]
+   }
+  ]
+ }
+}

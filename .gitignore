@@ -4,3 +4,7 @@
 .env
 
 .idea/
+
+# Xsolla CLI local config, written by `xsolla config init` in whatever directory
+# it is run from. Carries merchant and project ids for someone's own sandbox.
+.xsolla.json

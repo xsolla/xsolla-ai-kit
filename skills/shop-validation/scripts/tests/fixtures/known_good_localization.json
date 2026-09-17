@@ -1,0 +1,82 @@
+{
+ "common": {
+  "L:hdr-title": {
+   "description": "",
+   "translations": {
+    "en-US": "<p>x</p>"
+   }
+  },
+  "L:aaaaaaa1-0000-4000-8000-000000000001": {
+   "description": "",
+   "translations": {
+    "en-US": "<p>x</p>"
+   }
+  },
+  "L:aaaaaaa1-0000-4000-8000-000000000002": {
+   "description": "",
+   "translations": {
+    "en-US": "<p>x</p>"
+   }
+  },
+  "L:aaaaaaa1-0000-4000-8000-000000000003": {
+   "description": "",
+   "translations": {
+    "en-US": "<p>x</p>"
+   }
+  }
+ },
+ "pages": {
+  "p-home": {
+   "texts": {
+    "L:faq-title": {
+     "description": "",
+     "translations": {
+      "en-US": "<p>x</p>"
+     }
+    },
+    "L:q1": {
+     "description": "",
+     "translations": {
+      "en-US": "<p>x</p>"
+     }
+    },
+    "L:a1": {
+     "description": "",
+     "translations": {
+      "en-US": "<p>x</p>"
+     }
+    },
+    "L:q2": {
+     "description": "",
+     "translations": {
+      "en-US": "<p>x</p>"
+     }
+    },
+    "L:a2": {
+     "description": "",
+     "translations": {
+      "en-US": "<p>x</p>"
+     }
+    },
+    "L:store-title": {
+     "description": "",
+     "translations": {
+      "en-US": "<p>x</p>"
+     }
+    },
+    "L:cta-title": {
+     "description": "",
+     "translations": {
+      "en-US": "<p>x</p>"
+     }
+    },
+    "L:cta-btn": {
+     "description": "",
+     "translations": {
+      "en-US": "<p>x</p>"
+     }
+    }
+   }
+  }
+ }
+}
