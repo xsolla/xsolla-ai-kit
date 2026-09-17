@@ -27,11 +27,28 @@ What it misses:
 
 from __future__ import annotations
 
+import re
+from html import unescape
+
 from . import fields as field_model
 
 # Rating bodies in preference order.  PEGI and ESRB first because they are the
 # two a partner is most likely to recognise on their own store page.
 RATING_BODIES = ("pegi", "esrb", "usk", "oflc", "dejus")
+
+# Requirement rows Steam labels, mapped to the block's own row types.  Steam
+# writes them as `<strong>Memory:</strong> 2 GB RAM` inside a `bb_ul` list.
+REQUIREMENT_TYPES = {
+    "os": "os",
+    "processor": "processor",
+    "memory": "memory",
+    "graphics": "graphics",
+    "storage": "storage",
+    "directx": "default",
+    "sound card": "default",
+    "additional notes": "default",
+    "network": "default",
+}
 
 
 def unwrap(document):
@@ -54,6 +71,58 @@ def _age_rating(data):
         if rating:
             return "%s %s" % (body.upper(), str(rating).upper())
     return None
+
+
+def _reviews(data):
+    """Steam's recommendation count.  There is no score in this response.
+
+    ``recommendations.total`` is the number of reviews, not a rating -- Steam's
+    "Very Positive" summary is computed on the page and is not published here.
+    So this reads "2,889 reviews on Steam" and claims nothing it cannot support.
+    """
+    total = (data.get("recommendations") or {}).get("total")
+    if not total:
+        return None
+    return "{:,} reviews on Steam".format(int(total))
+
+
+def _requirements(data):
+    """System requirements, as ``[{platform, rows: [{type, name, value}]}]``.
+
+    Steam ships these as HTML: ``<strong>Memory:</strong> 2 GB RAM`` inside a
+    ``<ul class="bb_ul">``.  Parsed into label/value pairs so each can be
+    written to the matching row on a ``requirements`` block, whose rows carry
+    their own ``L:`` references.
+
+    What this misses: only ``minimum`` is read.  The block's rows hold a
+    recommended value too, but a partner's page showing minimum specs is the
+    common case and reading both doubles the write count for a field most
+    listings fill identically.
+    """
+    found = []
+    for key, platform in (("pc_requirements", "windows"),
+                          ("mac_requirements", "macos"),
+                          ("linux_requirements", "linux")):
+        block = data.get(key)
+        if not isinstance(block, dict):
+            continue
+        html = block.get("minimum") or ""
+        rows = []
+        for item in re.findall(r"<li>(.*?)</li>", html, re.DOTALL):
+            match = re.match(r"\s*<strong>\s*([^:<]+):?\s*</strong>\s*(.*)",
+                             item, re.DOTALL)
+            if not match:
+                continue
+            label = unescape(re.sub(r"<[^>]+>", "", match.group(1))).strip()
+            value = unescape(re.sub(r"<[^>]+>", " ", match.group(2)))
+            value = " ".join(value.split())
+            if not label or not value:
+                continue
+            rows.append({"type": REQUIREMENT_TYPES.get(label.lower(), "default"),
+                         "name": label, "value": value})
+        if rows:
+            found.append({"platform": platform, "rows": rows})
+    return found
 
 
 def _iap_items(data, dlc_details=None):
@@ -151,7 +220,9 @@ def to_listing(document, source_url, dlc_details=None):
                    if g.get("description")],
         "platforms": [name for name, on in (data.get("platforms") or {}).items() if on],
         "age_rating": _age_rating(data),
+        "reviews": _reviews(data),
         "iap_items": _iap_items(data, dlc_details),
+        "requirements": _requirements(data),
     }
     not_found = ["tags"]
     for name, value in list(values.items()):

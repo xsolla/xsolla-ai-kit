@@ -213,6 +213,40 @@ def _price_line(edition):
     return "%.2f %s" % (price["amount"], price["currency"])
 
 
+def unhide_operations(structure, keep_block_ids):
+    """Make every block that receives content visible.
+
+    The planner cannot assume a block starts visible.  An earlier run of this
+    skill hid blocks it could not fill; a later run then wrote editions into two
+    of those same ``packs`` blocks and never cleared the flag, so the Lara Croft
+    and Summer Esports cards were written correctly into blocks nobody could
+    see.  Found by looking at the shop, not at the run's output, which reported
+    both writes as applied -- and they were.
+    """
+    operations = []
+    for page in (structure or {}).get("pages") or []:
+        for block in page.get("blocks") or []:
+            if not isinstance(block, dict):
+                continue
+            if block.get("_id") not in keep_block_ids:
+                continue
+            if block.get("hidden") is not True:
+                continue
+            operations.append({
+                "kind": "patch",
+                "field": "visible.%s" % block.get("module"),
+                "module": block.get("module"),
+                "block_id": block["_id"],
+                "page_id": page.get("_id"),
+                "path": ["hidden"],
+                "value": False,
+                "confidence": "confirmed",
+                "note": "A previous run hid this block; it has content now, so "
+                        "the flag has to be cleared or the content is invisible.",
+            })
+    return operations
+
+
 def prune_operations(structure, keep_block_ids):
     """Delete every block the listing does not support.
 
@@ -273,3 +307,61 @@ def prune_operations(structure, keep_block_ids):
                         "copy. Recoverable only from the pre-write backup.",
             })
     return operations
+
+
+def requirement_writes(block, block_id, page_id, platforms):
+    """Write extracted system requirements onto a ``requirements`` block.
+
+    The block's shape, read off a live landing rather than guessed: each
+    platform is a ``platform_req_v2`` component, and each of its
+    ``requirementList`` rows carries a ``name`` and a ``minimum``, both as their
+    own ``L:`` references.  So a requirement is two localization writes, not a
+    patch.
+
+    Returns ``(operations, unplaced)``.  ``unplaced`` names requirement rows
+    with no row to write to -- the component ships a fixed number, the same way
+    a gallery ships a fixed number of slides.
+    """
+    operations = []
+    unplaced = []
+    components = block.get("components") or (block.get("values") or {}).get(
+        "components") or []
+    items = components if isinstance(components, list) else list(
+        components.values())
+    usable = [(index, c) for index, c in enumerate(items)
+              if isinstance(c, dict) and c.get("type") == "platform_req_v2"]
+
+    for position, platform in enumerate(platforms or []):
+        if position >= len(usable):
+            unplaced.append(platform.get("platform", "?"))
+            continue
+        comp_index, component = usable[position]
+        rows = ((component.get("value") or {}).get("requirementList")) or []
+        for row_index, requirement in enumerate(platform.get("rows") or []):
+            if row_index >= len(rows):
+                unplaced.append("%s/%s" % (platform.get("platform"),
+                                           requirement.get("name")))
+                continue
+            row = rows[row_index]
+            for key, text in (("name", requirement.get("name")),
+                              ("minimum", requirement.get("value"))):
+                ref = row.get(key)
+                target = ref.get("id") if isinstance(ref, dict) else None
+                if not (isinstance(target, str) and target.startswith("L:")):
+                    continue
+                operations.append({
+                    "kind": "localization",
+                    "field": "requirement.%s" % key,
+                    "module": "requirements",
+                    "block_id": block_id,
+                    "page_id": page_id,
+                    "path": ["components", comp_index, "value",
+                             "requirementList", row_index, key],
+                    "localized_id": target,
+                    "value": text,
+                    "dropped": [],
+                    "confidence": "schema",
+                    "note": "%s, %s row %d." % (platform.get("platform"),
+                                                key, row_index),
+                })
+    return operations, unplaced

@@ -625,3 +625,127 @@ class TestSlideOverlayCompanions(unittest.TestCase):
         built = self._plan(1)
         ops = [o for o in built["operations"] if o["field"] == "screenshots"]
         self.assertEqual(ops[0]["kind"], "asset")
+
+
+class TestSystemRequirements(unittest.TestCase):
+    """Steam publishes these and the block exists; it was being pruned."""
+
+    def _block(self, components=2, rows=3):
+        def component():
+            return {"type": "platform_req_v2", "enable": True, "value": {
+                "requirementList": [
+                    {"id": "r%d" % i,
+                     "name": {"id": "L:n%d" % i},
+                     "minimum": {"id": "L:m%d" % i}} for i in range(rows)]}}
+        return {"_id": "req", "module": "requirements",
+                "components": [component() for _ in range(components)]}
+
+    def _plan(self, platforms, components=2, rows=3):
+        document = {"source": "steam",
+                    "source_url": "https://store.steampowered.com/app/1/",
+                    "rights_confirmed": True,
+                    "fields": {"requirements": platforms}}
+        structure = {"pages": [{"_id": "p", "blocks": [
+            self._block(components, rows)]}]}
+        return plan.build(document, structure)[0]
+
+    def _windows(self, count=2):
+        return {"platform": "windows", "rows": [
+            {"type": "memory", "name": "Memory", "value": "2 GB RAM"},
+            {"type": "storage", "name": "Storage", "value": "800 MB"},
+        ][:count]}
+
+    def test_each_row_is_two_localization_writes(self):
+        """A requirement row carries name and minimum as separate L: refs."""
+        built = self._plan([self._windows(2)])
+        ops = [o for o in built["operations"]
+               if o["field"].startswith("requirement.")]
+        self.assertEqual(len(ops), 4)
+        self.assertEqual({o["field"] for o in ops},
+                         {"requirement.name", "requirement.minimum"})
+
+    def test_the_label_and_the_value_go_to_their_own_refs(self):
+        built = self._plan([self._windows(1)])
+        by_field = {o["field"]: o for o in built["operations"]
+                    if o["field"].startswith("requirement.")}
+        self.assertEqual(by_field["requirement.name"]["value"], "Memory")
+        self.assertEqual(by_field["requirement.name"]["localized_id"], "L:n0")
+        self.assertEqual(by_field["requirement.minimum"]["value"], "2 GB RAM")
+        self.assertEqual(by_field["requirement.minimum"]["localized_id"], "L:m0")
+
+    def test_a_second_platform_uses_the_second_component(self):
+        built = self._plan([self._windows(1),
+                            {"platform": "macos",
+                             "rows": [{"name": "OS", "value": "10.7"}]}])
+        indices = {o["path"][1] for o in built["operations"]
+                   if o["field"].startswith("requirement.")}
+        self.assertEqual(indices, {0, 1})
+
+    def test_the_block_is_not_pruned_once_it_has_requirements(self):
+        built = self._plan([self._windows()])
+        self.assertEqual([o for o in built["operations"]
+                          if o["kind"] == "delete"], [])
+
+    def test_more_rows_than_the_component_has_is_reported(self):
+        built = self._plan([{"platform": "windows", "rows": [
+            {"name": "N%d" % i, "value": "V%d" % i} for i in range(6)]}],
+            rows=3)
+        surplus = [u for u in built["unresolved"] if u["field"] == "requirements"]
+        self.assertEqual(len(surplus), 1)
+        self.assertIn("had no row", surplus[0]["reason"])
+
+    def test_no_requirements_block_is_reported_not_silent(self):
+        document = {"source": "steam",
+                    "source_url": "https://store.steampowered.com/app/1/",
+                    "rights_confirmed": True,
+                    "fields": {"requirements": [self._windows()]}}
+        structure = {"pages": [{"_id": "p", "blocks": [
+            {"_id": "x", "module": "faq"}]}]}
+        built = plan.build(document, structure)[0]
+        self.assertTrue([u for u in built["unresolved"]
+                         if u["field"] == "requirements"])
+
+
+class TestUnhidingABlockThatGetsContent(unittest.TestCase):
+    """The Steam bug: an earlier run hid two packs blocks, a later run wrote
+    editions into them, and nobody cleared the flag. Both writes reported as
+    applied — and they were, into blocks nobody could see."""
+
+    def _plan(self, hidden):
+        document = {"source": "steam",
+                    "source_url": "https://store.steampowered.com/app/1/",
+                    "rights_confirmed": True, "fields": {"title": "T"}}
+        structure = {"pages": [{"_id": "p", "blocks": [
+            {"_id": "lg", "module": "leadGameSales", "hidden": hidden,
+             "values": {"title": {"id": "L:t"}}}]}]}
+        return plan.build(document, structure)[0]
+
+    def test_a_hidden_block_receiving_content_is_unhidden(self):
+        built = self._plan(True)
+        ops = [o for o in built["operations"] if o["field"].startswith("visible.")]
+        self.assertEqual(len(ops), 1)
+        self.assertEqual(ops[0]["path"], ["hidden"])
+        self.assertIs(ops[0]["value"], False)
+
+    def test_the_unhide_comes_before_the_content(self):
+        built = self._plan(True)
+        kinds = [o["field"] for o in built["operations"]]
+        self.assertTrue(kinds[0].startswith("visible."))
+
+    def test_a_visible_block_needs_no_unhide(self):
+        built = self._plan(False)
+        self.assertEqual([o for o in built["operations"]
+                          if o["field"].startswith("visible.")], [])
+
+    def test_a_pruned_block_is_not_unhidden(self):
+        """Only blocks that receive content."""
+        document = {"source": "steam",
+                    "source_url": "https://store.steampowered.com/app/1/",
+                    "rights_confirmed": True, "fields": {"title": "T"}}
+        structure = {"pages": [{"_id": "p", "blocks": [
+            {"_id": "lg", "module": "leadGameSales",
+             "values": {"title": {"id": "L:t"}}},
+            {"_id": "f", "module": "faq", "hidden": True}]}]}
+        built = plan.build(document, structure)[0]
+        self.assertEqual([o for o in built["operations"]
+                          if o["field"].startswith("visible.")], [])

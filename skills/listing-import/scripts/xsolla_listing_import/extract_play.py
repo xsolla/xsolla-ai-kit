@@ -21,6 +21,8 @@ What it misses:
   Play appears to have stopped rendering it.  Reported not-found rather than
   substituting a screenshot.
 * ``tags`` -- Play has no user tags.
+* ``requirements`` -- Play publishes a minimum Android version on some
+  listings and nothing structured; not extracted, so the block is pruned.
 * ``iap_items`` -- Play publishes a **price range** (``$0.29 - $239.99``), never
   named items.  The range is carried in ``notes``, because a range is not an
   item and inventing items from it would be a fabrication.
@@ -49,6 +51,12 @@ _CATEGORY = re.compile(r'/store/apps/category/([A-Z_]+)')
 _RATING = re.compile(r'>(Everyone 10\+|Everyone|Teen|Mature 17\+|Adults only 18\+|'
                      r'Rated for \d+\+)<')
 _PRICE_RANGE = re.compile(r'(\$\d[\d,]*\.\d{2})\s*[-–]\s*(\$\d[\d,]*\.\d{2})')
+# Play renders the score in an aria-label and the count as an abbreviated
+# string ("348K reviews"). The JSON-LD ratingValue carries full precision
+# and is preferred; the aria-label is the fallback.
+_RATING_SCHEMA = re.compile(r'"ratingValue"\s*:\s*"?([\d.]+)')
+_RATING_ARIA = re.compile(r'aria-label="Rated ([\d.]+) stars')
+_REVIEW_COUNT = re.compile(r">([\d.]+[KMB]?)\s*reviews<")
 _TAGS = re.compile(r"<[^>]+>")
 
 
@@ -137,6 +145,23 @@ def _long_description(html):
     return body or None
 
 
+def _reviews(html):
+    """Play's star rating and review count.
+
+    The count stays abbreviated -- Play publishes "348K", not the exact number,
+    so expanding it to 348,000 would invent precision the page does not have.
+    """
+    score = _RATING_SCHEMA.search(html) or _RATING_ARIA.search(html)
+    count = _REVIEW_COUNT.search(html)
+    if not score:
+        return None
+    rounded = "%.1f" % float(score.group(1))
+    if not count:
+        return "%s out of 5 on Google Play" % rounded
+    return "%s out of 5, from %s reviews on Google Play" % (rounded,
+                                                            count.group(1))
+
+
 def to_listing(html, source_url):
     """Build a listing document from the page's HTML."""
     if not html or "play.google.com" not in html[:400000]:
@@ -159,6 +184,7 @@ def to_listing(html, source_url):
         "genres": [category.group(1).replace("_", " ").title()] if category else [],
         "platforms": ["android"],
         "age_rating": rating.group(1) if rating else None,
+        "reviews": _reviews(html),
     }
 
     not_found = ["key_art", "tags", "iap_items"]

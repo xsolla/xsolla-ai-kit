@@ -42,6 +42,7 @@ DESCRIPTION_KEYS = ("long_description_bbcode", "long_description_html",
                     "long_description_text")
 
 _EXPECTED_KIND_TYPES = {
+    "platforms": list,
     "text": str,
     "richtext": str,
     "media": str,

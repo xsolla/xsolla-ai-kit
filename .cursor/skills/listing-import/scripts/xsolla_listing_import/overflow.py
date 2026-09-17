@@ -1,7 +1,7 @@
 """Fields with no structured block field, rendered as copy instead.
 
-``genres``, ``tags`` and ``age_rating`` are published by the storefronts and no
-Site Builder module has a field for any of them.  The first version of this
+``genres``, ``tags``, ``age_rating`` and ``reviews`` are published by the
+storefronts and no Site Builder module has a field for any of them.  The first version of this
 skill reported them as unmappable, which put a 7/11 ceiling on the whole
 import.  That ceiling was an artefact of counting only native fields: a genre
 list rendered as a line in the description block *is* copied onto the page, and
@@ -29,10 +29,13 @@ from html import escape
 LABELS = {
     "genres": "Genres",
     "tags": "Tags",
-    "age_rating": "Rating",
+    "age_rating": "Age rating",
+    "reviews": "Player reviews",
 }
 
-ORDER = ("genres", "tags", "age_rating")
+# Reviews first: a rating is the line a reader actually stops on, and burying
+# it under a genre list wastes it.
+ORDER = ("reviews", "genres", "tags", "age_rating")
 
 
 def _render_value(value):

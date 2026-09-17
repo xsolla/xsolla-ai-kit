@@ -62,6 +62,20 @@ def _platforms(data):
     return found
 
 
+def _reviews(data):
+    """The App Store's rating and how many it is from.
+
+    Rounded to one decimal: the API returns ``4.11334``, and a page claiming
+    four-figure precision on a star rating reads as a bug.
+    """
+    score = data.get("averageUserRating")
+    count = data.get("userRatingCount")
+    if not score or not count:
+        return None
+    return "%.1f out of 5, from {:,} ratings on the App Store".format(int(count)) \
+        % float(score)
+
+
 def to_listing(document, source_url, iap_items=None):
     """Build a listing document.
 
@@ -83,6 +97,7 @@ def to_listing(document, source_url, iap_items=None):
         "platforms": _platforms(data),
         "age_rating": data.get("contentAdvisoryRating")
                       or data.get("trackContentRating"),
+        "reviews": _reviews(data),
     }
     if iap_items:
         values["iap_items"] = iap_items

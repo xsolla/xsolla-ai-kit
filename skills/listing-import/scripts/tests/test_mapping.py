@@ -26,9 +26,14 @@ class TestTable(unittest.TestCase):
         become catalog entities, so the ceiling is 11/11."""
         self.assertEqual(mapping.unmapped_fields(), ())
 
-    def test_overflow_carries_the_three_fields_with_no_structured_field(self):
+    def test_overflow_carries_the_fields_with_no_structured_field(self):
         self.assertEqual(set(mapping.overflow_fields()),
-                         {"genres", "tags", "age_rating"})
+                         {"genres", "tags", "age_rating", "reviews"})
+
+    def test_requirements_has_its_own_block_not_the_overflow(self):
+        """Steam publishes them and the block exists, so they are not copy."""
+        self.assertEqual(mapping.target_for("requirements").action,
+                         mapping.REQUIREMENTS)
 
     def test_iap_items_route_to_the_catalog_not_the_landing(self):
         self.assertEqual(mapping.target_for("iap_items").action, mapping.CATALOG)

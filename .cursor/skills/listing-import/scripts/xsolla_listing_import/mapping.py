@@ -34,13 +34,14 @@ PATCH = "patch"
 ASSET = "asset"
 OVERFLOW = "overflow"
 CATALOG = "catalog"
+REQUIREMENTS = "requirements"
 MANUAL = "manual"
 
 # Actions that put the content somewhere the partner can see it.  OVERFLOW and
 # CATALOG count: a genre rendered as a line of copy in the description block is
 # copied, and an in-app item created as a catalog entity is copied.  Only MANUAL
 # does not -- it means a human has to finish the job by hand.
-DELIVERABLE = (LOCALIZATION, PATCH, ASSET, OVERFLOW, CATALOG)
+DELIVERABLE = (LOCALIZATION, PATCH, ASSET, OVERFLOW, CATALOG, REQUIREMENTS)
 
 CONFIRMED = "confirmed"
 SCHEMA = "schema"
@@ -119,6 +120,13 @@ TARGETS = (
            "Rendered as a line of copy. The footer's ageRatingIds field takes "
            "rating *ids* the site already holds and no command creates one, so "
            "the badge itself stays a Publisher Account step."),
+    Target("requirements", "requirements", REQUIREMENTS,
+           ("components",), SCHEMA,
+           "Each platform is a platform_req_v2 component whose requirementList "
+           "rows carry their own L: references. Resolved against the block."),
+    Target("reviews", "description", OVERFLOW, ("values", "components"), SCHEMA,
+           "Rendered as a line of copy. No module has a reviews field, and the "
+           "rating is a publisher's own social proof -- worth carrying over."),
     Target("genres", "description", OVERFLOW, ("values", "components"), SCHEMA,
            "Rendered as a line of copy in the description block. No module has a "
            "structured genre field."),

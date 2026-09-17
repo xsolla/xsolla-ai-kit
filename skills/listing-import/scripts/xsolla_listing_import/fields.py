@@ -82,6 +82,19 @@ FIELDS = {
     "iap_items": (
         "items", True, {STEAM: PARTIAL, GOOGLE_PLAY: PARTIAL, APP_STORE: PARTIAL},
     ),
+    # Not in the DoD's field list, so it does not move the coverage numbers --
+    # but all three storefronts publish it and a shop that omits it is leaving
+    # the publisher's own social proof on the table. Steam gives a
+    # recommendation count with no score; the other two give both.
+    "reviews": (
+        "text", False, {STEAM: PARTIAL, GOOGLE_PLAY: ALWAYS, APP_STORE: ALWAYS},
+    ),
+    # Steam publishes these as HTML per platform. Play states a minimum Android
+    # version in prose on some listings and the App Store publishes none, so
+    # the block is pruned on both rather than filled with a guess.
+    "requirements": (
+        "platforms", False, {STEAM: ALWAYS, GOOGLE_PLAY: NEVER, APP_STORE: NEVER},
+    ),
 }
 
 # Fields the Shop Builder parsing endpoint (`xsolla shopbuilder get-listing`)

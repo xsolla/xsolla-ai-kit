@@ -196,7 +196,8 @@ def build(document, structure, localization=None):
         if not present:
             continue
 
-        if target.action in (mapping.OVERFLOW, mapping.CATALOG):
+        if target.action in (mapping.OVERFLOW, mapping.CATALOG,
+                             mapping.REQUIREMENTS):
             # Aggregated below: three overflow fields share one component, and
             # the in-app items are one batch of catalog commands.
             continue
@@ -393,10 +394,43 @@ def build(document, structure, localization=None):
                             % ", ".join(e.get("name", "?") for e in unplaced),
                 })
 
+    # System requirements onto the requirements block.
+    requirement_ops = []
+    requirement_blocks = set()
+    platforms = values.get("requirements") or []
+    if platforms:
+        placements = blocks.get("requirements") or []
+        if not placements:
+            unresolved.append({
+                "field": "requirements",
+                "module": "requirements",
+                "reason": "no requirements block on this landing",
+                "note": "The listing publishes them; the page has nowhere to "
+                        "show them.",
+            })
+        else:
+            page_id, block_id, block_doc_req = placements[0]
+            requirement_ops, unplaced_req = packs_plan.requirement_writes(
+                block_doc_req, block_id, page_id, platforms)
+            if requirement_ops:
+                requirement_blocks.add(block_id)
+            if unplaced_req:
+                unresolved.append({
+                    "field": "requirements",
+                    "module": "requirements",
+                    "reason": "%d requirement row(s) had no row on the block"
+                              % len(unplaced_req),
+                    "note": "Unplaced: %s" % ", ".join(unplaced_req[:6]),
+                })
+
     # A block nothing was written to has nothing from this listing to show.
     written_blocks = {op["block_id"] for op in
-                      (localization_ops + overflow_ops + asset_ops + pack_ops)
-                      if op.get("block_id")} | set(pack_blocks)
+                      (localization_ops + overflow_ops + asset_ops + pack_ops
+                       + requirement_ops)
+                      if op.get("block_id")} | set(pack_blocks) \
+        | set(requirement_blocks)
+    # A previous run may have hidden a block this one fills.
+    unhide_ops = packs_plan.unhide_operations(structure, written_blocks)
     prune_ops = packs_plan.prune_operations(structure, written_blocks)
 
     unverified = []
@@ -420,22 +454,26 @@ def build(document, structure, localization=None):
         "source_url": document.get("source_url"),
         # Deletes last: a block is only removed once everything that had
         # something to write has written it.
-        "operations": (localization_ops + overflow_ops + pack_ops
-                       + asset_ops + prune_ops),
+        # Unhide first: a block hidden by an earlier run must be visible
+        # before anything written into it counts for anything. Deletes last.
+        "operations": (unhide_ops + localization_ops + overflow_ops + pack_ops
+                       + requirement_ops + asset_ops + prune_ops),
         "catalog_operations": catalog_ops,
         "catalog_warnings": catalog_warnings,
         "manual_follow_up": manual,
         "unresolved": unresolved,
         "unverified": unverified,
         "counts": {
-            "localization": len(localization_ops),
+            "localization": len(localization_ops) + len(requirement_ops),
             "overflow": len(overflow_ops),
             "editions_on_page": len([o for o in pack_ops
                                      if o["field"].startswith("edition.")
                                      and o["kind"] != "patch"]),
+            "requirements": len(requirement_ops),
+            "unhidden": len(unhide_ops),
             "pruned_unsupported": len(prune_ops),
             "asset": len([o for o in asset_ops if o["kind"] == "asset"]),
-            "patch": len([o for o in (asset_ops + pack_ops)
+            "patch": len([o for o in (asset_ops + pack_ops + unhide_ops)
                           if o["kind"] == "patch"]),
             "delete": len(prune_ops),
             "catalog": len(catalog_ops),
