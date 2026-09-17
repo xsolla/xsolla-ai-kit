@@ -136,7 +136,11 @@ class TestIndexBlocks(unittest.TestCase):
     def test_duplicate_modules_keep_page_order(self):
         found = plan.index_blocks({"pages": [{"_id": "p", "blocks": [
             {"_id": "a", "module": "packs"}, {"_id": "b", "module": "packs"}]}]})
-        self.assertEqual(found["packs"], [("p", "a"), ("p", "b")])
+        # Each entry is (page_id, block_id, block_document) — the document is
+        # carried so L: ids can be resolved without a second fetch.
+        self.assertEqual([(p, b) for p, b, _d in found["packs"]],
+                         [("p", "a"), ("p", "b")])
+        self.assertEqual(found["packs"][0][2]["module"], "packs")
 
     def test_the_real_template_carries_three_packs_and_two_descriptions(self):
         found = plan.index_blocks(steam_structure())
@@ -261,3 +265,50 @@ class TestOverflowAndCatalogRouting(unittest.TestCase):
         built = self._plan({"genres": ["RPG"], "tags": ["Co-op"],
                             "age_rating": "PEGI 18", "iap_items": [{"name": "X"}]})
         self.assertEqual(built["manual_follow_up"], [])
+
+
+class TestLocalizedIdResolution(unittest.TestCase):
+    """A localization write targets an `L:` id, not a path."""
+
+    def test_resolves_the_id_a_field_already_carries(self):
+        block = {"values": {"title": {"enable": True, "id": "L:abc-123"}}}
+        self.assertEqual(plan.resolve_localized_id(block, ("values", "title")),
+                         "L:abc-123")
+
+    def test_a_bare_l_string_also_resolves(self):
+        block = {"values": {"title": "L:abc-123"}}
+        self.assertEqual(plan.resolve_localized_id(block, ("values", "title")),
+                         "L:abc-123")
+
+    def test_an_absent_path_is_none_not_an_invention(self):
+        self.assertIsNone(plan.resolve_localized_id({"values": {}}, ("values", "title")))
+
+    def test_a_field_with_no_id_is_none(self):
+        block = {"values": {"title": {"enable": True}}}
+        self.assertIsNone(plan.resolve_localized_id(block, ("values", "title")))
+
+    def test_a_non_l_id_is_refused(self):
+        """An id that is not an L: reference is not a localization target."""
+        block = {"values": {"title": {"id": "I:image01"}}}
+        self.assertIsNone(plan.resolve_localized_id(block, ("values", "title")))
+
+    def test_the_plan_carries_the_id_through(self):
+        document = {"source": "steam",
+                    "source_url": "https://store.steampowered.com/app/1/",
+                    "rights_confirmed": True, "fields": {"title": "T"}}
+        structure = {"pages": [{"_id": "p", "blocks": [
+            {"_id": "b", "module": "leadGameSales",
+             "values": {"title": {"enable": True, "id": "L:real-id"}}}]}]}
+        built, _ = plan.build(document, structure)
+        op = [o for o in built["operations"] if o["field"] == "title"][0]
+        self.assertEqual(op["localized_id"], "L:real-id")
+
+    def test_a_block_with_no_id_yields_none_so_the_runner_can_refuse(self):
+        document = {"source": "steam",
+                    "source_url": "https://store.steampowered.com/app/1/",
+                    "rights_confirmed": True, "fields": {"title": "T"}}
+        structure = {"pages": [{"_id": "p", "blocks": [
+            {"_id": "b", "module": "leadGameSales", "values": {}}]}]}
+        built, _ = plan.build(document, structure)
+        op = [o for o in built["operations"] if o["field"] == "title"][0]
+        self.assertIsNone(op["localized_id"])

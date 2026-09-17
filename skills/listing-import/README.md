@@ -41,6 +41,11 @@ python3 listing_import.py preview \
 
 # 5. the catalog commands for the in-app items
 python3 listing_import.py catalog --listing listing.json
+
+# 6. rehearse the write, then do it
+python3 listing_import.py plan --listing listing.json --structure structure.json > plan.json
+python3 apply_plan.py --plan plan.json --slug $SLUG          # prints, sends nothing
+python3 apply_plan.py --plan plan.json --slug $SLUG --yes    # writes, backs up first
 ```
 
 Google Play is fetched as HTML rather than JSON, and the App Store needs the page as well as
@@ -88,7 +93,7 @@ Exit status: `0` clean · `1` errors or blockers · `2` bad invocation.
 cd scripts && python3 -m unittest discover -s tests -t . -v
 ```
 
-222 tests, no network. Every fixture is real, not hand-written: the live `appdetails`
+264 tests, no network. Every fixture is real, not hand-written: the live `appdetails`
 response for Steam app 812140, the live iTunes lookup for id 529479190, a trimmed excerpt of
 the live Play page for `com.supercell.clashofclans`, and the block spine of a landing
 `import-listing` actually produced. A synthetic fixture would have agreed with whatever the
@@ -112,9 +117,13 @@ carries its own conventions rather than inheriting any. They are enforced by the
 
 ## Known limitations
 
-- **Nothing here executes.** It emits operations and renders commands; the agent runs the
-  CLI. So no script can guarantee the read-back happened — that discipline lives in
-  [`SKILL.md`](SKILL.md).
+- **The write path has never been run against a live landing.** `apply_plan.py` and its 35
+  tests exercise ordering, refusals, backup-first and the read-back against an injected CLI,
+  which is what keeps them offline — but no real shop has been written to. Until that
+  happens, treat the runner as reviewed, not proven.
+- **The overflow copy and the long description are refused, not written.** Both need a
+  generated component id the runner will not invent, so they are reported as manual work on
+  every run. Two of eleven fields therefore land by hand.
 - **Most patch paths are `schema`-confidence, not `confirmed`.** Only `key_art` and
   `screenshots` have been watched to land. The rest come from the editor's field schemas, and
   since a patch to a path that does not exist returns `ok: true` and changes nothing, a wrong

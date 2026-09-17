@@ -72,9 +72,11 @@ Never reorder steps 1–5. Never skip step 6.
    not before the first fix.
 4. **Preview.** `preview` renders the mapping. This is what the user approves.
 5. **Confirm.** Explicit yes. An unconfirmed run stops here.
-6. **Write, then read back.** Every patch. Shop Builder answers `ok: true` to a patch at a
-   path that does not exist and changes nothing, so an unread write is an unverified one.
-7. **Never publish.** A human publishes, in Publisher Account.
+6. **Write, then read back.** `apply_plan.py` does both. Every patch is read back, because
+   Shop Builder answers `ok: true` to a patch at a path that does not exist and changes
+   nothing — so an unread write is indistinguishable from a successful one.
+7. **Never publish.** A human publishes, in Publisher Account. The runner cannot: its
+   command allowlist has no publish, no delete and no `enable-preview`.
 
 For Steam, step 2 also happens — even though the backend can import by itself. The parsing
 endpoint returns `{developer, icon, title}` and nothing else, three of eleven target fields,
@@ -93,7 +95,9 @@ From `scripts/`. All read-only; `--json` gives the machine-readable report in
 | Check the extraction | `python3 listing_import.py validate --listing listing.json` |
 | Report field coverage | `python3 listing_import.py coverage --listing listing.json` |
 | Show the mapping for approval | `python3 listing_import.py preview --listing listing.json --structure structure.json` |
-| Get the operations to execute | `python3 listing_import.py plan --listing listing.json --structure structure.json` |
+| Get the operations to execute | `python3 listing_import.py plan --listing listing.json --structure structure.json > plan.json` |
+| Rehearse the write | `python3 apply_plan.py --plan plan.json --slug <slug>` |
+| Actually write | `python3 apply_plan.py --plan plan.json --slug <slug> --yes` |
 | Create the in-app items | `python3 listing_import.py catalog --listing listing.json` |
 | Convert pasted Steam BBCode | `python3 listing_import.py bbcode --file description.txt` |
 

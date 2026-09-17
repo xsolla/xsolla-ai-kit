@@ -15,7 +15,7 @@ call in this round was a `GET`.
 | Field coverage — mapping, all three | — | **100%** — every extracted field has a destination |
 | Field coverage — delivered, Steam | ≥ 80% | **90.9%** (10/11) |
 | Field coverage — delivered, Play / App Store | ≥ 80% | **72.7%** (8/11) |
-| Unit tests | pass | **222 pass**, no network, 0.04 s |
+| Unit tests | pass | **264 pass**, no network, 0.07 s |
 | Sources extracted | 3 | **3** |
 | Sources with a working server-side import | 3 | **1** (Steam) |
 | Manual interventions, Steam dry run | ≤ 2 | **2** (see below) |
@@ -188,23 +188,46 @@ Recorded because a log with none of these is not a log.
 
 ## Not verified
 
-- **No write has been performed.** Every patch path except `key_art` and `screenshots` is
-  `schema`-confidence: taken from the editor's field schemas, never watched to land. Since a
-  patch to a path that does not exist returns `ok: true` and changes nothing, these fail
-  *silently* if wrong. Confirming them needs a write-and-read-back per path on a throwaway
-  landing — the obvious next round, and `scripts/` is structured for it.
-- **No catalog entity has been created.** The rendered commands parse (checked with `bash -n`
-  and `shlex.split`) but have not been run against the sandbox, so the exact `create-items`
-  acceptance is unconfirmed.
+- **No write has been performed against a live landing.** `apply_plan.py` exists and its 35
+  tests cover ordering, the confirmation gate, backup-first, the allowlist, the read-back and
+  every refusal — all against an injected CLI caller, which is what keeps them offline. None
+  of it has been run against a real shop. The runner is reviewed, not proven.
+- **Most patch paths are still `schema`-confidence.** Only `key_art` and `screenshots` have
+  been watched to land. Because a patch to a path that does not exist returns `ok: true` and
+  changes nothing, the read-back in `apply_plan.py` is what would turn each of them from
+  assumed to confirmed — on the first live run.
+- **Two of eleven fields are refused by design, not written.** The long description and the
+  overflow copy both need a TEXT component id the editor generates. The runner reports them
+  as manual work rather than inventing an id, so a run delivers nine fields automatically and
+  two by hand.
+- **No catalog entity has been created.** The commands parse (`bash -n`, `shlex.split`) and
+  the runner assembles them, but `create-items` acceptance is unconfirmed.
 - **One game per source.** The DoD asks for ≥ 3. Fixtures exist for Assassin's Creed Odyssey
-  (Steam) and Clash of Clans (Play, App Store); the extractors are field-by-field tolerant,
-  but a second and third title per source is what would show it.
-- **`enable-preview` / `preview-link` were not exercised.** Reported elsewhere as 403 on some
-  publisher accounts, apparently staff-gated. That gates the "time to preview-ready shop"
-  metric and needs checking early on the fixture project.
-- **The overflow component's write is untested end to end.** `plan.py` produces the HTML and
-  the path; whether appending a TEXT component to a `description` block through
-  `update-block` works as expected has not been tried.
+  (Steam) and Clash of Clans (Play, App Store).
+- **`enable-preview` / `preview-link` were not exercised**, and are deliberately absent from
+  the runner's allowlist. Reported elsewhere as 403 on some publisher accounts. That gates the
+  "time to preview-ready shop" metric.
+
+## What the runner adds, and what it deliberately will not do
+
+Written in this round to close the DoD's "Writes via CLI". Four guards are structural rather
+than advisory, because a write path is where advice is worth least:
+
+| Guard | Shape |
+|---|---|
+| Confirmation | `--yes` or nothing is sent. The default assembles the commands and returns them. |
+| Backup | `get-structure` + `get-localization` to files **before** the first write. Either read failing stops the run. |
+| Allowlist | `apply.ALLOWED` is checked on every call. No publish, no delete, no `enable-preview` is reachable — including from code added later. |
+| Read-back | Every patch, not a sample. A path that does not exist is reported as *"accepted and changed nothing"*. |
+
+And three refusals, each reported instead of guessed: a localization write whose `L:` id the
+block does not carry; creating the overflow TEXT component; any command outside the
+allowlist.
+
+The first two exist because Shop Builder makes the wrong thing look like the right thing. A
+localization write against an invented id succeeds and changes a string nothing renders. A
+patch to a component id the block does not have succeeds and changes nothing. Neither
+produces an error, so neither can be caught by trying it and looking at the response.
 
 ## Reproducing this
 

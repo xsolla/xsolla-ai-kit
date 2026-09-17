@@ -45,6 +45,32 @@ from .errors import finding
 from .listing_schema import long_description
 
 
+def resolve_localized_id(block, path):
+    """The ``L:`` id a localized field already carries, or ``None``.
+
+    A localized field is stored as ``{"enable": true, "id": "L:<uuid>"}`` -- the
+    string itself lives in the separate localization store.  So a write to
+    ``values.title`` is really a write to that id, and the runner needs the id,
+    not the path.
+
+    Resolved here rather than in the runner because this module already has the
+    block in hand.  ``None`` means the field is absent or carries no id, and the
+    caller must not invent one: a localization write against an id the block
+    does not reference changes a string nothing renders.
+    """
+    cursor = block
+    for segment in path:
+        if not isinstance(cursor, dict) or segment not in cursor:
+            return None
+        cursor = cursor[segment]
+    if isinstance(cursor, dict):
+        found = cursor.get("id")
+        return found if isinstance(found, str) and found.startswith("L:") else None
+    if isinstance(cursor, str) and cursor.startswith("L:"):
+        return cursor
+    return None
+
+
 def index_blocks(structure):
     """Map module name -> list of ``(page_id, block_id)``, in page order."""
     found = {}
@@ -52,7 +78,8 @@ def index_blocks(structure):
         page_id = page.get("_id")
         for block in page.get("blocks") or []:
             if isinstance(block, dict) and block.get("module"):
-                found.setdefault(block["module"], []).append((page_id, block["_id"]))
+                found.setdefault(block["module"], []).append(
+                    (page_id, block["_id"], block))
     return found
 
 
@@ -149,7 +176,7 @@ def build(document, structure, localization=None):
                 "note": target.note,
             })
             continue
-        page_id, block_id = placements[0]
+        page_id, block_id, block_doc = placements[0]
 
         if target.action == mapping.ASSET:
             raw = values.get(name)
@@ -197,6 +224,7 @@ def build(document, structure, localization=None):
             "block_id": block_id,
             "page_id": page_id,
             "path": list(target.path),
+            "localized_id": resolve_localized_id(block_doc, target.path),
             "value": text,
             "dropped": dropped,
             "confidence": target.confidence,
@@ -211,7 +239,7 @@ def build(document, structure, localization=None):
         target = mapping.target_for("genres")
         placements = blocks.get(target.module) or []
         if placements:
-            page_id, block_id = placements[0]
+            page_id, block_id, _doc = placements[0]
             overflow_ops.append({
                 "kind": "overflow",
                 "field": "+".join(overflow_carried),
