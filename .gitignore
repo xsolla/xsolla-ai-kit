@@ -4,3 +4,12 @@
 .env
 
 .idea/
+
+# Test runs under skills/listing-import/scripts leave these behind. They would
+# otherwise reach a commit and break the byte-identical .cursor/skills check.
+__pycache__/
+*.py[cod]
+
+# Xsolla CLI local config, written by `xsolla config init` in whatever directory
+# it is run from. Carries merchant and project ids for someone's own sandbox.
+.xsolla.json

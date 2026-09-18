@@ -1,0 +1,453 @@
+"""Executing a plan: the write half, and the guards around it.
+
+Everything else in this package reads, measures and plans.  This is the only
+module that changes a partner's shop, so it is the only one that needs to be
+careful, and the care is structural rather than advisory:
+
+* **Nothing runs without ``confirmed=True``.**  The default is a rehearsal that
+  returns the exact commands it would run.  A caller that forgets the flag gets
+  a preview, not a write.
+* **The backup happens first, or nothing happens.**  If reading the current
+  structure and localization fails, the run stops before the first write rather
+  than continuing without a way back.
+* **Only allowlisted commands can be invoked.**  ``ALLOWED`` is checked on every
+  call, so no code path here -- present or added later -- can reach a publish,
+  a website delete, or anything else that was not intended.  A skill whose
+  safety rule is "never publish" should not rely on nobody typing it.  One
+  destructive command is in there, ``delete-block``, and
+  ``tests/test_apply.py`` asserts it is the only one.
+* **Every write is read back.**  Shop Builder answers ``ok: true`` to a patch at
+  a path that does not exist and changes nothing, so an unverified write is
+  indistinguishable from a successful one.
+
+The CLI caller and the image fetcher are both injected.  That is what lets the
+tests cover ordering, refusals and the read-back without a network or a
+sandbox project, and it is why ``tests/test_apply.py`` can assert the exact
+command sequence.
+
+What this module does NOT do, on purpose:
+
+* **It will not invent a localization id.**  A localized field stores
+  ``{"id": "L:<uuid>"}`` and the string lives elsewhere; writing to an id the
+  block does not reference changes a string nothing renders.  An operation
+  whose ``localized_id`` is ``None`` is refused and reported.
+* **It will not create a block component.**  Guessing a generated id writes
+  into a component the block does not have.  This used to make the overflow
+  copy unwritable -- the reason shops came out with no reviews and no genres on
+  them -- and is now solved in the planner rather than here: the detail lines
+  are appended to the description's own localized string.
+* **It does not publish, and cannot.**  Publication is a human's, in Publisher
+  Account.
+
+One destructive command is reachable: ``delete-block``, for the content-first
+prune.  It is scoped to a block -- never a website, an asset or a language --
+it runs only for a ``delete`` operation the preview already listed on its own,
+and the pre-write backup is the only way back from it.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import shutil
+import subprocess
+import tempfile
+import time
+from urllib.parse import urlparse
+from urllib.request import Request, urlopen
+
+# Every xsolla subcommand this module may invoke.  Reads and additive writes,
+# plus exactly one destructive command for the content-first prune.  Nothing
+# here publishes, and nothing removes a website, an asset or a language.
+ALLOWED = frozenset([
+    ("shopbuilder", "get-structure"),
+    ("shopbuilder", "get-localization"),
+    ("shopbuilder", "get-block"),
+    ("shopbuilder", "upload-asset"),
+    ("shopbuilder", "update-block"),
+    ("shopbuilder", "update-localization"),
+    ("catalog", "admin-create-group"),
+    ("catalog", "create-items"),
+    # The one destructive command here, for the content-first prune, and it is
+    # scoped as narrowly as the job allows: a block, never a website, an asset
+    # or a language.  It runs only for a `delete` operation the preview already
+    # listed on its own, and the pre-write backup is the only way back from it,
+    # which is why `back_up` refuses to let a run start without one.
+    ("shopbuilder", "delete-block"),
+])
+
+# Commands that must never be reachable from here, named so a reader can see
+# the intent rather than infer it from the absence of a line.
+FORBIDDEN_HINT = (
+    "publish, delete-website, delete-asset, delete-language, enable-preview"
+)
+
+IMAGE_MAX_BYTES = 10 * 1024 * 1024  # upload-asset's documented limit
+FETCH_TIMEOUT = 30
+
+# The CLI re-bootstraps its Shop Builder session from the stored token, and on a
+# run of any length some calls land while that is happening.  A 42-operation
+# Steam run lost 19 calls to it -- nothing wrong with the request, the session
+# just was not there for a moment.  The CLI's own --max-retries covers transient
+# HTTP errors; this happens before the request, so it needs retrying here.
+TRANSIENT_SIGNATURES = (
+    "session bootstrap failed",
+    "session bootstrap did not yield",
+    "auto-bootstrapping publisher session",
+    "authentication required",
+)
+MAX_ATTEMPTS = 4
+RETRY_BACKOFF = 2.0
+
+
+def is_transient(result):
+    """Whether a failure is the session flapping rather than a bad request."""
+    if result.get("code") == 0:
+        return False
+    text = ((result.get("stderr") or "") + (result.get("stdout") or "")).lower()
+    return any(sig in text for sig in TRANSIENT_SIGNATURES)
+
+
+class Refused(Exception):
+    """A guard stopped the run.  Carries a reason meant for a human."""
+
+
+def cli_call(product, action, args, timeout=120):
+    """Invoke one `xsolla` subcommand, retrying a flapping session.
+
+    The default caller; injectable.  Retries only failures matching
+    ``TRANSIENT_SIGNATURES``: a bad request is returned on the first attempt,
+    because retrying a 422 four times is just four 422s and a slower report.
+    """
+    if (product, action) not in ALLOWED:
+        raise Refused(
+            "%s %s is not in this module's allowlist (never: %s)"
+            % (product, action, FORBIDDEN_HINT)
+        )
+    cmd = ["xsolla", product, action] + list(args) + ["--json"]
+    result = None
+    for attempt in range(1, MAX_ATTEMPTS + 1):
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+        result = {"cmd": cmd, "code": proc.returncode, "stdout": proc.stdout,
+                  "stderr": proc.stderr, "attempts": attempt}
+        if not is_transient(result):
+            return result
+        if attempt < MAX_ATTEMPTS:
+            time.sleep(RETRY_BACKOFF * attempt)
+    return result
+
+
+def fetch_image(url, directory, timeout=FETCH_TIMEOUT):
+    """Download a remote image to ``directory``.  Returns the local path.
+
+    ``upload-asset`` takes a local file and has no remote-URL ingest, so an
+    image has to land on disk before it can be uploaded.  Patching the source
+    URL straight into a block instead would hotlink another storefront from the
+    partner's page.
+    """
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https"):
+        raise Refused("refusing to fetch a non-http(s) image url: %s" % url)
+    name = os.path.basename(parsed.path) or "image"
+    if "." not in name:
+        name += ".jpg"
+    target = os.path.join(directory, name)
+    request = Request(url, headers={"User-Agent": "xsolla-ai-kit/listing-import"})
+    with urlopen(request, timeout=timeout) as response:
+        data = response.read(IMAGE_MAX_BYTES + 1)
+    if len(data) > IMAGE_MAX_BYTES:
+        raise Refused("%s is over upload-asset's 10 MB limit" % url)
+    with open(target, "wb") as handle:
+        handle.write(data)
+    return target
+
+
+def _payload(result):
+    """The ``data`` envelope of a CLI --json response, or ``None``."""
+    try:
+        body = json.loads(result["stdout"])
+    except (ValueError, KeyError):
+        return None
+    return body.get("data", body) if isinstance(body, dict) else None
+
+
+def landing_id(slug, call=cli_call):
+    """The landing's own ``_id``, which is what ``--landing-id`` wants.
+
+    Not the block's.  ``upload-asset`` and ``update-block`` both take the
+    *landing* id as a flag and address the block inside ``--data``; passing the
+    block id to the flag returns HTTP 404, which is how this was found -- on a
+    live run, after the mocked tests had passed, because a fake CLI accepts any
+    argument you hand it.
+    """
+    result = call("shopbuilder", "get-structure", ["--slug", slug])
+    if result["code"] != 0:
+        raise Refused("cannot resolve the landing id for %s: get-structure exited %s"
+                      % (slug, result["code"]))
+    body = _payload(result) or {}
+    found = body.get("_id")
+    if not found:
+        raise Refused("get-structure returned no _id for %s" % slug)
+    return found
+
+
+def back_up(slug, directory, call=cli_call):
+    """Read the current structure and localization to files, before any write.
+
+    Returns the two paths.  Raises ``Refused`` if either read fails: a run that
+    cannot be undone should not begin.
+    """
+    os.makedirs(directory, exist_ok=True)
+    written = {}
+    for action, name in (("get-structure", "structure"),
+                         ("get-localization", "localization")):
+        result = call("shopbuilder", action, ["--slug", slug])
+        if result["code"] != 0:
+            raise Refused(
+                "backup failed: %s exited %s — not writing without one (%s)"
+                % (action, result["code"], (result["stderr"] or "").strip()[:160])
+            )
+        body = _payload(result)
+        if body is None:
+            raise Refused("backup failed: %s returned no JSON body" % action)
+        path = os.path.join(directory, "%s.json" % name)
+        with open(path, "w", encoding="utf-8") as handle:
+            json.dump(body, handle, indent=1)
+        written[name] = path
+    return written
+
+
+def _patch_data(block_id, path, value):
+    """One batch patch, in the shape `update-block --data` expects."""
+    return json.dumps({"r1": {"type": "block", "id": block_id, "patches": [
+        {"op": "replace", "path": list(path), "value": value}]}})
+
+
+def _read_back(slug, block_id, path, expected, call):
+    """Confirm a patch landed.  Returns ``(ok, detail)``.
+
+    Not optional and not sampled.  A patch to a path that does not exist
+    answers ``ok: true`` and changes nothing, so the only evidence a write
+    worked is reading the value afterwards.
+    """
+    result = call("shopbuilder", "get-block", ["--slug", slug, "--block-id", block_id])
+    if result["code"] != 0:
+        return False, "read-back failed: get-block exited %s" % result["code"]
+    block = _payload(result)
+    if block is None:
+        return False, "read-back failed: no JSON body"
+    cursor = block
+    for segment in path:
+        if isinstance(cursor, dict) and segment in cursor:
+            cursor = cursor[segment]
+        elif isinstance(cursor, list) and isinstance(segment, int) \
+                and segment < len(cursor):
+            cursor = cursor[segment]
+        else:
+            return False, "path %s does not exist on the written block — the " \
+                          "patch was accepted and changed nothing" % ".".join(
+                              str(s) for s in path)
+    if cursor != expected:
+        return False, "value is %r, expected %r" % (cursor, expected)
+    return True, "confirmed"
+
+
+PLACEHOLDER_LANDING = "<landing id, resolved at write time>"
+
+
+def apply_plan(plan, slug, locale="en-US", confirmed=False, call=cli_call,
+               fetch=fetch_image, backup_dir=None, workdir=None,
+               landing=None):
+    """Execute a plan against ``slug``.
+
+    ``confirmed`` false is a rehearsal: the commands are assembled and
+    returned, and nothing is invoked.  Returns a result dict with ``performed``,
+    ``skipped``, ``failed`` and ``backup``.
+
+    The order is the one the plan already carries -- localization before the
+    image patches, because a block referencing an ``L:`` id with no string
+    behind it renders as a 500.
+    """
+    outcome = {"slug": slug, "confirmed": bool(confirmed), "backup": None,
+               "landing_id": None, "performed": [], "skipped": [],
+               "failed": [], "commands": []}
+
+    # Every asset and patch write needs the landing's own id.  A rehearsal
+    # resolves nothing: it must work from a plan file alone, with no session and
+    # no network, so it substitutes a visible placeholder instead of pretending
+    # to know.  A real run resolves it before touching anything.
+    if landing is None:
+        landing = landing_id(slug, call=call) if confirmed else PLACEHOLDER_LANDING
+    outcome["landing_id"] = landing
+
+    if confirmed:
+        directory = backup_dir or os.path.join(
+            tempfile.gettempdir(), "listing-import-backup-%s-%d" % (slug, time.time()))
+        outcome["backup"] = back_up(slug, directory, call=call)
+
+    temp = workdir or tempfile.mkdtemp(prefix="listing-import-assets-")
+    created_temp = workdir is None
+    try:
+        for op in plan.get("operations") or []:
+            _apply_one(op, slug, landing, locale, confirmed, call, fetch, temp,
+                       outcome)
+        for item in plan.get("catalog_operations") or []:
+            _apply_catalog(item, confirmed, call, outcome)
+    finally:
+        if created_temp:
+            shutil.rmtree(temp, ignore_errors=True)
+    return outcome
+
+
+def _skip(outcome, op, reason):
+    outcome["skipped"].append({"step": op.get("step"), "field": op.get("field"),
+                               "kind": op.get("kind"), "reason": reason})
+
+
+def _apply_one(op, slug, landing, locale, confirmed, call, fetch, temp, outcome):
+    kind = op.get("kind")
+
+    if kind == "overflow":
+        # The planner no longer emits this kind: the detail lines are appended
+        # to the description's own localized string, because the block ships
+        # one TEXT component and a second needs an id the editor generates.
+        # Kept as a guard for a hand-written plan, and it still refuses rather
+        # than inventing an id.
+        _skip(outcome, op,
+              "needs a TEXT component id the editor generates; this runner will "
+              "not invent one. Re-plan instead -- the planner now appends this "
+              "copy to the description's own string.")
+        return
+
+    if kind == "localization":
+        target = op.get("localized_id")
+        if not target:
+            _skip(outcome, op,
+                  "the block carries no L: id at %s, so there is nothing to write "
+                  "to. Writing to an invented id changes a string nothing renders."
+                  % ".".join(str(s) for s in op.get("path") or []))
+            return
+        data = json.dumps({"pageId": op.get("page_id"), "id": target,
+                           "locale": locale, "value": op.get("value")})
+        args = ["--slug", slug, "--data", data]
+        outcome["commands"].append(["shopbuilder", "update-localization"] + args)
+        if not confirmed:
+            return
+        result = call("shopbuilder", "update-localization", args)
+        if result["code"] != 0:
+            outcome["failed"].append({"step": op.get("step"), "field": op["field"],
+                                      "reason": (result["stderr"] or "").strip()[:200]})
+            return
+        outcome["performed"].append({"step": op.get("step"), "field": op["field"],
+                                     "kind": kind, "target": target,
+                                     "verified": "localization store not re-read; "
+                                                 "update-localization has no "
+                                                 "silent-no-op path for a known id"})
+        return
+
+    if kind == "patch":
+        data = _patch_data(op["block_id"], op["path"], op.get("value"))
+        args = ["--landing-id", landing, "--data", data]
+        outcome["commands"].append(["shopbuilder", "update-block"] + args)
+        if not confirmed:
+            return
+        _write_and_verify(op, slug, args, op.get("value"), call, outcome)
+        return
+
+    if kind == "delete":
+        args = ["--landing-id", landing, "--page-id", op["page_id"],
+                "--blockid", op["block_id"], "--force"]
+        outcome["commands"].append(["shopbuilder", "delete-block"] + args)
+        if not confirmed:
+            return
+        result = call("shopbuilder", "delete-block", args)
+        if result["code"] != 0:
+            outcome["failed"].append({
+                "step": op.get("step"), "field": op["field"],
+                "reason": (result["stderr"] or "").strip()[:200]})
+            return
+        outcome["performed"].append({
+            "step": op.get("step"), "field": op["field"], "kind": kind,
+            "verified": "block removed; recoverable only from the backup"})
+        return
+
+    if kind == "asset":
+        try:
+            local = fetch(op["source_url"], temp)
+        except Exception as exc:                      # noqa: BLE001 - reported
+            outcome["failed"].append({"step": op.get("step"), "field": op["field"],
+                                      "reason": "fetch failed: %s" % exc})
+            return
+        upload_args = ["--landing-id", landing, "--file", local,
+                       "--type", "image"]
+        outcome["commands"].append(["shopbuilder", "upload-asset"] + upload_args)
+        if not confirmed:
+            outcome["commands"].append(
+                ["shopbuilder", "update-block", "--landing-id", landing,
+                 "--data", _patch_data(op["block_id"], op["path"], "<uploaded cdn url>")])
+            return
+        result = call("shopbuilder", "upload-asset", upload_args)
+        if result["code"] != 0:
+            outcome["failed"].append({"step": op.get("step"), "field": op["field"],
+                                      "reason": "upload failed: %s"
+                                                % (result["stderr"] or "").strip()[:160]})
+            return
+        body = _payload(result) or {}
+        cdn = body.get("url")
+        if not cdn:
+            outcome["failed"].append({"step": op.get("step"), "field": op["field"],
+                                      "reason": "upload returned no url"})
+            return
+        patch_args = ["--landing-id", landing,
+                      "--data", _patch_data(op["block_id"], op["path"], cdn)]
+        _write_and_verify(op, slug, patch_args, cdn, call, outcome)
+        return
+
+    _skip(outcome, op, "unknown operation kind %r" % kind)
+
+
+def _write_and_verify(op, slug, args, expected, call, outcome):
+    result = call("shopbuilder", "update-block", args)
+    if result["code"] != 0:
+        outcome["failed"].append({"step": op.get("step"), "field": op["field"],
+                                  "reason": (result["stderr"] or "").strip()[:200]})
+        return
+    ok, detail = _read_back(slug, op["block_id"], op["path"], expected, call)
+    record = {"step": op.get("step"), "field": op["field"], "kind": op["kind"],
+              "verified": detail}
+    if ok:
+        outcome["performed"].append(record)
+    else:
+        outcome["failed"].append({"step": op.get("step"), "field": op["field"],
+                                  "reason": detail})
+
+
+def _apply_catalog(item, confirmed, call, outcome):
+    """Create one in-app item. The group is created once, by the caller's first item."""
+    group = (item.get("groups") or ["imported_listing"])[0]
+    if not outcome.get("_group_done"):
+        group_args = ["--external-id", group, "--order", "99", "--is-enabled",
+                      "--name", json.dumps({"en": "Imported from listing"})]
+        outcome["commands"].append(["catalog", "admin-create-group"] + group_args)
+        if confirmed:
+            call("catalog", "admin-create-group", group_args)
+        outcome["_group_done"] = True
+
+    args = ["--sku", item["sku"],
+            "--name", json.dumps(item["name"], ensure_ascii=False),
+            "--description", json.dumps(item["description"], ensure_ascii=False),
+            "--groups", json.dumps(item["groups"])]
+    if item.get("prices"):
+        args += ["--prices", json.dumps(item["prices"])]
+    if item.get("is_enabled"):
+        args += ["--is-enabled", "--is-show-in-store"]
+    outcome["commands"].append(["catalog", "create-items"] + args)
+    if not confirmed:
+        return
+    result = call("catalog", "create-items", args)
+    if result["code"] != 0:
+        outcome["failed"].append({"sku": item["sku"], "kind": "catalog",
+                                  "reason": (result["stderr"] or "").strip()[:200]})
+    else:
+        outcome["performed"].append({"sku": item["sku"], "kind": "catalog",
+                                     "verified": "created; not read back"})
