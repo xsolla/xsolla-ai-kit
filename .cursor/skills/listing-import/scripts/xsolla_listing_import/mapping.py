@@ -35,13 +35,15 @@ ASSET = "asset"
 OVERFLOW = "overflow"
 CATALOG = "catalog"
 REQUIREMENTS = "requirements"
+REVIEWS = "reviews"
 MANUAL = "manual"
 
 # Actions that put the content somewhere the partner can see it.  OVERFLOW and
 # CATALOG count: a genre rendered as a line of copy in the description block is
 # copied, and an in-app item created as a catalog entity is copied.  Only MANUAL
 # does not -- it means a human has to finish the job by hand.
-DELIVERABLE = (LOCALIZATION, PATCH, ASSET, OVERFLOW, CATALOG, REQUIREMENTS)
+DELIVERABLE = (LOCALIZATION, PATCH, ASSET, OVERFLOW, CATALOG, REQUIREMENTS,
+               REVIEWS)
 
 CONFIRMED = "confirmed"
 SCHEMA = "schema"
@@ -120,6 +122,12 @@ TARGETS = (
            "Rendered as a line of copy. The footer's ageRatingIds field takes "
            "rating *ids* the site already holds and no command creates one, so "
            "the badge itself stays a Publisher Account step."),
+    Target("user_reviews", "bento-grid", REVIEWS, ("values", "gridComponents"),
+           SCHEMA,
+           "One chosen review per leaf card. A leaf with two text components "
+           "takes the quote and the attribution separately. Gated on "
+           "rights_reviews_confirmed: these are a player's words, not the "
+           "publisher's."),
     Target("requirements", "requirements", REQUIREMENTS,
            ("components",), SCHEMA,
            "Each platform is a platform_req_v2 component whose requirementList "

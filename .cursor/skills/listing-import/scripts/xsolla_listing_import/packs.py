@@ -365,3 +365,80 @@ def requirement_writes(block, block_id, page_id, platforms):
                                                 key, row_index),
                 })
     return operations, unplaced
+
+
+def bento_leaves(block):
+    """The ``bento-grid`` leaf nodes that can hold content, in a stable order.
+
+    A bento grid is two maps: ``values.grid`` of nodes, and
+    ``values.gridComponents`` of the text components those nodes reference by
+    ``contentIds``.  Only ``leaf`` nodes carry content -- ``group`` nodes are
+    layout and have no ``contentIds`` -- so a card is a leaf.
+
+    Sorted by key rather than left in dict order, because the order a JSON
+    object comes back in is not a promise and a review landing on a different
+    card between runs would look like a bug.
+
+    Returns ``[(node_id, [component_id, ...])]``.
+    """
+    values = (block or {}).get("values") or {}
+    grid = values.get("grid") or {}
+    components = values.get("gridComponents") or {}
+    leaves = []
+    for node_id in sorted(grid):
+        node = grid[node_id]
+        if not isinstance(node, dict) or node.get("type") != "leaf":
+            continue
+        ids = [c for c in (node.get("contentIds") or [])
+               if (components.get(c) or {}).get("type") == "text"]
+        if ids:
+            leaves.append((node_id, ids))
+    return leaves
+
+
+def review_writes(block, block_id, page_id, quotes):
+    """Write chosen player reviews onto a ``bento-grid``'s cards.
+
+    Each leaf gets one review.  A leaf with two text components takes the quote
+    in the first and the attribution in the second; a leaf with one takes both
+    in that one, because a quote with nobody behind it is worth less than an
+    uneven card.
+
+    Returns ``(operations, unplaced)``.
+    """
+    operations = []
+    values = (block or {}).get("values") or {}
+    components = values.get("gridComponents") or {}
+    leaves = bento_leaves(block)
+    placed = quotes[:len(leaves)]
+    unplaced = quotes[len(leaves):]
+
+    for position, quote in enumerate(placed):
+        _node_id, component_ids = leaves[position]
+        text = quote.get("quote") or ""
+        who = quote.get("attribution") or ""
+        parts = [text, who] if len(component_ids) > 1 else \
+            ["%s — %s" % (text, who) if who else text]
+        for offset, body in enumerate(parts):
+            if offset >= len(component_ids):
+                break
+            component = components.get(component_ids[offset]) or {}
+            ref = component.get("text")
+            target = ref.get("id") if isinstance(ref, dict) else None
+            if not (isinstance(target, str) and target.startswith("L:")):
+                continue
+            operations.append({
+                "kind": "localization",
+                "field": "review.quote" if offset == 0 else "review.attribution",
+                "module": "bento-grid",
+                "block_id": block_id,
+                "page_id": page_id,
+                "path": ["values", "gridComponents", component_ids[offset],
+                         "text"],
+                "localized_id": target,
+                "value": body,
+                "dropped": [],
+                "confidence": "schema",
+                "note": "Player review %d, on a bento-grid card." % (position + 1),
+            })
+    return operations, unplaced

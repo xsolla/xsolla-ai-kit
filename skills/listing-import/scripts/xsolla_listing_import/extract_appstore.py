@@ -76,6 +76,41 @@ def _reviews(data):
         % float(score)
 
 
+def candidate_reviews(feed):
+    """Player reviews from Apple's public customer-reviews feed.
+
+    The caller fetches:
+
+        https://itunes.apple.com/<cc>/rss/customerreviews/id=<id>/json
+
+    Fifty entries, and the first is the app itself rather than a review, so it
+    is skipped.  Returned as candidates, not choices: the first results for one
+    title include "Garbage" at five stars and "Satan's game" at one, and the
+    rating does not predict the sentiment, so nothing here can filter them.
+    """
+    entries = ((feed or {}).get("feed") or {}).get("entry") or []
+    out = []
+    for entry in entries:
+        if not isinstance(entry, dict) or "title" not in entry:
+            continue  # the app's own entry carries no title/content pair
+        body = ((entry.get("content") or {}).get("label") or "").strip()
+        if not body:
+            continue
+        rating = (entry.get("im:rating") or {}).get("label")
+        out.append({
+            "text": body,
+            "title": ((entry.get("title") or {}).get("label") or "").strip(),
+            "rating": int(rating) if str(rating).isdigit() else None,
+            "author": (((entry.get("author") or {}).get("name") or {})
+                       .get("label") or "").strip(),
+            "helpful_votes": int(((entry.get("im:voteSum") or {})
+                                  .get("label")) or 0),
+            "source": "app_store",
+        })
+    out.sort(key=lambda r: ((r["rating"] or 0), r["helpful_votes"]), reverse=True)
+    return out
+
+
 def to_listing(document, source_url, iap_items=None):
     """Build a listing document.
 

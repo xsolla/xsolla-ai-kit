@@ -8,9 +8,11 @@ description: >-
   "import my store listing", "clone my store page", "build a shop from my App Store entry",
   "reuse my game's screenshots and description". Extracts title, short and long description,
   icon, key art, screenshots, genres, tags, platform, age rating and publicly listed in-app
-  items, shows the extracted-to-shop mapping, and only then writes via the CLI. Copies
-  everything the listing publishes, not just marketing: genres, tags and age rating are
-  carried as page copy, and in-app items become priced catalog entities. Steam also has a
+  items, ratings and player reviews, shows the extracted-to-shop mapping, and only then
+  writes via the CLI. Copies everything the listing publishes, not just marketing: genres,
+  tags, age rating and the review score ride the description, in-app items become priced
+  catalog entities, system requirements fill the requirements block, and chosen player
+  reviews go on bento-grid cards. Steam also has a
   server-side import (`xsolla shopbuilder import-listing`); Google Play and the App Store are
   rejected by that endpoint, so all three run through extraction here. Public pages only.
   Landing mechanics belong to the CLI's own `shopbuilder` skill.
@@ -65,6 +67,10 @@ Never reorder steps 1–5. Never skip step 6.
 1. **Rights gate.** Ask: is this your own game's listing? A public store page can be parsed
    by anyone — nothing upstream checks ownership — so this is the only check that the copy and
    artwork are the partner's to reuse. A no ends the run.
+   **If you intend to carry player reviews over, ask a second time.** A review is a player's
+   words, not the publisher's, and republishing someone else's writing on a commercial page is
+   a different permission. That answer is `rights_reviews_confirmed`, and without it the
+   planner places no reviews and says so.
 2. **Extract.** `fetch` says what to request; `extract` turns it into `listing.json`
    ([the schema](references/listing-json.md)). What was looked for and not found lands in
    `not_found`, so an absent field is never ambiguous.
@@ -147,6 +153,32 @@ artefact of counting only structured block fields, and it is gone
 `delivered` is still below `extraction` for Play and Apple, because neither publishes
 `key_art` or `tags` at all. Those are excluded from each source's own denominator, so they
 are not scored as extraction misses.
+
+## Player reviews
+
+All three storefronts publish a rating; **two publish the review text.**
+
+| Source | Review text | Where from |
+|---|---|---|
+| Steam | yes | `store.steampowered.com/appreviews/<id>?json=1` |
+| App Store | yes | `itunes.apple.com/<cc>/rss/customerreviews/id=<id>/json` |
+| Google Play | **no** | Client-rendered; the markup holds only the section's chrome |
+
+`candidate_reviews()` ranks them. **It does not choose, and neither should the scripts** —
+the content is hostile by default and the score does not predict it:
+
+- Ranked by helpfulness, Steam's top three for one title were all negative, including an
+  87-hour *"I have never encountered a more spiritually bankrupt species"*.
+- On the App Store, `Garbage` is a **five-star** review and `brawlhalla is hell.` is sarcastic
+  praise, also five stars.
+
+So read the candidates, pick two or three, quote them into `user_reviews` with an attribution,
+and answer the second rights question. They land one per **`bento-grid` leaf card** — no
+module has a reviews field, and a leaf with two text components takes the quote and the
+attribution separately.
+
+The aggregate rating is separate and needs no permission: it rides the description's detail
+lines as `Player reviews: 4.4 out of 5, from 347,851 reviews on Google Play`.
 
 ## Editions on the page, and the copy that goes on them
 

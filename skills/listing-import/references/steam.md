@@ -73,6 +73,28 @@ The public `appdetails` response carries everything else. Field by field:
 | `age_rating` | `ratings.pegi.rating` / `ratings.esrb.rating` |
 | `iap_items` | `package_groups[].subs[]` — editions, with `price_in_cents_with_discount` |
 
+### Player reviews
+
+A second endpoint, and the ids are the app's own:
+
+```
+https://store.steampowered.com/appreviews/291550?json=1&language=english&filter=all
+```
+
+Each entry carries `review` (the text), `voted_up`, `votes_up` (helpfulness) and
+`author.playtime_forever` in minutes. `query_summary` carries the totals —
+**138,815 positive against 39,861 negative** for Brawlhalla.
+
+`candidate_reviews()` returns them ranked by `voted_up` then helpfulness. **Ranked, not
+chosen.** Ranking by helpfulness alone put three negative reviews at the top, including an
+87-hour "I have never encountered a more spiritually bankrupt species" and a 2,364-hour
+comparison to a deal with the Devil. Those are the best-argued reviews on the page; none of
+them belongs on the publisher's own storefront.
+
+Pick two or three yourself, quote them into `user_reviews`, and set
+`rights_reviews_confirmed` only on a real answer — see
+[`listing-json.md`](listing-json.md).
+
 `tags` are **not** in that response. Steam's user tags render on the page only, so an
 extraction that used the API should declare `tags` in `not_found` rather than omit it.
 

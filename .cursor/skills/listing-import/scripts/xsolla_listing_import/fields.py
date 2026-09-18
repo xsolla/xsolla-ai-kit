@@ -95,6 +95,13 @@ FIELDS = {
     "requirements": (
         "platforms", False, {STEAM: ALWAYS, GOOGLE_PLAY: NEVER, APP_STORE: NEVER},
     ),
+    # Individual player reviews, as opposed to the aggregate score in
+    # ``reviews``.  Steam and Apple both publish the text through a public
+    # endpoint.  Play does not: its reviews section is rendered client-side and
+    # the markup carries only the chrome, so a plain fetch finds nothing.
+    "user_reviews": (
+        "quotes", False, {STEAM: ALWAYS, GOOGLE_PLAY: NEVER, APP_STORE: ALWAYS},
+    ),
 }
 
 # Fields the Shop Builder parsing endpoint (`xsolla shopbuilder get-listing`)

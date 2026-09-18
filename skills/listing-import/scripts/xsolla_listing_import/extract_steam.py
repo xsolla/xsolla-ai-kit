@@ -125,6 +125,44 @@ def _requirements(data):
     return found
 
 
+def candidate_reviews(review_response):
+    """Player reviews from ``appreviews``, ranked, for the agent to choose from.
+
+    Not written to a page by this module and not chosen by it either.  Steam's
+    own summary for one title is 138,815 positive against 39,861 negative, and
+    the top results by helpfulness were all negative -- an 87-hour review
+    opening "I have never encountered a more spiritually bankrupt species", and
+    a 2,364-hour one comparing the game to a deal with the Devil.  Placing the
+    top results on a publisher's own storefront would put a competitor's best
+    argument there.
+
+    So this returns candidates with the signals worth ranking on --
+    ``voted_up``, helpfulness and playtime -- and the selection is the agent's.
+    The caller fetches:
+
+        https://store.steampowered.com/appreviews/<appid>?json=1&language=english
+
+    What this misses: it does not translate, and it does not detect sarcasm.
+    A five-star review titled "Garbage" exists, and so does praise written as
+    abuse.  Read them.
+    """
+    out = []
+    for review in (review_response or {}).get("reviews") or []:
+        text = (review.get("review") or "").strip()
+        if not text:
+            continue
+        author = review.get("author") or {}
+        out.append({
+            "text": text,
+            "voted_up": bool(review.get("voted_up")),
+            "helpful_votes": review.get("votes_up") or 0,
+            "playtime_hours": round((author.get("playtime_forever") or 0) / 60),
+            "source": "steam",
+        })
+    out.sort(key=lambda r: (r["voted_up"], r["helpful_votes"]), reverse=True)
+    return out
+
+
 def _iap_items(data, dlc_details=None):
     """Everything Steam sells alongside the game.
 

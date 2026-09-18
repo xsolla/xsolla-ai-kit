@@ -306,3 +306,63 @@ class TestAppStoreReviewsAreTheNamedApp(unittest.TestCase):
                         {"trackName": "X"}):
             doc = extract_appstore.to_listing(payload, APPLE_URL)
             self.assertNotIn("reviews", doc["fields"], payload)
+
+
+class TestCandidateReviewsAreCandidatesNotChoices(unittest.TestCase):
+    """Steam and Apple both publish review text; Play does not.
+
+    None of it is placed by the extractor. Steam's own summary for Brawlhalla
+    is 138,815 positive against 39,861 negative, and the top results by
+    helpfulness were all negative. A five-star review titled "Garbage" exists.
+    The rating does not predict the sentiment, so the selection has to be read.
+    """
+
+    def test_steam_candidates_carry_what_you_would_rank_on(self):
+        response = {"reviews": [
+            {"review": "Loved it.", "voted_up": True, "votes_up": 12,
+             "author": {"playtime_forever": 6000}},
+            {"review": "Hated it.", "voted_up": False, "votes_up": 400,
+             "author": {"playtime_forever": 120}}]}
+        out = extract_steam.candidate_reviews(response)
+        self.assertEqual(len(out), 2)
+        self.assertEqual(out[0]["text"], "Loved it.")
+        self.assertEqual(out[0]["playtime_hours"], 100)
+        self.assertTrue(out[0]["voted_up"])
+
+    def test_a_more_helpful_negative_does_not_outrank_a_positive(self):
+        """Ranking by helpfulness alone puts the best argument against the
+        game on the publisher's own page."""
+        response = {"reviews": [
+            {"review": "Hated it.", "voted_up": False, "votes_up": 999,
+             "author": {"playtime_forever": 60}},
+            {"review": "Loved it.", "voted_up": True, "votes_up": 1,
+             "author": {"playtime_forever": 60}}]}
+        out = extract_steam.candidate_reviews(response)
+        self.assertEqual(out[0]["text"], "Loved it.")
+
+    def test_an_empty_steam_review_is_dropped(self):
+        out = extract_steam.candidate_reviews({"reviews": [{"review": "  "}]})
+        self.assertEqual(out, [])
+
+    def test_apple_candidates_skip_the_apps_own_entry(self):
+        feed = {"feed": {"entry": [
+            {"im:name": {"label": "The App"}},
+            {"title": {"label": "Great"}, "content": {"label": "Really good."},
+             "im:rating": {"label": "5"},
+             "author": {"name": {"label": "someone"}},
+             "im:voteSum": {"label": "3"}}]}}
+        out = extract_appstore.candidate_reviews(feed)
+        self.assertEqual(len(out), 1)
+        self.assertEqual(out[0]["rating"], 5)
+        self.assertEqual(out[0]["author"], "someone")
+
+    def test_apple_with_no_entries(self):
+        self.assertEqual(extract_appstore.candidate_reviews({}), [])
+        self.assertEqual(extract_appstore.candidate_reviews(
+            {"feed": {"entry": []}}), [])
+
+    def test_play_declares_user_reviews_not_found(self):
+        """Client-rendered; the markup carries only the section's chrome."""
+        doc = extract_play.to_listing(play_page(), PLAY_URL)
+        self.assertIn("user_reviews", doc["not_found"])
+        self.assertNotIn("user_reviews", doc["fields"])

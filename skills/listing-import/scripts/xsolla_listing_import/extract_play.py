@@ -23,6 +23,8 @@ What it misses:
 * ``tags`` -- Play has no user tags.
 * ``requirements`` -- Play publishes a minimum Android version on some
   listings and nothing structured; not extracted, so the block is pruned.
+* ``user_reviews`` -- the reviews section is client-rendered and the markup
+  holds only its chrome. Nothing to extract without a browser.
 * ``iap_items`` -- Play publishes a **price range** (``$0.29 - $239.99``), never
   named items.  The range is carried in ``notes``, because a range is not an
   item and inventing items from it would be a fabrication.
@@ -209,7 +211,12 @@ def to_listing(html, source_url):
         "reviews": _reviews(html),
     }
 
-    not_found = ["key_art", "tags", "iap_items"]
+    # `user_reviews`: the reviews section is rendered client-side. The markup
+    # carries only its chrome -- "Ratings and reviews are verified",
+    # `info_outline`, `arrow_forward` -- and no review text at all. Verified on
+    # the live page 2026-09-18. Steam and Apple both publish theirs through a
+    # public endpoint; Play would need a headless browser.
+    not_found = ["key_art", "tags", "iap_items", "user_reviews"]
     for name, value in list(values.items()):
         if not value:
             values.pop(name)

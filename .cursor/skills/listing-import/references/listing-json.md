@@ -80,6 +80,39 @@ Without it an absent field is ambiguous and `coverage` cannot tell a page that p
 age rating from a run that skipped the field. Listing a field here *and* in `fields` is an
 error.
 
+## `user_reviews`, and its own rights flag
+
+Reviews you have **chosen and quoted**, not a feed:
+
+```json
+"rights_reviews_confirmed": true,
+"fields": {
+  "user_reviews": [
+    {"quote": "It's not button mashing, it's an aggressive tactical input strategy.",
+     "attribution": "TGGTO07 on the App Store",
+     "rating": 5, "source": "app_store"},
+    {"quote": "Easy to pick up, genuinely hard to master.",
+     "attribution": "A player with 445 hours on Steam",
+     "playtime_hours": 445, "source": "steam"}
+  ]
+}
+```
+
+`quote` and `attribution` are required; `rating`, `source` and `playtime_hours` are optional
+and exist so a reviewer can check the choice.
+
+**`rights_reviews_confirmed` is a second question, and it is not the same one.**
+`rights_confirmed` asks whether the listing is the partner's own — that covers their copy and
+their artwork. A player review is a player's words, and republishing someone else's writing
+on a commercial page is a different permission. One flag cannot answer both, so the planner
+places no reviews without this one and says why.
+
+Where they go: one per **`bento-grid` leaf card**. No module has a reviews field, and a leaf
+with two text components takes the quote and the attribution separately.
+
+Google Play publishes no review text — its reviews section is client-rendered and the markup
+holds only the section's chrome. Declared in `not_found`, not left silent.
+
 ## `iap_items`
 
 `name` is required; `price` is optional but must be `{amount: number, currency: <3-letter>}`

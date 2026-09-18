@@ -33,6 +33,29 @@ Use `long_description_text`, not `_html`: the App Store's description is plain t
 breaks, and declaring it as HTML would pass it through the sanitiser unescaped, so a literal
 `<` in the copy would vanish.
 
+## Player reviews come from a third fetch
+
+The lookup API has no review text. A public RSS feed does:
+
+```
+https://itunes.apple.com/us/rss/customerreviews/id=1491520571/sortBy=mostRecent/json
+```
+
+Fifty entries. Each has `title`, `content.label` (the body), `im:rating`, `author.name` and
+`im:voteSum`. **The first entry is the app itself, not a review** — skipped.
+
+Do not trust the rating to sort them. Real first results for one title:
+
+| Rating | Title | Body opens |
+|---|---|---|
+| **5** | `Garbage` | "Honestly hate the game to death worse game of all time" |
+| **5** | `brawlhalla is hell.` | "Not metaphorical hell…" — sarcastic praise |
+| 1 | `Satan's game` | |
+
+A five-star rating with a one-star review under it is common, and praise written as abuse is
+too. So nothing can be filtered on the score: the choice has to be read, which is why
+`candidate_reviews()` returns candidates and `user_reviews` holds what you chose.
+
 ## Two things that will look wrong on the landing
 
 **Portrait screenshots in a landscape gallery.** App Store captures are tall (1290×2796); the

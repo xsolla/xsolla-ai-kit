@@ -197,7 +197,7 @@ def build(document, structure, localization=None):
             continue
 
         if target.action in (mapping.OVERFLOW, mapping.CATALOG,
-                             mapping.REQUIREMENTS):
+                             mapping.REQUIREMENTS, mapping.REVIEWS):
             # Aggregated below: three overflow fields share one component, and
             # the in-app items are one batch of catalog commands.
             continue
@@ -424,6 +424,48 @@ def build(document, structure, localization=None):
                             % ", ".join(e.get("name", "?") for e in unplaced),
                 })
 
+    # Player reviews onto a bento-grid's cards, gated on their own rights
+    # question: a review is a player's words, and the flag that says the
+    # listing belongs to the partner does not say they may republish those.
+    review_ops = []
+    review_blocks = set()
+    quotes = values.get("user_reviews") or []
+    if quotes and document.get("rights_reviews_confirmed") is not True:
+        unresolved.append({
+            "field": "user_reviews",
+            "module": "bento-grid",
+            "reason": "rights_reviews_confirmed is not true, so none were placed",
+            "note": "A player review is a player's words. rights_confirmed "
+                    "covers the partner's own copy and artwork; republishing "
+                    "someone else's needs its own answer.",
+        })
+    elif quotes:
+        placements = blocks.get("bento-grid") or []
+        if not placements:
+            unresolved.append({
+                "field": "user_reviews",
+                "module": "bento-grid",
+                "reason": "no bento-grid block to show the reviews on",
+                "note": "No module has a reviews field; the cards are the "
+                        "destination.",
+            })
+        else:
+            page_id, block_id, block_doc_rev = placements[0]
+            review_ops, unplaced_rev = packs_plan.review_writes(
+                block_doc_rev, block_id, page_id, quotes)
+            if review_ops:
+                review_blocks.add(block_id)
+            if unplaced_rev:
+                unresolved.append({
+                    "field": "user_reviews",
+                    "module": "bento-grid",
+                    "reason": "%d card(s) on the block, %d review(s) chosen, so "
+                              "%d cannot be shown"
+                              % (len(packs_plan.bento_leaves(block_doc_rev)),
+                                 len(quotes), len(unplaced_rev)),
+                    "note": "Choose fewer, or add cards in Site Builder.",
+                })
+
     # System requirements onto the requirements block.
     requirement_ops = []
     requirement_blocks = set()
@@ -456,9 +498,9 @@ def build(document, structure, localization=None):
     # A block nothing was written to has nothing from this listing to show.
     written_blocks = {op["block_id"] for op in
                       (localization_ops + overflow_ops + asset_ops + pack_ops
-                       + requirement_ops)
+                       + requirement_ops + review_ops)
                       if op.get("block_id")} | set(pack_blocks) \
-        | set(requirement_blocks)
+        | set(requirement_blocks) | set(review_blocks)
     # A previous run may have hidden a block this one fills.
     unhide_ops = packs_plan.unhide_operations(structure, written_blocks)
     prune_ops = packs_plan.prune_operations(structure, written_blocks)
@@ -487,19 +529,21 @@ def build(document, structure, localization=None):
         # Unhide first: a block hidden by an earlier run must be visible
         # before anything written into it counts for anything. Deletes last.
         "operations": (unhide_ops + localization_ops + overflow_ops + pack_ops
-                       + requirement_ops + asset_ops + prune_ops),
+                       + requirement_ops + review_ops + asset_ops + prune_ops),
         "catalog_operations": catalog_ops,
         "catalog_warnings": catalog_warnings,
         "manual_follow_up": manual,
         "unresolved": unresolved,
         "unverified": unverified,
         "counts": {
-            "localization": len(localization_ops) + len(requirement_ops),
+            "localization": (len(localization_ops) + len(requirement_ops)
+                             + len(review_ops)),
             "overflow": len(overflow_ops),
             "editions_on_page": len([o for o in pack_ops
                                      if o["field"].startswith("edition.")
                                      and o["kind"] != "patch"]),
             "requirements": len(requirement_ops),
+            "reviews_on_page": len(review_ops),
             "unhidden": len(unhide_ops),
             "pruned_unsupported": len(prune_ops),
             "asset": len([o for o in asset_ops if o["kind"] == "asset"]),

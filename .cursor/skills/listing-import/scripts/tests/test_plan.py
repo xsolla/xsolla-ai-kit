@@ -721,3 +721,110 @@ class TestUnhidingABlockThatGetsContent(unittest.TestCase):
         built = plan.build(document, structure)[0]
         self.assertEqual([o for o in built["operations"]
                           if o["field"].startswith("visible.")], [])
+
+
+class TestPlayerReviewsOnBentoCards(unittest.TestCase):
+    """Reviews are a player's words, on a block with no reviews field."""
+
+    def _block(self, pairs=2, singles=2):
+        grid, comps = {}, {}
+        n = 0
+        for kind, count in (("pair", pairs), ("single", singles)):
+            for _ in range(count):
+                ids = []
+                for _slot in range(2 if kind == "pair" else 1):
+                    cid = "c%d" % n
+                    comps[cid] = {"id": cid, "type": "text",
+                                  "text": {"id": "L:t%d" % n}}
+                    ids.append(cid)
+                    n += 1
+                grid["n%02d" % n] = {"id": "n%02d" % n, "type": "leaf",
+                                     "contentIds": ids}
+        grid["root"] = {"id": "root", "type": "group", "contentIds": []}
+        return {"_id": "bg", "module": "bento-grid",
+                "values": {"grid": grid, "gridComponents": comps}}
+
+    def _plan(self, quotes, rights=True, block=True):
+        document = {"source": "steam",
+                    "source_url": "https://store.steampowered.com/app/1/",
+                    "rights_confirmed": True,
+                    "fields": {"user_reviews": quotes}}
+        if rights:
+            document["rights_reviews_confirmed"] = True
+        blocks = [self._block()] if block else [{"_id": "f", "module": "faq"}]
+        return plan.build(document, {"pages": [{"_id": "p", "blocks": blocks}]})[0]
+
+    def _quotes(self, n):
+        return [{"quote": "Great game %d." % i,
+                 "attribution": "Player %d, 40 hours" % i} for i in range(n)]
+
+    def test_a_quote_and_its_attribution_go_to_separate_components(self):
+        built = self._plan(self._quotes(1))
+        ops = [o for o in built["operations"]
+               if o["field"].startswith("review.")]
+        self.assertEqual([o["field"] for o in ops],
+                         ["review.quote", "review.attribution"])
+        self.assertEqual(ops[0]["value"], "Great game 0.")
+        self.assertEqual(ops[1]["value"], "Player 0, 40 hours")
+
+    def test_a_single_component_card_carries_both(self):
+        """A quote with nobody behind it is worth less than an uneven card."""
+        document = {"source": "steam",
+                    "source_url": "https://store.steampowered.com/app/1/",
+                    "rights_confirmed": True,
+                    "rights_reviews_confirmed": True,
+                    "fields": {"user_reviews": self._quotes(1)}}
+        block = self._block(pairs=0, singles=1)
+        built = plan.build(document,
+                           {"pages": [{"_id": "p", "blocks": [block]}]})[0]
+        ops = [o for o in built["operations"] if o["field"].startswith("review.")]
+        self.assertEqual(len(ops), 1)
+        self.assertIn("—", ops[0]["value"])
+        self.assertIn("Player 0", ops[0]["value"])
+
+    def test_one_review_per_leaf_card(self):
+        built = self._plan(self._quotes(4))
+        quotes = [o for o in built["operations"] if o["field"] == "review.quote"]
+        self.assertEqual(len(quotes), 4)
+        self.assertEqual(len({o["block_id"] for o in quotes}), 1)
+
+    def test_group_nodes_are_not_cards(self):
+        built = self._plan(self._quotes(9))
+        quotes = [o for o in built["operations"] if o["field"] == "review.quote"]
+        self.assertEqual(len(quotes), 4)
+
+    def test_more_reviews_than_cards_is_reported(self):
+        built = self._plan(self._quotes(9))
+        surplus = [u for u in built["unresolved"] if u["field"] == "user_reviews"]
+        self.assertEqual(len(surplus), 1)
+        self.assertIn("5 cannot be shown", surplus[0]["reason"])
+
+    def test_without_the_reviews_rights_flag_nothing_is_placed(self):
+        """rights_confirmed covers the partner's own copy. A player's words are
+        a separate permission."""
+        built = self._plan(self._quotes(2), rights=False)
+        self.assertEqual([o for o in built["operations"]
+                          if o["field"].startswith("review.")], [])
+        reason = [u["reason"] for u in built["unresolved"]
+                  if u["field"] == "user_reviews"][0]
+        self.assertIn("rights_reviews_confirmed", reason)
+
+    def test_no_bento_grid_is_reported_not_silent(self):
+        built = self._plan(self._quotes(2), block=False)
+        self.assertTrue([u for u in built["unresolved"]
+                         if u["field"] == "user_reviews"])
+
+    def test_the_card_order_is_stable_across_runs(self):
+        """Dict order is not a promise; a review moving card between runs would
+        look like a bug."""
+        first = self._plan(self._quotes(3))
+        second = self._plan(self._quotes(3))
+        key = lambda p: [(o["localized_id"], o["value"]) for o in p["operations"]
+                         if o["field"].startswith("review.")]
+        self.assertEqual(key(first), key(second))
+
+    def test_the_bento_block_is_not_pruned_once_it_has_reviews(self):
+        built = self._plan(self._quotes(2))
+        self.assertEqual([o for o in built["operations"]
+                          if o["kind"] == "delete"
+                          and o["module"] == "bento-grid"], [])

@@ -15,6 +15,18 @@ Two fields carry more weight than their size suggests:
     whether the game belongs to the partner running the import.  This flag is
     where that check lives, and ``plan.py`` refuses without it.
 
+``user_reviews``
+    Player reviews the agent has **chosen and quoted**, not a raw feed.  Both
+    Steam and Apple publish the text, and it is hostile by default: the first
+    results for one title include "Garbage" (rated five stars), "Satan's game",
+    and a 2,364-hour review comparing the game to a deal with the Devil.  The
+    star rating does not predict the sentiment, so nothing can be filtered on
+    it -- the selection has to be read, which makes it the agent's call.
+
+    Each entry needs ``quote`` and ``attribution``; ``rating``, ``source`` and
+    ``playtime_hours`` are optional and exist so a reviewer can check the
+    choice.  ``rights_reviews_confirmed`` gates writing any of them.
+
 ``not_found``
     What the agent looked for and could not find, as opposed to what it never
     looked for.  Without it an absent field is ambiguous, and coverage cannot
@@ -34,7 +46,12 @@ from . import fields as field_model
 from .errors import MISSING, describe_got, finding, js_type
 
 REQUIRED_TOP = ("source", "source_url", "rights_confirmed", "fields")
-OPTIONAL_TOP = ("fetched_at", "not_found", "notes")
+# ``rights_reviews_confirmed`` is separate from ``rights_confirmed`` on purpose.
+# The first asks whether the listing is the partner's own -- it covers their
+# copy and their artwork. A player review is written by a player, and
+# republishing someone else's words on a commercial page is a different
+# permission. One flag cannot answer both questions.
+OPTIONAL_TOP = ("fetched_at", "not_found", "notes", "rights_reviews_confirmed")
 
 # Long description arrives in one of two forms; Steam ships BBCode, the other
 # two ship something closer to HTML or plain text.
@@ -42,6 +59,7 @@ DESCRIPTION_KEYS = ("long_description_bbcode", "long_description_html",
                     "long_description_text")
 
 _EXPECTED_KIND_TYPES = {
+    "quotes": list,
     "platforms": list,
     "text": str,
     "richtext": str,
@@ -93,6 +111,26 @@ def _check_iap_items(items, errors):
         if not isinstance(currency, str) or len(currency) != 3:
             errors.append(finding(path + ".price.currency", "3-letter ISO code",
                                   describe_got(currency)))
+
+
+QUOTE_KEYS = ("quote", "attribution", "rating", "source", "playtime_hours")
+
+
+def _check_quotes(quotes, errors):
+    """Each quote needs the words and who said them."""
+    for index, entry in enumerate(quotes):
+        path = "fields.user_reviews.%d" % index
+        if not isinstance(entry, dict):
+            errors.append(finding(path, "object", js_type(entry)))
+            continue
+        for extra in sorted(set(entry) - set(QUOTE_KEYS)):
+            errors.append(finding(path + "." + extra, "a known quote key",
+                                  "unknown key"))
+        for required in ("quote", "attribution"):
+            if not (isinstance(entry.get(required), str)
+                    and entry[required].strip()):
+                errors.append(finding(path + "." + required, "non-empty string",
+                                      describe_got(entry.get(required, MISSING))))
 
 
 def validate(document):
@@ -149,6 +187,8 @@ def validate(document):
             continue
         if kind == "items":
             _check_iap_items(value, errors)
+        elif kind == "quotes":
+            _check_quotes(value, errors)
         elif kind in ("media[]", "list"):
             for index, entry in enumerate(value):
                 if not isinstance(entry, str) or not entry.strip():
