@@ -137,8 +137,11 @@ destination. An earlier version of this skill reported a 7/11 = 64% ceiling — 
 artefact of counting only structured block fields, and it is gone
 ([why, field by field](references/block-mapping.md)):
 
-- **`genres`, `tags`, `age_rating`** → one appended TEXT component in the `description`
-  block. Copy rather than a typed field, and a reader of the page cannot tell the difference.
+- **`reviews`, `genres`, `tags`, `age_rating`** → appended to the **description's own**
+  localized string, after the long description. Not a component of their own: the block ships
+  exactly one TEXT component and the description claims it, and a second needs an id the
+  editor generates. One write, one ref, and the page reads as the description followed by the
+  detail lines.
 - **`iap_items`** → catalog virtual items priced in real money.
 
 `delivered` is still below `extraction` for Play and Apple, because neither publishes

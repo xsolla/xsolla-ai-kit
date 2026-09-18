@@ -328,37 +328,67 @@ def build(document, structure, localization=None):
             "note": target.note,
         })
 
-    # Overflow: genres, tags and age rating as one block of copy, because no
+    # Overflow: reviews, genres, tags and age rating as copy, because no
     # module has a structured field for any of them.
+    #
+    # Appended to the *same* localized string the long description writes to,
+    # not to a component of its own. The description block ships exactly one
+    # TEXT component and the long description claims it; a second one needs an
+    # id the editor generates, which is why the runner used to skip this and
+    # every shop came out with no reviews and no genres on it. One write to one
+    # ref renders as the description followed by the detail lines, which is
+    # what a reader wants anyway.
     overflow_ops = []
     overflow_html, overflow_carried = overflow.render(values)
     if overflow_html:
-        target = mapping.target_for("genres")
-        placements = blocks.get(target.module) or []
-        if placements:
-            page_id, block_id, _doc = placements[0]
-            overflow_ops.append({
-                "kind": "overflow",
-                "field": "+".join(overflow_carried),
-                "module": target.module,
-                "block_id": block_id,
-                "page_id": page_id,
-                "path": list(target.path),
-                "value": overflow_html,
-                "dropped": [],
-                "confidence": target.confidence,
-                "note": "One appended TEXT component carrying %s. Needs a "
-                        "generated component id; read the block first."
-                        % ", ".join(overflow_carried),
-            })
+        description_op = None
+        for candidate in localization_ops:
+            if candidate["field"] == "long_description" \
+                    and candidate.get("localized_id"):
+                description_op = candidate
+                break
+        if description_op is not None:
+            description_op["value"] = "%s%s" % (description_op["value"] or "",
+                                                overflow_html)
+            description_op["field"] = "long_description+%s" % "+".join(
+                overflow_carried)
+            description_op["note"] = (
+                "The description, followed by %s. One localized string: the "
+                "block has one TEXT component and both belong in it."
+                % ", ".join(overflow_carried))
         else:
-            for name in overflow_carried:
-                unresolved.append({
-                    "field": name,
+            target = mapping.target_for("genres")
+            placements = blocks.get(target.module) or []
+            resolved = None
+            if placements:
+                page_id, block_id, block_doc_ovf = placements[0]
+                component = resolve_component_path(block_doc_ovf, "text", "label")
+                if component is not None:
+                    resolved = resolve_localized_id(block_doc_ovf, component)
+            if resolved:
+                overflow_ops.append({
+                    "kind": "localization",
+                    "field": "+".join(overflow_carried),
                     "module": target.module,
-                    "reason": "no %s block to carry the copy" % target.module,
-                    "note": target.note,
+                    "block_id": block_id,
+                    "page_id": page_id,
+                    "path": component,
+                    "localized_id": resolved,
+                    "value": overflow_html,
+                    "dropped": [],
+                    "confidence": target.confidence,
+                    "note": "No long description to append to, so the detail "
+                            "lines take the component on their own.",
                 })
+            else:
+                for name in overflow_carried:
+                    unresolved.append({
+                        "field": name,
+                        "module": target.module,
+                        "reason": "no text component on the %s block to carry "
+                                  "the copy" % target.module,
+                        "note": target.note,
+                    })
 
     # Catalog first: in-app items become priced virtual items, and a pack
     # card's buy button points at the SKU, which is where its price comes from.

@@ -93,7 +93,7 @@ Exit status: `0` clean · `1` errors or blockers · `2` bad invocation.
 cd scripts && python3 -m unittest discover -s tests -t . -v
 ```
 
-298 tests, no network. Every fixture is real, not hand-written: the live `appdetails`
+312 tests, no network. Every fixture is real, not hand-written: the live `appdetails`
 response for Steam app 812140, the live iTunes lookup for id 529479190, a trimmed excerpt of
 the live Play page for `com.supercell.clashofclans`, and the block spine of a landing
 `import-listing` actually produced. A synthetic fixture would have agreed with whatever the
@@ -121,6 +121,10 @@ carries its own conventions rather than inheriting any. They are enforced by the
   (`--landing-id` was taking the block id; `icon` pointed at a `values` field that does not
   exist). Both fixed and pinned. What is still unproven is every *other* `schema`-confidence
   path — only `icon`, `key_art` and `screenshots` have been watched to land.
+- **The detail lines share the description's string.** Reviews, genres, tags and the age
+  rating are appended to the long description's own localized value, because the block has one
+  TEXT component. So a shop with no long description puts them in that component alone, and a
+  shop whose description block has no text component reports all of them unresolved.
 - **The buy button's SKU is set, not verified.** The catalog create is ordered first, but
   nothing reads the catalog back to confirm it landed. A button pointing at a SKU that failed
   to create renders without a price.

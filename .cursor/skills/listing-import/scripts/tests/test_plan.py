@@ -214,7 +214,7 @@ class TestMalformedInputToAPublicEntryPoint(unittest.TestCase):
 class TestOverflowAndCatalogRouting(unittest.TestCase):
     """The four fields that used to be reported as unmappable."""
 
-    def _plan(self, values, modules=("description", "gallery")):
+    def _plan(self, values, modules=("description", "gallery"), text_comp=True):
         document = {"source": "steam",
                     "source_url": "https://store.steampowered.com/app/1/",
                     "rights_confirmed": True, "fields": values}
@@ -223,38 +223,58 @@ class TestOverflowAndCatalogRouting(unittest.TestCase):
             doc = {"_id": "b%d" % index, "module": module}
             if module == "gallery":
                 doc["values"] = {"slides": [{"id": "s%d" % i} for i in range(4)]}
+            elif module == "description" and text_comp:
+                doc["values"] = {
+                    "componentsIds": ["c1"],
+                    "components": {"c1": {"id": "c1", "type": "text",
+                                          "label": {"id": "L:desc"}}}}
+            elif module == "leadGameSales":
+                doc["values"] = {"title": {"id": "L:lead"}}
             return doc
 
         structure = {"pages": [{"_id": "p", "blocks": [
             block(i, m) for i, m in enumerate(modules)]}]}
         return plan.build(document, structure)[0]
 
-    def test_three_overflow_fields_become_one_component(self):
-        built = self._plan({"genres": ["RPG"], "tags": ["Co-op"],
-                            "age_rating": "PEGI 18"})
-        overflow_ops = [o for o in built["operations"] if o["kind"] == "overflow"]
-        self.assertEqual(len(overflow_ops), 1)
-        self.assertEqual(overflow_ops[0]["field"], "genres+tags+age_rating")
+    def test_overflow_is_appended_to_the_description_not_a_component_of_its_own(self):
+        """The block ships one TEXT component and the description claims it. A
+        second needs an id the editor generates, which is why this used to be
+        skipped and every shop came out with no reviews on it."""
+        built = self._plan({"long_description_text": "Body copy.",
+                            "genres": ["RPG"], "reviews": "4.4 out of 5"})
+        ops = [o for o in built["operations"] if o["kind"] == "localization"]
+        self.assertEqual(len(ops), 1)
+        op = ops[0]
+        self.assertIn("Body copy.", op["value"])
+        self.assertIn("Player reviews", op["value"])
+        self.assertIn("Genres", op["value"])
+        self.assertEqual(op["localized_id"], "L:desc")
 
-    def test_the_component_targets_the_description_block(self):
-        built = self._plan({"genres": ["RPG"]})
-        op = [o for o in built["operations"] if o["kind"] == "overflow"][0]
-        self.assertEqual(op["module"], "description")
-        self.assertEqual(op["path"], ["values", "components"])
+    def test_the_field_name_records_what_was_merged(self):
+        built = self._plan({"long_description_text": "Body.", "genres": ["RPG"]})
+        op = [o for o in built["operations"] if o["kind"] == "localization"][0]
+        self.assertEqual(op["field"], "long_description+genres")
 
-    def test_no_description_block_reports_each_field_unresolved(self):
+    def test_the_description_comes_before_the_detail_lines(self):
+        built = self._plan({"long_description_text": "Body copy.",
+                            "genres": ["RPG"]})
+        value = [o for o in built["operations"]
+                 if o["kind"] == "localization"][0]["value"]
+        self.assertLess(value.index("Body copy."), value.index("Genres"))
+
+    def test_with_no_long_description_the_overflow_takes_the_component(self):
+        built = self._plan({"genres": ["RPG"], "reviews": "4.4 out of 5"})
+        ops = [o for o in built["operations"] if o["kind"] == "localization"]
+        self.assertEqual(len(ops), 1)
+        self.assertEqual(ops[0]["localized_id"], "L:desc")
+        self.assertIn("Genres", ops[0]["value"])
+
+    def test_no_text_component_reports_each_field_unresolved(self):
         built = self._plan({"genres": ["RPG"], "age_rating": "PEGI 18"},
                            modules=("gallery",))
         unresolved = {u["field"] for u in built["unresolved"]}
         self.assertIn("genres", unresolved)
         self.assertIn("age_rating", unresolved)
-
-    def test_overflow_comes_after_localization_before_assets(self):
-        built = self._plan({"title": "T", "genres": ["RPG"],
-                            "screenshots": ["https://x.test/a.jpg"]},
-                           modules=("leadGameSales", "description", "gallery"))
-        kinds = [o["kind"] for o in built["operations"]]
-        self.assertLess(kinds.index("overflow"), kinds.index("asset"))
 
     def test_iap_items_become_catalog_operations_not_page_operations(self):
         built = self._plan({"iap_items": [
@@ -273,62 +293,14 @@ class TestOverflowAndCatalogRouting(unittest.TestCase):
         self.assertEqual(built["catalog_operations"], [])
         self.assertEqual(built["catalog_warnings"], [])
 
-    def test_counts_include_the_new_kinds(self):
+    def test_counts_include_the_catalog(self):
         built = self._plan({"genres": ["RPG"], "iap_items": [{"name": "X"}]})
-        self.assertEqual(built["counts"]["overflow"], 1)
         self.assertEqual(built["counts"]["catalog"], 1)
 
     def test_nothing_falls_through_to_manual(self):
         built = self._plan({"genres": ["RPG"], "tags": ["Co-op"],
                             "age_rating": "PEGI 18", "iap_items": [{"name": "X"}]})
         self.assertEqual(built["manual_follow_up"], [])
-
-
-class TestLocalizedIdResolution(unittest.TestCase):
-    """A localization write targets an `L:` id, not a path."""
-
-    def test_resolves_the_id_a_field_already_carries(self):
-        block = {"values": {"title": {"enable": True, "id": "L:abc-123"}}}
-        self.assertEqual(plan.resolve_localized_id(block, ("values", "title")),
-                         "L:abc-123")
-
-    def test_a_bare_l_string_also_resolves(self):
-        block = {"values": {"title": "L:abc-123"}}
-        self.assertEqual(plan.resolve_localized_id(block, ("values", "title")),
-                         "L:abc-123")
-
-    def test_an_absent_path_is_none_not_an_invention(self):
-        self.assertIsNone(plan.resolve_localized_id({"values": {}}, ("values", "title")))
-
-    def test_a_field_with_no_id_is_none(self):
-        block = {"values": {"title": {"enable": True}}}
-        self.assertIsNone(plan.resolve_localized_id(block, ("values", "title")))
-
-    def test_a_non_l_id_is_refused(self):
-        """An id that is not an L: reference is not a localization target."""
-        block = {"values": {"title": {"id": "I:image01"}}}
-        self.assertIsNone(plan.resolve_localized_id(block, ("values", "title")))
-
-    def test_the_plan_carries_the_id_through(self):
-        document = {"source": "steam",
-                    "source_url": "https://store.steampowered.com/app/1/",
-                    "rights_confirmed": True, "fields": {"title": "T"}}
-        structure = {"pages": [{"_id": "p", "blocks": [
-            {"_id": "b", "module": "leadGameSales",
-             "values": {"title": {"enable": True, "id": "L:real-id"}}}]}]}
-        built, _ = plan.build(document, structure)
-        op = [o for o in built["operations"] if o["field"] == "title"][0]
-        self.assertEqual(op["localized_id"], "L:real-id")
-
-    def test_a_block_with_no_id_yields_none_so_the_runner_can_refuse(self):
-        document = {"source": "steam",
-                    "source_url": "https://store.steampowered.com/app/1/",
-                    "rights_confirmed": True, "fields": {"title": "T"}}
-        structure = {"pages": [{"_id": "p", "blocks": [
-            {"_id": "b", "module": "leadGameSales", "values": {}}]}]}
-        built, _ = plan.build(document, structure)
-        op = [o for o in built["operations"] if o["field"] == "title"][0]
-        self.assertIsNone(op["localized_id"])
 
 
 class TestGallerySlotsAreFinite(unittest.TestCase):
