@@ -12,8 +12,10 @@ careful, and the care is structural rather than advisory:
   than continuing without a way back.
 * **Only allowlisted commands can be invoked.**  ``ALLOWED`` is checked on every
   call, so no code path here -- present or added later -- can reach a publish,
-  a delete, or anything else that was not intended.  A skill whose safety rule
-  is "never publish" should not rely on nobody typing it.
+  a website delete, or anything else that was not intended.  A skill whose
+  safety rule is "never publish" should not rely on nobody typing it.  One
+  destructive command is in there, ``delete-block``, and
+  ``tests/test_apply.py`` asserts it is the only one.
 * **Every write is read back.**  Shop Builder answers ``ok: true`` to a patch at
   a path that does not exist and changes nothing, so an unverified write is
   indistinguishable from a successful one.
@@ -36,6 +38,11 @@ What this module does NOT do, on purpose:
   are appended to the description's own localized string.
 * **It does not publish, and cannot.**  Publication is a human's, in Publisher
   Account.
+
+One destructive command is reachable: ``delete-block``, for the content-first
+prune.  It is scoped to a block -- never a website, an asset or a language --
+it runs only for a ``delete`` operation the preview already listed on its own,
+and the pre-write backup is the only way back from it.
 """
 
 from __future__ import annotations
@@ -49,8 +56,9 @@ import time
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
-# Every xsolla subcommand this module may invoke.  Additive-only by review:
-# nothing destructive, nothing that publishes, nothing that deletes.
+# Every xsolla subcommand this module may invoke.  Reads and additive writes,
+# plus exactly one destructive command for the content-first prune.  Nothing
+# here publishes, and nothing removes a website, an asset or a language.
 ALLOWED = frozenset([
     ("shopbuilder", "get-structure"),
     ("shopbuilder", "get-localization"),
@@ -60,12 +68,18 @@ ALLOWED = frozenset([
     ("shopbuilder", "update-localization"),
     ("catalog", "admin-create-group"),
     ("catalog", "create-items"),
+    # The one destructive command here, for the content-first prune, and it is
+    # scoped as narrowly as the job allows: a block, never a website, an asset
+    # or a language.  It runs only for a `delete` operation the preview already
+    # listed on its own, and the pre-write backup is the only way back from it,
+    # which is why `back_up` refuses to let a run start without one.
+    ("shopbuilder", "delete-block"),
 ])
 
 # Commands that must never be reachable from here, named so a reader can see
 # the intent rather than infer it from the absence of a line.
 FORBIDDEN_HINT = (
-    "publish, delete-website, delete-block, delete-asset, enable-preview"
+    "publish, delete-website, delete-asset, delete-language, enable-preview"
 )
 
 IMAGE_MAX_BYTES = 10 * 1024 * 1024  # upload-asset's documented limit
@@ -338,6 +352,23 @@ def _apply_one(op, slug, landing, locale, confirmed, call, fetch, temp, outcome)
         if not confirmed:
             return
         _write_and_verify(op, slug, args, op.get("value"), call, outcome)
+        return
+
+    if kind == "delete":
+        args = ["--landing-id", landing, "--page-id", op["page_id"],
+                "--blockid", op["block_id"], "--force"]
+        outcome["commands"].append(["shopbuilder", "delete-block"] + args)
+        if not confirmed:
+            return
+        result = call("shopbuilder", "delete-block", args)
+        if result["code"] != 0:
+            outcome["failed"].append({
+                "step": op.get("step"), "field": op["field"],
+                "reason": (result["stderr"] or "").strip()[:200]})
+            return
+        outcome["performed"].append({
+            "step": op.get("step"), "field": op["field"], "kind": kind,
+            "verified": "block removed; recoverable only from the backup"})
         return
 
     if kind == "asset":

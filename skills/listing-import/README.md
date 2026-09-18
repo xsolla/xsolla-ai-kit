@@ -93,7 +93,7 @@ Exit status: `0` clean · `1` errors or blockers · `2` bad invocation.
 cd scripts && python3 -m unittest discover -s tests -t . -v
 ```
 
-312 tests, no network. Every fixture is real, not hand-written: the live `appdetails`
+319 tests, no network. Every fixture is real, not hand-written: the live `appdetails`
 response for Steam app 812140, the live iTunes lookup for id 529479190, a trimmed excerpt of
 the live Play page for `com.supercell.clashofclans`, and the block spine of a landing
 `import-listing` actually produced. A synthetic fixture would have agreed with whatever the

@@ -154,18 +154,26 @@ class TestTheAllowlist(unittest.TestCase):
     """"Never publish" should be structural, not a line in a README."""
 
     def test_publish_like_commands_are_not_in_the_allowlist(self):
-        for action in ("delete-website", "delete-block", "delete-asset",
-                       "enable-preview", "preview-link", "set-landing-type"):
+        for action in ("delete-website", "delete-asset", "delete-language",
+                       "enable-preview", "preview-link", "set-landing-type",
+                       "duplicate-website", "add-domain"):
             self.assertNotIn(("shopbuilder", action), applier.ALLOWED, action)
 
     def test_calling_one_raises_refused(self):
         with self.assertRaises(applier.Refused):
             applier.cli_call("shopbuilder", "delete-website", [])
 
-    def test_the_allowlist_is_only_reads_and_additive_writes(self):
+    def test_delete_block_is_the_only_destructive_command(self):
+        """It arrived for the content-first prune. Nothing else destructive
+        should follow it in without this test failing first."""
+        destructive = {action for _p, action in applier.ALLOWED
+                       if action.startswith("delete")}
+        self.assertEqual(destructive, {"delete-block"})
+
+    def test_nothing_in_the_allowlist_publishes(self):
         for _product, action in applier.ALLOWED:
-            self.assertFalse(action.startswith("delete"), action)
             self.assertNotIn("publish", action, action)
+            self.assertNotIn("preview", action, action)
 
 
 class TestLocalizationRefusals(unittest.TestCase):
@@ -568,3 +576,62 @@ class TestTransientSessionRetry(unittest.TestCase):
     def test_retry_is_bounded(self):
         self.assertGreaterEqual(applier.MAX_ATTEMPTS, 2)
         self.assertLessEqual(applier.MAX_ATTEMPTS, 6)
+
+
+class TestPruneExecution(unittest.TestCase):
+    """delete-block is the one destructive command in the allowlist."""
+
+    def _delete_op(self):
+        return {"step": 1, "kind": "delete", "field": "unsupported.faq",
+                "module": "faq", "block_id": "b-faq", "page_id": "p1",
+                "path": None, "confidence": "confirmed", "note": "n"}
+
+    def test_a_rehearsal_does_not_delete(self):
+        cli = FakeCli()
+        out = applier.apply_plan(plan_with(self._delete_op()), "s", call=cli)
+        self.assertEqual(cli.calls, [])
+        self.assertTrue(out["commands"])
+
+    def test_the_delete_names_the_landing_the_page_and_the_block(self):
+        cli = FakeCli()
+        with tempfile.TemporaryDirectory() as d:
+            applier.apply_plan(plan_with(self._delete_op()), "s", confirmed=True,
+                               call=cli, backup_dir=d, landing=LANDING)
+        args = [c for c in cli.calls if c[1] == "delete-block"][0][2]
+        self.assertEqual(args[args.index("--landing-id") + 1], LANDING)
+        self.assertEqual(args[args.index("--page-id") + 1], "p1")
+        self.assertEqual(args[args.index("--blockid") + 1], "b-faq")
+        self.assertIn("--force", args)
+
+    def test_a_delete_happens_only_after_the_backup(self):
+        cli = FakeCli()
+        with tempfile.TemporaryDirectory() as d:
+            applier.apply_plan(plan_with(self._delete_op()), "s", confirmed=True,
+                               call=cli, backup_dir=d)
+        actions = cli.actions()
+        self.assertLess(actions.index("shopbuilder get-localization"),
+                        actions.index("shopbuilder delete-block"))
+
+    def test_a_failed_backup_means_nothing_is_deleted(self):
+        cli = FakeCli(answers={("shopbuilder", "get-localization"): fail("401")})
+        with tempfile.TemporaryDirectory() as d:
+            with self.assertRaises(applier.Refused):
+                applier.apply_plan(plan_with(self._delete_op()), "s",
+                                   confirmed=True, call=cli, backup_dir=d,
+                                   landing=LANDING)
+        self.assertNotIn("shopbuilder delete-block", cli.actions())
+
+    def test_the_result_says_the_backup_is_the_only_way_back(self):
+        cli = FakeCli()
+        with tempfile.TemporaryDirectory() as d:
+            out = applier.apply_plan(plan_with(self._delete_op()), "s",
+                                     confirmed=True, call=cli, backup_dir=d,
+                                     landing=LANDING)
+        self.assertIn("backup", out["performed"][0]["verified"])
+
+    def test_still_nothing_else_destructive_is_reachable(self):
+        for action in ("delete-website", "delete-asset", "delete-language",
+                       "delete-page"):
+            self.assertNotIn(("shopbuilder", action), applier.ALLOWED, action)
+        with self.assertRaises(applier.Refused):
+            applier.cli_call("shopbuilder", "delete-website", [])
