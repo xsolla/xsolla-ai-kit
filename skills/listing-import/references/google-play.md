@@ -56,6 +56,15 @@ every target field already in it.** Verified 2026-09-14 for `com.supercell.clash
 | `developer` | the first `/store/apps/dev?id=` link's text |
 | `age_rating` | the rating badge — `Everyone`, `Everyone 10+`, `Teen`, … |
 | `genres` | the `/store/apps/category/<SLUG>` link |
+| `reviews` | the JSON-LD `aggregateRating` — **not** the visible text |
+
+That last row is the one to be careful about. A Play page carries a rail of
+similar apps: the real page for `com.supercell.clashofclans` has **two**
+`>N reviews<` strings (348K and 328K) and **seventeen** `aria-label` ratings.
+Reading the first match gives the named app's numbers by position rather than by
+identity — right by luck, and a DOM reorder reports a neighbour's instead. The
+`aggregateRating` block belongs to the app the URL names, occurs once, and
+carries the exact count (`347851`, not `348K`).
 
 `extract_play.py` does this, and fails **field by field** on purpose: a renamed class costs
 one field, declared in `not_found`, rather than raising and losing the other ten. It is the

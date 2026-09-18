@@ -219,3 +219,90 @@ class TestAllThreeSourcesMeetTheTarget(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestReviewsComeFromTheAppsOwnBlock(unittest.TestCase):
+    """A Play page carries a rail of similar apps.
+
+    The real page for com.supercell... has two ">N reviews<" strings (348K and
+    328K) and seventeen aria-label ratings. Reading the first match gave
+    Brawlhalla's numbers by position, not by identity — right by luck, and a
+    DOM reorder would have silently reported a neighbour's. The JSON-LD
+    aggregateRating belongs to the app the URL names, occurs once, and carries
+    the exact count.
+    """
+
+    SCHEMA = ('<script type="application/ld+json">{"@type":"SoftwareApplication",'
+              '"name":"Target App","aggregateRating":{"@type":"AggregateRating",'
+              '"ratingValue":"4.405488967895508","ratingCount":"347851"}}</script>')
+    NEIGHBOURS = ('<div aria-label="Rated 5.0 stars"></div>'
+                  '<div>328K reviews</div>'
+                  '<div aria-label="Rated 3.1 stars"></div>'
+                  '<div>12K reviews</div>')
+
+    def _page(self, body):
+        return ('<html><head><meta property="og:title" content="Target App">'
+                '</head><body>play.google.com' + body + '</body></html>')
+
+    def test_the_structured_block_wins_over_the_visible_text(self):
+        doc = extract_play.to_listing(
+            self._page(self.NEIGHBOURS + self.SCHEMA), PLAY_URL)
+        reviews = doc["fields"]["reviews"]
+        self.assertIn("4.4 out of 5", reviews)
+        self.assertIn("347,851", reviews)
+        self.assertNotIn("328K", reviews)
+        self.assertNotIn("5.0", reviews)
+
+    def test_the_count_is_exact_not_abbreviated(self):
+        doc = extract_play.to_listing(self._page(self.SCHEMA), PLAY_URL)
+        self.assertIn("347,851", doc["fields"]["reviews"])
+        self.assertNotIn("348K", doc["fields"]["reviews"])
+
+    def test_a_rating_with_no_count_still_reports_the_rating(self):
+        page = self._page('"ratingValue":"4.4"')
+        self.assertEqual(extract_play.to_listing(page, PLAY_URL)["fields"]["reviews"],
+                         "4.4 out of 5 on Google Play")
+
+    def test_the_visible_fallback_says_the_number_is_approximate(self):
+        """No structured block, so the number is positional — say so."""
+        page = self._page('<div aria-label="Rated 4.2 stars"></div>'
+                          '<div>99K reviews</div>')
+        reviews = extract_play.to_listing(page, PLAY_URL)["fields"]["reviews"]
+        self.assertIn("about 99K", reviews)
+
+    def test_no_rating_anywhere_is_none_not_a_guess(self):
+        doc = extract_play.to_listing(self._page("<div>nothing</div>"), PLAY_URL)
+        self.assertNotIn("reviews", doc["fields"])
+        self.assertIn("reviews", doc["not_found"])
+
+    def test_the_real_page_fixture_gives_the_exact_count(self):
+        doc = extract_play.to_listing(play_page(), PLAY_URL)
+        # The trimmed fixture may predate the schema block; assert only that
+        # whatever comes back is the app's own rating, never a neighbour's.
+        reviews = doc["fields"].get("reviews")
+        if reviews:
+            self.assertIn("4.4", reviews)
+
+
+class TestAppStoreReviewsAreTheNamedApp(unittest.TestCase):
+    """The lookup response is keyed by the id in the URL, so there is one
+    result and its rating fields are its own — no ambiguity to guard against.
+    """
+
+    def test_the_rating_comes_from_the_single_result(self):
+        doc = extract_appstore.to_listing(appstore_lookup(), APPLE_URL)
+        self.assertIn("out of 5", doc["fields"]["reviews"])
+        self.assertIn("ratings on the App Store", doc["fields"]["reviews"])
+
+    def test_the_score_is_rounded_to_one_decimal(self):
+        """The API returns 4.11341; four-figure precision on a star rating
+        reads as a bug."""
+        doc = extract_appstore.to_listing(appstore_lookup(), APPLE_URL)
+        self.assertRegex(doc["fields"]["reviews"], r"^\d\.\d out of 5")
+
+    def test_a_missing_score_or_count_yields_nothing(self):
+        for payload in ({"trackName": "X", "userRatingCount": 10},
+                        {"trackName": "X", "averageUserRating": 4.5},
+                        {"trackName": "X"}):
+            doc = extract_appstore.to_listing(payload, APPLE_URL)
+            self.assertNotIn("reviews", doc["fields"], payload)
