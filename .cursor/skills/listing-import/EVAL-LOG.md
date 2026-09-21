@@ -15,11 +15,15 @@ call in this round was a `GET`.
 | Field coverage — mapping, all three | — | **100%** — every extracted field has a destination |
 | Field coverage — delivered, Steam | ≥ 80% | **90.9%** (10/11) |
 | Field coverage — delivered, Play / App Store | ≥ 80% | **72.7%** (8/11) |
-| Unit tests | pass | **264 pass**, no network, 0.07 s |
+| Unit tests | pass | **343 pass**, no network, 0.09 s |
 | Sources extracted | 3 | **3** |
 | Sources with a working server-side import | 3 | **1** (Steam) |
 | Manual interventions, Steam dry run | ≤ 2 | **2** (see below) |
 | Time, URL → mapping preview | report | **~4 s** of tool time; ~0.4 s of it API latency |
+| Time, URL → written shop | report | **107 s** for Steam; asset round trips dominate |
+| Games per source | ≥ 3 | **1** (Brawlhalla). A second, Minecraft, was run on the App Store outside this log |
+| Run success — no structural fix | ≥ 8/10 | **0 of 3 on first pass.** Every cause is fixed; a clean re-run has not been done |
+| Manual interventions per run | ≤ 2 | **2** — the rights question and the confirmation, both by design |
 
 Extraction clears the target on all three sources. Delivered sits below it for Play and the
 App Store for a reason neither this skill nor Xsolla controls: neither storefront publishes
@@ -228,6 +232,74 @@ The first two exist because Shop Builder makes the wrong thing look like the rig
 localization write against an invented id succeeds and changes a string nothing renders. A
 patch to a component id the block does not have succeeds and changes nothing. Neither
 produces an error, so neither can be caught by trying it and looking at the response.
+
+## Write runs, and what did not import
+
+Three shops, Brawlhalla, sandbox merchant 936601. Counts are from each run's own JSON report;
+the shop state after them was read back separately rather than inferred.
+
+| Shop | Applied | Skipped | Failed | Of those failures |
+|---|---|---|---|---|
+| `brawlhalla-steam-0917` | 81 | **0** | 6 | 5 × HTTP 422 "item exists", 1 transient read-back |
+| `brawlhalla-play-0917` | 15 | **0** | **0** | — |
+| `brawlhalla-ios-0918` | 47 | **0** | 4 | 4 × HTTP 422 "item exists" |
+
+Verified against the shops afterwards: 0 hidden blocks on any of them, every uploaded
+screenshot rendering, 5 pack cards carrying a buy SKU on Steam and the App Store, system
+requirements filled on Steam, and the review score in all three descriptions.
+
+**What did not import, by source and by reason.** These are three different kinds of miss and
+they should not be added together:
+
+*The source does not publish it* — excluded from that source's denominator, not counted
+against the extractor:
+
+| | Play | App Store |
+|---|---|---|
+| `key_art` | Play no longer renders a feature graphic | Apple publishes none |
+| `tags` | no user tags | no user tags |
+| `requirements` | an Android version in prose only | none published |
+| `user_reviews` | reviews section is client-rendered | — |
+
+*The source publishes it and the extractor missed it* — the only category that is a defect:
+
+| Source | Field | Why |
+|---|---|---|
+| Steam | `tags` | user tags render on the page and are absent from `appdetails`; the extraction used the API |
+| App Store | `short_description` | the subtitle is not in the lookup response |
+| Play | `iap_items` | only a price range is published, never named items |
+
+*The page had nowhere to put it* — extracted fine, reported as `unresolved`:
+
+| Field | Reason |
+|---|---|
+| `platforms` | no `sidebar` block on any of the three landings |
+| `developer` | no `lead` block |
+| `screenshots` (surplus) | 5–6 extracted, gallery has 3 slides on the default template |
+| `iap_items` (surplus) | 10 extracted on the App Store, 5 pack cards available |
+
+## A defect this log should carry: the catalog prices are wrong
+
+Read back from the live catalog on 2026-09-21, against what was extracted from Steam:
+
+| SKU | Extracted | In the catalog |
+|---|---|---|
+| `steam_brawlhalla_all_legends_pack` | 39.99 EUR | **19.99 USD** |
+| `steam_brawlhalla_collectors_pack` | 99.99 EUR | **79.99 USD** |
+| `steam_brawlhalla_ezio_starter_pack` | 4.99 EUR | 4.99 **USD** |
+| `steam_brawlhalla_x_lara_croft_bundle` | 14.99 EUR | 14.99 **USD** |
+| `steam_brawlhalla_summer_esports_2026_pack` | 8.99 EUR | 8.99 **USD** |
+
+Every currency is wrong and two amounts are wrong. The cause is the re-run behaviour this
+skill documents as deliberate: `create-items` returns HTTP 422 on a SKU that exists, so the
+**first** create's values are the ones that persist. Those first creates ran before the
+currency fallback and before DLC extraction, so the catalog is holding early, partial data
+and every later run reported 422 and moved on.
+
+"Do not silently overwrite a live priced item" was the right instinct. Leaving the item
+wrong was not. This needs `update-items` on a SKU that already exists, with the difference
+shown in the preview — it is the one place in this skill where wrong data sits in a
+partner's catalog rather than in an unfilled block.
 
 ## Reproducing this
 

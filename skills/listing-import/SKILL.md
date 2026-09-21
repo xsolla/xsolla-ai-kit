@@ -60,6 +60,50 @@ broken" and "Apple is unsupported", it is saying it does not recognise the targe
 once, as one question, in [`references/google-play.md`](references/google-play.md). Do not
 route around it.
 
+## Only the publisher's own listing, and what breaks when a store changes
+
+**This skill is for a publisher importing their own listing.** Not a competitor's, not a
+reference title, not "a game like mine". Two reasons, and the first is not about us:
+
+- Steam, Google Play and Apple each restrict automated access to their pages in their terms.
+  A publisher pulling their own copy and artwork across is a different act from a third party
+  harvesting someone else's, and only the first is what this exists for.
+- Nothing upstream enforces it. Xsolla's own parsing endpoint will read any public store URL
+  — verified against an unrelated publisher's listing — so `rights_confirmed` is the only
+  check there is. Ask, and stop on a no.
+
+Player reviews need the separate answer in `rights_reviews_confirmed`: those are a player's
+words, not the publisher's.
+
+### Which fields break when a store changes its markup
+
+Not all of them are equally exposed. A field read from a documented JSON response survives a
+redesign; a field read from a CSS class does not.
+
+| Source | Read from a JSON API (stable) | Read from page markup (**fragile**) |
+|---|---|---|
+| **Steam** | everything — `appdetails` | none |
+| **App Store** | title, developer, description, icon, screenshots, genres, age rating, review score (`lookup`); player reviews (RSS) | **`iap_items`** |
+| **Google Play** | none | **everything** |
+
+So a Steam import is the durable one, an App Store import loses only its in-app item list,
+and **a Google Play import is markup-dependent end to end.** The specific Play selectors, each
+of which is one redesign from breaking:
+
+| Field | What it depends on |
+|---|---|
+| `title`, `short_description`, `icon` | `og:` meta tags |
+| `long_description` | a `data-g-id="description"` container |
+| `screenshots` | `play-lh.googleusercontent.com/…=w1052-h592-rw` URL shape |
+| `developer` | the first `/store/apps/dev?id=` link's text |
+| `age_rating` | the rating badge's literal text |
+| `genres` | the `/store/apps/category/<SLUG>` link |
+| `reviews` | JSON-LD `aggregateRating` — the sturdiest of the Play set |
+
+`extract_play.py` fails **field by field** for this reason: a renamed class costs one field,
+declared in `not_found`, rather than raising and losing the other ten. Check `not_found` on
+every Play run — a sudden gap there is a redesign, not a bad listing.
+
 ## The flow
 
 Never reorder steps 1–5. Never skip step 6.
