@@ -40,21 +40,15 @@ states that a token was delivered.
 
 ## Prerequisites
 
-```bash
-export XSOLLA_MERCHANT_ID=<your merchant ID>
-export XSOLLA_PROJECT_API_KEY=<your API key>
-```
-
-Sent as `Authorization: Basic base64(merchant_id:api_key)`.
+Follow [`references/auth-and-environment.md`](references/auth-and-environment.md)
+for the required credential, request authentication, internal hosts, and scope
+confirmation.
 
 **This credential lane is not accepted yet.** Quest Platform implements it in
 QP-2862, inside QP-2858 Phase 3, which depends on Phases 1 and 2. Until it
 lands, every call to qp-server returns 401. Say exactly that, naming the
 ticket, rather than reporting a generic authentication failure. The execution
 read-back is unaffected and needs no credential.
-
-All Quest Platform hosts are internal and resolve only on the corporate
-network. See `references/auth-and-environment.md`.
 
 ## Source of truth
 
