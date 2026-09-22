@@ -76,6 +76,7 @@ drifted. Never continue silently.
 - [`references/quest-document.md`](references/quest-document.md) — the quest graph, conditional requirements, full-document PUT
 - [`references/node-subtypes.md`](references/node-subtypes.md) — the seven accepted node subtypes and their parameters
 - [`references/conditions.md`](references/conditions.md) — condition grammar: types, operands, operators, event counting
+- [`references/rewards.md`](references/rewards.md) — the nine reward types and their bodies, including web3_token
 
 ## Flow
 
