@@ -78,6 +78,7 @@ drifted. Never continue silently.
 - [`references/conditions.md`](references/conditions.md) — condition grammar: types, operands, operators, event counting
 - [`references/rewards.md`](references/rewards.md) — the nine reward types and their bodies, including web3_token
 - [`references/events.md`](references/events.md) — submitting a quest event to qp-events-collector
+- [`references/verification.md`](references/verification.md) — reading execution results back from qp-data
 
 ## Flow
 
@@ -93,6 +94,9 @@ drifted. Never continue silently.
 6. **Event.** Build the payload, generate a fresh UUID `idempotency_key`, set
    an RFC3339 `client_timestamp`, confirm with the developer, and submit to
    qp-events-collector.
+7. **Verify.** Read the execution back from qp-data and report what actually
+   happened: whether the quest ran and which action nodes completed. Do not
+   report a reward as delivered.
 
 ## Safety stops
 
