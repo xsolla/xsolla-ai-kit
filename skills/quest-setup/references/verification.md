@@ -2,9 +2,10 @@
 
 Written against the contract deployed on stage as of 2026-09-22.
 
-Read-back lives on **qp-data**, a separate, read-only service. On stage it
-currently needs no credential, so this is the one part of the skill that works
-before the Basic lane ships.
+Read-back lives on **qp-data**, a separate, read-only service. Follow
+[`auth-and-environment.md`](auth-and-environment.md) for current access
+requirements. If read-back is unavailable, report that verification is
+unavailable and do not infer execution or reward delivery from event acceptance.
 
 `GET /api/v1/quest-executions`
 
