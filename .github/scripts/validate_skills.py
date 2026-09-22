@@ -166,7 +166,7 @@ def check_links() -> None:
     # Strip fenced code blocks first. A file that *documents* a link — showing an
     # author which line to paste into some other file — is not itself linking, and
     # resolving those targets against the wrong directory is a false failure.
-    fence = re.compile(r"^(`{3,}|~{3,})", re.MULTILINE)
+    fence = re.compile(r"^ {0,3}(`{3,}|~{3,})(.*)$")
     for md in ROOT.rglob("*.md"):
         if any(part in {".git", "node_modules"} for part in md.parts):
             continue
@@ -179,8 +179,14 @@ def check_links() -> None:
                     marker = m.group(1)
                 else:
                     out.append(line)
-            elif m and line.startswith(marker):
-                marker = None
+            elif m:
+                candidate, suffix = m.groups()
+                if (
+                    candidate[0] == marker[0]
+                    and len(candidate) >= len(marker)
+                    and not suffix.strip()
+                ):
+                    marker = None
         text = "\n".join(out)
         for target in pattern.findall(text):
             target = target.split("#")[0].split(" ")[0].strip()
