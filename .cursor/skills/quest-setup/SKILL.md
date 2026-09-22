@@ -93,7 +93,7 @@ codes.
 
 | Status | What to tell the developer |
 |---|---|
-| 401 | Missing or invalid credential. If Basic was sent, name QP-2862. |
+| 401 | Missing or invalid credential. For the credential lane described in the reference, name QP-2862. |
 | 403 | The key lacks the required `questconfig:*` capability. |
 | 404 | "Not found, or no access, or the project is not onboarded to Quest Platform." Never say the quest does not exist. |
 | 409 | Conflict. |
