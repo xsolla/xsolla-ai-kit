@@ -77,6 +77,7 @@ drifted. Never continue silently.
 - [`references/node-subtypes.md`](references/node-subtypes.md) — the seven accepted node subtypes and their parameters
 - [`references/conditions.md`](references/conditions.md) — condition grammar: types, operands, operators, event counting
 - [`references/rewards.md`](references/rewards.md) — the nine reward types and their bodies, including web3_token
+- [`references/events.md`](references/events.md) — submitting a quest event to qp-events-collector
 
 ## Flow
 
@@ -89,6 +90,9 @@ drifted. Never continue silently.
    there are at least two nodes and the graph is acyclic.
 5. **Edit.** Read, change, full `PUT`. Warn that `PUT` replaces the whole
    document.
+6. **Event.** Build the payload, generate a fresh UUID `idempotency_key`, set
+   an RFC3339 `client_timestamp`, confirm with the developer, and submit to
+   qp-events-collector.
 
 ## Safety stops
 
