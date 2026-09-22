@@ -73,6 +73,20 @@ drifted. Never continue silently.
 ## Reference material
 
 - [`references/auth-and-environment.md`](references/auth-and-environment.md) — hosts, credential, scope, and the incoming auth changes
+- [`references/quest-document.md`](references/quest-document.md) — the quest graph, conditional requirements, full-document PUT
+- [`references/node-subtypes.md`](references/node-subtypes.md) — the seven accepted node subtypes and their parameters
+
+## Flow
+
+1. **Bring-up.** Fetch the OpenAPI documents. Check the credential is set. List
+   quests, show the resolved scope, and get confirmation.
+2. **Draft.** Create the quest as `inactive` with the four required fields.
+3. **Fill in.** Add nodes and edges one at a time, asking for each missing
+   required value. Show the assembled document before sending it.
+4. **Activate.** A separate step: move to `active` with dates, after checking
+   there are at least two nodes and the graph is acyclic.
+5. **Edit.** Read, change, full `PUT`. Warn that `PUT` replaces the whole
+   document.
 
 ## Safety stops
 
