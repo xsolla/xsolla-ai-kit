@@ -47,8 +47,10 @@ confirmation.
 **This credential lane is not accepted yet.** Quest Platform implements it in
 QP-2862, inside QP-2858 Phase 3, which depends on Phases 1 and 2. Until it
 lands, every call to qp-server returns 401. Say exactly that, naming the
-ticket, rather than reporting a generic authentication failure. The execution
-read-back is unaffected and needs no credential.
+ticket, rather than reporting a generic authentication failure. For qp-data
+execution read-back, follow
+[`references/auth-and-environment.md`](references/auth-and-environment.md)
+for current access requirements.
 
 ## Source of truth
 
@@ -94,9 +96,11 @@ drifted. Never continue silently.
 6. **Event.** Build the payload, generate a fresh UUID `idempotency_key`, set
    an RFC3339 `client_timestamp`, confirm with the developer, and submit to
    qp-events-collector.
-7. **Verify.** Read the execution back from qp-data and report what actually
-   happened: whether the quest ran and which action nodes completed. Do not
-   report a reward as delivered.
+7. **Verify.** Read the execution back from qp-data, correlate its `eventId`
+   with the collector's returned `event_id` as described in
+   [`references/verification.md`](references/verification.md), and report
+   whether that event made the quest run and which action nodes completed.
+   Do not report a reward as delivered.
 
 ## Safety stops
 
