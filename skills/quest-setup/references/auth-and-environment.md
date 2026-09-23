@@ -1,8 +1,8 @@
 # Authentication and environment
 
-This is the **only** file that names the host, the header and the credential.
-Everywhere else says "an authenticated Quest Platform request". Keep it that
-way, so a change to authentication touches one file.
+This is the **only** file that names the Quest Platform host, the header and
+the credential. Everywhere else says "an authenticated Quest Platform
+request". Keep it that way, so a change to authentication touches one file.
 
 ## Host
 
@@ -12,8 +12,13 @@ Every request, quest configuration and event submission alike, goes to:
 https://quests-platform.xsolla.com
 ```
 
-There is no environment variable for the host. Do not send requests to any
-other host, and do not switch hosts after an error.
+There is no environment variable for the host. Do not send Quest Platform
+requests to any other host, and do not switch hosts after an error.
+
+The one exception is the read-only item catalog lookup used to pick a reward
+item, which goes to the public Xsolla Store API; see
+[`rewards.md`](rewards.md). It needs no credential, so never send the
+project API key there.
 
 ## Credential
 
