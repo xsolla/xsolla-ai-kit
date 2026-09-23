@@ -114,8 +114,9 @@ So a `COMPLETED` `issue_reward` means the minting service returned a
 transaction hash: the claim was submitted. On-chain finality, the wallet
 balance and Backpack or Rewards display are outside this skill's evidence.
 Never claim that the token reached the wallet. The hash is recorded by the
-worker (worker logs and ledger, field `tx_hash`, action `claim_web3_token`), not
-in qp-data. The minting service's minted-instances list is not a per-claim log;
+worker, not in qp-data: its logs carry a `tx_hash` field on the
+`claim_web3_token` success line, and its ledger keeps the hash only inside the
+reward node's result text (`Transaction hash: <hash>`), not as a separate field. The minting service's minted-instances list is not a per-claim log;
 a new ERC-20 claim did not appear there. A human can check the hash on the
 chain explorer named in [`auth-and-environment.md`](auth-and-environment.md).
 
