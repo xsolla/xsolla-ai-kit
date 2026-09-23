@@ -337,35 +337,6 @@ def run_case(case: dict, round_no: int, skills_dir: Path, skills_label: str, ws:
     return record
 
 
-def rescore(record: dict, case: dict, raw_dir: Path) -> dict | None:
-    """Re-score a saved run from its raw transcripts after a scorer fix — never by re-running the agent.
-
-    Only runs whose checks need nothing beyond the transcripts and the recorded per-turn file
-    diffs can be re-scored; a check that reads the final .env returns None (re-run is the only way).
-    """
-    exp = case["expect"]
-    if "recorded_path" in exp or exp.get("env_unchanged"):
-        return None
-    turns = []
-    for i, stored in enumerate(record.get("turns") or []):
-        raw = raw_dir / f"{record['run_id']}.t{i + 1}.jsonl"
-        if not raw.is_file():
-            return None
-        parsed = parse_stream(raw)
-        if parsed["is_error"] and not hit_turn_limit(parsed):     # a real crash or an API error
-            return None
-        turns.append({**parsed, "files_changed": stored["files_changed"], "xsolla_calls": stored["xsolla_calls"],
-                      "write_attempts": write_attempts(parsed["tool_uses"])})
-    if not turns:
-        return None
-    new = {k: v for k, v in record.items() if k not in ("error_kind", "failure", "checks", "result")}
-    new.update(score(case, turns, None, None))
-    new["turns"] = [{**stored, "hit_turn_limit": hit_turn_limit(t)} for stored, t in zip(record["turns"], turns)]
-    new["rescored"] = {"from_result": record["result"], "from_failure": record.get("failure"),
-                       "date": datetime.date.today().isoformat()}
-    return new
-
-
 def read_env(project: Path) -> str | None:
     path = project / ".env"
     return path.read_text(encoding="utf-8") if path.exists() else None
@@ -475,7 +446,7 @@ def metrics(records: list[dict], probes: dict[str, list[int]]) -> dict:
 
 def parse_args() -> argparse.Namespace:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("--out", required=True, type=Path, help="new results file (never overwritten)")
+    ap.add_argument("--out", required=True, type=Path, help="new results .jsonl (never overwritten)")
     ap.add_argument("--rounds", type=int, default=2, help="runs per case (default 2)")
     ap.add_argument("--jobs", type=int, default=4, help="parallel runs (default 4)")
     ap.add_argument("--cases", help="comma-separated case ids (default: all)")
@@ -484,56 +455,7 @@ def parse_args() -> argparse.Namespace:
                     help="skills for the Metric 3 comparison ('none' to skip)")
     ap.add_argument("--token-probes", type=int, default=3, help="prompt-size samples per side (0 to skip)")
     ap.add_argument("--raw-dir", type=Path, help="keep raw transcripts here (must be outside the repo)")
-    ap.add_argument("--summarize", nargs="+", type=Path, metavar="RESULTS",
-                    help="recompute the summary from existing results files (runs nothing) — "
-                         "use when a long eval was run in batches")
-    ap.add_argument("--probes", type=Path, metavar="PROBES_JSON",
-                    help="with --summarize: fold in token probes saved by --probes-only")
-    ap.add_argument("--probes-only", action="store_true",
-                    help="run only the Metric 3 token probes (branch vs baseline) and write them to --out")
-    ap.add_argument("--rescore", type=Path, metavar="RESULTS",
-                    help="re-score a results file from its raw transcripts (--raw-dir) into a new --out "
-                         "file after a scorer fix; runs no agent")
     return ap.parse_args()
-
-
-def write_new(path: Path, text: str) -> None:
-    with path.open("x", encoding="utf-8") as fh:
-        fh.write(text)
-
-
-def summarize_command(args: argparse.Namespace) -> int:
-    records = [json.loads(line) for f in args.summarize
-               for line in f.read_text(encoding="utf-8").splitlines() if line.strip()]
-    probes = json.loads(args.probes.read_text(encoding="utf-8"))["probes"] if args.probes else {}
-    summary = {"generated": datetime.datetime.now().isoformat(timespec="seconds"),
-               "results_file": ", ".join(f.name for f in args.summarize),
-               "cases_sha256": sorted({r.get("cases_sha256") for r in records}),
-               "runs": len(records), **metrics(records, probes)}
-    args.out.write_text(json.dumps(summary, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-    print(json.dumps(summary, indent=2, ensure_ascii=False))
-    return 0
-
-
-def rescore_command(args: argparse.Namespace) -> int:
-    if not args.raw_dir or args.out.exists():
-        print("--rescore needs --raw-dir and a new --out file", file=sys.stderr)
-        return 2
-    cases = {c["id"]: c for c in json.loads(CASES.read_text(encoding="utf-8"))["cases"]}
-    cases_sha = hashlib.sha256(CASES.read_bytes()).hexdigest()
-    lines = []
-    for line in args.rescore.read_text(encoding="utf-8").splitlines():
-        if not line.strip():
-            continue
-        record = json.loads(line)
-        rescored = None
-        if record.get("error_kind") == "harness" and record["cases_sha256"] == cases_sha:
-            rescored = rescore(record, cases[record["case"]], args.raw_dir)
-        if rescored:
-            print(f"  {rescored['result']:5s} {record['run_id']}  (was error: {record.get('failure')})")
-        lines.append(json.dumps(rescored or record, ensure_ascii=False) + "\n")
-    write_new(args.out, "".join(lines))
-    return 0
 
 
 def prepare_workspace(args: argparse.Namespace) -> Workspace | str:
@@ -558,22 +480,6 @@ def prepare_workspace(args: argparse.Namespace) -> Workspace | str:
     (bin_dir / "xsolla").chmod(0o755)
     spec = json.loads(CASES.read_text(encoding="utf-8"))
     return Workspace(scratch, raw_dir, bin_dir, hashlib.sha256(CASES.read_bytes()).hexdigest(), spec["followups"])
-
-
-def probes_command(args: argparse.Namespace, ws: Workspace) -> int:
-    skills_dir, skills_label = materialize_skills(args.skills_ref, ws.scratch / "skills-under-test")
-    sides, labels = {"branch": skills_dir}, {"branch": skills_label}
-    if args.baseline_ref != "none":
-        sides["baseline"], labels["baseline"] = materialize_skills(args.baseline_ref, ws.scratch / "skills-baseline")
-    count = args.token_probes or 5
-    print(f"{count} token probes per side, interleaved · {labels}", flush=True)
-    result = {"generated": datetime.datetime.now().isoformat(timespec="seconds"), "prompt": TOKEN_PROBE_PROMPT,
-              "skills": labels, "requested_per_side": count,
-              "cli_version": subprocess.run(["claude", "--version"], capture_output=True, text=True).stdout.strip(),
-              "probes": token_probe(sides, ws.scratch, ws.bin_dir, count)}
-    write_new(args.out, json.dumps(result, indent=2) + "\n")
-    print(json.dumps(result, indent=2))
-    return 0 if all(result["probes"].values()) else 2
 
 
 def select_cases(ids: str | None) -> list[dict]:
@@ -630,15 +536,11 @@ def run_command(args: argparse.Namespace, ws: Workspace) -> int:
 
 def main() -> int:
     args = parse_args()
-    if args.summarize:
-        return summarize_command(args)
-    if args.rescore:
-        return rescore_command(args)
     ws = prepare_workspace(args)
     if isinstance(ws, str):
         print(ws, file=sys.stderr)
         return 2
-    return probes_command(args, ws) if args.probes_only else run_command(args, ws)
+    return run_command(args, ws)
 
 
 if __name__ == "__main__":

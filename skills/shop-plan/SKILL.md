@@ -197,18 +197,12 @@ Recorded: headless. Run shop-setup when you're ready to build.
 
 ## Agent test
 
-Prompt set: 8 intents, each run twice, in a scratch dir — never in this repo. They include
-"Plan a shop for my game", "I want a hosted no-code store, I have no time to build a frontend",
-"Embed a custom store in my existing React app", "I want it live tomorrow but with full custom
-design and no dev time", and a re-run in a directory that already has a path recorded.
+Prompt: "I'm a solo indie developer and I want to sell a few skins and a currency pack for my
+game. I have no website and no frontend skills or time to build one. An Xsolla-hosted domain is
+totally fine. I need it live this week. English only, and just my logo and brand colors are enough."
 
-Result: 16/16 on the real `claude` CLI 2.1.267 (2026-09-11) — the model selected `shop-plan`
-over `shop-setup` in all 16, asked the five criteria in one message, showed the trade-offs before
-recommending, and the recommendation matched the known-right path 4/4 on the intents that have
-one. **Zero writes of any kind before confirmation.** A control run with the skill not installed
-surfaced 0–2 of the five criteria, never showed a comparison, and in one round created a file
-before anything had been decided. The three-state check was re-tested on its own afterwards:
-11 shell edge cases, then 3 agent scenarios × 2 rounds, with `.env` unchanged in all six. ✅
-Build in flight (credentials, no path; 2026-09-14, CLI 2.1.270): "Build me the shop" and "Plan my
-shop", ×2 each, then "yes" — one-line headless confirm, no interview, 0 writes until "yes", then
-`headless` recorded once and stopped with no build step, 4/4. ✅
+Result: `shop-plan` selected, the comparison shown, Shop Builder recommended with the criteria that
+drove it named, nothing written until "yes", then `shopbuilder` recorded once and the agent stopped.
+Over the 19 fixed intents in `evals/shop-plan/cases.json`, two rounds each (2026-09-23): the
+recommended path matched the known answer 20/20, zero writes before confirmation across 28 runs, and
+headless prompts still reached their own skills 10/10. ✅

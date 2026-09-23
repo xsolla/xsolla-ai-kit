@@ -118,43 +118,17 @@ class InfrastructureErrors(unittest.TestCase):
 
 
 class TurnLimit(unittest.TestCase):
-    """Seen in real runs: login-styling selected, then --max-turns ran out mid-work. exit=1 and
-    is_error=true, but the agent did not crash — it must be scored, not filed as a harness error."""
-    CAPPED = {"type": "result", "subtype": "error_max_turns", "is_error": True, "terminal_reason": "max_turns",
-              "result": "", "session_id": "s-1"}
-    CASE = {"id": "regression-login-theme", "expect": {"skill_any": ["login-styling"], "skill_not": ["shop-plan"]}}
+    """Seen in real runs: the skill was selected, then --max-turns ran out mid-work. exit=1 and
+    is_error=true, but the agent did not crash — the turn must be scored, not filed as an error."""
 
-    def saved(self, *events) -> tuple[dict, Path]:
-        raw_dir = Path(tempfile.mkdtemp())
-        rec = {"run_id": "regression-login-theme.r1.worktree", "case": "regression-login-theme", "result": "error",
-               "error_kind": "harness", "failure": "RuntimeError: turn 1 failed: exit=1 ", "checks": {},
-               "turns": [{"skills_invoked": [], "files_changed": [], "write_attempts": [], "xsolla_calls": []}]}
-        (raw_dir / f"{rec['run_id']}.t1.jsonl").write_text(stream(*events).read_text())
-        return rec, raw_dir
-
-    def test_capped_turn_is_not_infrastructure_and_is_recognised(self):
-        parsed = ev.parse_stream(stream(INIT, tool("Skill", skill="login-styling"), self.CAPPED))
+    def test_capped_turn_is_scored_not_treated_as_a_crash(self):
+        capped = {"type": "result", "subtype": "error_max_turns", "is_error": True,
+                  "terminal_reason": "max_turns", "result": "", "session_id": "s-1"}
+        parsed = ev.parse_stream(stream(INIT, tool("Skill", skill="login-styling"), capped))
         self.assertTrue(ev.hit_turn_limit(parsed))
         self.assertIsNone(ev.infrastructure_error({**parsed, "exit_code": 1}))
-
-    def test_rescore_passes_a_capped_run_that_picked_the_right_skill(self):
-        rec, raw = self.saved(INIT, tool("Skill", skill="login-styling"), tool("Bash", command="ls"), self.CAPPED)
-        new = ev.rescore(rec, self.CASE, raw)
-        self.assertEqual(new["result"], "pass", new)
-        self.assertNotIn("error_kind", new)
-        self.assertTrue(new["turns"][0]["hit_turn_limit"])
-        self.assertEqual(new["rescored"]["from_result"], "error")
-
-    def test_rescore_still_fails_a_capped_run_that_picked_the_wrong_skill(self):
-        rec, raw = self.saved(INIT, tool("Skill", skill="shop-plan"), self.CAPPED)
-        self.assertEqual(ev.rescore(rec, self.CASE, raw)["result"], "fail")
-
-    def test_rescore_leaves_real_crashes_and_env_dependent_cases_alone(self):
-        rec, raw = self.saved(INIT, tool("Skill", skill="login-styling"))          # no result event: a crash
-        self.assertIsNone(ev.rescore(rec, self.CASE, raw))
-        rec, raw = self.saved(INIT, tool("Skill", skill="shop-plan"), self.CAPPED)
-        self.assertIsNone(ev.rescore(rec, {"expect": {"recorded_path": "headless"}}, raw))
-        self.assertIsNone(ev.rescore(rec, self.CASE, Path(tempfile.mkdtemp())))  # transcript missing
+        case = {"expect": {"skill_any": ["login-styling"], "skill_not": ["shop-plan"]}}
+        self.assertEqual(ev.score(case, [turn(["login-styling"])], None, None)["result"], "pass")
 
 
 class TokenProbe(unittest.TestCase):

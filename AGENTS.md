@@ -75,11 +75,9 @@ XSOLLA_BUILD_PATH=headless|shopbuilder
 Recorded by `shop-plan` once the developer confirms the build path, and read by `shop-setup`
 before it builds anything. One path per shop — `shop-plan` is the only skill that writes it.
 
-If you are adding a skill that behaves differently per path, implement against
-[the build-path contract](skills/shop-plan/references/build-path-contract.md) rather than
-copying a check out of another skill. It covers the allowed values, the three states a reader
-must handle (absent, decided, invalid), and the rule that a skill writing to `.env` must scope
-its deletes to its own keys.
+Adding a skill that behaves differently per path? Implement against
+[the build-path contract](skills/shop-plan/references/build-path-contract.md) — it covers the
+allowed values and the three states a reader must handle (absent, decided, invalid).
 
 ---
 
