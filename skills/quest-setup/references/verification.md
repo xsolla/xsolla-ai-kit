@@ -1,6 +1,7 @@
 # Verifying that a quest ran
 
-Written against the contract deployed on stage as of 2026-09-22.
+Stage OpenAPI and local runtime snapshots were checked on 2026-09-22. The
+stage deployment revision is not pinned here, so revalidate before writes.
 
 Read-back lives on **qp-data**, a separate, read-only service. Follow
 [`auth-and-environment.md`](auth-and-environment.md) for current access
@@ -42,10 +43,17 @@ locally; the query parameters above do not include an event-ID filter. Inspect
 the newest state for the matching event and that row's action statuses. If no
 matching event is visible, report completion as unverified and retry reads only.
 
+Use a bounded client-side read policy: at most six reads over at most 60 seconds
+with backoff (for example 2, 5, 10, 15, 15 and 15 seconds). This is a safety
+guardrail, not a platform SLA. Then stop and report `unverified`; after an
+uncertain submission without an `event_id`, keep `result unknown`.
+
 After an uncertain submission, if no `event_id` was received, keep **"result
 unknown"** unless read-only evidence positively identifies the originating
 event and its `eventId`. `includeEventBody=true` can expose the event body for
-inspection, but an unrelated success is never sufficient. Do not assume the
+inspection. Use it only when necessary and redact identifiers, emails and
+secret-like properties before showing them. An unrelated success is never
+sufficient. Do not assume the
 `idempotency_key` equals `eventId`, and do not resend the event to obtain an ID.
 If positive identification is unavailable, the result remains unknown.
 
@@ -79,4 +87,4 @@ An empty result after submitting an event usually means one of:
 - the execution has not been ingested yet, so retry the read before concluding
   anything
 
-Reading again is safe. Re-sending the event is not.
+Reading again is safe within the bounded policy above. Re-sending the event is not.

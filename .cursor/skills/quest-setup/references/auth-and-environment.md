@@ -1,6 +1,7 @@
 # Authentication and environment
 
-Written against the contract deployed on stage as of 2026-09-22.
+Stage OpenAPI and local runtime snapshots were checked on 2026-09-22. The
+stage deployment revision is not pinned here, so revalidate before writes.
 
 This is the **only** file that names the hosts, the header or the credential.
 Everywhere else says "an authenticated Quest Platform request". Keep it that
@@ -32,7 +33,7 @@ export XSOLLA_PROJECT_API_KEY=<your API key>
 
 Sent as `Authorization: Basic base64(merchant_id:api_key)`.
 
-**Not accepted yet.** On the deployed build, qp-server recognises only
+**Not accepted yet for this lane.** On the deployed build, qp-server recognises only
 `Authorization: Bearer` and an internal `X-REQUEST-APIKEY`, so a Basic
 credential is rejected as if no credential were sent. On the in-flight auth
 branch a merchant-key verifier exists but is a stub that always denies.
@@ -40,7 +41,22 @@ branch a merchant-key verifier exists but is a stub that always denies.
 The implementation is QP-2862, inside QP-2858 Phase 3, which depends on Phase 1
 (QP-2851) and Phase 2 (QP-2852).
 
-qp-data currently needs no credential at all.
+qp-data currently returned the read-only verification response without a
+credential on stage. Treat that as an environment snapshot, not a permanent
+contract, and recheck before relying on it.
+
+## Service preflight
+
+Do not assume one service's credential works for the others:
+
+- `qp-server`: OpenAPI discovery is public on stage; CRUD writes require a
+  verified credential lane. Do not write while only the rejected Basic lane is
+  available.
+- `qp-events-collector`: verify its own live authentication requirement before
+  submitting an event. A qp-server credential or a successful OpenAPI fetch is
+  not evidence that event submission is authorized.
+- `qp-data`: use only read-only execution queries. Recheck its authentication
+  response in the current environment before treating a 200 as durable access.
 
 ## Scope
 

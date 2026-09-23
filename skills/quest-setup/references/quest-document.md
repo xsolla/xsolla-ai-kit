@@ -1,6 +1,7 @@
 # The quest document
 
-Written against the contract deployed on stage as of 2026-09-22.
+Stage OpenAPI and local runtime snapshots were checked on 2026-09-22. The
+stage deployment revision is not pinned here, so revalidate before writes.
 
 A quest is a **graph**, not a flat record. This one fact drives everything else
 in this skill.
@@ -70,6 +71,14 @@ and an action.
 
 `type` is `global` or `per_user`. `count` must be at least 1.
 `time_window.duration_unit`, when present, is `day`, `week` or `month`.
+If `activation_limits` is absent, no repeat limit is configured. Before
+activation, show that behavior and require the developer to acknowledge it;
+do not silently assume a one-time or per-user limit.
+
+Before activation, also check that the intended trigger reaches an intended
+action and that no intended node is orphaned. The server validates references
+and cycles, but those checks alone do not prove that the quest is semantically
+usable.
 
 ## Editing
 

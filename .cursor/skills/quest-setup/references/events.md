@@ -1,6 +1,7 @@
 # Events
 
-Written against the contract deployed on stage as of 2026-09-22.
+Stage OpenAPI and local runtime snapshots were checked on 2026-09-22. The
+stage deployment revision is not pinned here, so revalidate before writes.
 
 Events go to **qp-events-collector**, not to qp-server. Sending an event to
 qp-server produces a 404 that looks like a missing quest.

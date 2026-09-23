@@ -46,9 +46,12 @@ confirmation.
 
 **This credential lane is not accepted yet.** Quest Platform implements it in
 QP-2862, inside QP-2858 Phase 3, which depends on Phases 1 and 2. Until it
-lands, every call to qp-server returns 401. Say exactly that, naming the
-ticket, rather than reporting a generic authentication failure. For qp-data
-execution read-back, follow
+lands, authenticated qp-server CRUD requests using this Basic lane return 401.
+OpenAPI discovery remains available without credentials on stage, so do not
+mistake schema discovery for CRUD readiness. If another credential lane is
+provided, verify it against the live contract rather than assuming it works.
+Say exactly which lane failed, naming the ticket when it is QP-2862, rather than
+reporting a generic authentication failure. For qp-data execution read-back, follow
 [`references/auth-and-environment.md`](references/auth-and-environment.md)
 for current access requirements.
 
@@ -90,7 +93,9 @@ drifted. Never continue silently.
 3. **Fill in.** Add nodes and edges one at a time, asking for each missing
    required value. Show the assembled document before sending it.
 4. **Activate.** A separate step: move to `active` with dates, after checking
-   there are at least two nodes and the graph is acyclic.
+   there are at least two nodes, a trigger-to-action path, no intended orphan
+   nodes, and an acyclic graph. Show the activation limits and the effective
+   repeat behavior before asking for confirmation.
 5. **Edit.** Read, change, full `PUT`. Warn that `PUT` replaces the whole
    document.
 6. **Event.** Build the payload, generate a fresh UUID `idempotency_key`, set
@@ -106,8 +111,14 @@ drifted. Never continue silently.
 
 - Read back and show the resolved scope before the first write, and get
   confirmation.
-- Ask for separate, explicit confirmation before activating a quest that
-  contains an `issue_reward` node. Activation means real payouts.
+- Before activation, show every externally observable action and get explicit
+  confirmation for its impact. An `issue_reward` can create real payouts;
+  `send_http_webhook` sends event data to an external URL;
+  `send_xsolla_app_notification` sends a user notification. Do not activate a
+  `webshop_personalization` node as if it were a working personalization action.
+- If `activation_limits` is absent, ask the developer to explicitly choose
+  unlimited repeat behavior and acknowledge that every qualifying event may run
+  the action. Do not silently choose a limit or omit this decision.
 - Ask for confirmation before submitting an event.
 - After an uncertain event response, such as a timeout, **do not resend** —
   neither with the same idempotency key nor with a new one. A timeout is not a

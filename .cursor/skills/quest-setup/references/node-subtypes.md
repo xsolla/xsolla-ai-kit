@@ -1,6 +1,7 @@
 # Node subtypes
 
-Written against the contract deployed on stage as of 2026-09-22.
+Stage OpenAPI and local runtime snapshots were checked on 2026-09-22. The
+stage deployment revision is not pinned here, so revalidate before writes.
 
 The OpenAPI document types `subtype` as a bare `string`. The real list lives in
 the server's validator, and it is shorter than the constants suggest.
@@ -17,7 +18,7 @@ for their shapes and validation, following the skill's source-of-truth order.
 | `issue_reward` | action | see `rewards.md` |
 | `send_xsolla_app_notification` | action | `topic`, `notification_type`, `title`, `message`; optional `data`, see below |
 | `send_http_webhook` | action | `url`, see below |
-| `webshop_personalization` | action | `items` array of objects with `id`, see below |
+| `webshop_personalization` | action | configuration is accepted, but the current worker maps it to `SkipExecution`; see below |
 
 ## Action parameters
 
@@ -26,6 +27,11 @@ in `adtech/qp-server/internal/http/validation/quest_config.go`. Each of these
 three actions requires `parameters` that decode into its model and pass
 validation; OpenAPI does not supply this contract. Ask the developer for actual
 values, including the notification topic, webhook URL and personalization IDs.
+
+Configuration acceptance is not runtime support. The current worker maps
+`webshop_personalization` to `SkipExecution`; it must not be presented as a
+working personalization effect without an owner-approved stage fixture and a
+deployed implementation check.
 
 ### send_http_webhook
 
@@ -36,6 +42,9 @@ values, including the notification topic, webhook URL and personalization IDs.
 `url` is the only modeled parameter. It must be a non-empty string, parse with
 Go's `url.ParseRequestURI`, use the `http` or `https` scheme, and have a
 non-empty host. The model supplies no method, headers or body parameters.
+When the quest executes, the worker sends the full event JSON by HTTP POST to
+this URL. Require an approved stage endpoint and explicit activation approval;
+never treat an arbitrary developer-supplied URL as a harmless placeholder.
 
 Source: `adtech/lib/models/generic_quest/http_webhook.go`.
 
@@ -74,6 +83,12 @@ proof of a valid item.
 
 Source: `adtech/lib/models/generic_quest/webshop_personalization.go`.
 
+## Accepted for configuration, not a working runtime action
+
+`webshop_personalization` is accepted by the configuration validator, but the
+current worker routes it to `SkipExecution`. Do not use API acceptance or a
+`COMPLETED` execution row as evidence that personalization occurred.
+
 ## Rejected, despite existing
 
 `event_check` is declared as a constant in the platform's models but is **not**
@@ -94,5 +109,5 @@ API acceptance or a successful stub invocation is not evidence that a schedule
 will run. Do not recommend it as a working scheduler or invent schedule fields.
 For a scheduling request, explain this limitation before configuring a quest.
 
-Source: `adtech/qp-worker-generic-quest/internal/temporal/generic_quest/activity/trigger.go`,
-checked against current source on 2026-09-22.
+Source: local `adtech/qp-worker-generic-quest/internal/temporal/generic_quest/activity/trigger.go`,
+checked on 2026-09-22. Revalidate the deployed worker before claiming runtime behavior.
