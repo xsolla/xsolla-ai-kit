@@ -106,9 +106,10 @@ specific skill:
 
 `shop-plan` comes first — it settles headless vs Shop Builder with the developer
 and records the choice. `shop-setup` is the build entry point: it reads that
-choice (delegating to `shop-plan` if none is recorded), then scopes the build and
-chains the domain skills (`catalog-design`, `login-setup`,
-`headless-checkout-integration`, `webhooks-impl`, `production`).
+choice (delegating to `shop-plan` if none is recorded), then chains the domain
+skills: `catalog-design` and `login-setup` either way, then
+`headless-checkout-integration` for a headless build or `shopbuilder-storefront`
+for a hosted Shop Builder one, and `webhooks-impl` and `production` for both.
 
 ## Contributing
 
