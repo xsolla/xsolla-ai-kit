@@ -1,0 +1,48 @@
+{
+  "generated": "2026-09-24T00:15:28",
+  "results_file": "2026-09-24-state-inflight.jsonl",
+  "cases_sha256": "a61166207944238a1df2271f9835792bc2175b5b7055e78b0e18eb15d986c139",
+  "skills_under_test": "worktree@85931d4+dirty",
+  "rounds": 2,
+  "runs": 2,
+  "models": [
+    "claude-opus-5-5"
+  ],
+  "cli_versions": [
+    "2.1.281"
+  ],
+  "metric_1_recommendation_accuracy": {
+    "passed": 0,
+    "scored": 0,
+    "errors": 0,
+    "infrastructure_errors": 0,
+    "rate": null,
+    "target": ">= 0.9",
+    "met": false
+  },
+  "metric_2_premature_writes": {
+    "premature_write_runs": [],
+    "count": 0,
+    "scored": 2,
+    "errors": 0,
+    "target": "0",
+    "met": true
+  },
+  "metric_3_cost_and_regression": {
+    "target": "report; headless selection rate must not drop",
+    "headless_selection_branch": {
+      "passed": 0,
+      "scored": 0,
+      "errors": 0,
+      "infrastructure_errors": 0,
+      "rate": null
+    },
+    "headless_selection_baseline": {
+      "passed": 0,
+      "scored": 0,
+      "errors": 0,
+      "infrastructure_errors": 0,
+      "rate": null
+    }
+  }
+}

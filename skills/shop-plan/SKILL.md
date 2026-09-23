@@ -96,18 +96,15 @@ here; silently re-asking throws it away. Show the value and ask which they meant
 Full rules, including what every other skill must do with this key:
 [`references/build-path-contract.md`](references/build-path-contract.md).
 
-**A build already in flight is not a fresh decision.** If no path is recorded but Xsolla
-credentials already are (`XSOLLA_PROJECT_ID` / `XSOLLA_PROJECT_API_KEY` in `.env`), this project
-predates the decision step, and every shop this kit could build before it was headless. Don't put
-that developer through five questions — confirm the obvious continuation in one line, then record
-it at step 5:
+**Credentials are not a decision.** A project with `XSOLLA_PROJECT_ID` / `XSOLLA_PROJECT_API_KEY`
+in `.env` but no recorded path has an Xsolla project, not a chosen storefront — both paths build on
+the same account and catalog. Ask the five criteria as normal. Say what you can see, so the
+developer knows the account work isn't being redone:
 
 ```
-You already have an Xsolla project configured, and this kit has only ever built headless shops —
-so you're on the headless path. Record that and carry on?
+You already have an Xsolla project configured — that part carries over either way. What's still
+open is how the storefront itself gets built, so five quick questions.
 ```
-
-They can still say no and get the full comparison at step 2.
 
 ### 2. Ask the five criteria — one message
 
@@ -186,6 +183,8 @@ Recorded: headless. Run shop-setup when you're ready to build.
 - **Re-interviewing when `.env` already has a recorded path.** Check first, every time.
 - **Averaging conflicting answers into a guess.** Name the conflict and ask, rather than picking
   the side with more signals.
+- **Reading existing credentials as a path.** An account and a catalog are shared by both paths;
+  only `XSOLLA_BUILD_PATH` records a decision.
 
 ## Known limitations
 
