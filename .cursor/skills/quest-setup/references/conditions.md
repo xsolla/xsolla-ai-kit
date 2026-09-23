@@ -1,6 +1,7 @@
 # Conditions
 
-Written against the contract deployed on stage as of 2026-09-22.
+Stage OpenAPI and local runtime snapshots were checked on 2026-09-22. The
+stage deployment revision is not pinned here, so revalidate before writes.
 
 These are the `parameters` of a node with `type: condition` and
 `subtype: custom_attributes_check`. The OpenAPI document does not describe
@@ -65,3 +66,15 @@ To express "did this at least three times this week":
 Leaving out `time_window` on an `event` operand is the most common mistake
 here, and the error comes back as a flattened 422 string rather than a field
 error.
+
+## Runtime prerequisites
+
+- An attribute operand causes the current worker to load user attributes from
+  Login and requires an `xsolla_id` on the event. The attribute path must exist;
+  a structurally valid `user.country` comparison can still be unevaluable.
+- An event operand counts previously ingested events for the same identity and
+  scope. The triggering event and its history must use the intended user and
+  event name, and the relevant events must be visible to the worker's data
+  sources.
+- The contract does not define the calendar boundary or timezone for `week`.
+  Do not promise a local-calendar interpretation without owner confirmation.

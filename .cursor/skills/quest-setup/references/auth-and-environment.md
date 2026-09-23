@@ -1,6 +1,7 @@
 # Authentication and environment
 
-Written against the contract deployed on stage as of 2026-09-22.
+Stage OpenAPI and local runtime snapshots were checked on 2026-09-23. The
+stage deployment revision is not pinned here, so revalidate before writes.
 
 This is the **only** file that names the hosts, the header or the credential.
 Everywhere else says "an authenticated Quest Platform request". Keep it that
@@ -8,20 +9,50 @@ way: the credential lane is being replaced, and this file is the seam.
 
 ## Services
 
-Three services, three jobs. Sending a request to the wrong one is the most
-common mistake.
+Three Quest Platform services, three jobs, plus one read-only Web3 helper.
+Sending a request to the wrong one is the most common mistake.
 
 | Service | Job | Stage host |
 |---|---|---|
 | qp-server | quest CRUD | `https://qp-server.nl-k8s-stage.srv.local` |
 | qp-events-collector | event ingestion | `https://qp-events-collector.nl-k8s-stage.srv.local` |
 | qp-data | read-only execution and metrics | `https://qp-data.nl-k8s-stage.srv.local` |
+| web3-minting-service | the minting service; this skill uses read-only lookups only | `https://web3-minting-service.gcp-k8s-web3-stage.srv.local` |
 
-All three are internal. They resolve only on the corporate network. There is no
+All four are internal. They resolve only on the corporate network. There is no
 environment variable for them; this table is the source.
 
 Each service publishes its own OpenAPI document at `/openapi.json`, without a
 credential, on stage. qp-server blocks those paths in production.
+
+## Minting service
+
+The Web3 reward provider. Observed on stage 2026-09-23, revalidate: these reads
+returned 200 without a credential.
+
+| Read | Use |
+|---|---|
+| `GET /currency-bindings` | ERC-20 SKU bindings: `bindings[]` with `projectId`, `sku`, `tokenStandard` |
+| `GET /skus?project=<project id>` | NFT catalog of a project: `items[].sku`, paged with `limit` and `offset` |
+| `GET /wallet/{xsolla_id}` | 200 with `walletAddress`, or 404 when the user has no wallet |
+
+Never call `POST /claim`, `POST /claim/erc20` or any other write on it. Only the
+worker pays out, and only through an activated quest.
+
+Worker settings that decide Web3 behavior (observed on stage 2026-09-23,
+revalidate):
+
+- **ERC-20 project**: `WEB3_ERC20_PROJECT`, `306916` on stage. It is empty in
+  the dev, local and prod worker configs, where every `web3_token` reward fails
+  with `Web3TokenNotConfigured`, non-retryable. The quest's `publisher_id` and
+  `project_id` do not change it.
+- **Default NFT catalog**: the worker sends no project when it lists or claims
+  `web3_item` SKUs, so the service's default project applies, `44056` on stage.
+
+For manual checks by a human only: the stage chain is Xsolla ZK Sepolia
+testnet, chain id `579029`, explorer
+`https://zksync-os-testnet-xsolla.explorer.zksync.dev`, RPC
+`https://579029.rpc.thirdweb.com`. This skill does not call them.
 
 ## Credential
 
@@ -32,7 +63,7 @@ export XSOLLA_PROJECT_API_KEY=<your API key>
 
 Sent as `Authorization: Basic base64(merchant_id:api_key)`.
 
-**Not accepted yet.** On the deployed build, qp-server recognises only
+**Not accepted yet for this lane.** On the deployed build, qp-server recognises only
 `Authorization: Bearer` and an internal `X-REQUEST-APIKEY`, so a Basic
 credential is rejected as if no credential were sent. On the in-flight auth
 branch a merchant-key verifier exists but is a stub that always denies.
@@ -40,7 +71,22 @@ branch a merchant-key verifier exists but is a stub that always denies.
 The implementation is QP-2862, inside QP-2858 Phase 3, which depends on Phase 1
 (QP-2851) and Phase 2 (QP-2852).
 
-qp-data currently needs no credential at all.
+qp-data currently returned the read-only verification response without a
+credential on stage. Treat that as an environment snapshot, not a permanent
+contract, and recheck before relying on it.
+
+## Service preflight
+
+Do not assume one service's credential works for the others:
+
+- `qp-server`: OpenAPI discovery is public on stage; CRUD writes require a
+  verified credential lane. Do not write while only the rejected Basic lane is
+  available.
+- `qp-events-collector`: verify its own live authentication requirement before
+  submitting an event. A qp-server credential or a successful OpenAPI fetch is
+  not evidence that event submission is authorized.
+- `qp-data`: use only read-only execution queries. Recheck its authentication
+  response in the current environment before treating a 200 as durable access.
 
 ## Scope
 

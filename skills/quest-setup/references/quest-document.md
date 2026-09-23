@@ -1,6 +1,7 @@
 # The quest document
 
-Written against the contract deployed on stage as of 2026-09-22.
+Stage OpenAPI and local runtime snapshots were checked on 2026-09-23. The
+stage deployment revision is not pinned here, so revalidate before writes.
 
 A quest is a **graph**, not a flat record. This one fact drives everything else
 in this skill.
@@ -18,7 +19,7 @@ in this skill.
 | `description` | string | no | if present, 5 to 1000 characters |
 | `publisher_id` | string | no | 1 to 255 characters |
 | `project_id` | string | no | 1 to 255 characters |
-| `start_date` | RFC3339 | **only when `active`** | not earlier than one day ago |
+| `start_date` | RFC3339 | **only when `active`** | not earlier than exactly 24 hours before the server's now; see below |
 | `end_date` | RFC3339 | **only when `active`** | not in the past, and at or after `start_date` |
 | `nodes` | array | **at least 2 when `active`** | optional and may be empty when `inactive` |
 | `connections` | object | required unless `inactive` and empty | see below |
@@ -30,6 +31,11 @@ in this skill.
 
 The conditional requirements are enforced only by the server's hand-written
 validator. They do not appear in the OpenAPI document.
+
+The `start_date` check compares instants, but its 422 message prints only the
+date, which misleads. `2026-09-22T00:00:00Z` sent at `2026-09-23T07:37Z` was
+rejected with `start_date must be on or after 2026-09-22.` (observed on stage
+2026-09-23, revalidate). Use today's date for the safest result.
 
 ## Draft first, then activate
 
@@ -70,6 +76,14 @@ and an action.
 
 `type` is `global` or `per_user`. `count` must be at least 1.
 `time_window.duration_unit`, when present, is `day`, `week` or `month`.
+If `activation_limits` is absent, no repeat limit is configured. Before
+activation, show that behavior and require the developer to acknowledge it;
+do not silently assume a one-time or per-user limit.
+
+Before activation, also check that the intended trigger reaches an intended
+action and that no intended node is orphaned. The server validates references
+and cycles, but those checks alone do not prove that the quest is semantically
+usable.
 
 ## Editing
 

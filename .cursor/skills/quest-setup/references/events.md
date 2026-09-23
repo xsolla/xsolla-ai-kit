@@ -1,6 +1,7 @@
 # Events
 
-Written against the contract deployed on stage as of 2026-09-22.
+Stage OpenAPI and local runtime snapshots were checked on 2026-09-23. The
+stage deployment revision is not pinned here, so revalidate before writes.
 
 Events go to **qp-events-collector**, not to qp-server. Sending an event to
 qp-server produces a 404 that looks like a missing quest.
@@ -12,7 +13,7 @@ qp-server produces a 404 that looks like a missing quest.
 ```json
 {
   "idempotency_key": "<uuid>",
-  "name": "web3.token_test",
+  "name": "<event_name from the trigger>",
   "client_timestamp": "2026-09-22T10:30:00Z",
   "user_ids": [{"identifier_type": "xsolla_id", "value": "<uuid>"}],
   "quest_id": "<uuid>",
@@ -36,6 +37,10 @@ qp-server produces a 404 that looks like a missing quest.
 `user_ids[].identifier_type` is `xsolla_id`, `gamer_id`, `guest_id` or `email`.
 An `xsolla_id` value must parse as a UUID; an `email` value must contain `@`;
 `gamer_id` and `guest_id` need only be non-empty.
+
+A quest with a `web3_item` or `web3_token` reward needs an `xsolla_id` entry
+whose user already has a wallet. Check it before submitting; see
+[`rewards.md`](rewards.md).
 
 The account is **not** in the body. It comes from the credential.
 
