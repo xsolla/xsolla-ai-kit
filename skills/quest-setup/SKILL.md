@@ -58,6 +58,7 @@ project API key. Use it on the server or agent side only.
 - [`references/auth-and-environment.md`](references/auth-and-environment.md): host, credential, routes, access check and scope
 - [`references/quest-document.md`](references/quest-document.md): the quest graph, conditional requirements, full-document PUT
 - [`references/node-subtypes.md`](references/node-subtypes.md): the seven accepted node subtypes and their parameters
+- [`references/conditions.md`](references/conditions.md): condition grammar: types, operands, operators, event counting
 
 ## Flow
 
