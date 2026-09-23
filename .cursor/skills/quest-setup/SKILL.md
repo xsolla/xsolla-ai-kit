@@ -68,7 +68,11 @@ project API key. Use it on the server or agent side only.
    comes back, and get confirmation.
 2. **Draft.** Create the quest as `inactive` with the four required fields.
 3. **Fill in.** Add nodes and edges one at a time, asking for each missing
-   required value. Show the assembled document before sending it.
+   required value. When the developer names a reward item in their own words
+   ("the loot box"), find it in their item catalog and use its SKU, as
+   described in [`references/rewards.md`](references/rewards.md). Do not ask
+   the developer for a SKU they may not know. Show the assembled document
+   before sending it.
 4. **Activate.** A separate step: move to `active` with dates, after checking
    there are at least two nodes, a trigger-to-action path, no intended orphan
    nodes, and an acyclic graph.

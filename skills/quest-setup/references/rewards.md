@@ -31,9 +31,41 @@ The optional `playtime` object on `vc_wallet_ticket` is
 
 For `inventory_item`, provide either `items` or the single-item `item_sku`
 form. `name`, `image_url` and `model_3d_url` go with the single-item form.
-Obtain real catalog values from the developer. A body with neither `items` nor
+Find real catalog values as described in
+[Picking the item from the catalog](#picking-the-item-from-the-catalog). A body with neither `items` nor
 `item_sku` makes the platform pick a random item; tell the developer before
 choosing that. Acceptance never proves that a particular SKU exists.
+
+## Picking the item from the catalog
+
+Rewards that point at an item (`web3_item`, `inventory_item`, `lootbox`) take
+its SKU. The developer usually names the item, not the SKU: "give the loot
+box". Resolve it from the developer's item catalog in the project
+`XSOLLA_PROJECT_ID`. The Quest API does not check that a SKU exists, so this
+lookup is the only check before payout time.
+
+The catalog is read through the public Xsolla Store API at
+`https://store.xsolla.com`. These reads need no credential; never send the
+project API key to them.
+
+| Need | Route |
+|---|---|
+| Find an item by name or description | `GET /api/v2/project/{project_id}/items/virtual_items?locale=en&limit=50&offset=<n>`. Page with `offset` while `has_more` is `true` |
+| Check a SKU the developer gave | `GET /api/v2/project/{project_id}/items/sku/{sku}?locale=en`. 200 returns the item, 404 means no such SKU in this project |
+
+Each item carries `sku`, `name`, `description`, `image_url` and `type`.
+
+1. Match the developer's words against `name` and `description`. If exactly
+   one item matches, show its `name`, `sku` and `image_url` and ask the
+   developer to confirm it. If several match, list them and let the developer
+   choose. Never pick one silently.
+2. If the developer gave a SKU, check it with the SKU route and show the item
+   it points to before using it.
+3. If nothing matches, say so and stop. Do not guess a close SKU. The item may
+   be missing, or not enabled for the catalog. To create or enable it, use the
+   `catalog-design` skill, then come back.
+
+Only the confirmed `sku` goes into the reward body.
 
 ## Web3 rewards
 
@@ -55,8 +87,9 @@ amount with the developer before activation.
 
 ### web3_item
 
-An NFT from the developer's Web3 catalog. Take the SKU from the developer's
-Web3 catalog or from Xsolla. Never invent one.
+An NFT made from an item in the developer's item catalog. Find the item as
+described in [Picking the item from the catalog](#picking-the-item-from-the-catalog).
+Never invent a SKU.
 
 Omitting `item_sku` makes the platform pick a random item. Tell the developer
 before choosing that.
@@ -73,8 +106,9 @@ An ERC-20 payout, for example USDC.
 }
 ```
 
-- `item_sku` is the token SKU from the developer's Web3 catalog or from
-  Xsolla. Never invent one.
+- `item_sku` is the token SKU enabled for Web3 payouts, from the developer or
+  from Xsolla. A token is not a catalog item, so the catalog lookup above does
+  not apply. Never invent one.
 - `amount` is a whole-token amount and must be greater than 0: `5` pays 5
   tokens.
 - Show the token SKU and the amount back to the developer and get them
