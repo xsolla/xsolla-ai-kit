@@ -59,6 +59,7 @@ project API key. Use it on the server or agent side only.
 - [`references/quest-document.md`](references/quest-document.md): the quest graph, conditional requirements, full-document PUT
 - [`references/node-subtypes.md`](references/node-subtypes.md): the seven accepted node subtypes and their parameters
 - [`references/conditions.md`](references/conditions.md): condition grammar: types, operands, operators, event counting
+- [`references/rewards.md`](references/rewards.md): the nine reward types and their bodies, including Web3 rewards
 
 ## Flow
 
@@ -70,8 +71,9 @@ project API key. Use it on the server or agent side only.
 4. **Activate.** A separate step: move to `active` with dates, after checking
    there are at least two nodes, a trigger-to-action path, no intended orphan
    nodes, and an acyclic graph.
-   For a Web3 reward, also confirm the SKU, the amount and the
-   recipient's wallet with the developer.
+   For a Web3 reward, also run the checks in
+   [`references/rewards.md`](references/rewards.md): SKU, amount and the
+   recipient's wallet, all confirmed with the developer.
    Show the activation limits and the effective repeat behavior before asking
    for confirmation.
 5. **Edit.** Read, change, full `PUT`. Warn that `PUT` replaces the whole
@@ -103,7 +105,8 @@ project API key. Use it on the server or agent side only.
   event to retry it. Fix the quest first, then send a new event with a new key
   only after the developer confirms.
 - Never resend an event to retry a Web3 reward. The Web3 claim is not
-  idempotent and may already have paid.
+  idempotent and may already have paid; see
+  [`references/rewards.md`](references/rewards.md).
 - Never claim a reward was delivered.
 
 ## Errors
