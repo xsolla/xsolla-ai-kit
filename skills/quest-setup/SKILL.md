@@ -34,9 +34,10 @@ Platform:
 - Submit a single quest event to make a quest run
 - Check whether an event actually caused a quest to execute
 
-Out of scope: wallet balances, transaction hashes and Backpack display. This
-skill configures a Web3 reward and reports that a quest executed. It never
-states that a token was delivered.
+Out of scope: on-chain finality, wallet balances and Backpack display. This
+skill configures a Web3 reward and reports that a quest executed. For a Web3
+reward, a completed reward action means the provider returned a transaction
+hash for the claim. The skill never states that a token was delivered.
 
 ## Prerequisites
 
@@ -94,8 +95,10 @@ drifted. Never continue silently.
    required value. Show the assembled document before sending it.
 4. **Activate.** A separate step: move to `active` with dates, after checking
    there are at least two nodes, a trigger-to-action path, no intended orphan
-   nodes, and an acyclic graph. Show the activation limits and the effective
-   repeat behavior before asking for confirmation.
+   nodes, and an acyclic graph. For a Web3 reward, also run the read-only
+   checks in [`references/rewards.md`](references/rewards.md): SKU, amount
+   units, and the recipient's wallet. Show the activation limits and the
+   effective repeat behavior before asking for confirmation.
 5. **Edit.** Read, change, full `PUT`. Warn that `PUT` replaces the whole
    document.
 6. **Event.** Build the payload, generate a fresh UUID `idempotency_key`, set
@@ -105,7 +108,8 @@ drifted. Never continue silently.
    with the collector's returned `event_id` as described in
    [`references/verification.md`](references/verification.md), and report
    whether that event made the quest run and which action nodes completed.
-   Do not report a reward as delivered.
+   If an action `FAILED`, report its `error` verbatim. Do not report a reward
+   as delivered.
 
 ## Safety stops
 
@@ -123,6 +127,11 @@ drifted. Never continue silently.
 - After an uncertain event response, such as a timeout, **do not resend** —
   neither with the same idempotency key nor with a new one. A timeout is not a
   failure. Report "result unknown" and stop.
+- After a `FAILED` reward action, do not resend the event. Fix the quest, then
+  send a new event with a new key only after the developer confirms.
+- If a Web3 reward action is stuck in `RUNNING` or failed on a timeout, do not
+  send another event. The claim has no idempotency key and may already have
+  paid; see [`references/rewards.md`](references/rewards.md).
 - Never claim a reward was delivered.
 
 ## Errors

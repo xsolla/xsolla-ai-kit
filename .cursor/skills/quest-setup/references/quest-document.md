@@ -1,6 +1,6 @@
 # The quest document
 
-Stage OpenAPI and local runtime snapshots were checked on 2026-09-22. The
+Stage OpenAPI and local runtime snapshots were checked on 2026-09-23. The
 stage deployment revision is not pinned here, so revalidate before writes.
 
 A quest is a **graph**, not a flat record. This one fact drives everything else
@@ -19,7 +19,7 @@ in this skill.
 | `description` | string | no | if present, 5 to 1000 characters |
 | `publisher_id` | string | no | 1 to 255 characters |
 | `project_id` | string | no | 1 to 255 characters |
-| `start_date` | RFC3339 | **only when `active`** | not earlier than one day ago |
+| `start_date` | RFC3339 | **only when `active`** | not earlier than exactly 24 hours before the server's now; see below |
 | `end_date` | RFC3339 | **only when `active`** | not in the past, and at or after `start_date` |
 | `nodes` | array | **at least 2 when `active`** | optional and may be empty when `inactive` |
 | `connections` | object | required unless `inactive` and empty | see below |
@@ -31,6 +31,11 @@ in this skill.
 
 The conditional requirements are enforced only by the server's hand-written
 validator. They do not appear in the OpenAPI document.
+
+The `start_date` check compares instants, but its 422 message prints only the
+date, which misleads. `2026-09-22T00:00:00Z` sent at `2026-09-23T07:37Z` was
+rejected with `start_date must be on or after 2026-09-22.` (observed on stage
+2026-09-23, revalidate). Use today's date for the safest result.
 
 ## Draft first, then activate
 

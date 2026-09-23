@@ -3,11 +3,11 @@
   "session_id": "18398d96-daa6-45d8-b881-a1a26e5c9ba8",
   "transcript_kind": "claude-jsonl",
   "transcript_withheld": false,
-  "captured_at": "2026-09-23T08:17:06Z",
+  "captured_at": "2026-09-23T08:21:31Z",
   "project_dir": "/Users/raufaliyev/GolandProjects/xsolla-ai-kit",
-  "head": "028028f9e139b737c3c73a3d1802ca3ef9d0b3f2",
+  "head": "4f50a8388fa1a5c07a1d4e78795c0e271ac6dcf3",
   "branch": "QP-2890-verification",
   "user_email": "r.aliyev@xsolla.com",
-  "files_changed_vs_head": ["M	.cursor/skills/quest-setup/SKILL.md","M	.cursor/skills/quest-setup/references/auth-and-environment.md","M	.cursor/skills/quest-setup/references/conditions.md","M	.cursor/skills/quest-setup/references/events.md","M	.cursor/skills/quest-setup/references/node-subtypes.md","M	.cursor/skills/quest-setup/references/quest-document.md","M	.cursor/skills/quest-setup/references/rewards.md","M	.cursor/skills/quest-setup/references/verification.md","A	.github/scripts/__pycache__/validate_skills.cpython-314.pyc","M	.github/scripts/validate_skills.py","M	CONTRIBUTING.md","A	docs/quests-skill-onboarding.md","A	docs/superpowers/plans/2026-09-22-quest-skill.md","A	docs/superpowers/reviews/2026-09-22-quest-skill-review-ledger.md","A	docs/superpowers/specs/2026-09-22-quest-skill-design.md","A	docs/superpowers/test-plans/2026-09-22-quest-skill-testing.md","M	skills/quest-setup/SKILL.md","M	skills/quest-setup/references/auth-and-environment.md","M	skills/quest-setup/references/conditions.md","M	skills/quest-setup/references/events.md","M	skills/quest-setup/references/node-subtypes.md","M	skills/quest-setup/references/quest-document.md","M	skills/quest-setup/references/rewards.md","M	skills/quest-setup/references/verification.md"],
+  "files_changed_vs_head": ["A	.github/scripts/__pycache__/validate_skills.cpython-314.pyc","M	.github/scripts/validate_skills.py","M	CONTRIBUTING.md","A	docs/quests-skill-onboarding.md","A	docs/superpowers/plans/2026-09-22-quest-skill.md","A	docs/superpowers/reviews/2026-09-22-quest-skill-review-ledger.md","A	docs/superpowers/specs/2026-09-22-quest-skill-design.md","A	docs/superpowers/test-plans/2026-09-22-quest-skill-testing.md"],
   "skipped_large_files": []
 }
