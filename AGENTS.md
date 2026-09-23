@@ -18,6 +18,12 @@ Skills call **Xsolla REST APIs directly**. The CLI (`xsolla/xsolla-cli`) is an o
 |---------------------------------|------------------------------------------------------------------------------------------|
 | `shop-plan`                     | **Decides the build path** — headless vs Shop Builder, before any account or build work  |
 | `shop-setup`                    | **Orchestrator** — coordinates the full zero-to-shop flow, chaining all domain skills    |
+| `shopbuilder-storefront`        | **Shop Builder branch** — sequences the four level skills below                          |
+| `shopbuilder-site`              | Shop Builder level 1 — the site: identity, locales, brand seed theme, domain             |
+| `shopbuilder-page`              | Shop Builder level 2 — the page: theme that ships, backdrop, SEO                         |
+| `shopbuilder-blocks`            | Shop Builder level 3 — blocks: the storefront's sales funnel                             |
+| `shopbuilder-customize`         | Shop Builder level 4 — block content: copy, imagery, sections, per-block theme           |
+| `shopbuilder-custom-block`      | Shop Builder escape hatch — author and deploy a custom React block                       |
 | `merchant-setup`                | Creates and configures an Xsolla account + get API key                                   |
 | `catalog-design`                | Configures the catalog and the client flow: client catalog, purchase, order confirmation |
 | `login-setup`                   | Integrates Xsolla Login / NewID authentication                                           |
@@ -44,6 +50,9 @@ Configure my Xsolla catalog with items and pricing
 
 Integrate payments into my game
 → triggers: headless-checkout-integration
+
+Build my Shop Builder storefront / add a block / theme the site
+→ triggers: shopbuilder-storefront — after shop-plan records the shopbuilder path
 
 Go live / leave sandbox
 → triggers: production

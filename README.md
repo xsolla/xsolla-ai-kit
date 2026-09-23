@@ -78,6 +78,12 @@ XSOLLA_PROJECT_API_KEY=<your API key>
 |-------|--------|-------|---------|
 | `shop-plan` | Orchestrator — build-path decision | @s.sadruddin | Draft   |
 | `shop-setup` | Orchestrator — full zero-to-shop flow | @y.klochikhin | Done    |
+| `shopbuilder-storefront` | Store — Shop Builder orchestrator | @s.sadruddin | Draft   |
+| `shopbuilder-site` | Store — Shop Builder site | @s.sadruddin | Draft   |
+| `shopbuilder-page` | Store — Shop Builder page | @s.sadruddin | Draft   |
+| `shopbuilder-blocks` | Store — Shop Builder blocks | @s.sadruddin | Draft   |
+| `shopbuilder-customize` | Store — block customization | @s.sadruddin | Draft   |
+| `shopbuilder-custom-block` | Store — custom React block | @s.sadruddin | Draft   |
 | `merchant-setup` | Merchant and Project setup  | @y.klochikhin | Done    |
 | `catalog-design` | Items, pricing, virtual currency, bundles | @p.sanachev | Planned |
 | `login-setup` | Login / NewID / auth | @mohammed_abujalala | Planned |

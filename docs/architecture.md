@@ -3,7 +3,8 @@
 ```
 shop-plan                                → Headless vs Shop Builder, decided and recorded first
     ↓  (XSOLLA_BUILD_PATH in .env)
-shop-setup (orchestrator)
+shop-setup (orchestrator)            → headless path below; shopbuilder path →
+    │                                     shopbuilder-storefront → site → page → blocks → customize
     ├── merchant-setup                   → Merchant and Project setup
     ├── login-setup                      → Xsolla Login API
     ├── catalog-design                   → IGS API: /merchant/v2/projects/{id}/items/*

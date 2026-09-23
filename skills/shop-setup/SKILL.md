@@ -36,9 +36,12 @@ esac
   Shop Builder against five criteria, shows the trade-offs, and records the confirmed choice.
   This orchestrator never asks the path itself.
 - **`DECIDED:headless`** → proceed with the rest of this skill as below.
-- **`DECIDED:shopbuilder`** → halt. This kit has no Shop Builder build skills yet (tracked:
-  SB-8786, SB-8787, SB-8784, SB-8796) — say so plainly rather than attempting the headless flow
-  under a Shop Builder decision.
+- **`DECIDED:shopbuilder`** → run the shared foundation below (`merchant-setup`,
+  `catalog-design`, `login-setup`), then hand the storefront to `shopbuilder-storefront`, which
+  sequences `shopbuilder-site` → `shopbuilder-page` → `shopbuilder-blocks` →
+  `shopbuilder-customize`. Finish with `webhooks-impl`. Do **not** run the headless phases
+  (Headless Checkout, headless login code) — the Shop Builder site is hosted and renders its own
+  checkout and login.
 - **`INVALID:<value>`** → halt and show the value. `.env` was hand-edited to something that isn't
   a recognized path. Do **not** fall through to `shop-plan` as if nothing had been decided — that
   discards a choice the developer already made. Point them at `shop-plan` to correct it.

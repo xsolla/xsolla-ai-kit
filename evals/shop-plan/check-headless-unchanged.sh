@@ -13,7 +13,7 @@ REPO=$(git -C "$(dirname "$0")" rev-parse --show-toplevel) || exit 2
 BASE=${1:-origin/main}
 HEADLESS_ONLY="headless-checkout-integration login-styling"
 SHARED="merchant-setup catalog-design login-setup webhooks-impl shop-setup"
-ADDED_BY_THIS_WORK="shop-plan"
+ADDED_BY_THIS_WORK="shop-plan shopbuilder-storefront shopbuilder-site shopbuilder-page shopbuilder-blocks shopbuilder-customize shopbuilder-custom-block"
 
 cd "$REPO" || exit 2
 MB=$(git merge-base "$BASE" HEAD) || { echo "no merge-base with $BASE"; exit 2; }

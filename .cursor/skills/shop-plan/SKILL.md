@@ -56,11 +56,11 @@ drove it → developer says yes → `XSOLLA_BUILD_PATH=shopbuilder` recorded →
 | Ceiling on custom design | None | Bounded by the block system |
 | Ongoing maintenance | The developer's own frontend | None — Xsolla maintains the UI |
 
-**Status on this kit today:** only the headless path has build skills
-(`shop-setup` → `catalog-design`, `login-setup`, `headless-checkout-integration`, `webhooks-impl`,
-`production`). Shop Builder is a real, recordable choice, but its build skills don't exist in this
-kit yet (tracked: SB-8786, SB-8787, SB-8784, SB-8796). Say so plainly if a developer picks it —
-don't hide that it isn't buildable here today.
+**Both paths are buildable in this kit.** Headless runs `shop-setup` → `catalog-design`,
+`login-setup`, `headless-checkout-integration`, `webhooks-impl`, `production`. Shop Builder runs the
+same shared foundation, then `shopbuilder-storefront` (site → page → blocks → customize), and
+finishes with `webhooks-impl`. Either way, recording the choice is where this skill stops —
+`shop-setup` does the building.
 
 ## Steps
 
@@ -184,15 +184,12 @@ Recorded: headless. Run shop-setup when you're ready to build.
   "don't want to write a frontend" is about preference, not capacity.
 - **Writing `.env` before an explicit yes.** A shown recommendation is not a confirmed one.
 - **Re-interviewing when `.env` already has a recorded path.** Check first, every time.
-- **Recommending Shop Builder without saying its build skills don't exist in this kit yet.**
-  The developer should know before they commit to a path with nothing to build it with today.
 - **Averaging conflicting answers into a guess.** Name the conflict and ask, rather than picking
   the side with more signals.
 
 ## Known limitations
 
 - **Only the build path is planned.** Catalog and images/themes are not gathered here yet.
-- **Shop Builder can be recorded but not built** with this kit today (see "What actually differs").
 - **Only `shop-setup` checks the recorded path.** No other skill reads it, so invoking one directly
   (e.g. `headless-checkout-integration` on a `shopbuilder` project) isn't stopped.
 - **The step 1 and step 5 snippets are compound shell commands**, so Claude Code may ask the
