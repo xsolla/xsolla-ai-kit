@@ -16,7 +16,14 @@ Skills call **Xsolla REST APIs directly**. The CLI (`xsolla/xsolla-cli`) is an o
 
 | Skill                           | What it does                                                                             |
 |---------------------------------|------------------------------------------------------------------------------------------|
+| `shop-plan`                     | **Decides the build path** — headless vs Shop Builder, before any account or build work  |
 | `shop-setup`                    | **Orchestrator** — coordinates the full zero-to-shop flow, chaining all domain skills    |
+| `shopbuilder-storefront`        | **Shop Builder branch** — sequences the four level skills below                          |
+| `shopbuilder-site`              | Shop Builder level 1 — the site: identity, locales, brand seed theme, domain             |
+| `shopbuilder-page`              | Shop Builder level 2 — the page: theme that ships, backdrop, SEO                         |
+| `shopbuilder-blocks`            | Shop Builder level 3 — blocks: the storefront's sales funnel                             |
+| `shopbuilder-customize`         | Shop Builder level 4 — block content: copy, imagery, sections, per-block theme           |
+| `shopbuilder-custom-block`      | Shop Builder escape hatch — author and deploy a custom React block                       |
 | `merchant-setup`                | Creates and configures an Xsolla account + get API key                                   |
 | `catalog-design`                | Configures the catalog and the client flow: client catalog, purchase, order confirmation |
 | `login-setup`                   | Integrates Xsolla Login / NewID authentication                                           |
@@ -32,14 +39,20 @@ Skills call **Xsolla REST APIs directly**. The CLI (`xsolla/xsolla-cli`) is an o
 Skills are loaded automatically when you open this repo in your agent. To run a specific skill, ask your agent naturally:
 
 ```
+Should I use Shop Builder or build a headless shop?
+→ triggers: shop-plan (weighs five criteria, shows the trade-offs, records the choice)
+
 Set up a full Xsolla game shop for my project
-→ triggers: shop-setup
+→ triggers: shop-setup — which delegates to shop-plan first if no path is recorded
 
 Configure my Xsolla catalog with items and pricing
 → triggers: catalog-design
 
 Integrate payments into my game
 → triggers: headless-checkout-integration
+
+Build my Shop Builder storefront / add a block / theme the site
+→ triggers: shopbuilder-storefront — after shop-plan records the shopbuilder path
 
 Go live / leave sandbox
 → triggers: production
@@ -56,6 +69,23 @@ XSOLLA_PROJECT_API_KEY=<your API key>
 ```
 Setup by `merchant-setup` skill.
 
+```bash
+XSOLLA_BUILD_PATH=headless|shopbuilder
+```
+Recorded by `shop-plan` once the developer confirms the build path, and read by `shop-setup`
+before it builds anything. One path per shop — `shop-plan` is the only skill that writes it.
+
+```bash
+XSOLLA_SHOPBUILDER_SESSION=<pa-v4-token cookie value>
+```
+Needed only by the Shop Builder skills, for the few operations with no CLI route (custom-block
+deploy, authenticated preview). Copied by hand from a Publisher Account session and it expires —
+a known gap, documented rather than worked around. It is a secret: never commit or log it.
+
+Adding a skill that behaves differently per path? Implement against
+[the build-path contract](skills/shop-plan/references/build-path-contract.md) — it covers the
+allowed values and the three states a reader must handle (absent, decided, invalid).
+
 ---
 
 ## Key directories
@@ -65,6 +95,7 @@ Setup by `merchant-setup` skill.
 | `skills/` | SKILL.md files. One subdirectory per workflow. |
 | `skills/<name>/references/` | Long-form reference docs. Keeps SKILL.md under 200 lines. |
 | `docs/` | Architecture, distribution, and skill-gap guides. |
+| `evals/<skill>/` | Agent evals for a skill — runner, fixed intents, recorded results. A development tool; never installed with the skills. See [evals/shop-plan/README.md](evals/shop-plan/README.md). |
 | `.cursor/skills/` | Cursor-native skills (synced copy of `skills/`; do not edit manually) |
 | `.cursor/rules/` | Short always-on Cursor pointer rule |
 

@@ -19,6 +19,36 @@ metadata:
 
 # Xsolla Headless Shop — Architecture Overview
 
+## Step 0 — Check the build path
+
+**Before anything else**, check whether a build path has been decided:
+
+```bash
+raw=$(grep -E '^XSOLLA_BUILD_PATH=' .env 2>/dev/null | tail -n 1 | cut -d= -f2-)
+case "$raw" in
+  "")                   echo NO_DECISION ;;
+  headless|shopbuilder) echo "DECIDED:$raw" ;;
+  *)                    echo "INVALID:$raw" ;;
+esac
+```
+
+- **`NO_DECISION`** → invoke `shop-plan` and stop. It asks the developer to weigh headless vs.
+  Shop Builder against five criteria, shows the trade-offs, and records the confirmed choice.
+  This orchestrator never asks the path itself.
+- **`DECIDED:headless`** → proceed with the rest of this skill as below.
+- **`DECIDED:shopbuilder`** → run the shared foundation below (`merchant-setup`,
+  `catalog-design`, `login-setup`), then hand the storefront to `shopbuilder-storefront`, which
+  sequences `shopbuilder-site` → `shopbuilder-page` → `shopbuilder-blocks` →
+  `shopbuilder-customize`. Finish with `webhooks-impl`. Do **not** run the headless phases
+  (Headless Checkout, headless login code) — the Shop Builder site is hosted and renders its own
+  checkout and login.
+- **`INVALID:<value>`** → halt and show the value. `.env` was hand-edited to something that isn't
+  a recognized path. Do **not** fall through to `shop-plan` as if nothing had been decided — that
+  discards a choice the developer already made. Point them at `shop-plan` to correct it.
+
+The full contract — allowed values, who may write the key, what other skills must do with it —
+is in [`shop-plan/references/build-path-contract.md`](../shop-plan/references/build-path-contract.md).
+
 ## What is Headless Shop
 
 A custom game store assembled from individual Xsolla products and integrated
