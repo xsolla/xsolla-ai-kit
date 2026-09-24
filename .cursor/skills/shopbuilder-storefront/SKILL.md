@@ -14,7 +14,6 @@ metadata:
   owner: s.sadruddin
   domain: store
   status: draft
-  kind: orchestrator
 ---
 
 # Shop Builder storefront
@@ -26,7 +25,7 @@ and the rules; the four level skills do the work. It is the Shop Builder branch 
 ## Scope
 
 In scope: the storefront itself, built with `xsolla shopbuilder` and Publisher Account.
-The shared foundation is handled by sibling skills in this plugin, before this branch runs
+The shared foundation is handled by the sibling skills in this kit, before this branch runs
 (sequenced by `shop-setup`): merchant account and keys (`merchant-setup`), the catalog
 (`catalog-design`), the Login project and enabled methods (`login-setup`), and fulfillment
 (`webhooks-impl`). Payments are hosted — the Shop Builder site uses Xsolla Pay Station, so

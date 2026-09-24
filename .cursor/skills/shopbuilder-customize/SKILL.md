@@ -12,7 +12,6 @@ metadata:
   owner: s.sadruddin
   domain: store
   status: draft
-  level: 4-customize
 ---
 
 # Shop Builder: Block customization

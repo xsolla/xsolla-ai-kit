@@ -13,7 +13,6 @@ metadata:
   owner: s.sadruddin
   domain: store
   status: draft
-  kind: escape-hatch
 ---
 
 # Shop Builder: Custom block (advanced)
@@ -116,8 +115,8 @@ Do it without breaking the page:
 
 The `xsolla shopbuilder` CLI has **no custom-block command** — the compile-and-attach step is an
 HTTP call to the AI Custom Block API. Use the CLI for what it does cover (asset upload, id
-discovery) and the API only for the deploy itself. Auth is the same `pa-v4-token` the plugin
-already stores in `XSOLLA_SHOPBUILDER_SESSION`. Full endpoints and payloads:
+discovery) and the API only for the deploy itself. Auth is the same `pa-v4-token` you keep in
+`XSOLLA_SHOPBUILDER_SESSION`. Full endpoints and payloads:
 `references/deploy-api.md`.
 
 1. **Resolve ids.** `get-structure --slug <domain> --json` — the site document `_id` is the

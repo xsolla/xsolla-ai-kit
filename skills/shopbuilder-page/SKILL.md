@@ -11,7 +11,6 @@ metadata:
   owner: s.sadruddin
   domain: store
   status: draft
-  level: 2-page
 ---
 
 # Shop Builder: Page

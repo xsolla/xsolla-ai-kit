@@ -13,7 +13,7 @@ Each subdirectory contains a `SKILL.md` — a structured workflow file for an Xs
 | [`shopbuilder-page`](shopbuilder-page/SKILL.md)                           | Store — Shop Builder page (level 2)   | @s.sadruddin        | Draft  |
 | [`shopbuilder-blocks`](shopbuilder-blocks/SKILL.md)                       | Store — Shop Builder blocks (level 3) | @s.sadruddin        | Draft  |
 | [`shopbuilder-customize`](shopbuilder-customize/SKILL.md)                 | Store — block customization (level 4) | @s.sadruddin        | Draft  |
-| [`shopbuilder-custom-block`](shopbuilder-custom-block/SKILL.md)           | Store — custom React block (advanced)| @s.sadruddin        | Draft  |
+| [`shopbuilder-custom-block`](shopbuilder-custom-block/SKILL.md)           | Store — custom React block (advanced) | @s.sadruddin        | Draft  |
 | [`merchant-setup`](merchant-setup/SKILL.md)                               | Merchant and Project setup            | @y.klochikhin       | Done   |
 | [`catalog-design`](catalog-design/SKILL.md)                               | Items, purchase & order tracking      | @p.sanachev         | Draft  |
 | [`login-setup`](login-setup/SKILL.md)                                     | Login / NewID / auth                  | @mohammed_abujalala | Draft  |

@@ -7,7 +7,7 @@ the CLI there and use these raw calls only for the deploy/compile/attach/iterate
 
 ## Auth and roots
 
-Same `pa-v4-token` JWT the plugin stores in `XSOLLA_SHOPBUILDER_SESSION`. It is a secret — never
+Same `pa-v4-token` JWT you keep in `XSOLLA_SHOPBUILDER_SESSION`. It is a secret — never
 log or commit it; it expires (re-copy on 403).
 
 | Value | What it is |

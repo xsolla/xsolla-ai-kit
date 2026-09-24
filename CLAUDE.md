@@ -75,6 +75,13 @@ XSOLLA_BUILD_PATH=headless|shopbuilder
 Recorded by `shop-plan` once the developer confirms the build path, and read by `shop-setup`
 before it builds anything. One path per shop — `shop-plan` is the only skill that writes it.
 
+```bash
+XSOLLA_SHOPBUILDER_SESSION=<pa-v4-token cookie value>
+```
+Needed only by the Shop Builder skills, for the few operations with no CLI route (custom-block
+deploy, authenticated preview). Copied by hand from a Publisher Account session and it expires —
+a known gap, documented rather than worked around. It is a secret: never commit or log it.
+
 Adding a skill that behaves differently per path? Implement against
 [the build-path contract](skills/shop-plan/references/build-path-contract.md) — it covers the
 allowed values and the three states a reader must handle (absent, decided, invalid).
