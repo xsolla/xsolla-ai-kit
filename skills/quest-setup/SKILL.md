@@ -113,7 +113,10 @@ drifted. Never continue silently.
    reference. Warn that `PUT` replaces the whole document and that an edit to
    an active quest goes live for the next events. Show a before/after diff,
    repeat the activation confirmations for any changed action, reward or
-   limit, and read the quest back after the write.
+   limit, and read the quest back after the write. To pause, send the same
+   full `PUT` with `status: inactive`; events while paused are dropped and
+   never replayed, and for up to the cache time the quest can still run. See
+   the Pausing section of the quest reference.
 6. **Event.** Build the payload from the developer's values, never from
    memory or a read-back event body. Generate a fresh UUID `idempotency_key`,
    set an RFC3339 `client_timestamp`, show the exact payload, confirm with the
@@ -126,6 +129,9 @@ drifted. Never continue silently.
    whether that event made the quest run and which action nodes completed.
    If an action `FAILED`, report its `error` verbatim. Do not report a reward
    as delivered.
+8. **Delete.** Only quests the developer names, one per call, after a fresh
+   read and an explicit yes. `DELETE` is a soft delete with no restore route;
+   follow the Deleting section of the quest reference.
 
 ## Safety stops
 
@@ -147,7 +153,11 @@ drifted. Never continue silently.
   payouts; `send_http_webhook` sends event data to an external URL;
   `send_xsolla_app_notification` sends a user notification. Activate a
   `webshop_personalization` node only after the developer acknowledges that it
-  is a no-op, never as a working personalization action.
+  is a no-op, never as a working personalization action. For an already active
+  quest whose only action is `webshop_personalization`, say it does nothing at
+  run time before any edit or event, and that a `COMPLETED` row proves only
+  that the quest ran. A `PUT` that keeps it active needs that acknowledgement;
+  a pause does not.
 - If `activation_limits` is absent, ask the developer to explicitly choose
   unlimited repeat behavior and acknowledge that every qualifying event may run
   the action. Do not silently choose a limit or omit this decision. "Whatever

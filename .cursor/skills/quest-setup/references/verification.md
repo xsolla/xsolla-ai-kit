@@ -142,17 +142,21 @@ follow the duplicate payout note in [`rewards.md`](rewards.md).
 
 ## When nothing comes back
 
-An empty result after submitting an event usually means one of:
+Before naming a cause, `GET` the quest and compare it with the payload you
+sent. Name only causes that the quest document, the payload or the timing
+support; do not list a cause you have not checked. An empty result after
+submitting an event usually means one of, in this order:
 
+- the event's `publisher` does not equal the quest's `publisher_id` and
+  `project_id`, including an event with `publisher` sent to a quest that has
+  neither; see [`events.md`](events.md)
 - the event `name` does not match the trigger's `event_name`
 - the quest is `inactive`, or `active` but outside its dates at event time,
   either not started yet or already ended
-- the event's `publisher` does not equal the quest's `publisher_id` and
-  `project_id`
 - the event carried `properties.load_test: "true"`; this is expected, see
   [`events.md`](events.md)
 - the event arrived within the config cache time after the quest was created,
-  activated or edited
+  activated, paused or edited
 - the user identifier does not match the one the event carried
 - the execution has not been ingested yet, so retry the read before concluding
   anything
@@ -163,6 +167,15 @@ is live, and a dropped event leaves no row at all, even with
 `includeNotTriggered=true`. A `NOT_TRIGGERED` row appears only when the worker
 ran and then found the quest not live, for example because another quest with
 the same event name matched.
+
+An empty read-back alone cannot say whether the event was dropped or is not
+ingested yet. Rows for simple actions appeared about 1 to 2 seconds after the
+event and Web3 rewards up to about 10 seconds (observed on stage 2026-09-25,
+revalidate), so an empty result after the full read policy is not ingest
+delay. Then the quest's state at event time decides: if the quest was
+inactive, outside its dates or mismatched, say the event was dropped for that
+reason. An event sent within the cache time after a write may still have run
+on the old config, and then it has a row.
 
 An activation limit that is already used up is not an empty result: it shows
 as `FAILED` with `ACTIVATION_LIMIT_HIT`.

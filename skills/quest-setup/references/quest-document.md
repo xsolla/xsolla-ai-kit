@@ -140,3 +140,40 @@ changes an amount or SKU, check node names that mention the old value.
 `version_id` is server-assigned and changes on every write. It is ignored in
 the body: there is no optimistic concurrency, quest `PUT` never returns 409,
 and the last write wins. Read the quest immediately before a `PUT`.
+
+## Pausing
+
+There is no pause route. To pause, send the full-document `PUT` from the recipe
+with `status: inactive` and keep the dates, nodes and limits as they are. The
+date rules apply only to `active` writes, so an old `start_date` is fine here;
+reactivating later runs them again (see Fields).
+
+While the quest is inactive, the consumer drops its events: no workflow, no
+execution row, and nothing is queued or replayed on reactivation. The dropped
+events are still indexed, so they may count toward an event-count condition
+later (inferred from code). For up to the config cache time after the pause,
+events can still run the old, active config; see `events.md`. For a quest with
+an `issue_reward`, tell the developer that such an event can still pay.
+
+## Deleting
+
+`DELETE /api/v2/quests/{id}` needs `questconfig:delete` and returns 200 with
+`{"message": "Quest deleted successfully"}`. It is a soft delete: the quest and
+all its triggers get `status: deleted`, so events stop matching it (after the
+config cache time), and its qp-data rows stay. After that, `GET`, the list and
+a second `DELETE` treat it as not found (404). There is no restore route. The
+update query does not exclude deleted quests, so a `PUT` to the old id may
+overwrite and revive it (inferred from code, not tested); never use that as a
+restore, and do not `PUT` to a deleted id.
+
+Recipe:
+
+- Delete only quests the developer names by id or exact name. Never select
+  them by pattern or "all test quests" without showing the list first.
+- Re-list or `GET` right before deleting, and show each quest's name, id,
+  `status`, dates and actions. For an `active` quest or one with an
+  `issue_reward` or another external action, say it is live and what stops.
+- Say that the delete cannot be undone through the API, and get a yes.
+- Delete one quest per call. Stop on the first non-200 and report it; after a
+  timeout or 5xx, `GET` the quest to check before trying again.
+- Re-list afterwards and show that the deleted quests are gone.

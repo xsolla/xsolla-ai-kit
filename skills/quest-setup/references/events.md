@@ -31,7 +31,7 @@ qp-server produces a 404 that looks like a missing quest.
 | `user_ids` | yes | at least one entry |
 | `quest_id` | no | a valid UUID when present. Restricts matching to that one quest; without it, every live quest of the account with that `event_name` runs |
 | `scope` | no | `global`, `private`, `within_project`, `within_quest`, `within_publisher`. Defaults to `private`. It decides which quests' event-count conditions can count this event later, not which quest runs. Keep the default unless the developer asks. The published schema shows a bare string and the older struct hint lists only three values; the server accepts all five |
-| `publisher` | no | if the object is present, the live schema requires both `publisher_id` and `project_id`. They must equal the quest's values, or the event matches no quest and leaves no execution row. Omit it for a quest without them |
+| `publisher` | no | if the object is present, the live schema requires both `publisher_id` and `project_id`. They must equal the quest's values, or the event matches no quest and leaves no execution row; a quest without them never matches an event that has them. Omit it for a quest without them. An event without `publisher` is not filtered by publisher |
 | `properties` | no | string values only |
 
 `user_ids[].identifier_type` is `xsolla_id`, `gamer_id`, `guest_id` or `email`.
@@ -54,8 +54,10 @@ not part of this skill; do not call them.
 
 - **Wait after a quest write.** The pipeline caches quest config for up to 60
   seconds (see [`auth-and-environment.md`](auth-and-environment.md)). After
-  creating, activating or editing a quest, wait about 90 seconds before the
-  first event, or the event may be matched against the old config.
+  creating, activating, pausing or editing a quest, wait about 90 seconds
+  before the first event, or the event may be matched against the old config.
+  Right after a pause, an event can still run the quest as active; for a quest
+  with an `issue_reward`, say so and wait before sending.
 - **Check the window.** The quest must be `active` and inside its dates at
   event time; see [`quest-document.md`](quest-document.md).
 - **Show the exact payload**, including the `idempotency_key` you generated.
