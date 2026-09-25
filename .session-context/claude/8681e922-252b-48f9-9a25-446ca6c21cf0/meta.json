@@ -1,0 +1,13 @@
+{
+  "tool": "claude",
+  "session_id": "8681e922-252b-48f9-9a25-446ca6c21cf0",
+  "transcript_kind": "claude-jsonl",
+  "transcript_withheld": false,
+  "captured_at": "2026-09-25T12:39:12Z",
+  "project_dir": "/Users/raufaliyev/GolandProjects/xsolla-ai-kit",
+  "head": "cd7d9b899006e124e9f9b34e92822bedb69b1d28",
+  "branch": "QP-2890-verification",
+  "user_email": "r.aliyev@xsolla.com",
+  "files_changed_vs_head": ["A	.github/scripts/__pycache__/validate_skills.cpython-314.pyc","M	.github/scripts/validate_skills.py","M	CONTRIBUTING.md","A	docs/quests-skill-onboarding.md","A	docs/superpowers/plans/2026-09-22-quest-skill.md","A	docs/superpowers/reviews/2026-09-22-quest-skill-review-ledger.md","A	docs/superpowers/specs/2026-09-22-quest-skill-design.md","A	docs/superpowers/test-plans/2026-09-22-quest-skill-testing.md"],
+  "skipped_large_files": []
+}
