@@ -17,6 +17,7 @@ Skills call **Xsolla REST APIs directly**. The CLI (`xsolla/xsolla-cli`) is an o
 | Skill                           | What it does                                                                             |
 |---------------------------------|------------------------------------------------------------------------------------------|
 | `shop-setup`                    | **Orchestrator** — coordinates the full zero-to-shop flow, chaining all domain skills    |
+| `shop-builder-assembly`         | Assembles a complete Shop Builder site from a game brief, presets, pages, and blocks     |
 | `merchant-setup`                | Creates and configures an Xsolla account + get API key                                   |
 | `catalog-design`                | Configures the catalog and the client flow: client catalog, purchase, order confirmation |
 | `login-setup`                   | Integrates Xsolla Login / NewID authentication                                           |
@@ -34,6 +35,9 @@ Skills are loaded automatically when you open this repo in your agent. To run a 
 ```
 Set up a full Xsolla game shop for my project
 → triggers: shop-setup
+
+Assemble a complete Shop Builder site for my mobile, PC, or live-service game
+→ triggers: shop-builder-assembly
 
 Configure my Xsolla catalog with items and pricing
 → triggers: catalog-design
