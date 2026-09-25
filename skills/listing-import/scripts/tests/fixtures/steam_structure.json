@@ -1,0 +1,61 @@
+{
+  "pages": [
+    {
+      "_id": "6a9ae59a30cec01e4bd96baf",
+      "blocks": [
+        {
+          "_id": "6a9ae59b30cec01e4bd96bb9",
+          "module": "header"
+        },
+        {
+          "_id": "6a9ae59b30cec01e4bd96bba",
+          "module": "leadGameSales"
+        },
+        {
+          "_id": "6a9ae59b30cec01e4bd96bbb",
+          "module": "description"
+        },
+        {
+          "_id": "6a9ae59b30cec01e4bd96bbc",
+          "module": "packs"
+        },
+        {
+          "_id": "6a9ae59b30cec01e4bd96bbd",
+          "module": "packs"
+        },
+        {
+          "_id": "6a9ae59b30cec01e4bd96bbe",
+          "module": "description"
+        },
+        {
+          "_id": "6a9ae59b30cec01e4bd96bbf",
+          "module": "bento-grid"
+        },
+        {
+          "_id": "6a9ae59b30cec01e4bd96bc0",
+          "module": "bento-grid"
+        },
+        {
+          "_id": "6a9ae59b30cec01e4bd96bc1",
+          "module": "gallery"
+        },
+        {
+          "_id": "6a9ae59b30cec01e4bd96bc2",
+          "module": "packs"
+        },
+        {
+          "_id": "6a9ae59b30cec01e4bd96bc3",
+          "module": "requirements"
+        },
+        {
+          "_id": "6a9ae59b30cec01e4bd96bc4",
+          "module": "faq"
+        },
+        {
+          "_id": "6a9ae59b30cec01e4bd96bc5",
+          "module": "footer"
+        }
+      ]
+    }
+  ]
+}
