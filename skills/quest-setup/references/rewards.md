@@ -36,7 +36,7 @@ smoke test, offer the no-op action in [`node-subtypes.md`](node-subtypes.md).
 | `inventory_item` | `{"xsolla_item": <bool>, "items": [{"sku": "<string>", "quantity": <int>, "type": "<string>", "name": "<string>", "image_url": "<url>", "model_3d_url": "<url>"}], "item_sku": "<string>", "name": "<string>", "image_url": "<url>", "model_3d_url": "<url>"}` | `items` or `item_sku`; item quantity 0 to 100 and defaults to 1 at runtime |
 | `vc_wallet_ticket` | `{"quantity": <int>, "currency_ticker": "<string>"}` plus optional `playtime` | `quantity` greater than 0 |
 | `web3_item` | `{"item_sku": <string or array>, "quantity": <int>}` plus optional `project` | body must not be empty. `quantity` at least 0, read back as 1 when absent. No `item_sku` means a random item, see below. The worker ignores `xsolla_item` here; omit it |
-| `web3_token` | `{"item_sku": "<string>", "amount": <integer>}` plus optional `project` | both required. qp-server rejects an `amount` of 0 or less, or above 10000, but the payout needs a positive integer in base units, see below |
+| `web3_token` | `{"item_sku": "<string>", "amount": <integer>}` plus optional `project` | both required. Keep `amount` a positive integer in base units, at most 10000; the worker enforces the cap at payout, see below |
 
 The optional `playtime` object on `vc_wallet_ticket` is
 `{"earn_rate_minutes": <greater than 0>, "daily_cap_minutes": <greater than 0>, "timezone": "<non-empty>"}`.
@@ -85,9 +85,13 @@ may not see. Tell the developer if the source differs.
 
 qp-server does not check a Web3 body against the minting service. It accepts
 `0.01` and `10000`, and a SKU that is not bound, on create, `PUT` and
-activation alike. It does enforce the `web3_token` cap: above 10000 the write
-fails with 422 `amount must not exceed 10000`. Check the cap before sending. Those mistakes appear only at payout time, as a `FAILED`
-`issue_reward` action whose `error` names the cause; see
+activation alike. The qp-server deployed on stage on 2026-09-25 also dropped
+its own `web3_token` cap of 10000 and the `project` format check on save
+(code, not observed live, revalidate), so an `amount` above 10000 may be
+saved without a 422. The stage worker still enforces both at payout: above
+10000 the action fails with `amount must not exceed 10000`. Check the cap
+yourself before saving. These mistakes appear only at payout time, as a
+`FAILED` `issue_reward` action whose `error` names the cause; see
 [`verification.md`](verification.md). Run the checks below before activation.
 
 ## web3_item
@@ -147,7 +151,8 @@ the token's decimals from the developer or the owner, never guess them, and
 show both the token amount and the base-unit integer before activation.
 
 The cap of 10000 is 0.01 of a 6-decimal token if `amount` is in base units.
-State that before the write when the developer asks for a larger payout.
+qp-server may no longer reject a larger value, but the payout fails; state
+the cap before the write when the developer asks for a larger payout.
 
 **`item_sku` must be a current ERC-20 binding of the worker's ERC-20 project.**
 Read the minting service's currency bindings

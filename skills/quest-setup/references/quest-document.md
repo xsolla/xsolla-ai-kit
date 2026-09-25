@@ -187,7 +187,7 @@ an `issue_reward`, tell the developer that such an event can still pay.
 ## Deleting
 
 `DELETE /api/v2/projects/{project_id}/quests/{id}` needs `questconfig:delete`
-(the project key has it) and returns 200 with
+(a project key acts with author rights, which include it) and returns 200 with
 `{"message": "Quest deleted successfully"}`. It is a soft delete: the quest and
 all its triggers get `status: deleted`, so events stop matching it (after the
 config cache time), and its qp-data rows stay. After that, `GET`, the list and
