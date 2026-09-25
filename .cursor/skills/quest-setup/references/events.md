@@ -31,7 +31,7 @@ qp-server produces a 404 that looks like a missing quest.
 | `user_ids` | yes | at least one entry |
 | `quest_id` | no | a valid UUID when present |
 | `scope` | no | `global`, `private`, `within_project`, `within_quest`, `within_publisher`. Defaults to `private`. The published schema shows a bare string and the older struct hint lists only three values; the server accepts all five |
-| `publisher` | no | if the object is present and non-empty, `publisher.publisher_id` is required |
+| `publisher` | no | if the object is present, the live schema requires both `publisher_id` and `project_id`. They must equal the quest's values, or the event matches no quest and leaves no execution row. Omit it for a quest without them |
 | `properties` | no | string values only |
 
 `user_ids[].identifier_type` is `xsolla_id`, `gamer_id`, `guest_id` or `email`.
@@ -63,3 +63,7 @@ resend, not with the same key and not with a new one. A timeout is not a
 failure: the event may have been accepted and the quest may already be paying
 out. Report "result unknown", and use the execution read-back to find out what
 really happened.
+
+If the developer later agrees to a new event, use the saved payload or ask
+them to paste it again. Never rebuild it from memory or from a read-back
+`eventBody`.

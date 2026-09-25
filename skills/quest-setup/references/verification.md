@@ -19,14 +19,34 @@ unavailable and do not infer execution or reward delivery from event acceptance.
 | `includeNotTriggered` | also show quests that did not fire |
 | `latestPerUser` | one row per user |
 | `includeEventBody` | include the originating event |
-| `page`, `size` | paging |
+| `page`, `size` | paging, `size` at most 200 |
+
+There is no event-ID filter, and a useful lookup needs `questId` or `userId`.
+If the developer has only an event id, ask for the quest id or the user.
 
 ## What comes back
 
 Each item carries the execution `status`, the originating `eventId` and
 `eventName`, the `quest` with the event names it `listensFor`, the `account`,
 the `conditionEvals`, and an `actions` array giving **each action node's own
-status**.
+status**. A row may name a quest whose `quest.status` is `deleted`; rows stay
+after a soft delete.
+
+qp-data has no running state. The worker writes the row once the execution has
+finished, so an execution still in flight shows as no row.
+
+| Level | Value | Meaning |
+|---|---|---|
+| execution `status` | `COMPLETED` | finished without a failure |
+| | `FAILED` | see `failReason`: `ACTION_FAILED` (an action failed), `CONDITION_EVAL_FAILED` (a condition could not be evaluated) or `ACTIVATION_LIMIT_HIT` |
+| | `IN_PROGRESS` | a condition was not met for this event; `actions` is empty. Waiting for more events, not stuck |
+| | `NOT_TRIGGERED` | the worker ran but the quest was not live at event time. Listed only with `includeNotTriggered` |
+| action `status` | `COMPLETED`, `FAILED` | per action node |
+
+For `IN_PROGRESS`, read `conditionEvals`: each entry has `nodeId`, `operator`,
+`expected`, `actual` and `matched`. For an event-count condition, another
+qualifying event advances `actual`, but it is a new event and needs the
+developer's confirmation.
 
 ## Correlate the submitted event first
 
@@ -51,11 +71,15 @@ uncertain submission without an `event_id`, keep `result unknown`.
 After an uncertain submission, if no `event_id` was received, keep **"result
 unknown"** unless read-only evidence positively identifies the originating
 event and its `eventId`. `includeEventBody=true` can expose the event body for
-inspection. Use it only when necessary and redact identifiers, emails and
-secret-like properties before showing them. An unrelated success is never
-sufficient. Do not assume the
-`idempotency_key` equals `eventId`, and do not resend the event to obtain an ID.
-If positive identification is unavailable, the result remains unknown.
+inspection. Its `eventBody` carries `id` (equal to `eventId`),
+`idempotency_key`, `account_id`, `publisher`, `user_ids` and
+`server_timestamp`. A matching `idempotency_key` identifies your event,
+because you generated it fresh. Compare locally, and do not print bodies; if
+one must be shown, redact identifiers, emails and secret-like properties. An
+unrelated success is never sufficient. Do not assume the `idempotency_key`
+equals `eventId`, and do not resend the event to obtain an ID: a second POST
+with the same key returns a new `event_id` that never appears in qp-data. If
+positive identification is unavailable, the result remains unknown.
 
 ## Three separate claims
 
@@ -93,8 +117,8 @@ minting service with a 400.
 4. Only after the developer confirms, send a **new** event with a new
    `idempotency_key`, then verify it from the start.
 
-If a Web3 `issue_reward` is still `RUNNING` after the bounded read policy, or
-failed on a timeout, the claim may already have paid. Do not send a new event;
+If a Web3 execution still has no row after the bounded read policy, or its
+`issue_reward` failed on a timeout, the claim may already have paid. Do not send a new event;
 follow the duplicate payout note in [`rewards.md`](rewards.md).
 
 ## When nothing comes back
@@ -103,9 +127,16 @@ An empty result after submitting an event usually means one of:
 
 - the event `name` does not match the trigger's `event_name`
 - the quest is `inactive`
+- the quest was outside its dates at event time: a `NOT_TRIGGERED` row, visible
+  only with `includeNotTriggered`
 - the user identifier does not match the one the event carried
-- an activation limit already consumed the user's allowance
 - the execution has not been ingested yet, so retry the read before concluding
   anything
 
-Reading again is safe within the bounded policy above. Re-sending the event is not.
+An activation limit that is already used up is not an empty result: it shows
+as `FAILED` with `ACTIVATION_LIMIT_HIT`.
+
+Reading again is safe within the bounded policy above. Re-sending the event is
+not. The worker writes each row once, when the execution ends, so a result
+that stays wrong for days will not fix itself: escalate to the Quest Platform team with the quest id,
+`event_id`, `idempotency_key`, user and time.

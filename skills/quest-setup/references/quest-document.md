@@ -14,19 +14,19 @@ in this skill.
 |---|---|---|---|
 | `name` | string | yes | 1 to 255 characters |
 | `type` | string | yes | `liveops`, `ads`, `xsolla_app`, `social_quest` |
-| `status` | string | yes | `active` or `inactive` on write. `deleted` exists as a value but is rejected on write |
-| `created_by` | string | yes | 1 to 255 characters |
+| `status` | string | yes | `active` or `inactive` on write. `deleted` is set only by `DELETE`, a soft delete, and is rejected on write |
+| `created_by` | string | yes | 1 to 255 characters. Ask the developer; never derive it from the environment |
 | `description` | string | no | if present, 5 to 1000 characters |
 | `publisher_id` | string | no | 1 to 255 characters |
 | `project_id` | string | no | 1 to 255 characters |
 | `start_date` | RFC3339 | **only when `active`** | not earlier than exactly 24 hours before the server's now; see below |
-| `end_date` | RFC3339 | **only when `active`** | not in the past, and at or after `start_date` |
+| `end_date` | RFC3339 | **only when `active`** | not in the past, and at or after `start_date`. Ask; there is no default |
 | `nodes` | array | **at least 2 when `active`** | optional and may be empty when `inactive` |
 | `connections` | object | required unless `inactive` and empty | see below |
 | `activation_limits` | array | no | see below |
 | `metadata` | object | no | nesting depth at most 2 |
 | `id`, `created_at`, `updated_at`, `version_id` | — | server-assigned | ignored on create |
-| `has_personalization` | bool | — | server-derived from the nodes; do not set it |
+| `has_personalization` | bool | — | server-derived: `true` when any action is `webshop_personalization`, even though that action is a no-op at run time. Do not set it |
 | `sample_data` | any | no | accepted, not validated, **not persisted** |
 
 The conditional requirements are enforced only by the server's hand-written
@@ -36,6 +36,15 @@ The `start_date` check compares instants, but its 422 message prints only the
 date, which misleads. `2026-09-22T00:00:00Z` sent at `2026-09-23T07:37Z` was
 rejected with `start_date must be on or after 2026-09-22.` (observed on stage
 2026-09-23, revalidate). Use today's date for the safest result.
+
+## Responses
+
+Create and update return 200, not 201, with the whole quest. Empty `nodes`,
+`connections` and `metadata` come back as `null` rather than `[]` or `{}`;
+that is not an error. A `null` `nodes` may be sent back on an `inactive`
+draft; send real arrays when activating. The list returns
+`{page, limit, total, data[]}`, `limit` 10 by default and 100 at most, and its
+items carry no nodes, connections or `account_id`.
 
 ## Draft first, then activate
 
@@ -60,8 +69,10 @@ the first call.
 
 - `type` is `trigger`, `action` or `condition`.
 - `id` must be a valid, non-zero UUID.
-- `on` is optional. When present it must be `ticket_issued`, `no_ticket` or
-  `daily_cap_reached`.
+- `on` is optional. An edge without it is always followed. With it, the
+  worker follows the edge only when the source action returns that outcome:
+  `ticket_issued`, `no_ticket` or `daily_cap_reached`. Only an `issue_reward`
+  with `vc_wallet_ticket` `playtime` returns these outcomes today.
 - Every edge must reference a node that exists in `nodes`, and the graph must
   be acyclic.
 
@@ -91,4 +102,6 @@ There is **no PATCH**. Update is a full-document `PUT`: read the quest, change
 what you need, and send the whole object back. Tell the developer this before
 editing, because a partial body silently drops everything it omits.
 
-`version_id` is server-assigned and changes on every write.
+`version_id` is server-assigned and changes on every write. It is ignored in
+the body: there is no optimistic concurrency, quest `PUT` never returns 409,
+and the last write wins. Read the quest immediately before a `PUT`.

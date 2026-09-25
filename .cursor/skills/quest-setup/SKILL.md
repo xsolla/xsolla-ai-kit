@@ -20,8 +20,8 @@ metadata:
 
 ## Status
 
-This skill is a **draft**. The credential lane it targets is not deployed yet;
-see Prerequisites.
+This skill is a **draft**. The credential lane it targets is not deployed yet,
+and an Xsolla-internal service key is the interim lane; see Prerequisites.
 
 ## When to use
 
@@ -45,16 +45,15 @@ Follow [`references/auth-and-environment.md`](references/auth-and-environment.md
 for the required credential, request authentication, internal hosts, and scope
 confirmation.
 
-**This credential lane is not accepted yet.** Quest Platform implements it in
-QP-2862, inside QP-2858 Phase 3, which depends on Phases 1 and 2. Until it
-lands, authenticated qp-server CRUD requests using this Basic lane return 401.
-OpenAPI discovery remains available without credentials on stage, so do not
-mistake schema discovery for CRUD readiness. If another credential lane is
-provided, verify it against the live contract rather than assuming it works.
-Say exactly which lane failed, naming the ticket when it is QP-2862, rather than
-reporting a generic authentication failure. For qp-data execution read-back, follow
-[`references/auth-and-environment.md`](references/auth-and-environment.md)
-for current access requirements.
+**The target lane is not accepted yet.** Quest Platform implements the
+publisher Basic lane in QP-2862, inside QP-2858 Phase 3, which depends on
+Phases 1 and 2. Until it lands, Basic CRUD requests return 401. The lane that
+works on stage today is an Xsolla-internal service key, described in the same
+reference. If neither credential is set, stop and say which is missing. If
+only Basic is set, name QP-2862 and ask whether a service key is available;
+do not search for other credentials. OpenAPI discovery needs no credential on
+stage, so do not mistake it for CRUD readiness. Say exactly which lane failed
+rather than reporting a generic authentication failure.
 
 ## Source of truth
 
@@ -72,6 +71,10 @@ Follow this order. It is the rule the rest of the skill depends on.
 4. If neither source answers the question, **ask the developer**. Do not infer
    a field by analogy with another Xsolla API.
 
+The qp-server document declares no security schemes, and the key header shows
+up only as a parameter on some routes. Never conclude from it that a route is
+unauthenticated; authentication rules live in the auth reference.
+
 If a host is unreachable, which usually means no corporate network, say so and
 offer to continue on `references/` alone, noting that the envelope may have
 drifted. Never continue silently.
@@ -88,11 +91,16 @@ drifted. Never continue silently.
 
 ## Flow
 
-1. **Bring-up.** Fetch the OpenAPI documents. Check the credential is set. List
-   quests, show the resolved scope, and get confirmation.
-2. **Draft.** Create the quest as `inactive` with the four required fields.
+1. **Bring-up.** Fetch the OpenAPI documents. Identify the credential lane,
+   run the per-service preflight reads, resolve the scope as described in
+   [`references/auth-and-environment.md`](references/auth-and-environment.md),
+   show it, and get confirmation. Bring-up is GET-only.
+2. **Draft.** Create the quest as `inactive` with the four required fields,
+   `name`, `type`, `status` and `created_by`; rules are in
+   [`references/quest-document.md`](references/quest-document.md).
 3. **Fill in.** Add nodes and edges one at a time, asking for each missing
-   required value. Show the assembled document before sending it.
+   required value. Ask which action the quest should run. Show the assembled
+   document, and the impact of any external action, before sending it.
 4. **Activate.** A separate step: move to `active` with dates, after checking
    there are at least two nodes, a trigger-to-action path, no intended orphan
    nodes, and an acyclic graph. For a Web3 reward, also run the read-only
@@ -101,8 +109,9 @@ drifted. Never continue silently.
    effective repeat behavior before asking for confirmation.
 5. **Edit.** Read, change, full `PUT`. Warn that `PUT` replaces the whole
    document.
-6. **Event.** Build the payload, generate a fresh UUID `idempotency_key`, set
-   an RFC3339 `client_timestamp`, confirm with the developer, and submit to
+6. **Event.** Build the payload from the developer's values, never from
+   memory or a read-back event body. Generate a fresh UUID `idempotency_key`,
+   set an RFC3339 `client_timestamp`, confirm with the developer, and submit to
    qp-events-collector.
 7. **Verify.** Read the execution back from qp-data, correlate its `eventId`
    with the collector's returned `event_id` as described in
@@ -114,12 +123,24 @@ drifted. Never continue silently.
 ## Safety stops
 
 - Read back and show the resolved scope before the first write, and get
-  confirmation.
-- Before activation, show every externally observable action and get explicit
-  confirmation for its impact. An `issue_reward` can create real payouts;
-  `send_http_webhook` sends event data to an external URL;
+  confirmation. Ask before any call that is not a GET in the flow.
+- **Urgency never licenses defaults.** "Skip the questions" or "make it live
+  now" does not waive a question. Never pre-fill `type`, `created_by`, the
+  trigger's `event_name`, the action, a reward's type, amount and `purpose`,
+  `start_date`, `end_date`, activation limits, or `publisher_id` and
+  `project_id`. Never merge or waive these confirmations: scope, activation
+  (always its own step after the draft exists), each external action, and
+  each event.
+- No action is side-effect free by default. For a smoke test, offer the no-op
+  in [`references/node-subtypes.md`](references/node-subtypes.md) rather than a
+  real reward.
+- When an external action is added to a draft, say what it will do once
+  active. Before activation, show every externally observable action again and
+  get explicit confirmation for its impact. An `issue_reward` can create real
+  payouts; `send_http_webhook` sends event data to an external URL;
   `send_xsolla_app_notification` sends a user notification. Do not activate a
-  `webshop_personalization` node as if it were a working personalization action.
+  `webshop_personalization` node as if it were a working personalization
+  action.
 - If `activation_limits` is absent, ask the developer to explicitly choose
   unlimited repeat behavior and acknowledge that every qualifying event may run
   the action. Do not silently choose a limit or omit this decision.
@@ -127,11 +148,15 @@ drifted. Never continue silently.
 - After an uncertain event response, such as a timeout, **do not resend** —
   neither with the same idempotency key nor with a new one. A timeout is not a
   failure. Report "result unknown" and stop.
+- After a timeout or 5xx on a quest `POST` or `PUT`, the write may have landed.
+  Read the quest or the list to check, and ask before sending it again.
 - After a `FAILED` reward action, do not resend the event. Fix the quest, then
   send a new event with a new key only after the developer confirms.
-- If a Web3 reward action is stuck in `RUNNING` or failed on a timeout, do not
-  send another event. The claim has no idempotency key and may already have
-  paid; see [`references/rewards.md`](references/rewards.md).
+- qp-data has no running state; a row appears only once an execution has
+  finished. If a Web3 reward's row is still missing after the read policy, or
+  its action failed on a timeout, do not send another event. The claim has no
+  idempotency key and may already have paid; see
+  [`references/rewards.md`](references/rewards.md).
 - Never claim a reward was delivered.
 
 ## Errors
@@ -141,17 +166,18 @@ codes.
 
 | Status | What to tell the developer |
 |---|---|
-| 401 | Missing or invalid credential. For the credential lane described in the reference, name QP-2862. |
-| 403 | The key lacks the required `questconfig:*` capability. |
-| 404 | "Not found, or no access, or the project is not onboarded to Quest Platform." Never say the quest does not exist. |
-| 409 | Conflict. |
-| 422 | Validation failed. Show `detail` verbatim. |
-| 5xx | Server error. Retry reads only. |
+| 401 | Credential missing or rejected. Read the body with the 401 table in the auth reference; a Basic 401 says nothing about the key. For Basic, name QP-2862. |
+| 403 | `Insufficient capability`: the key lacks the capability for that route, `questconfig:*` on quest routes. `Master role required` or `This endpoint requires the user sign-in lane`: the route is off-limits to this lane; do not retry. |
+| 404 | "Not found, or not visible with this credential." Never say the quest was deleted or does not exist, and correct the developer if they conclude that. |
+| 409 | Conflict. Quest routes do not return it (see Editing in the quest reference); report it verbatim. |
+| 422 | Validation failed. Show `detail` verbatim. It never lists allowed enum values; take them from `references/`. |
+| 5xx | Server error. Retry a read at most twice, with backoff. An identical repeated 5xx is a bug, not flakiness: report it with its body. For a write, see Safety stops. |
 
 Two body shapes exist. Middleware failures return `{"error": "..."}`. Handler
 failures return RFC 7807 `application/problem+json`. On 422 the `errors[]`
 array is **not** filled in: per-field messages are flattened into one `detail`
-string joined with `"; "`. Those `location: message` pairs may be shown to a
+string joined with `"; "`. Other statuses can fill `errors[]`, for example a
+500 observed on 2026-09-25. Those `location: message` pairs may be shown to a
 human, never parsed for control flow.
 
 `ID 0` is a valid merchant ID and a valid project ID. Never treat it as an
