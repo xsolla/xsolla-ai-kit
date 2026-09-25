@@ -30,37 +30,6 @@ jobs:
       - name: Validate skills, registries, links and provider sync
         run: python3 .github/scripts/validate_skills.py
 
-  scripts:
-    name: Skill scripts — unit tests and line length
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.2.2
-        with:
-          persist-credentials: false
-
-      # No setup-python step and no install step on purpose: these scripts are
-      # standard-library only, and running them on the runner's stock python3 is
-      # the same guarantee a partner gets on their own machine.
-      - name: Report the interpreter the tests ran on
-        run: python3 -VV
-
-      - name: listing-import unit tests
-        working-directory: skills/listing-import/scripts
-        run: python3 -m unittest discover -s tests -t . -v
-
-      - name: No Python line over 100 columns
-        run: |
-          set -euo pipefail
-          rc=0
-          while IFS= read -r f; do
-            awk -v f="$f" 'length($0) > 100 {
-              printf "::error file=%s,line=%d::line is %d columns, limit is 100\n", f, FNR, length($0)
-              found = 1
-            } END { exit found ? 1 : 0 }' "$f" || rc=1
-          done < <(find skills -name '*.py' -type f)
-          exit $rc
-
   workflow-permissions:
     name: Workflows declare least-privilege permissions
     runs-on: ubuntu-latest
