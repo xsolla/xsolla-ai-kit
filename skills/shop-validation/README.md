@@ -5,7 +5,8 @@ The Site Builder MCP's shop validations, ported to scripts that run from Claude 
 
 - [`SKILL.md`](SKILL.md) — the `validate-shop` gate, where it sits in a write flow, safety rules
 - [`INVENTORY.md`](INVENTORY.md) — every MCP behaviour, the callable that carries it, and status
-- [`EVAL-LOG.md`](EVAL-LOG.md) — the recorded runs behind the metrics, and the full-source review
+- `evals/shop-validation/EVAL-LOG.md` — the recorded runs behind the metrics, and the
+  full-source review. It sits outside `skills/`, because `skills/` ships to users
 - `scripts/` — the validators, their tests, and the 23 modules' field schemas
 
 ## Prerequisites

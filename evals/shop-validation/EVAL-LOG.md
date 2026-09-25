@@ -9,7 +9,7 @@ and nothing was published.
 
 | Metric | Target | Result |
 |---|---|---|
-| **Ported checks** — % of MCP validations available in the kit | 100% | **100%** — 75 of 78 identified behaviours. The 3 not ported are MCP transport and tool-argument concerns with no equivalent surface here. Every shop-validation behaviour in the Site Builder source is ported; see [`INVENTORY.md`](INVENTORY.md) |
+| **Ported checks** — % of MCP validations available in the kit | 100% | **100%** — 75 of 78 identified behaviours. The 3 not ported are MCP transport and tool-argument concerns with no equivalent surface here. Every shop-validation behaviour in the Site Builder source is ported; see [`INVENTORY.md`](../../skills/shop-validation/INVENTORY.md) |
 | **Detection** — seeded errors caught | 100% | **100%** — **10 of 10** seeded shops across two independent rounds, each defect named exactly once in the right category with no collateral, plus 10 of 10 seeded defects in the unit suite. 195 unit tests total |
 | **False positives on known-good shops** | 0 | **0** structural errors across **10** known-good shops in two independent rounds: **159 blocks, 1,492 `L:` references**, 4 off-page blocks, landing types `topup`, `store` and `sellingpage`, one two-page site, one site carrying a custom block |
 | **Validation runtime per shop** | report | **41–64 ms** per shop, median 48 ms, for 13–27 blocks, measured over 20 shops. Cold interpreter start included; no network in the validation step itself |
@@ -215,7 +215,7 @@ nothing, so a forbidden write reported clean.
 
 It is the worse half to have missed: `xsolla shopbuilder update-block --data '{"r1":{…}}'` *is*
 the batch API, so the unguarded path was the one a CLI-built shop writes through. Row 74 of
-[`INVENTORY.md`](INVENTORY.md) claimed the rule as ported, and the existing test exercised only
+[`INVENTORY.md`](../../skills/shop-validation/INVENTORY.md) claimed the rule as ported, and the existing test exercised only
 the payload shape, which is how it survived two rounds of review.
 
 The first version of this entry said the API *rejects* such a patch. Run 40 below shows it

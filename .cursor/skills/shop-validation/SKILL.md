@@ -167,6 +167,7 @@ Confirmed against the installed CLI. Each is filed rather than patched from here
 
 ## Evidence
 
-[`EVAL-LOG.md`](EVAL-LOG.md) records the runs behind the metrics: known-good shops walked,
+`evals/shop-validation/EVAL-LOG.md`, in the toolkit repo, records the runs behind the
+metrics: known-good shops walked,
 seeded-error shops caught, false positives, and runtime. `scripts/live_check.sh --yes`
 reproduces the live half of it against a throwaway landing it creates and deletes.
