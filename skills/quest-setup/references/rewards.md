@@ -14,7 +14,13 @@ the body is carried as raw JSON.
 ```
 
 `type`, `purpose` and a non-empty `body` are all required. An unrecognised
-`type` is rejected.
+`type` is rejected. `purpose` is a free, non-empty string, for example
+`quest_completion`, that the worker forwards to the reward provider as the
+reason. Ask the developer for it.
+
+Every reward type pays out for real through its provider. Ask which reward,
+amount and purpose the developer wants; never propose one as a default. For a
+smoke test, offer the no-op action in [`node-subtypes.md`](node-subtypes.md).
 
 ## Bodies
 
@@ -28,7 +34,7 @@ the body is carried as raw JSON.
 | `inventory_item` | `{"xsolla_item": <bool>, "items": [{"sku": "<string>", "quantity": <int>, "type": "<string>", "name": "<string>", "image_url": "<url>", "model_3d_url": "<url>"}], "item_sku": "<string>", "name": "<string>", "image_url": "<url>", "model_3d_url": "<url>"}` | `items` or `item_sku`; item quantity 0 to 100 and defaults to 1 at runtime |
 | `vc_wallet_ticket` | `{"quantity": <int>, "currency_ticker": "<string>"}` plus optional `playtime` | `quantity` greater than 0 |
 | `web3_item` | `{"xsolla_item": <bool>, "item_sku": <string or array>, "quantity": <int>}` | `quantity` at least 0, read back as 1 when absent. No `item_sku` means a random item, see below |
-| `web3_token` | `{"item_sku": "<string>", "amount": <integer>}` | both required. qp-server accepts any `amount` greater than 0, but the payout needs a positive integer in base units, see below |
+| `web3_token` | `{"item_sku": "<string>", "amount": <integer>}` | both required. qp-server accepts an `amount` greater than 0 and at most 10000, but the payout needs a positive integer in base units, see below |
 
 The optional `playtime` object on `vc_wallet_ticket` is
 `{"earn_rate_minutes": <greater than 0>, "daily_cap_minutes": <greater than 0>, "timezone": "<non-empty>"}`.
@@ -123,9 +129,18 @@ chain explorer named in [`auth-and-environment.md`](auth-and-environment.md).
 **Duplicate payout risk.** The claim carries no idempotency key. The reward
 activity has a 2-minute timeout and up to 3 attempts. HTTP errors from the
 claim are non-retryable, but an activity timeout or a worker crash after the
-provider paid can run the claim again. If an execution is stuck in `RUNNING`,
-or its reward action failed on a timeout, do not resend the event. Ask a human
-to check the worker logs or the chain first.
+provider paid can run the claim again. qp-data writes a row only after the
+execution finishes, so a claim in flight shows as no row. If the row is still
+missing after the read policy in [`verification.md`](verification.md), or the
+reward action failed on a timeout, do not resend the event. Escalate to the
+Quest Platform team, who own the worker logs and ledger, with the quest id,
+`event_id`, `idempotency_key`, user and time; a human can also check the
+chain.
+
+An action `error` can carry two retryable flags, for example
+`(type: Web3TokenClaimFailed, retryable: false): ... (type: ClaimError, retryable: true)`.
+The first, with the worker's named type, is the one that applied; the inner
+one belongs to the wrapped cause. Neither permits you to resend.
 
 Attaching this reward to a quest that you then activate means real payouts. Ask
 for explicit confirmation before activating.

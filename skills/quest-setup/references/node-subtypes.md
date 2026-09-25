@@ -43,8 +43,18 @@ deployed implementation check.
 Go's `url.ParseRequestURI`, use the `http` or `https` scheme, and have a
 non-empty host. The model supplies no method, headers or body parameters.
 When the quest executes, the worker sends the full event JSON by HTTP POST to
-this URL. Require an approved stage endpoint and explicit activation approval;
-never treat an arbitrary developer-supplied URL as a harmless placeholder.
+this URL, including the user identifiers. Never treat an arbitrary URL as a
+harmless placeholder.
+
+- **Approved** means an endpoint the developer owns or controls and names
+  explicitly. A public request bin receives that JSON too; use one only after
+  the developer acknowledges it.
+- Never point it at an internal host, a Quest Platform service or the minting
+  service (see [`auth-and-environment.md`](auth-and-environment.md)).
+  qp-server rejects a minting-service host with a 422 (deployed build,
+  checked 2026-09-25). To pay out, use an `issue_reward` Web3 reward instead.
+- The webhook fires only after activation. Warn when the URL goes into the
+  draft, and confirm again before activating.
 
 Source: `adtech/lib/models/generic_quest/http_webhook.go`.
 
@@ -66,6 +76,14 @@ The validator does not constrain these strings to an enum or check a topic's
 existence. `data` is optional, a JSON object with string keys and arbitrary
 JSON values; it has no additional validation. Do not invent a topic or
 notification-type value.
+
+At run time `topic` is the Kafka topic the worker publishes to. Values in use
+on stage (observed 2026-09-25, revalidate): `topic` `qp.notifications` with
+`notification_type` `reward_earned` or `reward`. The recipient is the event's
+`xsolla_id`, else its `guest_id`, else its `gamer_id`; with none of them the
+action is skipped and still reports `COMPLETED`. `COMPLETED` means the message
+was published, not that the user saw it. Behavior with an unknown topic has not
+been verified.
 
 Source: `adtech/lib/models/generic_quest/xsolla_app_notification.go`.
 
@@ -89,17 +107,27 @@ Source: `adtech/lib/models/generic_quest/webshop_personalization.go`.
 current worker routes it to `SkipExecution`. Do not use API acceptance or a
 `COMPLETED` execution row as evidence that personalization occurred.
 
+That makes it the only action with no external effect, so it is the one to
+offer for a smoke test of create, event and execution. Use it only when the
+developer chooses it as a no-op, name the node so (for example `noop`), and
+never present it as personalization. Every other action has a real effect. A
+draft for CRUD-only checks can also stay without an action.
+
 ## Rejected, despite existing
 
 `event_check` is declared as a constant in the platform's models but is **not**
 in the accepted list. A node using it fails validation. Do not offer it, and if
-a developer asks for it, say it is not accepted by the API.
+a developer asks for it, say it is not accepted by the API. For "after N
+events", use a `custom_attributes_check` condition with an `event` operand; see
+[`conditions.md`](conditions.md).
 
 ## Choosing a trigger
 
 For a quest that should run when something happens, use `dynamic_event` and set
 `event_name` to the name the event will carry. That name is what ties the quest
-to the event submitted later; see `events.md`.
+to the event submitted later; see `events.md`. Ask the developer for it; never
+reuse the quest name or invent one. Every active quest in the account with the
+same trigger name runs on that event, so a test quest needs a unique name.
 
 `date_and_time` is accepted by the API and its parameters are not validated
 on write, but **runtime scheduling is not implemented**. The current
@@ -108,6 +136,8 @@ invoked, without reading schedule parameters or scheduling an execution.
 API acceptance or a successful stub invocation is not evidence that a schedule
 will run. Do not recommend it as a working scheduler or invent schedule fields.
 For a scheduling request, explain this limitation before configuring a quest.
+The alternative is a `dynamic_event` trigger and a scheduler the developer runs
+that submits the event at the right time.
 
 Source: local `adtech/qp-worker-generic-quest/internal/temporal/generic_quest/activity/trigger.go`,
 checked on 2026-09-22. Revalidate the deployed worker before claiming runtime behavior.
