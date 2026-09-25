@@ -1,7 +1,9 @@
 # Rewards
 
-Stage OpenAPI and local runtime snapshots were checked on 2026-09-23. The
-stage deployment revision is not pinned here, so revalidate before writes.
+Stage OpenAPI and local runtime snapshots were checked on 2026-09-23; the
+event-side requirements were rechecked in the stage worker code on
+2026-09-25. The stage deployment revision is not pinned here, so revalidate
+before writes.
 
 These are the `parameters` of a node with `type: action` and
 `subtype: issue_reward`. The OpenAPI document does not describe them, because
@@ -34,7 +36,7 @@ smoke test, offer the no-op action in [`node-subtypes.md`](node-subtypes.md).
 | `inventory_item` | `{"xsolla_item": <bool>, "items": [{"sku": "<string>", "quantity": <int>, "type": "<string>", "name": "<string>", "image_url": "<url>", "model_3d_url": "<url>"}], "item_sku": "<string>", "name": "<string>", "image_url": "<url>", "model_3d_url": "<url>"}` | `items` or `item_sku`; item quantity 0 to 100 and defaults to 1 at runtime |
 | `vc_wallet_ticket` | `{"quantity": <int>, "currency_ticker": "<string>"}` plus optional `playtime` | `quantity` greater than 0 |
 | `web3_item` | `{"item_sku": <string or array>, "quantity": <int>}` plus optional `project` | body must not be empty. `quantity` at least 0, read back as 1 when absent. No `item_sku` means a random item, see below. The worker ignores `xsolla_item` here; omit it |
-| `web3_token` | `{"item_sku": "<string>", "amount": <integer>}` plus optional `project` | both required. qp-server rejects an `amount` of 0 or less, or above 10000, but the payout needs a positive integer in base units, see below |
+| `web3_token` | `{"item_sku": "<string>", "amount": <integer>}` plus optional `project` | both required. Keep `amount` a positive integer in base units, at most 10000; the worker enforces the cap at payout, see below |
 
 The optional `playtime` object on `vc_wallet_ticket` is
 `{"earn_rate_minutes": <greater than 0>, "daily_cap_minutes": <greater than 0>, "timezone": "<non-empty>"}`.
@@ -45,6 +47,25 @@ event's `publisher`. Ask the developer which. Provide either `items` or the
 single-item `item_sku` form. `name`, `image_url` and `model_3d_url` are supported with the single-item
 form; obtain real catalog values from the developer. An empty body can mean a
 runtime-selected item, so do not treat acceptance as proof of a particular SKU.
+
+## Event-side requirements
+
+Some reward types take the merchant, the project or the user from the
+**event**, not from the quest (stage worker code, 2026-09-25, revalidate).
+Check this before activation and again when you build the event:
+
+| `type` | The event must carry | Without it |
+|---|---|---|
+| `xsolla_points`, non-guest user | a `publisher` block; the merchant comes from its `publisher_id` | `FAILED`, `publisher information is required but not provided in event` or `merchant_id is required for xsolla_points rewards` |
+| `virtual_currency`, `loyalty_points` | a `publisher` block with `project_id`, and a `gamer_id` in `user_ids` | `FAILED`, the error names the missing value |
+| `inventory_item` with `xsolla_item: false` | a `publisher` block | `FAILED` |
+| `web3_item`, `web3_token` | an `xsolla_id` whose user has a wallet, see "Web3 recipient" | `FAILED`, `RecipientNotFound` |
+
+The `publisher` block must still equal the quest's `publisher_id` and
+`project_id` exactly, or the event matches no quest at all; see
+[`events.md`](events.md). So for these types send the quest's own values,
+never different ones. `xsolla_points` for a guest user is skipped by the
+worker and reported as completed without a grant on stage.
 
 ## Web3 recipient
 
@@ -64,9 +85,13 @@ may not see. Tell the developer if the source differs.
 
 qp-server does not check a Web3 body against the minting service. It accepts
 `0.01` and `10000`, and a SKU that is not bound, on create, `PUT` and
-activation alike. It does enforce the `web3_token` cap: above 10000 the write
-fails with 422 `amount must not exceed 10000`. Check the cap before sending. Those mistakes appear only at payout time, as a `FAILED`
-`issue_reward` action whose `error` names the cause; see
+activation alike. The qp-server deployed on stage on 2026-09-25 also dropped
+its own `web3_token` cap of 10000 and the `project` format check on save
+(code, not observed live, revalidate), so an `amount` above 10000 may be
+saved without a 422. The stage worker still enforces both at payout: above
+10000 the action fails with `amount must not exceed 10000`. Check the cap
+yourself before saving. These mistakes appear only at payout time, as a
+`FAILED` `issue_reward` action whose `error` names the cause; see
 [`verification.md`](verification.md). Run the checks below before activation.
 
 ## web3_item
@@ -126,7 +151,8 @@ the token's decimals from the developer or the owner, never guess them, and
 show both the token amount and the base-unit integer before activation.
 
 The cap of 10000 is 0.01 of a 6-decimal token if `amount` is in base units.
-State that before the write when the developer asks for a larger payout.
+qp-server may no longer reject a larger value, but the payout fails; state
+the cap before the write when the developer asks for a larger payout.
 
 **`item_sku` must be a current ERC-20 binding of the worker's ERC-20 project.**
 Read the minting service's currency bindings

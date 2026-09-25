@@ -1,7 +1,13 @@
 # The quest document
 
-Stage OpenAPI and local runtime snapshots were checked on 2026-09-23. The
-stage deployment revision is not pinned here, so revalidate before writes.
+Stage OpenAPI and the code of the deployed qp-server build were checked on
+2026-09-25. The deployed revision is inferred, not pinned, so revalidate
+before writes.
+
+Every quest route in this file is a project-scoped route,
+`/api/v2/projects/{project_id}/quests[/{id}]`, sent with the credential from
+[`auth-and-environment.md`](auth-and-environment.md). That file owns the
+credential, the route list and the scope rules.
 
 A quest is a **graph**, not a flat record. This one fact drives everything else
 in this skill.
@@ -17,16 +23,16 @@ in this skill.
 | `status` | string | yes | `active` or `inactive` on write. `deleted` is set only by `DELETE`, a soft delete, and is rejected on write |
 | `created_by` | string | yes | 1 to 255 characters. Ask the developer; never derive it from the environment |
 | `description` | string | no | if present, 5 to 1000 characters |
-| `publisher_id` | string | no | 1 to 255 characters. Fixed at create: a `PUT` does not change it |
-| `project_id` | string | no | 1 to 255 characters. A `PUT` without it keeps the stored value |
+| `publisher_id` | string | server-set | the merchant id, set by the server on create from the route's project. Body values are ignored on create, and a `PUT` does not change it. Never ask for it or invent it |
+| `project_id` | string | server-set | the route's project id, set by the server on create. On a `PUT`, send it exactly as the last read returned it: a different value in the body would overwrite the stored one (from code). See Scope in the auth reference |
 | `start_date` | RFC3339 | **only when `active`** | not earlier than exactly 24 hours before the server's now; see below |
 | `end_date` | RFC3339 | **only when `active`** | not in the past, and at or after `start_date`. Ask; there is no default |
 | `nodes` | array | **at least 2 when `active`** | optional and may be empty when `inactive` |
 | `connections` | object | required unless `inactive` and empty | see below |
 | `activation_limits` | array | no | see below |
 | `metadata` | object | no | nesting depth at most 2 |
-| `id`, `created_at`, `updated_at`, `version_id` | — | server-assigned | ignored on create |
-| `has_personalization` | bool | — | server-derived: `true` when any action is `webshop_personalization`, even though that action is a no-op at run time. Do not set it |
+| `id`, `created_at`, `updated_at`, `version_id` | mixed | server-assigned | ignored on create |
+| `has_personalization` | bool | server-derived | `true` when any action is `webshop_personalization`, even though that action is a no-op at run time. Do not set it |
 | `sample_data` | any | no | accepted, not validated, **not persisted** |
 
 The conditional requirements are enforced only by the server's hand-written
@@ -61,8 +67,9 @@ as `null`. A `null` `nodes` may be sent back on an `inactive` draft; send real
 arrays when activating. An optional field missing from a response is not set;
 it is not `0` or an empty string. The list returns
 `{page, limit, total, data[]}`, `limit` 10 by default and 100 at most; page
-through it rather than reading one page as the whole list. Its items carry no
-nodes, connections or `account_id`.
+through it rather than reading one page as the whole list. Its items carry
+`project_id` but no `publisher_id`, nodes, connections or `account_id`. The
+list covers only the route's project.
 
 ## Draft first, then activate
 
@@ -96,6 +103,28 @@ the first call.
 
 The smallest quest that can be activated is two nodes and one edge: a trigger
 and an action.
+
+### Several actions on one trigger
+
+The worker walks the graph depth-first from the trigger, one node at a time,
+in the order the edges are listed under each source node. Several actions on
+one trigger therefore run one after another, not in parallel. They are not
+independent (from the worker code, checked 2026-09-25):
+
+- The first node that fails stops the whole walk. Nodes after it, including
+  sibling actions listed later, do not run.
+- One failed action makes the whole execution `FAILED`
+  (`failReason: ACTION_FAILED`). Actions that already succeeded are not
+  rolled back: a reward or notification sent before the failure stays sent.
+  Observed on stage: rows with a notification and a reward `COMPLETED` and a
+  second reward `FAILED`, execution `FAILED`.
+- A condition miss also stops the walk; see `conditions.md`.
+- On the next event for the same user and quest, the worker skips nodes that
+  already succeeded in the failed run and retries the rest (from code).
+
+So put the action whose failure should block the others first, and tell the
+developer that a later failure does not undo an earlier payout. How to read
+per-action statuses is in [`verification.md`](verification.md).
 
 ## Activation limits
 
@@ -157,11 +186,15 @@ an `issue_reward`, tell the developer that such an event can still pay.
 
 ## Deleting
 
-`DELETE /api/v2/quests/{id}` needs `questconfig:delete` and returns 200 with
+`DELETE /api/v2/projects/{project_id}/quests/{id}` needs `questconfig:delete`
+(a project key acts with author rights, which include it) and returns 200 with
 `{"message": "Quest deleted successfully"}`. It is a soft delete: the quest and
 all its triggers get `status: deleted`, so events stop matching it (after the
 config cache time), and its qp-data rows stay. After that, `GET`, the list and
-a second `DELETE` treat it as not found (404). There is no restore route. The
+a second `DELETE` treat it as not found: 404 problem+json with
+`"detail":"Quest not found"` (verified on the project route 2026-09-25). A 404
+`{"error":"Project not found"}` is a scope answer instead, not a verdict on
+the quest; see the auth reference. There is no restore route. The
 update query does not exclude deleted quests, so a `PUT` to the old id may
 overwrite and revive it (inferred from code, not tested); never use that as a
 restore, and do not `PUT` to a deleted id.

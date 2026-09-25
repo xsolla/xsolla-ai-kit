@@ -1,7 +1,8 @@
 # Node subtypes
 
-Stage OpenAPI and local runtime snapshots were checked on 2026-09-22. The
-stage deployment revision is not pinned here, so revalidate before writes.
+Stage OpenAPI and the code of the deployed qp-server build and stage worker
+were checked on 2026-09-25. Both revisions are inferred, not pinned, so
+revalidate before writes.
 
 The OpenAPI document types `subtype` as a bare `string`. The real list lives in
 the server's validator, and it is shorter than the constants suggest.
@@ -19,6 +20,10 @@ for their shapes and validation, following the skill's source-of-truth order.
 | `send_xsolla_app_notification` | action | `topic`, `notification_type`, `title`, `message`; optional `data`, see below |
 | `send_http_webhook` | action | `url`, see below |
 | `webshop_personalization` | action | configuration is accepted, but the current worker maps it to `SkipExecution`; see below |
+
+The deployed validator also accepts `scheduled_event` (trigger) and
+`crm_send_email` (action). Neither runs on stage today; see
+[Accepted, but not runnable on stage](#accepted-but-not-runnable-on-stage).
 
 ## Action parameters
 
@@ -42,19 +47,37 @@ deployed implementation check.
 `url` is the only modeled parameter. It must be a non-empty string, parse with
 Go's `url.ParseRequestURI`, use the `http` or `https` scheme, and have a
 non-empty host. The model supplies no method, headers or body parameters.
-When the quest executes, the worker sends the full event JSON by HTTP POST to
-this URL, including the user identifiers. Never treat an arbitrary URL as a
-harmless placeholder.
+When the quest executes, the worker sends the event by HTTP POST to this URL
+as JSON: `id`, `idempotency_key`, `name`, `scope`, `quest_id`, `account_id`,
+`user_ids`, `publisher`, `properties` and `server_timestamp`. That includes
+the user identifiers. Never treat an arbitrary URL as a harmless placeholder.
 
 - **Approved** means an endpoint the developer owns or controls and names
   explicitly. A public request bin receives that JSON too; use one only after
   the developer acknowledges it.
 - Never point it at an internal host, a Quest Platform service or the minting
-  service (see [`auth-and-environment.md`](auth-and-environment.md)).
-  qp-server rejects a minting-service host with a 422 (deployed build,
-  checked 2026-09-25). To pay out, use an `issue_reward` Web3 reward instead.
+  service (see [`auth-and-environment.md`](auth-and-environment.md)). A
+  webhook cannot pay out: it posts the raw event above, not a mint claim, and
+  it carries no credentials. To pay out, use an `issue_reward` Web3 reward.
+  The 09-24 qp-server build rejected a minting-service host with a 422; the
+  build deployed on 2026-09-25 has no such check (from code), so do not rely
+  on the server to stop it.
+- A reserved, never-resolving host such as `https://e2e-sink.invalid/hook` is
+  fine as a placeholder in an `inactive` draft: the validator checks only the
+  URL's form, not that it resolves. Label it as a placeholder, and replace it
+  with the developer's real endpoint before activation. Never activate with
+  it.
 - The webhook fires only after activation. Warn when the URL goes into the
   draft, and confirm again before activating.
+
+At run time any status of 400 or above, a timeout (30 s) or an unresolvable
+host is an error. The worker retries it: the HTTP client retries failed
+connections up to 3 times, and the action itself is attempted up to 3 times
+(stage config, from code), so the endpoint may receive the same event more
+than once. After that the action is
+`FAILED` and the execution is `FAILED` with `failReason: ACTION_FAILED`
+(observed on stage: `webhook request failed with status: 404` and `502`).
+Tell the developer to deduplicate by `idempotency_key`.
 
 Source: `adtech/lib/models/generic_quest/http_webhook.go`.
 
@@ -75,7 +98,9 @@ strings. `topic` is required by `Validate()` despite its `omitempty` JSON tag.
 The validator does not constrain these strings to an enum or check a topic's
 existence. `data` is optional, a JSON object with string keys and arbitrary
 JSON values; it has no additional validation. Do not invent a topic or
-notification-type value.
+notification-type value. The worker adds the event's `properties`,
+`quest_id` and `idempotency_key` to `data` (from code), so do not put secrets
+in event properties.
 
 At run time `topic` is the Kafka topic the worker publishes to. Values in use
 on stage (observed 2026-09-25, revalidate): `topic` `qp.notifications` with
@@ -84,6 +109,13 @@ on stage (observed 2026-09-25, revalidate): `topic` `qp.notifications` with
 action is skipped and still reports `COMPLETED`. `COMPLETED` means the message
 was published, not that the user saw it. Behavior with an unknown topic has not
 been verified.
+
+`topic` is a raw Kafka topic, not a label. The only topic confirmed on stage
+is `qp.notifications` (every notification row in qp-data samples of
+2026-09-25). If the developer names another topic, say that it is
+unconfirmed and that the message may go nowhere or to another consumer. It
+may stay in an `inactive` draft, but do not activate a quest with it until
+the developer confirms that the Quest Platform team approved the topic.
 
 Source: `adtech/lib/models/generic_quest/xsolla_app_notification.go`.
 
@@ -113,6 +145,24 @@ developer chooses it as a no-op, name the node so (for example `noop`), and
 never present it as personalization. Every other action has a real effect. A
 draft for CRUD-only checks can also stay without an action.
 
+## Accepted, but not runnable on stage
+
+The qp-server build deployed on 2026-09-25 accepts two more subtypes (from its
+code; stage does not publish the list). Do not offer them. If the developer
+asks for one, explain why:
+
+- `scheduled_event` (trigger), parameters `event_name` plus exactly one of
+  `cron` or `date_time`. Activating it makes qp-server register the schedule
+  with the collector using the caller's `X-REQUEST-APIKEY`. A project-route
+  request has none, so an `active` write fails with 503 `cannot register
+  scheduled quest: no forwardable API key on this request` and is not saved
+  (from code, not observed). The stage worker also has no handler for it.
+- `crm_send_email` (action), parameters `subject`, `game_title`, `content`,
+  `crm_segment`, all required. The stage worker has no handler for it, so it
+  would fail at run time.
+
+Revalidate before relying on either; both are new and still moving.
+
 ## Rejected, despite existing
 
 `event_check` is declared as a constant in the platform's models but is **not**
@@ -127,7 +177,8 @@ For a quest that should run when something happens, use `dynamic_event` and set
 `event_name` to the name the event will carry. That name is what ties the quest
 to the event submitted later; see `events.md`. Ask the developer for it; never
 reuse the quest name or invent one. Every active quest in the account with the
-same trigger name runs on that event, so a test quest needs a unique name.
+same trigger name runs on that event (on the project lane the account is the
+project's), so a test quest needs a unique name.
 
 `date_and_time` is accepted by the API and its parameters are not validated
 on write, but **runtime scheduling is not implemented**. The current
@@ -136,8 +187,9 @@ invoked, without reading schedule parameters or scheduling an execution.
 API acceptance or a successful stub invocation is not evidence that a schedule
 will run. Do not recommend it as a working scheduler or invent schedule fields.
 For a scheduling request, explain this limitation before configuring a quest.
-The alternative is a `dynamic_event` trigger and a scheduler the developer runs
-that submits the event at the right time.
+`scheduled_event` is not an alternative today; see above. The alternative is a
+`dynamic_event` trigger and a scheduler the developer runs that submits the
+event at the right time.
 
 Source: local `adtech/qp-worker-generic-quest/internal/temporal/generic_quest/activity/trigger.go`,
 checked on 2026-09-22. Revalidate the deployed worker before claiming runtime behavior.

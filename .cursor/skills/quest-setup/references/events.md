@@ -1,12 +1,50 @@
 # Events
 
-Stage OpenAPI and local runtime snapshots were checked on 2026-09-23. The
-stage deployment revision is not pinned here, so revalidate before writes.
+Stage OpenAPI and local runtime snapshots were checked on 2026-09-23; the
+event route, its auth and the publisher rule were rechecked on 2026-09-25.
+Stage deployments churn and the revision is not pinned here, so revalidate
+before writes.
 
 Events go to **qp-events-collector**, not to qp-server. Sending an event to
 qp-server produces a 404 that looks like a missing quest.
 
-`POST /api/v2/events`
+`POST /api/v2/projects/{project_id}/events`
+
+`{project_id}` is the same Xsolla project the quest was created under. The
+request carries the project credential exactly as defined in
+[`auth-and-environment.md`](auth-and-environment.md); this file does not
+define credentials or headers. The collector resolves the project to its
+Quest Platform account, so the event can only match quests of that project's
+account.
+
+## Currently blocked on stage
+
+**As of 2026-09-25, events with the project credential do not get through on
+stage.** A `POST /api/v2/projects/316111/events` with a valid project key
+returned 404 `{"error":"Not Found"}`, with the same 404 for an empty body, a
+wrong key, an unknown project and another merchant. The scopeless
+`POST /api/v2/events` rejects the project credential with 401
+`{"error":"X-REQUEST-APIKEY header is required"}`. The inferred cause is a
+contract mismatch between the collector and qp-server's credential
+validation, a backend issue, not something the developer can fix. Nothing
+was ingested.
+
+The route answers every negative outcome with the same 404, so a 404 cannot
+tell a bad key from this blocker. When the qp-server preflight with the same
+credential succeeded and the event still gets 404 `Not Found`:
+
+1. Stop. Report "event rejected by the collector with 404 `Not Found`; known
+   stage blocker since 2026-09-25" and the payload you sent, without secrets.
+2. Do not resend, not with the same `idempotency_key` and not with a new one.
+3. **Do not fall back to another credential or route.** Never switch to a
+   service key or to `POST /api/v2/events` to get the event through. An event
+   there lands in a different account and never matches a quest created on
+   the project route, so it would prove nothing about this quest.
+4. Say that verification cannot run, and that the Quest Platform team owns
+   the fix.
+
+Revalidate: once a valid event gets a 200 with an `event_id`, this section no
+longer applies.
 
 ## Payload
 
@@ -29,26 +67,48 @@ qp-server produces a 404 that looks like a missing quest.
 | `name` | yes | must match the `event_name` on the quest's `dynamic_event` trigger |
 | `client_timestamp` | yes | RFC3339 |
 | `user_ids` | yes | at least one entry |
-| `quest_id` | no | a valid UUID when present. Restricts matching to that one quest; without it, every live quest of the account with that `event_name` runs |
+| `quest_id` | no | a valid UUID when present. Restricts matching to that one quest; without it, every live quest of the project's account with that `event_name` runs |
 | `scope` | no | `global`, `private`, `within_project`, `within_quest`, `within_publisher`. Defaults to `private`. It decides which quests' event-count conditions can count this event later, not which quest runs. Keep the default unless the developer asks. The published schema shows a bare string and the older struct hint lists only three values; the server accepts all five |
-| `publisher` | no | if the object is present, the live schema requires both `publisher_id` and `project_id`. They must equal the quest's values, or the event matches no quest and leaves no execution row; a quest without them never matches an event that has them. Omit it for a quest without them. An event without `publisher` is not filtered by publisher |
+| `publisher` | no | see "The `publisher` block" below |
 | `properties` | no | string values only |
 
 `user_ids[].identifier_type` is `xsolla_id`, `gamer_id`, `guest_id` or `email`.
 An `xsolla_id` value must parse as a UUID; an `email` value must contain `@`;
 `gamer_id` and `guest_id` need only be non-empty.
 
+### The `publisher` block
+
+A quest created on the project route always carries the server-set
+`publisher_id` (the merchant id) and `project_id`. The collector does not fill
+`publisher` from the route; it keeps whatever you send. Either:
+
+- **omit it**, so the event is not filtered by publisher and matches, or
+- send **exactly** the quest's values as read back from the quest, both as
+  strings: `{"publisher_id": "<quest publisher_id>", "project_id": "<quest project_id>"}`.
+  The live schema requires both when the object is present.
+
+Any other value, including the right merchant with another project, matches
+no quest and leaves **no** qp-data row, not even `NOT_TRIGGERED`. Never take
+the values from memory or from the credential; copy them from the quest.
+
+Some rewards read the merchant or project from the event, not from the quest,
+and fail without the block; see "Event-side requirements" in
+[`rewards.md`](rewards.md). For those, send the exact quest values; do not
+omit the block.
+
 A quest with a `web3_item` or `web3_token` reward needs an `xsolla_id` entry
 whose user already has a wallet. Check it before submitting; see
 [`rewards.md`](rewards.md).
 
-The account is **not** in the body. It comes from the credential.
+The account is **not** in the body. The collector takes it from the project in
+the path.
 
 A 200 returns `{"idempotency_key": "...", "event_id": "<uuid>"}`.
 
-Use only `POST /api/v2/events`. The collector's other routes,
-`/api/v2/projects/{project_id}/events` and `/api/v2/debug/trigger-outbox`, are
-not part of this skill; do not call them.
+Use only the project route above. The scopeless `POST /api/v2/events` belongs
+to the internal service-key lane in
+[`auth-and-environment.md`](auth-and-environment.md) and does not take the
+project credential. Never call `/api/v2/debug/trigger-outbox`.
 
 ## Before sending
 

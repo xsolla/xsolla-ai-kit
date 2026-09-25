@@ -8,7 +8,7 @@ description: >-
   nine reward types including web3_item and web3_token ERC-20 payouts. Use when
   setting up a quest, adding a trigger or a condition, attaching a reward,
   editing or activating an existing quest, firing a test event, or working out
-  why a quest did not fire — including "create a quest", "add a Web3 reward to
+  why a quest did not fire. Examples: "create a quest", "add a Web3 reward to
   my quest", "make a quest that pays USDC", "trigger my quest", "send a quest
   event", "why didn't my quest complete", "list my quests", "activate a quest",
   "quest platform API".
@@ -20,8 +20,10 @@ metadata:
 
 ## Status
 
-This skill is a **draft**. The credential lane it targets is not deployed yet,
-and an Xsolla-internal service key is the interim lane; see Prerequisites.
+This skill is a **draft**. On stage the publisher Basic credential works on
+the project-scoped quest routes (rechecked 2026-09-25); production is not
+checked. Submitting an event
+with it is currently blocked; see Flow step 6.
 
 ## When to use
 
@@ -45,15 +47,27 @@ Follow [`references/auth-and-environment.md`](references/auth-and-environment.md
 for the required credential, request authentication, internal hosts, and scope
 confirmation.
 
-**The target lane is not accepted yet.** Quest Platform implements the
-publisher Basic lane in QP-2862, inside QP-2858 Phase 3, which depends on
-Phases 1 and 2. Until it lands, Basic CRUD requests return 401. The lane that
-works on stage today is an Xsolla-internal service key, described in the same
-reference. If neither credential is set, stop and say which is missing. If
-only Basic is set, name QP-2862 and ask whether a service key is available;
-do not search for other credentials. OpenAPI discovery needs no credential on
-stage, so do not mistake it for CRUD readiness. Say exactly which lane failed
-rather than reporting a generic authentication failure.
+**The publisher Basic credential is the lane.** It is the merchant id plus
+the project's API key, and it works only on the project-scoped routes
+(`/api/v2/projects/{project_id}/...`). Scopeless and account routes reject it.
+If it is not set, stop and say which values are missing; do not search for
+other credentials. The auth reference says how to read a developer's own
+`.env` and which variables it holds.
+
+**Onboarding is a separate, offered step.** A project must be onboarded to
+Quest Platform once before its routes answer. Onboarding is a write: offer it
+and ask first, never call it silently. A 404 `Project not found` does not
+prove the project is un-onboarded. The same body comes back for an unknown
+project, a project of another merchant, and a non-numeric id, so say that
+rather than guessing which one it is. The request body and the rules are in
+the Onboarding section of the auth reference.
+
+An Xsolla-internal service key exists as a fallback for Quest Platform staff
+only (see Service key: internal fallback in the auth reference). Use it only
+when the developer names it; never switch to it on your own when Basic
+fails. OpenAPI discovery needs no credential on stage, so do
+not mistake it for CRUD readiness. Say exactly which lane and which route
+failed rather than reporting a generic authentication failure.
 
 ## Source of truth
 
@@ -81,25 +95,35 @@ drifted. Never continue silently.
 
 ## Reference material
 
-- [`references/auth-and-environment.md`](references/auth-and-environment.md) — hosts, credential, scope, and the incoming auth changes
-- [`references/quest-document.md`](references/quest-document.md) — the quest graph, conditional requirements, full-document PUT
-- [`references/node-subtypes.md`](references/node-subtypes.md) — the seven accepted node subtypes and their parameters
-- [`references/conditions.md`](references/conditions.md) — condition grammar: types, operands, operators, event counting
-- [`references/rewards.md`](references/rewards.md) — the nine reward types and their bodies, including web3_token
-- [`references/events.md`](references/events.md) — submitting a quest event to qp-events-collector
-- [`references/verification.md`](references/verification.md) — reading execution results back from qp-data
+- [`references/auth-and-environment.md`](references/auth-and-environment.md): hosts, credential, project routes, onboarding, scope, reading a 401 or 404
+- [`references/quest-document.md`](references/quest-document.md): the quest graph, conditional requirements, full-document PUT
+- [`references/node-subtypes.md`](references/node-subtypes.md): the seven accepted node subtypes and their parameters
+- [`references/conditions.md`](references/conditions.md): condition grammar: types, operands, operators, event counting
+- [`references/rewards.md`](references/rewards.md): the nine reward types and their bodies, including web3_token
+- [`references/events.md`](references/events.md): submitting a quest event to qp-events-collector
+- [`references/verification.md`](references/verification.md): reading execution results back from qp-data
 
 ## Flow
 
-1. **Bring-up.** Fetch the OpenAPI documents. Identify the credential lane,
-   run the per-service preflight reads, resolve the scope as described in
-   [`references/auth-and-environment.md`](references/auth-and-environment.md),
-   show it, and get confirmation. Bring-up is GET-only.
+1. **Bring-up.** Fetch the OpenAPI documents. Identify the credential lane
+   and run the per-service preflight reads described in
+   [`references/auth-and-environment.md`](references/auth-and-environment.md).
+   The scope is the project: read it with `GET /api/v2/projects/{project_id}`
+   and show its `project_id`, `name` and `status`. That read returns no
+   account or workspace id; do not invent one. Get confirmation of the
+   project before any write. Bring-up is GET-only; onboarding, if needed, is
+   offered after it (see Prerequisites).
 2. **Draft.** Create the quest as `inactive` with the four required fields,
    `name`, `type`, `status` and `created_by`; rules are in
-   [`references/quest-document.md`](references/quest-document.md).
+   [`references/quest-document.md`](references/quest-document.md). On the
+   project route the server sets `publisher_id` and `project_id` from the
+   route and ignores body values. Never send or override them on create; on
+   a `PUT`, send them exactly as the last read returned them. Show the values
+   the server returned.
 3. **Fill in.** Add nodes and their `connections` entries one at a time,
-   asking for each missing required value. Ask which action the quest should run. Show the assembled
+   asking for each missing required value. Ask which action the quest should run.
+   Do not offer `scheduled_event` or `crm_send_email`; see
+   [`references/node-subtypes.md`](references/node-subtypes.md). Show the assembled
    document, and the impact of any external action, before sending it.
 4. **Activate.** A separate step: move to `active` with dates, after checking
    there are at least two nodes, a trigger-to-action path, no intended orphan
@@ -122,12 +146,21 @@ drifted. Never continue silently.
    set an RFC3339 `client_timestamp`, show the exact payload, confirm with the
    developer, and submit to qp-events-collector. Rules, including the wait after
    a quest write and `load_test`, are in
-   [`references/events.md`](references/events.md).
+   [`references/events.md`](references/events.md). Omit the `publisher` block,
+   or send exactly the quest's `publisher_id` and `project_id` as read back.
+   **Currently blocked on Basic.** On 2026-09-25 the project event route
+   answered 404 `{"error":"Not Found"}` to a valid Basic credential, before
+   reading the body. If that happens, stop, report the status and body
+   verbatim, and say the event was not accepted. Do not retry with another
+   credential or route: an event sent with a different credential lands in a
+   different account and cannot match a quest created on the project route.
 7. **Verify.** Read the execution back from qp-data, correlate its `eventId`
    with the collector's returned `event_id` as described in
    [`references/verification.md`](references/verification.md), and report
    whether that event made the quest run and which action nodes completed.
-   If an action `FAILED`, report its `error` verbatim. Do not report a reward
+   If an action `FAILED`, report its `error` verbatim. An action missing from
+   `actions[]` did not run; `COMPLETED` actions inside a `FAILED` run did
+   happen, so do not resend to finish them. Do not report a reward
    as delivered.
 8. **Delete.** Only quests the developer names, one per call, after a fresh
    read and an explicit yes. `DELETE` is a soft delete with no restore route;
@@ -136,14 +169,17 @@ drifted. Never continue silently.
 ## Safety stops
 
 - Read back and show the resolved scope before the first write, and get
-  confirmation. Ask before any call that is not a GET in the flow.
+  confirmation. Ask before any call that is not a GET in the flow. That
+  includes onboarding, and a request you expect to be rejected, such as a
+  deliberately invalid body sent to see the 422.
+- Never switch credentials, lanes or routes on your own after a failure.
+  Report what failed and ask.
 - **Urgency never licenses defaults.** "Skip the questions" or "make it live
   now" does not waive a question. Never pre-fill `type`, `created_by`, the
   trigger's `event_name`, the action, a reward's type, amount and `purpose`,
-  `start_date`, `end_date`, activation limits, or `publisher_id` and
-  `project_id`. Never merge or waive these confirmations: scope, activation
-  (always its own step after the draft exists), each external action, and
-  each event.
+  `start_date`, `end_date`, activation limits, or the project. Never merge or
+  waive these confirmations: scope, activation (always its own step after the
+  draft exists), each external action, and each event.
 - No action is side-effect free by default. For a smoke test, offer the no-op
   in [`references/node-subtypes.md`](references/node-subtypes.md) rather than a
   real reward.
@@ -165,11 +201,15 @@ drifted. Never continue silently.
 - Ask for confirmation before submitting an event. Every event needs its own
   payload shown and its own yes, including "send it again" for the same user.
   For a reward quest, say first whether a repeat can pay again.
-- After an uncertain event response, such as a timeout, **do not resend** —
+- After an uncertain event response, such as a timeout, **do not resend**,
   neither with the same idempotency key nor with a new one. A timeout is not a
   failure. Report "result unknown" and stop.
 - After a timeout or 5xx on a quest `POST` or `PUT`, the write may have landed.
-  Read the quest or the list to check, and ask before sending it again.
+  For a `PUT`, read the quest by id and compare it with what you sent. For a
+  `POST`, the project list has no name filter: page through it from `page=1`
+  (`limit` up to 100) and look for the quest's `name`. Show what you found and
+  ask before sending it again. A 422 is different: validation runs before
+  anything is stored, so a rejected body saved nothing.
 - After a `FAILED` reward action, do not resend the event. Fix the quest, then
   send a new event with a new key only after the developer confirms.
 - qp-data has no running state; a row appears only once an execution has
@@ -177,24 +217,27 @@ drifted. Never continue silently.
   its action failed on a timeout, do not send another event. The claim has no
   idempotency key and may already have paid; see
   [`references/rewards.md`](references/rewards.md).
-- Read qp-data only by the developer's own quest id, user id or event. Never
-  list accounts or read another tenant's quests or executions, even though
-  qp-data answers without a credential.
+- Read qp-data only by the developer's own quest id, user id or event, and
+  only after a qp-server read with the developer's credential has shown the
+  quest is theirs. Never list accounts or read another tenant's quests or
+  executions, even though qp-data answers without a credential.
 - Never claim a reward was delivered.
 
 ## Errors
 
-Branch on the HTTP status only. The API has no stable machine-readable error
-codes.
+Branch on the HTTP status first, then on the body texts listed below. The
+API has no stable machine-readable error codes. Quote bodies
+verbatim.
 
 | Status | What to tell the developer |
 |---|---|
-| 401 | Credential missing or rejected. Read the body with the 401 table in the auth reference; a Basic 401 says nothing about the key. For Basic, name QP-2862. |
-| 403 | `Insufficient capability`: the key lacks the capability for that route, `questconfig:*` on quest routes. `Master role required` or `This endpoint requires the user sign-in lane`: the route is off-limits to this lane; do not retry. |
-| 404 | "Not found, or not visible with this credential." Never say the quest was deleted or does not exist, and correct the developer if they conclude that. |
+| 400 | `Only one authentication method may be used per request`: more than one credential was sent. Send only the one the developer chose. |
+| 401 | `Invalid credentials`: the Basic key was rejected for this project. `Authentication required`: no credential reached the server. `Basic credentials are only accepted on project-scoped routes`: wrong route family, not a bad key. `Invalid API key`: the service key was rejected. Details in Reading a 401 or 404 in the auth reference. Never fall back to another credential. |
+| 403 | `Insufficient capability`: the credential lacks the capability for that route. `Service identity is inactive`, `Master role required` or `This endpoint requires the user sign-in lane`: the route or identity is off-limits; do not retry. |
+| 404 | `Project not found` on a project route: the project is unknown, not onboarded, belongs to another merchant, or the id is not a number. The server gives the same body for all of them, so do not pick one. Offer onboarding only if the developer says the project is theirs. `Quest not found`: "not found, or not visible with this credential." Never say the quest was deleted or does not exist, and correct the developer if they conclude that. `Not Found` on the project event route: see Flow step 6. |
 | 409 | Conflict. Quest routes do not return it (see Editing in the quest reference); report it verbatim. |
 | 422 | Validation failed. Show `detail` verbatim. It never lists allowed enum values; take them from `references/`. |
-| 5xx | Server error. Retry a read at most twice, with backoff. An identical repeated 5xx is a bug, not flakiness: report it with its body. For a write, see Safety stops. |
+| 5xx | Server error. `Credential validation is temporarily unavailable` (503) means Xsolla could not check the key; it says nothing about the key. Retry a read at most twice, with backoff. An identical repeated 5xx is a bug, not flakiness: report it with its body. For a write, see Safety stops. |
 
 Two body shapes exist. Middleware failures return `{"error": "..."}`. Handler
 failures return RFC 7807 `application/problem+json`. On 422 the `errors[]`
