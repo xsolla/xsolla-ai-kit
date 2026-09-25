@@ -2,8 +2,9 @@
 
 Stage OpenAPI and local runtime snapshots were checked on 2026-09-23. The
 credential lanes, the project routes, onboarding, scope and the 401/404 bodies
-were rechecked live on 2026-09-25. Stage deployments churn and the revision is
-not pinned here, so revalidate before writes.
+were rechecked live on 2026-09-25, after the project routes moved under
+`/api/v2/merchants/{merchant_id}/...`. Stage deployments churn and the
+revision is not pinned here, so revalidate before writes.
 
 This is the **only** file that names the hosts, the headers or the
 credentials. Everywhere else says "an authenticated Quest Platform request".
@@ -72,6 +73,7 @@ testnet, chain id `579029`, explorer
 `https://zksync-os-testnet-xsolla.explorer.zksync.dev`, RPC
 `https://579029.rpc.thirdweb.com`. This skill does not call them.
 
+
 ## Credential
 
 The lane is the **Xsolla publisher project key**, sent as HTTP Basic on the
@@ -79,7 +81,7 @@ project-scoped routes. It works on stage (verified 2026-09-25).
 
 | Variable | Use |
 |---|---|
-| `XSOLLA_MERCHANT_ID` | the Basic username: the merchant that owns the project |
+| `XSOLLA_MERCHANT_ID` | the Basic username and the `{merchant_id}` in every route below: the merchant that owns the project |
 | `XSOLLA_PROJECT_API_KEY` | the Basic password: the project's API key from Publisher Account |
 | `XSOLLA_PROJECT_ID` | the `{project_id}` in every route below. Optional; if unset, ask the developer |
 
@@ -106,33 +108,76 @@ Where to look:
   absent.
 
 A project id the developer offers, or `XSOLLA_PROJECT_ID`, is a candidate until
-`GET /api/v2/projects/{project_id}` returns 200 with that key. Do not write
-before that.
+`GET /api/v2/merchants/{merchant_id}/projects/{project_id}` returns 200 with
+that key. Do not write before that.
+
+### The merchant id in the path
+
+`{merchant_id}` is always `XSOLLA_MERCHANT_ID`, the same value as the Basic
+username. Never take it from a quest body, a qp-data row, an earlier answer,
+the developer's memory or a guess, and never put a different value in the path
+than in the header. If the developer names another merchant, it needs another
+key; ask for both variables instead of mixing them.
+
+Why this matters: stage does not check the path merchant (verified
+2026-09-25: a valid key with a path merchant that is not its own still got
+200). On every create the server stamps the quest's `publisher_id` from the
+**path** `{merchant_id}`. So a wrong path merchant is not rejected; it silently
+stores a wrong `publisher_id`, and that quest never matches the developer's
+events. Production is expected to answer 404 instead (inferred from code, not
+checked).
 
 ### Project-scoped routes
 
-Basic works only here. Scope comes from the route, never from the credential
-or the body.
+Basic works only on this family. Scope comes from the route, never from the
+credential or the body.
 
 | Route | Use |
 |---|---|
-| `GET /api/v2/projects/{project_id}` | scope readout and onboarding check |
-| `POST /api/v2/projects/{project_id}/onboard` | one-time onboarding, see below. A write |
-| `GET /api/v2/projects/{project_id}/quests` | list; query `page`, `limit`, `publisherID`. No name filter |
-| `POST /api/v2/projects/{project_id}/quests` | create |
-| `GET`, `PUT`, `DELETE /api/v2/projects/{project_id}/quests/{id}` | read, full replace, soft delete |
+| `GET /api/v2/merchants/{merchant_id}/projects/{project_id}` | scope readout and onboarding check |
+| `POST /api/v2/merchants/{merchant_id}/projects/{project_id}/onboard` | one-time onboarding, see below. A write |
+| `GET /api/v2/merchants/{merchant_id}/projects/{project_id}/quests` | list; query `page`, `limit`, `publisherID`. No name filter |
+| `POST /api/v2/merchants/{merchant_id}/projects/{project_id}/quests` | create |
+| `GET`, `PUT`, `DELETE /api/v2/merchants/{merchant_id}/projects/{project_id}/quests/{id}` | read, full replace, soft delete |
+
+The old family `/api/v2/projects/{project_id}/...` is gone from qp-server on
+stage (2026-09-25); it answers 404 plain text `Cannot GET <path>`.
 
 On every other qp-server route, including the scopeless `/api/v2/quests`,
-`/api/v2/accounts/**` and `/api/v2/merchants/{merchant_id}/projects`, a Basic
+`/api/v2/accounts/**`, `/api/v2/workspaces` and the merchant's project list
+`GET /api/v2/merchants/{merchant_id}/projects` (no `{project_id}`), a Basic
 credential gets 401 `{"error":"Basic credentials are only accepted on
 project-scoped routes"}`. That means the route is wrong for this lane, not that
 the key is bad. Do not retry it with another credential.
 
-For events, the collector's Basic route is
-`POST /api/v2/projects/{project_id}/events` with the same header. Its scopeless
-`POST /api/v2/events` takes only `X-REQUEST-APIKEY` and answers a Basic
-credential with 401 `X-REQUEST-APIKEY header is required`. See `events.md` for
-the payload and the current status of the project event route.
+For events, the collector's Basic route is still
+`POST /api/v2/projects/{project_id}/events` with the same header; the
+collector has no `/merchants/...` route. Its scopeless `POST /api/v2/events`
+takes only `X-REQUEST-APIKEY` and answers a Basic credential with 401
+`X-REQUEST-APIKEY header is required`. See `events.md` for the payload and the
+current status of the project event route.
+
+### When a route is missing
+
+A 404 with a plain text body `Cannot GET <path>` (or another method in place
+of `GET`) is a router miss: no route with that path is deployed. It is not an
+auth answer and not a project answer, so never report it as a bad key, a
+missing project or a project that needs onboarding. The rule is the same
+whether a read or a write failed:
+
+1. Stop. Do not retry the call, and do not try other paths by hand.
+2. Fetch the live `/openapi.json` of that service and look for the same
+   operation (same method and purpose) under another route family.
+3. If you find it, tell the developer the old path, the new path and where
+   you saw it, and ask before calling it. That holds for reads too; nothing on
+   the new family is called until the developer says yes. For a write, show
+   the request again on the new path before the yes.
+4. If you do not find it, say that the operation is not deployed on this
+   environment and stop.
+
+Stage routes churn. The live OpenAPI decides the path; the developer decides
+the switch. A path in this file that the live OpenAPI does not list is stale:
+report it, do not work around it silently.
 
 ### Reading a 401 or 404
 
@@ -142,21 +187,26 @@ The auth layer returns plain `{"error": "..."}` bodies. Quote them verbatim.
 |---|---|---|
 | qp-server | 401 `{"error":"Authentication required"}` | no credential header was sent |
 | qp-server | 401 `{"error":"Invalid credentials"}` | the project is known, and Xsolla rejected the merchant and key for it, or the header is malformed |
-| qp-server | 401 `{"error":"Basic credentials are only accepted on project-scoped routes"}` | Basic sent to a scopeless route; use the project route |
+| qp-server | 401 `{"error":"Invalid token"}` | a Bearer header was sent and rejected; this skill does not send Bearer |
+| qp-server | 401 `{"error":"Basic credentials are only accepted on project-scoped routes"}` | Basic sent to a route outside the project family; use the project route |
 | qp-server | 404 `{"error":"Project not found"}` | see below |
+| qp-server | 404 plain text `Cannot GET <path>` | router miss; see "When a route is missing" |
+| qp-server | 422 problem+json `invalid integer`, `location` `path.merchant_id` | the path merchant is not an integer; check `XSOLLA_MERCHANT_ID` |
 | qp-server | 400 `{"error":"Only one authentication method may be used per request"}` | two credential headers were sent |
 | qp-server | 503 `Credential validation is temporarily unavailable` (from code, not observed) | Xsolla could not be reached; retry a read later, do not resend a write |
 | qp-server | 403 `Service identity is inactive` (from code, not observed) | the project's access was deactivated; go to the Quest Platform team |
 | qp-events-collector | 401 `X-REQUEST-APIKEY header is required` | Basic or nothing sent to `/api/v2/events` |
 
 **`Project not found` is deliberately uniform.** An unknown project id, a
-project that is not onboarded, a project owned by another merchant, a merchant
-id that does not own the project, and a non-integer id all return the same
-404 with the same body. For an unknown project the key is not even checked, so
-a wrong key there also gives this 404. The skill cannot tell these cases
-apart. Say so, name the merchant id and project id you used, and ask the
-developer to check them. Never report it as "the project does not exist" or
-"the key is wrong".
+project that is not onboarded, a project owned by another merchant (the key's
+merchant is not the project's stored merchant) and a non-integer project id
+all return the same 404 with the same body. For an unknown project the key is
+not even checked, so a wrong key there also gives this 404. The skill cannot
+tell these cases apart. Say so, name the merchant id and project id you used,
+and ask the developer to check them. Never report it as "the project does not
+exist" or "the key is wrong". A path merchant that differs from the key's
+merchant does not produce this 404 on stage (see "The merchant id in the
+path").
 
 A missing quest on a known project is a different body: problem+json with
 `"detail":"Quest not found"`. Report it as "not found, or not visible with this
@@ -165,11 +215,13 @@ credential".
 ## Onboarding
 
 A project must be onboarded once before any quest route works for it. When
-`GET /api/v2/projects/{project_id}` returns 404 `Project not found`, onboarding
-is one possible cause among those above.
+`GET /api/v2/merchants/{merchant_id}/projects/{project_id}` returns 404
+`{"error":"Project not found"}`, onboarding is one possible cause among those
+above. A `Cannot GET` 404 is never a reason to onboard.
 
-`POST /api/v2/projects/{project_id}/onboard` with body
+`POST /api/v2/merchants/{merchant_id}/projects/{project_id}/onboard` with body
 `{"merchant_name": "<string>", "project_name": "<string>"}`, both required.
+`{merchant_id}` is `XSOLLA_MERCHANT_ID`, as on every route.
 
 It is a write. **Never call it silently or as a probe.** Offer it, and call it
 only after an explicit yes:
@@ -177,33 +229,38 @@ only after an explicit yes:
 1. Say that the 404 has several possible causes the skill cannot tell apart,
    and that onboarding fixes only the "not onboarded" one.
 2. Say what it creates, if missing, in one transaction: a Quest Platform
-   workspace for the merchant, an account for this project, and publisher-key
-   access to every project of that merchant. It is not undone by this skill.
+   workspace for the key's merchant, an account for this project, and
+   publisher-key access to every project of that merchant. It is not undone
+   by this skill.
 3. Ask for `merchant_name` and `project_name`. Never invent them. They are
    used only for rows the call creates.
 4. Show the request, without the credential, and wait for the yes.
 
-Outcomes (from the OpenAPI and code, 2026-09-25):
+Outcomes (from the OpenAPI and code, 2026-09-25; not called live):
 
 | Response | Meaning |
 |---|---|
-| 200 with `{project_id, name, status, created_at, updated_at}` | onboarded, or already onboarded (the call is idempotent and changes nothing the second time). Re-read `GET /api/v2/projects/{project_id}` and continue with Scope |
+| 200 with `{project_id, name, status, created_at, updated_at}` | onboarded, or already onboarded (the call is idempotent and changes nothing the second time). Re-read `GET /api/v2/merchants/{merchant_id}/projects/{project_id}` and continue with Scope |
 | 401 `Invalid credentials` | Xsolla rejected this merchant and key for this project id; this route checks the key even for an unknown project |
-| 404 `Project not found` | the project is mapped to another merchant's workspace, or the id is not an integer |
+| 404 `{"error":"Project not found"}` | the project is mapped to another merchant's workspace, or the id is not an integer |
+| 404 plain text `Cannot GET` or `Cannot POST <path>` | router miss; see "When a route is missing" |
 | 403 | the credential is not a publisher lane |
 
-After a timeout or 5xx, read `GET /api/v2/projects/{project_id}` before
-offering the call again.
+After a timeout or 5xx, read
+`GET /api/v2/merchants/{merchant_id}/projects/{project_id}` before offering
+the call again.
 
 ## Service preflight
 
 Do not assume one service's credential works for the others. One read each,
 before the first write:
 
-- `qp-server`: `GET /api/v2/projects/{project_id}`, then
-  `GET /api/v2/projects/{project_id}/quests?limit=1`. Two 200s prove the key
-  is accepted for the project and can read quests; they do not prove write
-  capabilities.
+- `qp-server`: `GET /api/v2/merchants/{merchant_id}/projects/{project_id}`,
+  then `GET /api/v2/merchants/{merchant_id}/projects/{project_id}/quests?limit=1`.
+  Two 200s prove the key is accepted for the project and can read quests; they
+  do not prove write capabilities, and on stage they do not prove the path
+  merchant is right (it is not checked). A `Cannot GET` here follows "When a
+  route is missing".
 - `qp-events-collector`: no read checks the key. A qp-server 200 with the same
   Basic key is the only evidence before the first event. The project event
   route's status is in `events.md`; state it at bring-up if the developer
@@ -220,16 +277,19 @@ Bring-up and preflight are GET-only. Ask before any other call.
 
 ## Scope
 
-With Basic, scope is the project in the route. Behind it, the project maps to
-one Quest Platform account inside the merchant's workspace.
+With Basic, scope is the merchant and project in the route. Behind it, the
+project maps to one Quest Platform account inside the merchant's workspace.
 
-1. Read `GET /api/v2/projects/{project_id}` and show `project_id`, `name` and
-   `status`. Get the developer's confirmation that this is the intended
-   project before the first write.
-2. The server sets the quest's `publisher_id` to the merchant id and its
-   `project_id` to the route's project on every create, as strings, and
-   ignores the values in the body. Do not ask for them, do not invent them,
-   and do not try to override them. Show them from the create response.
+1. Read `GET /api/v2/merchants/{merchant_id}/projects/{project_id}` and show
+   the merchant id you used, `project_id`, `name` and `status`. The response
+   has no merchant id of its own. Get the developer's confirmation that this
+   is the intended project before the first write.
+2. The server sets the quest's `publisher_id` to the path `{merchant_id}` and
+   its `project_id` to the path `{project_id}` on every create, as strings,
+   and ignores the values in the body. Do not ask for them, do not invent
+   them, and do not try to override them. Show them from the create response,
+   and check that `publisher_id` equals `XSOLLA_MERCHANT_ID`; if it does not,
+   stop and report it.
 3. On a full `PUT`, send `publisher_id` and `project_id` exactly as the last
    read returned them. A `PUT` keeps the stored `publisher_id`, and a
    different `project_id` in the body would overwrite the stored one (from
@@ -238,8 +298,8 @@ one Quest Platform account inside the merchant's workspace.
    read them. The only readout is qp-data's `accountId` on the developer's own
    quest, after the first create. Do not guess them.
 
-Do not guess a scope, and do not switch projects or credentials without the
-developer saying so.
+Do not guess a scope, and do not switch projects, merchants or credentials
+without the developer saying so.
 
 ## Service key: internal fallback
 
@@ -258,6 +318,15 @@ debug the key. If a key does work, its account name comes from
 is the key's name, not the account's. The OpenAPI labels the header "Master
 API key"; a service key is not a master key.
 
+## Bearer lane: not covered
+
+The project routes and the collector also accept a Publisher Account token
+(`Authorization: Bearer <JWT>`; seen in the stage OpenAPI and code,
+2026-09-25). This skill does not cover or verify that lane. Do not ask for a
+token, do not send one, and do not suggest it as a workaround. If the
+developer wants it, say that it is outside this skill and point them to the
+Quest Platform team.
+
 ## Route families this skill does not drive
 
 They exist on the platform. They are listed so that you neither pretend they
@@ -266,12 +335,15 @@ are missing nor wander into them.
 - `/api/v2/quests/{publisher_id}/{id}`: a publisher-scoped update, delete and
   get with no create or list. Basic is rejected there. Do not use it.
 - `POST /api/v2/publisher-credentials/validate`: internal, master key only
-  (401 `X-REQUEST-APIKEY header is required` otherwise). Do not call it.
-- `GET /api/v2/merchants/{merchant_id}/projects`: not reachable with Basic.
+  (401 `X-REQUEST-APIKEY header is required` otherwise). Do not call it. Its
+  body is `{project_id, merchant_id, authorization}`; that only matters when
+  reading a diagnosis.
+- `GET /api/v2/merchants/{merchant_id}/projects`: the merchant's project list,
+  not reachable with Basic.
 - `GET /api/v2/quests/find-quests` and `GET /api/v2/quests/find-quests-triggers`:
   internal processing endpoints. Do not call them.
-- `GET /api/v2/projects/{project_id}/quests/personalization/{user_id}` and
-  its scopeless twins: a personalization read path, not quest management.
+- `GET /api/v2/merchants/{merchant_id}/projects/{project_id}/quests/personalization/{user_id}`
+  and its scopeless twins: a personalization read path, not quest management.
   Read-only, and only if a developer asks for it by name.
 
 **Off-limits**: `/api/v2/workspaces/**`, `/api/v2/accounts/{account_id}/grants/**`,
@@ -282,9 +354,12 @@ who needs one should go to the Quest Platform team.
 
 ## Deployment status
 
-Stage runs a pre-release build of the publisher lane (QP-2858 Phase 3; the
-exact revision is inferred from the stage tag, 2026-09-25). Production was
-not checked and may not have the project routes or onboarding. On another environment, fetch its OpenAPI route list first; if
-`/api/v2/projects/{project_id}` is missing, say that the publisher lane is not
-deployed there and stop. Do not fall back to another lane without the
-developer's choice.
+Stage runs a pre-release build of the publisher lane (QP-2858, tag
+`stage-adtech-qp-server-publisher-auth-v6`; inferred from the stage tag and the
+live OpenAPI, 2026-09-25). Production was not checked and may not have the
+project routes or onboarding. On another environment, fetch its OpenAPI route
+list first; if `/api/v2/merchants/{merchant_id}/projects/{project_id}` is
+missing, follow "When a route is missing": name any other family that carries
+the same operations and ask, or say that the publisher lane is not deployed
+there and stop. Do not fall back to another lane without the developer's
+choice.

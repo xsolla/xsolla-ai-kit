@@ -21,9 +21,9 @@ metadata:
 ## Status
 
 This skill is a **draft**. On stage the publisher Basic credential works on
-the project-scoped quest routes (rechecked 2026-09-25); production is not
-checked. Submitting an event
-with it is currently blocked; see Flow step 6.
+the merchant-scoped project routes (rechecked 2026-09-25 after they moved);
+production is not checked. Submitting an event with it is currently blocked;
+see Flow step 6.
 
 ## When to use
 
@@ -47,27 +47,24 @@ Follow [`references/auth-and-environment.md`](references/auth-and-environment.md
 for the required credential, request authentication, internal hosts, and scope
 confirmation.
 
-**The publisher Basic credential is the lane.** It is the merchant id plus
-the project's API key, and it works only on the project-scoped routes
-(`/api/v2/projects/{project_id}/...`). Scopeless and account routes reject it.
-If it is not set, stop and say which values are missing; do not search for
-other credentials. The auth reference says how to read a developer's own
-`.env` and which variables it holds.
+**The publisher Basic credential is the lane**: the merchant id plus the
+project's API key. It works only on the routes under both the merchant and
+the project; build each from
+[Project-scoped routes](references/auth-and-environment.md#project-scoped-routes),
+not from memory. `{merchant_id}` in a path is always `XSOLLA_MERCHANT_ID`,
+never user input or a response value; stage does not reject a wrong one (see
+[The merchant id in the path](references/auth-and-environment.md#the-merchant-id-in-the-path)).
+If the credential is not set, stop and say which values are missing; do not
+search for other credentials.
 
-**Onboarding is a separate, offered step.** A project must be onboarded to
-Quest Platform once before its routes answer. Onboarding is a write: offer it
-and ask first, never call it silently. A 404 `Project not found` does not
-prove the project is un-onboarded. The same body comes back for an unknown
-project, a project of another merchant, and a non-numeric id, so say that
-rather than guessing which one it is. The request body and the rules are in
-the Onboarding section of the auth reference.
+**Onboarding is a separate, offered step.** It is a write: offer it and ask
+first, never call it silently. A 404 `Project not found` does not prove the
+project is un-onboarded (see [Onboarding](references/auth-and-environment.md#onboarding)).
 
-An Xsolla-internal service key exists as a fallback for Quest Platform staff
-only (see Service key: internal fallback in the auth reference). Use it only
-when the developer names it; never switch to it on your own when Basic
-fails. OpenAPI discovery needs no credential on stage, so do
-not mistake it for CRUD readiness. Say exactly which lane and which route
-failed rather than reporting a generic authentication failure.
+The internal service key is for Quest Platform staff only: use it only when
+the developer names it, never as a fallback when Basic fails. OpenAPI
+discovery needs no credential, so it does not prove CRUD readiness. Say
+exactly which lane and which route failed.
 
 ## Source of truth
 
@@ -89,6 +86,15 @@ The qp-server document declares no security schemes, and the key header shows
 up only as a parameter on some routes. Never conclude from it that a route is
 unauthenticated; authentication rules live in the auth reference.
 
+**A route miss is not a failure of the credential or the project.** A 404
+with the plain-text body `Cannot GET <path>` (or `Cannot POST <path>`) means
+the router has no such path; the request never reached authentication. The
+same rule holds for reads and writes: re-read the live OpenAPI document, tell
+the developer what moved, and ask before calling anything on another route
+family, even a GET. The live document decides which routes exist; the
+developer decides whether to switch. The steps are in
+[When a route is missing](references/auth-and-environment.md#when-a-route-is-missing).
+
 If a host is unreachable, which usually means no corporate network, say so and
 offer to continue on `references/` alone, noting that the envelope may have
 drifted. Never continue silently.
@@ -108,21 +114,24 @@ drifted. Never continue silently.
 1. **Bring-up.** Fetch the OpenAPI documents. Identify the credential lane
    and run the per-service preflight reads described in
    [`references/auth-and-environment.md`](references/auth-and-environment.md).
-   The scope is the project: read it with `GET /api/v2/projects/{project_id}`
-   and show its `project_id`, `name` and `status`. That read returns no
+   The scope is the project: read it with the project GET from the auth
+   reference and show its `project_id`, `name` and `status`, plus the merchant
+   id used in the path. That read returns no
    account or workspace id; do not invent one. Get confirmation of the
    project before any write. Bring-up is GET-only; onboarding, if needed, is
    offered after it (see Prerequisites).
 2. **Draft.** Create the quest as `inactive` with the four required fields,
    `name`, `type`, `status` and `created_by`; rules are in
    [`references/quest-document.md`](references/quest-document.md). On the
-   project route the server sets `publisher_id` and `project_id` from the
-   route and ignores body values. Never send or override them on create; on
-   a `PUT`, send them exactly as the last read returned them. Show the values
-   the server returned.
+   project route the server stamps `publisher_id` from the path merchant and
+   `project_id` from the path project, and ignores body values. Never ask
+   for, invent or override them; on a `PUT`, send both back as the last read
+   returned them. Show the returned values; the create response's
+   `publisher_id` must equal `XSOLLA_MERCHANT_ID`, else stop and report.
 3. **Fill in.** Add nodes and their `connections` entries one at a time,
    asking for each missing required value. Ask which action the quest should run.
-   Do not offer `scheduled_event` or `crm_send_email`; see
+   Do not offer `scheduled_event` (under Basic its activation is rejected
+   with 400, from code) or `crm_send_email`; see
    [`references/node-subtypes.md`](references/node-subtypes.md). Show the assembled
    document, and the impact of any external action, before sending it.
 4. **Activate.** A separate step: move to `active` with dates, after checking
@@ -148,10 +157,13 @@ drifted. Never continue silently.
    a quest write and `load_test`, are in
    [`references/events.md`](references/events.md). Omit the `publisher` block,
    or send exactly the quest's `publisher_id` and `project_id` as read back.
-   **Currently blocked on Basic.** On 2026-09-25 the project event route
-   answered 404 `{"error":"Not Found"}` to a valid Basic credential, before
-   reading the body. If that happens, stop, report the status and body
-   verbatim, and say the event was not accepted. Do not retry with another
+   **Currently blocked on Basic.** On 2026-09-25 the collector's project
+   event route answered 404 `{"error":"Not Found"}` to a valid Basic
+   credential, before reading the body. The cause, inferred from code, is a
+   contract mismatch: the collector's credential check omits the merchant id that the
+   current qp-server requires. The next collector build is expected to drop
+   the Basic event route altogether. Either way, stop, report the status and
+   body verbatim, and say the event was not accepted. Do not retry with another
    credential or route: an event sent with a different credential lands in a
    different account and cannot match a quest created on the project route.
 7. **Verify.** Read the execution back from qp-data, correlate its `eventId`
@@ -206,8 +218,9 @@ drifted. Never continue silently.
   failure. Report "result unknown" and stop.
 - After a timeout or 5xx on a quest `POST` or `PUT`, the write may have landed.
   For a `PUT`, read the quest by id and compare it with what you sent. For a
-  `POST`, the project list has no name filter: page through it from `page=1`
-  (`limit` up to 100) and look for the quest's `name`. Show what you found and
+  `POST`, the project list has no name filter: page through it with
+  `limit=100` from `page=1` until `page*limit >= total`, looking for the
+  quest's `name`. Show what you found and
   ask before sending it again. A 422 is different: validation runs before
   anything is stored, so a rejected body saved nothing.
 - After a `FAILED` reward action, do not resend the event. Fix the quest, then
@@ -232,11 +245,12 @@ verbatim.
 | Status | What to tell the developer |
 |---|---|
 | 400 | `Only one authentication method may be used per request`: more than one credential was sent. Send only the one the developer chose. |
-| 401 | `Invalid credentials`: the Basic key was rejected for this project. `Authentication required`: no credential reached the server. `Basic credentials are only accepted on project-scoped routes`: wrong route family, not a bad key. `Invalid API key`: the service key was rejected. Details in Reading a 401 or 404 in the auth reference. Never fall back to another credential. |
+| 401 | `Invalid credentials`: the Basic key was rejected for this project. `Authentication required`: no credential reached the server. `Basic credentials are only accepted on project-scoped routes`: wrong route family, not a bad key. `Invalid API key`: the service key was rejected. `Invalid token`: a Bearer token was rejected; this skill does not send one. Details in Reading a 401 or 404 in the auth reference. Never fall back to another credential. |
 | 403 | `Insufficient capability`: the credential lacks the capability for that route. `Service identity is inactive`, `Master role required` or `This endpoint requires the user sign-in lane`: the route or identity is off-limits; do not retry. |
+| 404 | `Cannot GET <path>` (plain text, any method): router miss, the route does not exist; not an auth or project answer. Follow the route-miss rule in Source of truth. |
 | 404 | `Project not found` on a project route: the project is unknown, not onboarded, belongs to another merchant, or the id is not a number. The server gives the same body for all of them, so do not pick one. Offer onboarding only if the developer says the project is theirs. `Quest not found`: "not found, or not visible with this credential." Never say the quest was deleted or does not exist, and correct the developer if they conclude that. `Not Found` on the project event route: see Flow step 6. |
 | 409 | Conflict. Quest routes do not return it (see Editing in the quest reference); report it verbatim. |
-| 422 | Validation failed. Show `detail` verbatim. It never lists allowed enum values; take them from `references/`. |
+| 422 | Validation failed. Show `detail` verbatim. It never lists allowed enum values; take them from `references/`. `invalid integer` at `path.merchant_id`: the path merchant is not a number; rebuild the path from `XSOLLA_MERCHANT_ID`. |
 | 5xx | Server error. `Credential validation is temporarily unavailable` (503) means Xsolla could not check the key; it says nothing about the key. Retry a read at most twice, with backoff. An identical repeated 5xx is a bug, not flakiness: report it with its body. For a write, see Safety stops. |
 
 Two body shapes exist. Middleware failures return `{"error": "..."}`. Handler

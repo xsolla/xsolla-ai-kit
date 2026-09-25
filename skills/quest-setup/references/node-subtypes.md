@@ -153,10 +153,11 @@ asks for one, explain why:
 
 - `scheduled_event` (trigger), parameters `event_name` plus exactly one of
   `cron` or `date_time`. Activating it makes qp-server register the schedule
-  with the collector using the caller's `X-REQUEST-APIKEY`. A project-route
-  request has none, so an `active` write fails with 503 `cannot register
-  scheduled quest: no forwardable API key on this request` and is not saved
-  (from code, not observed). The stage worker also has no handler for it.
+  with the collector, forwarding only a Bearer Publisher Account token or an
+  API key. With the Basic credential this skill uses, an `active` write fails
+  with 400 `scheduled quests require a Publisher Account token or an API key`
+  and is not saved (from the qp-server code deployed on 2026-09-25, not
+  observed on stage). The stage worker also has no handler for it.
 - `crm_send_email` (action), parameters `subject`, `game_title`, `content`,
   `crm_segment`, all required. The stage worker has no handler for it, so it
   would fail at run time.

@@ -19,15 +19,25 @@ account.
 
 ## Currently blocked on stage
 
-**As of 2026-09-25, events with the project credential do not get through on
-stage.** A `POST /api/v2/projects/316111/events` with a valid project key
-returned 404 `{"error":"Not Found"}`, with the same 404 for an empty body, a
-wrong key, an unknown project and another merchant. The scopeless
+**As of 2026-09-25 (rechecked after the qp-server redeploy around 08:20Z),
+events with the project credential do not get through on stage.** A
+`POST /api/v2/projects/316111/events` with a valid project key returned 404
+`{"error":"Not Found"}`, with the same 404 for an empty body, a wrong key, an
+unknown project and another merchant. The collector route itself did not
+move: it is still `/api/v2/projects/{project_id}/events`, and there is no
+`/merchants/...` event route on the collector. The scopeless
 `POST /api/v2/events` rejects the project credential with 401
-`{"error":"X-REQUEST-APIKEY header is required"}`. The inferred cause is a
-contract mismatch between the collector and qp-server's credential
-validation, a backend issue, not something the developer can fix. Nothing
-was ingested.
+`{"error":"X-REQUEST-APIKEY header is required"}`. Nothing was ingested.
+
+Cause, **inferred from code, not confirmed by the backend team**: the
+deployed collector validates the credential against qp-server without a
+`merchant_id`, and the redeployed qp-server treats a missing `merchant_id` as
+"no match", so every Basic event gets the same 404. This is a backend
+contract mismatch, not something the developer can fix. The next collector
+build (in code, not deployed yet) removes this project events route: events
+then go only to `POST /api/v2/events` with an API key or a Bearer Publisher
+Account token, and the project credential gets no event route at all. Do not
+promise that the 404 will clear on its own.
 
 The route answers every negative outcome with the same 404, so a 404 cannot
 tell a bad key from this blocker. When the qp-server preflight with the same

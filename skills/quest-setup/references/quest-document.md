@@ -5,9 +5,14 @@ Stage OpenAPI and the code of the deployed qp-server build were checked on
 before writes.
 
 Every quest route in this file is a project-scoped route,
-`/api/v2/projects/{project_id}/quests[/{id}]`, sent with the credential from
-[`auth-and-environment.md`](auth-and-environment.md). That file owns the
-credential, the route list and the scope rules.
+`/api/v2/merchants/{merchant_id}/projects/{project_id}/quests[/{id}]`. Below,
+`{scope}` stands for `/api/v2/merchants/{merchant_id}/projects/{project_id}`. `{merchant_id}` is exactly
+`XSOLLA_MERCHANT_ID` and `{project_id}` is `XSOLLA_PROJECT_ID`. The route
+family, the credential and the scope rules are owned by
+[Project-scoped routes](auth-and-environment.md#project-scoped-routes) in the
+auth reference; if the family moves again, only that file changes. A 404
+`text/plain` body `Cannot GET ...` means a wrong or old route, not a quest or
+auth answer; follow [When a route is missing](auth-and-environment.md#when-a-route-is-missing).
 
 A quest is a **graph**, not a flat record. This one fact drives everything else
 in this skill.
@@ -23,8 +28,8 @@ in this skill.
 | `status` | string | yes | `active` or `inactive` on write. `deleted` is set only by `DELETE`, a soft delete, and is rejected on write |
 | `created_by` | string | yes | 1 to 255 characters. Ask the developer; never derive it from the environment |
 | `description` | string | no | if present, 5 to 1000 characters |
-| `publisher_id` | string | server-set | the merchant id, set by the server on create from the route's project. Body values are ignored on create, and a `PUT` does not change it. Never ask for it or invent it |
-| `project_id` | string | server-set | the route's project id, set by the server on create. On a `PUT`, send it exactly as the last read returned it: a different value in the body would overwrite the stored one (from code). See Scope in the auth reference |
+| `publisher_id` | string | server-set | set by the server on create to the route's **path** `{merchant_id}` (from code; body values are ignored). Stage does not reject a path merchant that differs from the key's, and such a quest would never match events, so the path must carry exactly `XSOLLA_MERCHANT_ID`. A `PUT` does not change it. Never ask for it or invent it; on a `PUT`, send it back as the last read returned it |
+| `project_id` | string | server-set | set by the server on create to the route's path `{project_id}`. On a `PUT`, send it exactly as the last read returned it: a different value in the body would overwrite the stored one (from code). See Scope in the auth reference |
 | `start_date` | RFC3339 | **only when `active`** | not earlier than exactly 24 hours before the server's now; see below |
 | `end_date` | RFC3339 | **only when `active`** | not in the past, and at or after `start_date`. Ask; there is no default |
 | `nodes` | array | **at least 2 when `active`** | optional and may be empty when `inactive` |
@@ -65,11 +70,18 @@ Create and update return 200, not 201, with the whole quest. Empty `nodes`,
 that is not an error. An empty or absent `activation_limits` also comes back
 as `null`. A `null` `nodes` may be sent back on an `inactive` draft; send real
 arrays when activating. An optional field missing from a response is not set;
-it is not `0` or an empty string. The list returns
-`{page, limit, total, data[]}`, `limit` 10 by default and 100 at most; page
-through it rather than reading one page as the whole list. Its items carry
+it is not `0` or an empty string. The list, `GET {scope}/quests`, returns
+`{page, limit, total, data[]}`. Query: `page` (default 1; `0` is read as 1),
+`limit` (default 10; `0` is read as 10; above 100 it is silently cut to 100,
+with no error), `publisherID`. A non-integer value is 422. There is no name
+filter: to find a quest by name, page through the whole list. Page through it
+rather than reading one page as the whole list. Its items carry
 `project_id` but no `publisher_id`, nodes, connections or `account_id`. The
 list covers only the route's project.
+
+`GET {scope}` (the project itself) returns `project_id` (integer), `name`,
+`status`, `created_at`, `updated_at` and, only when set, `description`. It
+carries no merchant, account or workspace id, so do not read one from it.
 
 ## Draft first, then activate
 
@@ -186,13 +198,13 @@ an `issue_reward`, tell the developer that such an event can still pay.
 
 ## Deleting
 
-`DELETE /api/v2/projects/{project_id}/quests/{id}` needs `questconfig:delete`
+`DELETE {scope}/quests/{id}` needs `questconfig:delete`
 (a project key acts with author rights, which include it) and returns 200 with
 `{"message": "Quest deleted successfully"}`. It is a soft delete: the quest and
 all its triggers get `status: deleted`, so events stop matching it (after the
 config cache time), and its qp-data rows stay. After that, `GET`, the list and
 a second `DELETE` treat it as not found: 404 problem+json with
-`"detail":"Quest not found"` (verified on the project route 2026-09-25). A 404
+`"detail":"Quest not found"` (verified on the merchant project route 2026-09-25). A 404
 `{"error":"Project not found"}` is a scope answer instead, not a verdict on
 the quest; see the auth reference. There is no restore route. The
 update query does not exclude deleted quests, so a `PUT` to the old id may
