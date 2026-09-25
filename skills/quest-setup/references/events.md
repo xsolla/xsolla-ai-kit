@@ -23,9 +23,11 @@ account.
 stage.** A `POST /api/v2/projects/316111/events` with a valid project key
 returned 404 `{"error":"Not Found"}`, with the same 404 for an empty body, a
 wrong key, an unknown project and another merchant. The scopeless
-`POST /api/v2/events` rejects the project credential with 401. The inferred cause is a contract
-mismatch between the collector and qp-server's credential validation, a
-backend issue, not something the developer can fix. Nothing was ingested.
+`POST /api/v2/events` rejects the project credential with 401
+`{"error":"X-REQUEST-APIKEY header is required"}`. The inferred cause is a
+contract mismatch between the collector and qp-server's credential
+validation, a backend issue, not something the developer can fix. Nothing
+was ingested.
 
 The route answers every negative outcome with the same 404, so a 404 cannot
 tell a bad key from this blocker. When the qp-server preflight with the same

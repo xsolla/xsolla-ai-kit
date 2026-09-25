@@ -35,7 +35,9 @@ stage 2026-09-25, revalidate).
 
 qp-data answers without a credential and holds every tenant's data. Query it
 only with the developer's own quest id, user id or event, and never list
-accounts or other tenants' quests or executions.
+accounts or other tenants' quests or executions. To list the developer's
+quests there, scope `GET /api/v1/quests` by `publisherId` and `projectId` of
+the confirmed project (the executions route has no `projectId` filter).
 
 Before the first qp-data read by quest id, confirm the quest is the
 developer's: read it on qp-server with
@@ -81,7 +83,12 @@ trigger" in [`quest-document.md`](quest-document.md). For the read-back, from
 the worker code on stage 2026-09-25, not observed live, revalidate:
 
 - `actions[]` lists only the actions the walk reached, in the quest's `nodes`
-  order, not in run order. An action missing from it did not run.
+  order, not in run order. An action missing from it did not run. After the
+  first failed action the later ones are absent, not pending; they will not
+  run for this event.
+- An execution `FAILED` with some actions `COMPLETED` means those actions'
+  effects happened, for example a reward was paid. Report them as done, and
+  do not resend to "finish" the run.
 - A failed run does not use up an activation limit; the worker rolls the
   counter back.
 - **A row that follows a `FAILED` run for the same user and quest can show
