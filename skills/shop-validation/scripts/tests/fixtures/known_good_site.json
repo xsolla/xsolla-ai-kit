@@ -1,0 +1,248 @@
+{
+ "_id": "L-known-good",
+ "domain": "known-good-shop",
+ "name": "known-good-shop",
+ "navigation": "p-home /home",
+ "pages": [
+  {
+   "_id": "p-home",
+   "path": "/home",
+   "blocks": [
+    {
+     "_id": "b-header",
+     "module": "header",
+     "parent": {
+      "type": "page",
+      "id": "p-home"
+     },
+     "values": {
+      "logo": "I:hdrlogo01",
+      "title": {
+       "id": "L:hdr-title"
+      }
+     }
+    },
+    {
+     "_id": "b-faq",
+     "module": "faq",
+     "blockVersion": 2,
+     "parent": {
+      "type": "page",
+      "id": "p-home"
+     },
+     "values": {
+      "title": {
+       "id": "L:faq-title"
+      }
+     },
+     "components": [
+      {
+       "type": "question",
+       "enable": true,
+       "question": {
+        "id": "L:q1"
+       },
+       "answer": {
+        "id": "L:a1"
+       }
+      },
+      {
+       "type": "question",
+       "enable": true,
+       "question": {
+        "id": "L:q2"
+       },
+       "answer": {
+        "id": "L:a2"
+       }
+      }
+     ]
+    },
+    {
+     "_id": "b-gallery",
+     "module": "gallery",
+     "blockVersion": 2,
+     "parent": {
+      "type": "page",
+      "id": "p-home"
+     },
+     "values": {
+      "slides": [
+       {
+        "image": {
+         "type": "image",
+         "img": "https://cdn.example/1.png"
+        }
+       },
+       {
+        "image": {
+         "type": "video",
+         "video": "https://cdn.example/2.mp4"
+        }
+       }
+      ]
+     }
+    },
+    {
+     "_id": "b-store",
+     "module": "newStore",
+     "parent": {
+      "type": "page",
+      "id": "p-home"
+     },
+     "values": {
+      "title": {
+       "id": "L:store-title"
+      }
+     },
+     "components": [
+      {
+       "type": "storeSection",
+       "enable": true,
+       "storeItemsType": "vi",
+       "storeItemsGroup": "starter"
+      }
+     ]
+    },
+    {
+     "_id": "b-cta",
+     "module": "hero",
+     "blockVersion": 1,
+     "parent": {
+      "type": "page",
+      "id": "p-home"
+     },
+     "values": {
+      "title": {
+       "id": "L:cta-title"
+      },
+      "button": {
+       "variant": {
+        "type": "built-in",
+        "value": "primary"
+       },
+       "action": {
+        "__type": "action",
+        "action": "page",
+        "landingId": "L-known-good",
+        "pageId": "p-home",
+        "text": {
+         "id": "L:cta-btn"
+        },
+        "openNewTab": false
+       }
+      }
+     }
+    },
+    {
+     "_id": "b-fed",
+     "module": "federated",
+     "parent": {
+      "type": "page",
+      "id": "p-home"
+     },
+     "values": {
+      "blockId": "sb-offer-chain",
+      "host": "https://blocks.example/offer-chain",
+      "version": "1.4.2",
+      "useAsNativeBlock": true,
+      "defaultData": {
+       "title": "L:oc-title",
+       "blockHeight": "auto",
+       "successModal": {
+        "image": "I:fxaahvtgju5",
+        "text": "L:oc-modal"
+       },
+       "buttonVariant": "7:zpdpy7epv7h",
+       "steps": [
+        {
+         "reward": "L:oc-step",
+         "amount": 0,
+         "image": "I:stepimg01"
+        }
+       ],
+       "offerChainId": null
+      },
+      "internalBlockValues": {
+       "title": "L:oc-title",
+       "blockHeight": 166,
+       "successModal": {
+        "image": "I:custom99",
+        "text": "L:oc-modal"
+       },
+       "buttonVariant": "7:abc123",
+       "extraFieldUserAdded": {
+        "any": "thing"
+       },
+       "steps": [
+        {
+         "reward": "L:oc-step",
+         "amount": 5,
+         "image": "I:stepimg01"
+        },
+        {
+         "reward": "L:oc-step",
+         "amount": 10,
+         "image": "I:stepimg02"
+        }
+       ],
+       "offerChainId": 42
+      },
+      "resources": {
+       "localizedValues": {
+        "L:oc-title": {
+         "texts": {
+          "id": "L:aaaaaaa1-0000-4000-8000-000000000001"
+         }
+        },
+        "L:oc-modal": {
+         "texts": {
+          "id": "L:aaaaaaa1-0000-4000-8000-000000000002"
+         }
+        },
+        "L:oc-step": {
+         "texts": {
+          "id": "L:aaaaaaa1-0000-4000-8000-000000000003"
+         }
+        }
+       },
+       "media": {}
+      }
+     }
+    },
+    {
+     "_id": "b-ai",
+     "module": "federated",
+     "parent": {
+      "type": "page",
+      "id": "p-home"
+     },
+     "values": {
+      "blockId": "ai_936601_314771_66dd0011",
+      "host": "https://blocks.example/ai/66dd0011",
+      "version": "0.1.0-draft",
+      "useAsNativeBlock": true,
+      "internalBlockValues": {},
+      "resources": {
+       "localizedValues": {},
+       "media": {}
+      }
+     }
+    }
+   ]
+  }
+ ],
+ "blocks": [
+  "b-header",
+  "b-faq",
+  "b-gallery",
+  "b-store",
+  "b-cta",
+  "b-fed",
+  "b-ai",
+  "b-common-layout"
+ ],
+ "layouts": [
+  "b-common-layout"
+ ]
+}
