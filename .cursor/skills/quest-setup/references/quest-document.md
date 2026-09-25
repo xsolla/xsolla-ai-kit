@@ -122,6 +122,12 @@ actually sent: `end_date` is that start plus 7x24 hours. If the start moves
 (for example refused as too old, then "now"), recompute the end and confirm
 both dates again before sending.
 
+"Start now" is stamped when the `PUT` is built, so no exact body can be shown
+ahead. Show the rule ("`start_date` = send time in UTC, `end_date` = start
+plus N") with an example computed from the current time, and take the yes for
+both. If the send happens more than 10 minutes after the example was shown,
+show a fresh example and confirm again.
+
 ## Nodes and connections
 
 ```json
@@ -221,16 +227,18 @@ what you need, and send the whole object back. Tell the developer this before
 editing, because a partial body silently drops everything it omits.
 
 Recipe: take the body of a fresh `GET`, change only the fields the developer
-asked for, and send the rest verbatim, `null` values included. `id` (the path
-wins), `created_at`, `updated_at`, `version_id` and `has_personalization` are
-ignored on `PUT`, so they may stay or be dropped. GET bodies also carry a
-`$schema` link; drop it before the `PUT`. (From code, qp-server at adtech
-873d3c7a3c: `PUT` and `GET` share one body schema, where `$schema` is a
-read-only property Huma accepts and ignores, so leaving it in should not
-fail; not verified live.) For a new node, you generate its `id` as a fresh
-random UUID (v4); the server does not assign node ids, and existing node ids
-stay unchanged. Show the before/after diff of
-the changed fields before sending.
+asked for, and send the rest verbatim, `null` values included. Keep the
+server-assigned fields (`id`, `created_at`, `updated_at`, `version_id`,
+`has_personalization`) as read: the server ignores them on `PUT` (the path
+`id` wins), and stage accepts them. `has_personalization` turns `true` in the
+next read after a `webshop_personalization` (no-op) node is added; that is
+expected, not a diff to report as a change. A `$schema` link may be present
+(the list GET has one, the single-quest GET on stage 2026-09-25 did not); drop
+it before the `PUT`. (From code, qp-server at adtech 873d3c7a3c: Huma accepts
+and ignores it; not verified live.) For a new node, you generate its `id` as a
+fresh random UUID (v4); the server does not assign node ids, and existing node
+ids stay unchanged. Show the before/after diff of the changed fields before
+sending.
 
 An edit to an active quest applies to the next events once the pipeline's
 config caches expire (see `events.md`). Repeat the activation confirmations

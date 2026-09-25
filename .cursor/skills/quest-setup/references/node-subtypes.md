@@ -62,7 +62,9 @@ the user identifiers. Never treat an arbitrary URL as a harmless placeholder.
   [`auth-and-environment.md`](auth-and-environment.md#services), which
   includes the Quest Platform services and the minting service. A
   webhook cannot pay out: it posts the raw event above, not a mint claim, and
-  it carries no credentials. To pay out, use an `issue_reward` Web3 reward.
+  it carries no credentials. To pay out, use an `issue_reward` Web3 reward;
+  ask for the values listed in [`rewards.md`](rewards.md) (`web3_item` or
+  `web3_token`), not a URL.
   The 09-24 qp-server build rejected a minting-service host with a 422; the
   build deployed on 2026-09-25 has no such check (from code), so do not rely
   on the server to stop it.
@@ -202,12 +204,14 @@ example `level_up` on a "first purchase" quest, or a test id from another case
 such as `e2e-uc03-...` on a UC02 quest), say so once and ask them to confirm
 it; do not change it yourself.
 
-Two optional read-only checks, never blocking:
+Two optional read-only checks, never blocking. Either may just run and be
+reported (no offer needed):
 
 - **Name check before a create:** page through the list (see
   `quest-document.md` Responses) and say if a quest with the same name already
-  exists.
-- **Collision check before activation:** offer it when the list shows another
+  exists. Mention near-duplicate or same-prefix names too, and leave those
+  quests alone.
+- **Collision check before activation:** run it when the list shows another
   `active` quest with a similar name or test prefix, or the `event_name` is
   generic (`purchase`, `level_up`). `GET` each `active` quest (list items
   carry no nodes) and report any whose trigger has the same `event_name`. The

@@ -121,7 +121,7 @@ Where to look:
 Request hygiene, for every call:
 
 - Check which names are set with a test that prints only the name, never a
-  value. No indirect expansion (such as `${!name}`), no `env`, `set` or
+  value, such as `[ -n "${NAME+x}" ] && echo NAME` per name. No indirect expansion (such as `${!name}`), no `env`, `set` or
   `printenv` dumps.
 - Parse `.env` in the same process that builds the request, and build the
   Basic header inside that command. Never echo it or pass it through a
@@ -140,7 +140,15 @@ belongs to the `.env` project, so the other id probably needs its own key. Do
 not call either route before the answer. If they insist on the `.env` key for
 the other id, reads are allowed; a 404 `Project not found` then cannot rule out
 a wrong key (the key is not checked for an unknown project), and no write is
-sent until that project GET returns 200.
+sent until that project GET returns 200, and onboarding is not offered with
+that key (see Onboarding).
+
+When this mismatch check and the placeholder-id check above both fire, ask
+one question that covers both, for example "Is 999999 a real project of
+yours, and do you have its own key, or should I use the `.env` project?".
+Answers that count: the developer confirms the id is theirs ("it's mine",
+"yes, 999999 is ours") and says which key to use; "just try it" confirms
+neither.
 
 Negative-auth checks: when the developer asks, a GET on the project route with
 a made-up key or with no `Authorization` header is a read and needs no
@@ -269,6 +277,13 @@ their merchant, the one in `XSOLLA_MERCHANT_ID` (for example "yes, project
 then, report the uniform 404, name the ids used, and ask them to check the
 ids; do not offer the call.
 
+Onboarding with a key that likely belongs to another project (the id-mismatch
+case in Credential: the developer named a project id other than
+`XSOLLA_PROJECT_ID` and kept the `.env` key) is blocked. Say that the 404 may
+only mean the key is not that project's, and ask for that project's own key;
+offer onboarding only after it is set and the project GET was repeated with
+it.
+
 `POST /api/v2/merchants/{merchant_id}/projects/{project_id}/onboard` with body
 `{"merchant_name": "<string>", "project_name": "<string>"}`, both required.
 `{merchant_id}` is `XSOLLA_MERCHANT_ID`, as on every route.
@@ -320,12 +335,16 @@ qp-data read.
 - `qp-events-collector`: nothing to preflight on Basic. Say at every bring-up
   that events cannot be sent on this lane on stage (no Basic event route,
   2026-09-25), and say it again whenever the developer asks for activation or
-  a smoke test. When the task may reach activation or a smoke test, fetch the
-  collector OpenAPI at bring-up (no credential) to recheck the missing route
-  live, and report the result with that line. See `events.md`.
+  a smoke test. For any task that may create, activate or send an event,
+  fetch the collector OpenAPI at bring-up (no credential) to recheck the
+  missing route live, and report the result with that line. See `events.md`.
 - `qp-data`: `GET /api/v1/quests?publisherId=<XSOLLA_MERCHANT_ID>&projectId=<confirmed project id>&size=1`
   (200 verified 2026-09-25, rows matched the scope). Run it only after Scope
-  step 1 confirmed the project. It answers without a credential; treat that
+  step 1 confirmed the project, and skip it when events are blocked and the
+  developer asked for no execution read-back. The body is `items[]` with
+  `totalCount`; report only pass or fail, nothing from it goes into the scope
+  readout. qp-data keeps soft-deleted quests, so its `totalCount` is not the
+  project's quest count (stage 2026-09-25: 10 vs qp-server `total` 8). It answers without a credential; treat that
   as a snapshot, not a contract. Check that every returned row carries the
   same `publisherId` and `projectId`; if any does not, discard the body,
   show nothing from it, and report that the filter was not applied. Never use
@@ -400,6 +419,9 @@ Quest Platform team.
 They exist on the platform. They are listed so that you neither pretend they
 are missing nor wander into them.
 
+- `/api/v2/accounts/{account_id}/quests` and `/quests/{id}`: account-scoped
+  quest CRUD for other lanes. Basic gets 401 `Basic credentials are only
+  accepted on project-scoped routes` (stage 2026-09-25). Do not use it.
 - `/api/v2/quests/{publisher_id}/{id}`: a publisher-scoped update, delete and
   get with no create or list. Basic is rejected there. Do not use it.
 - `POST /api/v2/publisher-credentials/validate`: internal, master key only

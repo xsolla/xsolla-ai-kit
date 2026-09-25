@@ -21,9 +21,9 @@ metadata:
 ## Status
 
 This skill is a **draft**. On stage the publisher Basic credential works on
-the merchant-scoped project routes (rechecked 2026-09-25 after they moved);
-production is not checked. Basic cannot send events on stage: since
-2026-09-25 the collector has no Basic event route (Flow step 6).
+the merchant-scoped project routes (rechecked 2026-09-25); production is not
+checked. Basic cannot send events on stage: the collector has no Basic event
+route (Flow step 6).
 
 ## When to use
 
@@ -41,23 +41,20 @@ transaction hash for the claim; never state that a token was delivered.
 
 ## Prerequisites
 
-Follow [`references/auth-and-environment.md`](references/auth-and-environment.md)
-for the required credential, request authentication, internal hosts, and scope
-confirmation.
+Follow [`references/auth-and-environment.md`](references/auth-and-environment.md) for credential, hosts and scope.
 
 **The publisher Basic credential is the lane**: the merchant id plus the
-project's API key. It works only on the routes under both the merchant and
-the project; build each from
+project's API key. It works only on the routes under both the merchant and the
+project; build each from
 [Project-scoped routes](references/auth-and-environment.md#project-scoped-routes),
 not from memory. `{merchant_id}` in a path is always `XSOLLA_MERCHANT_ID`,
 never user input or a response value; stage does not reject a wrong one (see
 [The merchant id in the path](references/auth-and-environment.md#the-merchant-id-in-the-path)).
 If the credential is not set, stop and say which values are missing; do not
 search for other credentials. Read `.env` as text, never source it (see
-[Credential](references/auth-and-environment.md#credential)).
-
-**Onboarding is a separate, offered write**, never silent, offered only after
-the developer says the project is their merchant's; see
+[Credential](references/auth-and-environment.md#credential)). **Onboarding is
+a separate, offered write**, never silent, offered only after the developer
+says the project is their merchant's; see
 [Onboarding](references/auth-and-environment.md#onboarding).
 
 The internal service key is
@@ -81,12 +78,11 @@ Follow this order. It is the rule the rest of the skill depends on.
 4. If neither source answers the question, **ask the developer**. Do not infer
    a field by analogy with another Xsolla API.
 
-The qp-server document declares no security schemes; never conclude from it
-that a route is unauthenticated (auth rules live in the auth reference).
-
-**A route miss is not a credential or project failure.** A 404 `Cannot GET
-<path>` means the router has no such path; a route the live document omits
-is not called. Follow [When a route is missing](references/auth-and-environment.md#when-a-route-is-missing).
+The qp-server document declares no security schemes; that never makes a route
+unauthenticated (auth rules live in the auth reference). **A route miss is not
+a credential or project failure.** A 404 `Cannot GET <path>` means the router
+has no such path; a route the live document omits is not called. Follow
+[When a route is missing](references/auth-and-environment.md#when-a-route-is-missing).
 
 If a host is unreachable (usually no corporate network), say so and offer to
 continue on `references/` alone, noting that the envelope may have drifted.
@@ -104,17 +100,19 @@ continue on `references/` alone, noting that the envelope may have drifted.
 ## Flow
 
 1. **Bring-up.** Fetch the OpenAPI documents of the services the task will
-   call, including the collector's whenever the task may reach activation or
-   a smoke test (recheck the missing Basic event route live and report it with
-   the events-blocked line). Identify the credential lane and run the preflight
-   reads in [`references/auth-and-environment.md`](references/auth-and-environment.md)
+   call, and the collector's for any task that may create, activate or send an
+   event (recheck the missing Basic event route live; report it with the
+   events-blocked line). Run the preflight reads in
+   [`references/auth-and-environment.md`](references/auth-and-environment.md)
    for those services only; the qp-data probe waits for the project
-   confirmation, then runs as its own step. The scope is the project: read it
-   with the project GET from the auth reference and show its `project_id`,
-   `name` and `status`, plus the merchant id used in the path (no account or
-   workspace id; do not invent one). Get it confirmed before any write. If that GET is 404 `Project not found`, report
+   confirmation, and is skipped when events are blocked and no execution
+   read-back was asked. The scope is the project: read it with the project GET
+   and show its `project_id`, `name` and `status`, plus the merchant id used
+   in the path (no account or workspace id; do not invent one). Get it
+   confirmed before any write. If that GET is 404 `Project not found`, report
    it, follow [Onboarding](references/auth-and-environment.md#onboarding)
-   (offer, ask for both names), and stop. Bring-up is GET-only. Say at
+   (offer, ask for both names), and stop. Bring-up is GET-only; after it,
+   reads the developer asks for just run, and only writes need a yes. Say at
    bring-up that events cannot be sent on Basic (step 6).
 2. **Draft.** Create the quest as `inactive` with the four required fields,
    `name`, `type`, `status` and `created_by`; rules are in
@@ -200,7 +198,9 @@ continue on `references/` alone, noting that the envelope may have drifted.
   amount and `purpose`, `start_date`, `end_date`, activation limits, or the
   project. Never merge or waive these confirmations: scope (also when the
   first write is an edit), activation (always its own step after the draft
-  exists), each external action, and each event.
+  exists), each external action, and each event. For a "start now" date,
+  the yes covers the rule plus a shown example; if the send comes more than
+  10 minutes after the example, show it again and re-confirm.
 - No action is side-effect free by default. For a smoke test, offer the no-op
   in [`references/node-subtypes.md`](references/node-subtypes.md) rather than a
   real reward (placeholders `e2e-noop`, `e2e-sink.invalid`). For activation
@@ -260,7 +260,7 @@ rule in your own words and say nothing was sent; a body marked "from code" or
 | 404 | `Project not found` on a project route: the project is unknown, not onboarded, belongs to another merchant, or the id is not a number. The server gives the same body for all of them, so do not pick one. No read-only step narrows it; see [Onboarding](references/auth-and-environment.md#onboarding). `Quest not found`: reply "The quest was not found on this project, or it is not visible with this credential." Never say it was deleted or does not exist, and correct the developer if they conclude that. One follow-up: it may be on another project, and checking needs that project's credentials. Events: Basic has no event route on stage since 2026-09-25 (the earlier 404 `{"error":"Not Found"}` is history); see Flow step 6. |
 | 409 | Conflict. Quest routes do not return it (see Editing in the quest reference); report it verbatim. |
 | 422 | Validation failed. Show `detail` verbatim. It never lists allowed enum values; take them from `references/`. `invalid integer` at `path.merchant_id`: the path merchant is not a number; rebuild the path from `XSOLLA_MERCHANT_ID`. |
-| 5xx | Server error. `Credential validation is temporarily unavailable` (503) means Xsolla could not check the key; it says nothing about the key. Retry a read at most twice, with backoff. An identical repeated 5xx is a bug, not flakiness: report it with its body. For a write, see Safety stops. |
+| 5xx | Server error. `Credential validation is temporarily unavailable` (503) means Xsolla could not check the key; it says nothing about the key. Retry a read at most twice, with backoff. An identical repeated 5xx is a bug, not flakiness: report it with its body. On a write never auto-retry; see Safety stops. |
 
 Middleware failures return `{"error": "..."}`; handler failures return RFC
 7807 `application/problem+json`. On 422 `errors[]` is **not** filled: field
