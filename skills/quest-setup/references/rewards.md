@@ -1,7 +1,9 @@
 # Rewards
 
-Stage OpenAPI and local runtime snapshots were checked on 2026-09-23. The
-stage deployment revision is not pinned here, so revalidate before writes.
+Stage OpenAPI and local runtime snapshots were checked on 2026-09-23; the
+event-side requirements were rechecked in the stage worker code on
+2026-09-25. The stage deployment revision is not pinned here, so revalidate
+before writes.
 
 These are the `parameters` of a node with `type: action` and
 `subtype: issue_reward`. The OpenAPI document does not describe them, because
@@ -45,6 +47,25 @@ event's `publisher`. Ask the developer which. Provide either `items` or the
 single-item `item_sku` form. `name`, `image_url` and `model_3d_url` are supported with the single-item
 form; obtain real catalog values from the developer. An empty body can mean a
 runtime-selected item, so do not treat acceptance as proof of a particular SKU.
+
+## Event-side requirements
+
+Some reward types take the merchant, the project or the user from the
+**event**, not from the quest (stage worker code, 2026-09-25, revalidate).
+Check this before activation and again when you build the event:
+
+| `type` | The event must carry | Without it |
+|---|---|---|
+| `xsolla_points`, non-guest user | a `publisher` block; the merchant comes from its `publisher_id` | `FAILED`, `publisher information is required but not provided in event` or `merchant_id is required for xsolla_points rewards` |
+| `virtual_currency`, `loyalty_points` | a `publisher` block with `project_id`, and a `gamer_id` in `user_ids` | `FAILED`, the error names the missing value |
+| `inventory_item` with `xsolla_item: false` | a `publisher` block | `FAILED` |
+| `web3_item`, `web3_token` | an `xsolla_id` whose user has a wallet, see "Web3 recipient" | `FAILED`, `RecipientNotFound` |
+
+The `publisher` block must still equal the quest's `publisher_id` and
+`project_id` exactly, or the event matches no quest at all; see
+[`events.md`](events.md). So for these types send the quest's own values,
+never different ones. `xsolla_points` for a guest user is skipped by the
+worker and reported as completed without a grant on stage.
 
 ## Web3 recipient
 

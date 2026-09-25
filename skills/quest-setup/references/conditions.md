@@ -1,7 +1,8 @@
 # Conditions
 
-Stage OpenAPI and local runtime snapshots were checked on 2026-09-22. The
-stage deployment revision is not pinned here, so revalidate before writes.
+Stage OpenAPI and local runtime snapshots were checked on 2026-09-22; the
+worker's counting code was rechecked on 2026-09-25. The stage deployment
+revision is not pinned here, so revalidate before writes.
 
 These are the `parameters` of a node with `type: condition` and
 `subtype: custom_attributes_check`. The OpenAPI document does not describe
@@ -30,8 +31,8 @@ them at all.
 
 | Operand `type` | `value` | Extra |
 |---|---|---|
-| `value` | a literal | — |
-| `attribute` | a non-empty string path, for example `user.level` | — |
+| `value` | a literal | none |
+| `attribute` | a non-empty string path, for example `user.level` | none |
 | `event` | a non-empty string, the event name | **must** carry `time_window.duration_unit`, one of `day`, `week`, `month` |
 
 An `event` operand supports numeric comparison only, and the threshold it is
@@ -77,6 +78,12 @@ error.
   `xsolla_id`, else `gamer_id`, else `email`; a `guest_id` is not used for
   counting. The triggering event and its history must use the intended user
   and event name.
+- Counting is per account: only events that arrived in the quest's account
+  count. On the project lane that means events sent through the same
+  project's event route; events sent with another credential land in another
+  account and never count (from the worker code). The event's `publisher`
+  block, if any, adds publisher and project scopes to what is visible; it does
+  not narrow the count. See `events.md`.
 - **The arriving event counts.** `gte 2` per `day` passes on the second
   qualifying event: the first gave `IN_PROGRESS` with `actual` 1, the second
   `COMPLETED` with 2 (observed on stage 2026-09-25).
