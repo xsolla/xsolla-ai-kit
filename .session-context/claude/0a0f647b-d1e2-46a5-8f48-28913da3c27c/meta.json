@@ -3,11 +3,11 @@
   "session_id": "0a0f647b-d1e2-46a5-8f48-28913da3c27c",
   "transcript_kind": "claude-jsonl",
   "transcript_withheld": false,
-  "captured_at": "2026-09-25T09:02:35Z",
+  "captured_at": "2026-09-25T11:39:16Z",
   "project_dir": "/Users/raufaliyev/GolandProjects/xsolla-ai-kit",
-  "head": "d5118dd8e96bd0d89dd3447df5757d9b99beb671",
+  "head": "cd7d9b899006e124e9f9b34e92822bedb69b1d28",
   "branch": "QP-2890-verification",
   "user_email": "r.aliyev@xsolla.com",
-  "files_changed_vs_head": ["A	.github/scripts/__pycache__/validate_skills.cpython-314.pyc","M	.github/scripts/validate_skills.py","M	CONTRIBUTING.md","A	docs/quests-skill-onboarding.md","A	docs/superpowers/plans/2026-09-22-quest-skill.md","A	docs/superpowers/reviews/2026-09-22-quest-skill-review-ledger.md","A	docs/superpowers/specs/2026-09-22-quest-skill-design.md","A	docs/superpowers/test-plans/2026-09-22-quest-skill-testing.md","M	skills/quest-setup/SKILL.md","M	skills/quest-setup/references/auth-and-environment.md","M	skills/quest-setup/references/conditions.md","M	skills/quest-setup/references/events.md","M	skills/quest-setup/references/node-subtypes.md","M	skills/quest-setup/references/quest-document.md","M	skills/quest-setup/references/rewards.md","M	skills/quest-setup/references/verification.md"],
+  "files_changed_vs_head": ["A	.github/scripts/__pycache__/validate_skills.cpython-314.pyc","M	.github/scripts/validate_skills.py","M	CONTRIBUTING.md","A	docs/quests-skill-onboarding.md","A	docs/superpowers/plans/2026-09-22-quest-skill.md","A	docs/superpowers/reviews/2026-09-22-quest-skill-review-ledger.md","A	docs/superpowers/specs/2026-09-22-quest-skill-design.md","A	docs/superpowers/test-plans/2026-09-22-quest-skill-testing.md"],
   "skipped_large_files": []
 }

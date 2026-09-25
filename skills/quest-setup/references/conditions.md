@@ -38,6 +38,16 @@ them at all.
 An `event` operand supports numeric comparison only, and the threshold it is
 compared against must be a whole number.
 
+An `attribute` operand cannot read the event's `properties`. The worker
+evaluates a condition against a map built from two sources only: event counts
+for `event` operands and the user's Login attributes for `attribute` operands
+(from the worker code at adtech 873d3c7a3c, `buildConditionAttribs`; the
+deployed revision is not pinned). No operand reads the arriving event's
+payload. For a vague "check the event", ask what should be checked and offer
+what exists: an `event` count operand (how many times), or the trigger's
+`event_name` (which event starts the quest). A check on a property value
+cannot be expressed today; say so.
+
 ## Operators
 
 `operator.type` constrains `operator.operation`:
@@ -86,7 +96,9 @@ error.
   not narrow the count. See `events.md`.
 - **The arriving event counts.** `gte 2` per `day` passes on the second
   qualifying event: the first gave `IN_PROGRESS` with `actual` 1, the second
-  `COMPLETED` with 2 (observed on stage 2026-09-25).
+  `COMPLETED` with 2 (observed on stage 2026-09-25). So `gte 1` (or `gt 0`)
+  always passes on the first qualifying event, because that event is already
+  counted: it gates nothing. For "on the Nth event", use `gte N`.
 - Events are indexed on ingestion, before quest matching, so events sent while
   the quest was inactive or out of its dates, or tagged `load_test`, can count
   too (from the consumer code; the deployed revision is not pinned).

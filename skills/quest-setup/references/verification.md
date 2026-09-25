@@ -2,12 +2,20 @@
 
 Stage OpenAPI and local runtime snapshots were checked on 2026-09-23; paging,
 the project-lane fields and the worker's action walk were rechecked on
-2026-09-25. The stage deployment revision is not pinned here, so revalidate
+2026-09-25, and the qp-data query parameters against the live OpenAPI on
+2026-09-25 after 09:00Z. The stage deployment revision is not pinned here, so revalidate
 before writes.
 
-While project-credential events are blocked on stage (see
-[`events.md`](events.md)), no new execution can appear. Reads of earlier
-executions still work.
+Since about 09:20Z on 2026-09-25 the collector on stage has no event route
+for the project credential (see [`events.md`](events.md)), so no new
+execution from a Basic-lane event can appear. Reads of earlier executions
+still work.
+
+A read-only verification task still needs a preflight, but only for the
+services it calls: the qp-server project GET and the project-scoped quest
+read (which is also the ownership check below), then the qp-data status read.
+Skip the collector; see "Service preflight" in
+[`auth-and-environment.md`](auth-and-environment.md).
 
 Read-back lives on **qp-data**, a separate, read-only service. Follow
 [`auth-and-environment.md`](auth-and-environment.md) for current access
@@ -21,14 +29,16 @@ unavailable and do not infer execution or reward delivery from event acceptance.
 | `questId` | the quest you just triggered |
 | `userId` | the user the event named |
 | `accountId`, `publisherId` | narrow to a scope. For a project-route quest, `publisherId` is the merchant id; there is no `projectId` filter on executions |
-| `status` | filter by execution status |
+| `status` | filter by execution status: `NOT_TRIGGERED`, `IN_PROGRESS`, `COMPLETED`, `FAILED` (case-insensitive, repeat for several). When set, it overrides `includeNotTriggered` |
 | `includeNotTriggered` | also show quests that did not fire |
 | `latestPerUser` | one row per user |
 | `includeEventBody` | include the originating event |
 | `page`, `size` | paging. `page` starts at 1 (`page=0` returns 422); `size` is 1 to 200, default 50 |
 
 There is no event-ID filter, and a useful lookup needs `questId` or `userId`.
-If the developer has only an event id, ask for the quest id or the user.
+If the developer has only an event id, ask for the quest id or the user. An
+event id does not prove ownership: the quest you then read by still needs the
+ownership check below before any qp-data read.
 `userId` takes the raw identifier value of any type; a `gamer_id` event
 matched with its plain value and came back under `user.gamerId` (observed on
 stage 2026-09-25, revalidate).
@@ -40,13 +50,26 @@ quests there, scope `GET /api/v1/quests` by `publisherId` and `projectId` of
 the confirmed project (the executions route has no `projectId` filter).
 
 Before the first qp-data read by quest id, confirm the quest is the
-developer's: read it on qp-server with
-`GET /api/v2/projects/{project_id}/quests/{id}`. A 200 proves it belongs to
-that project. A 404 means "not visible with this credential"; then do not read
+developer's: read it on qp-server with the project-scoped quest read
+(`GET .../quests/{id}` under the merchant and project path; the exact path is
+in [`auth-and-environment.md`](auth-and-environment.md)). A 200 proves it
+belongs to that project. A 404 means "not visible with this credential"; then do not read
 its executions from qp-data. A quest id the developer only pasted, without that
 read, is not confirmed. On a returned row, `quest.publisherId` and
 `quest.projectId` should equal the quest's values; `account.id` is the
 project's Quest Platform account.
+
+### Quest not visible with your credential
+
+When the quest read returns 404 (or the quest is on another project, merchant
+or lane, for example one created with a service key while the developer is on
+Basic), do not read its executions from qp-data, even when the developer
+insists or says it is theirs, and even though qp-data would answer. Say that
+this credential cannot see the quest, so the skill cannot verify it. Offer
+two ways forward: the developer switches to the credential of the project
+that owns the quest, or hands the case to the Quest Platform team with the
+quest id, the `event_id` if any, the `idempotency_key`, the user and the send
+time.
 
 ## What comes back
 
@@ -65,9 +88,9 @@ finished, so an execution still in flight shows as no row.
 | Level | Value | Meaning |
 |---|---|---|
 | execution `status` | `COMPLETED` | finished without a failure |
-| | `FAILED` | see `failReason`: `ACTION_FAILED` (an action failed) or `CONDITION_EVAL_FAILED` (a condition could not be evaluated). The schema also lists `ACTIVATION_LIMIT_HIT`, but the current worker writes no row for a used-up limit; see "When nothing comes back" |
+| | `FAILED` | see `failReason`: `ACTION_FAILED` (an action failed) or `CONDITION_EVAL_FAILED` (a condition could not be evaluated). The live OpenAPI types `failReason` as a plain string, so report any other value verbatim. The data model also allows `ACTIVATION_LIMIT_HIT`, but the current worker writes no row for a used-up limit; see "When nothing comes back" |
 | | `IN_PROGRESS` | a condition was not met for this event; `actions` is empty. Waiting for more events, not stuck. The row never changes; a later event gets its own row |
-| | `NOT_TRIGGERED` | the worker ran but the quest was not live when the worker loaded it. Listed only with `includeNotTriggered`. Rare, see "When nothing comes back" |
+| | `NOT_TRIGGERED` | the worker ran but the quest was not live when the worker loaded it. Listed only with `includeNotTriggered=true` or `status=NOT_TRIGGERED`. Rare, see "When nothing comes back" |
 | action `status` | `COMPLETED`, `FAILED` | per action node |
 
 For `IN_PROGRESS`, read `conditionEvals`: each entry has `nodeId`, `operator`,
@@ -229,8 +252,8 @@ the same event name matched.
 
 An empty read-back alone cannot say whether the event was dropped or is not
 ingested yet. Rows for simple actions appeared about 1 to 2 seconds after the
-event and Web3 rewards up to about 10 seconds (observed on stage 2026-09-25,
-revalidate), so an empty result after the full read policy is not ingest
+event and Web3 rewards up to about 10 seconds, typically about 5 (observed
+on stage 2026-09-25, revalidate), so an empty result after the full read policy is not ingest
 delay. Then the quest's state at event time decides: if the quest was
 inactive, outside its dates or mismatched, say the event was dropped for that
 reason. An event sent within the cache time after a write may still have run
