@@ -98,7 +98,10 @@ strings. `topic` is required by `Validate()` despite its `omitempty` JSON tag.
 The validator does not constrain these strings to an enum or check a topic's
 existence. `data` is optional, a JSON object with string keys and arbitrary
 JSON values; it has no additional validation. Do not invent a topic or
-notification-type value. The worker adds the event's `properties`,
+notification-type value. You may suggest the observed stage values below
+(`qp.notifications`, `reward_earned` or `reward`) as options, labelled as
+observed on stage, but the developer confirms them before they go into the
+draft; a suggestion is not a confirmation. The worker adds the event's `properties`,
 `quest_id` and `idempotency_key` to `data` (from code), so do not put secrets
 in event properties.
 
@@ -129,7 +132,8 @@ Source: `adtech/lib/models/generic_quest/xsolla_app_notification.go`.
 string `id`. The validator checks only the array length; it does not require
 each `id` to be present or non-empty, check its format, or verify that the item
 exists. Obtain real IDs from the developer rather than treating acceptance as
-proof of a valid item.
+proof of a valid item. The one exception is the labelled no-op placeholder
+described below.
 
 Source: `adtech/lib/models/generic_quest/webshop_personalization.go`.
 
@@ -142,7 +146,11 @@ current worker routes it to `SkipExecution`. Do not use API acceptance or a
 That makes it the only action with no external effect, so it is the one to
 offer for a smoke test of create, event and execution. Use it only when the
 developer chooses it as a no-op, name the node so (for example `noop`), and
-never present it as personalization. Every other action has a real effect. A
+never present it as personalization. For the no-op you do not need a real item
+id: use a labelled placeholder such as `{"items": [{"id": "e2e-noop"}]}` (the
+validator checks only that `items` is non-empty, and the worker never reads
+it), and tell the developer it is a placeholder. Ask for real item ids only
+when the developer wants actual personalization, which does not run today. Every other action has a real effect. A
 draft for CRUD-only checks can also stay without an action.
 
 ## Accepted, but not runnable on stage
@@ -180,6 +188,15 @@ to the event submitted later; see `events.md`. Ask the developer for it; never
 reuse the quest name or invent one. Every active quest in the account with the
 same trigger name runs on that event (on the project lane the account is the
 project's), so a test quest needs a unique name.
+
+If the `event_name` the developer gives looks unrelated to the quest (for
+example `level_up` on a "first purchase" quest), say so once and ask them to
+confirm it; do not change it yourself. Before activation you may offer an
+optional collision check: list the quests, then `GET` each `active` one (list
+items carry no nodes, see `quest-document.md` Responses) and report any whose
+trigger has the same `event_name`. The list covers only the route's project,
+not the whole account, so a clean result is not proof of no collision; say
+so. The check is read-only and optional; do not block on it.
 
 `date_and_time` is accepted by the API and its parameters are not validated
 on write, but **runtime scheduling is not implemented**. The current

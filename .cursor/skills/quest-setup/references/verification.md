@@ -6,9 +6,16 @@ the project-lane fields and the worker's action walk were rechecked on
 2026-09-25 after 09:00Z. The stage deployment revision is not pinned here, so revalidate
 before writes.
 
-While project-credential events are blocked on stage (see
-[`events.md`](events.md)), no new execution can appear. Reads of earlier
-executions still work.
+Since about 09:20Z on 2026-09-25 the collector on stage has no event route
+for the project credential (see [`events.md`](events.md)), so no new
+execution from a Basic-lane event can appear. Reads of earlier executions
+still work.
+
+A read-only verification task still needs a preflight, but only for the
+services it calls: the qp-server project GET and the project-scoped quest
+read (which is also the ownership check below), then the qp-data status read.
+Skip the collector; see "Service preflight" in
+[`auth-and-environment.md`](auth-and-environment.md).
 
 Read-back lives on **qp-data**, a separate, read-only service. Follow
 [`auth-and-environment.md`](auth-and-environment.md) for current access
@@ -29,7 +36,9 @@ unavailable and do not infer execution or reward delivery from event acceptance.
 | `page`, `size` | paging. `page` starts at 1 (`page=0` returns 422); `size` is 1 to 200, default 50 |
 
 There is no event-ID filter, and a useful lookup needs `questId` or `userId`.
-If the developer has only an event id, ask for the quest id or the user.
+If the developer has only an event id, ask for the quest id or the user. An
+event id does not prove ownership: the quest you then read by still needs the
+ownership check below before any qp-data read.
 `userId` takes the raw identifier value of any type; a `gamer_id` event
 matched with its plain value and came back under `user.gamerId` (observed on
 stage 2026-09-25, revalidate).
@@ -49,6 +58,18 @@ its executions from qp-data. A quest id the developer only pasted, without that
 read, is not confirmed. On a returned row, `quest.publisherId` and
 `quest.projectId` should equal the quest's values; `account.id` is the
 project's Quest Platform account.
+
+### Quest not visible with your credential
+
+When the quest read returns 404 (or the quest is on another project, merchant
+or lane, for example one created with a service key while the developer is on
+Basic), do not read its executions from qp-data, even when the developer
+insists or says it is theirs, and even though qp-data would answer. Say that
+this credential cannot see the quest, so the skill cannot verify it. Offer
+two ways forward: the developer switches to the credential of the project
+that owns the quest, or hands the case to the Quest Platform team with the
+quest id, the `event_id` if any, the `idempotency_key`, the user and the send
+time.
 
 ## What comes back
 

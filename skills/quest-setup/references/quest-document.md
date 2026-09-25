@@ -48,7 +48,11 @@ date, which misleads. `2026-09-22T00:00:00Z` sent at `2026-09-23T07:37Z` was
 rejected with `start_date must be on or after 2026-09-22.` (observed on stage
 2026-09-23, revalidate). To start now, take the current instant at send time,
 not one computed earlier in the conversation, and check before sending that it
-is no more than 24 hours old.
+is no more than 24 hours old. When a requested start is too old, offer a
+concrete alternative: the earliest allowed start is the server's now minus 24
+hours (in practice, take "now" at send time and keep a margin, for example now
+minus 23 hours, or simply now). Dates are RFC3339 instants; state them in UTC
+when confirming with the developer.
 
 The check runs on **every** write with `status: active`, including a `PUT`
 that changes nothing else. A quest whose `start_date` is more than 24 hours old
@@ -67,8 +71,10 @@ sent in `Z`. Compare instants, not strings.
 
 Create and update return 200, not 201, with the whole quest. Empty `nodes`,
 `connections` and `metadata` come back as `null` rather than `[]` or `{}`;
-that is not an error. An empty or absent `activation_limits` also comes back
-as `null`. A `null` `nodes` may be sent back on an `inactive` draft; send real
+that is not an error. An empty or absent optional field such as
+`activation_limits` or `description` may come back as `null` or be omitted
+from the response entirely (both seen on stage 2026-09-25); treat either as
+not set. A `null` `nodes` may be sent back on an `inactive` draft; send real
 arrays when activating. An optional field missing from a response is not set;
 it is not `0` or an empty string. The list, `GET {scope}/quests`, returns
 `{page, limit, total, data[]}`. Query: `page` (default 1; `0` is read as 1),
@@ -76,8 +82,10 @@ it is not `0` or an empty string. The list, `GET {scope}/quests`, returns
 with no error), `publisherID`. A non-integer value is 422. There is no name
 filter: to find a quest by name, page through the whole list. Page through it
 rather than reading one page as the whole list. Its items carry
-`project_id` but no `publisher_id`, nodes, connections or `account_id`. The
-list covers only the route's project.
+`project_id` but no `publisher_id`, nodes, connections, dates or `account_id`,
+so use the list only to find a quest's `id`; for anything else (the
+`publisher` block, the graph, an edit) `GET {scope}/quests/{id}`. The list
+covers only the route's project.
 
 `GET {scope}` (the project itself) returns `project_id` (integer), `name`,
 `status`, `created_at`, `updated_at` and, only when set, `description`. It
@@ -89,6 +97,14 @@ Because an `inactive` quest needs only four fields, build the quest as a draft,
 fill it in while talking to the developer, and activate it as a separate,
 explicitly confirmed step. Do not try to assemble a whole valid graph before
 the first call.
+
+Activation is an ordinary edit: follow the Editing recipe below (fresh `GET`,
+full `PUT`) and change only `status` to `active`, `start_date`, `end_date`
+and, if the developer set one, `activation_limits`. Everything else goes back
+verbatim. For "no repeat limit", sending `activation_limits` as `null` and
+leaving it out are the same: the server model is a pointer with `omitempty`
+(`lib/models/v2` v2.9.16 `generic_quest/quest.go`, pinned by qp-server), so
+both decode to "not set". `[]` also means no limit (see Activation limits).
 
 ## Nodes and connections
 
@@ -134,6 +150,24 @@ independent (from the worker code, checked 2026-09-25):
 - On the next event for the same user and quest, the worker skips nodes that
   already succeeded in the failed run and retries the rest (from code).
 
+How the edges are listed decides the shape. For "A then B" on trigger `T`,
+either form runs A before B, but they differ when A has an `on` outcome:
+
+```json
+{"T": [{"nodeId": "A"}, {"nodeId": "B"}]}
+```
+
+Siblings: both hang off the trigger, in list order. B runs after A whatever
+outcome A returned (unless A failed).
+
+```json
+{"T": [{"nodeId": "A"}], "A": [{"nodeId": "B"}]}
+```
+
+Chain: B hangs off A, so an `on` on the `A -> B` edge can gate B on A's
+outcome. Without `on`, both shapes run the same way. The keys and `nodeId`s
+are node UUIDs; the letters here are placeholders.
+
 So put the action whose failure should block the others first, and tell the
 developer that a later failure does not undo an earlier payout. How to read
 per-action statuses is in [`verification.md`](verification.md).
@@ -170,7 +204,13 @@ editing, because a partial body silently drops everything it omits.
 Recipe: take the body of a fresh `GET`, change only the fields the developer
 asked for, and send the rest verbatim, `null` values included. `id` (the path
 wins), `created_at`, `updated_at`, `version_id` and `has_personalization` are
-ignored on `PUT`, so they may stay or be dropped. Show the before/after diff of
+ignored on `PUT`, so they may stay or be dropped. GET bodies also carry a
+`$schema` link; drop it before the `PUT`. (From code, qp-server at adtech
+873d3c7a3c: `PUT` and `GET` share one body schema, where `$schema` is a
+read-only property Huma accepts and ignores, so leaving it in should not
+fail; not verified live.) For a new node, you generate its `id` as a fresh
+random UUID (v4); the server does not assign node ids, and existing node ids
+stay unchanged. Show the before/after diff of
 the changed fields before sending.
 
 An edit to an active quest applies to the next events once the pipeline's

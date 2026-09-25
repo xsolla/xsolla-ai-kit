@@ -189,7 +189,9 @@ chain explorer named in [`auth-and-environment.md`](auth-and-environment.md).
 activity has a 2-minute timeout and up to 3 attempts. HTTP errors from the
 claim are non-retryable, but an activity timeout or a worker crash after the
 provider paid can run the claim again. qp-data writes a row only after the
-execution finishes, so a claim in flight shows as no row. If the row is still
+execution finishes, so a claim in flight shows as no row. An `IN_PROGRESS`
+row is never an in-flight claim: it means a condition was not met and no
+action ran (see [`verification.md`](verification.md)). If the row is still
 missing after the read policy in [`verification.md`](verification.md), or the
 reward action failed on a timeout, do not resend the event. Escalate to the
 Quest Platform team, who own the worker logs and ledger, with the quest id,

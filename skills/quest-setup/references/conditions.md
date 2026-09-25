@@ -86,7 +86,9 @@ error.
   not narrow the count. See `events.md`.
 - **The arriving event counts.** `gte 2` per `day` passes on the second
   qualifying event: the first gave `IN_PROGRESS` with `actual` 1, the second
-  `COMPLETED` with 2 (observed on stage 2026-09-25).
+  `COMPLETED` with 2 (observed on stage 2026-09-25). So `gte 1` (or `gt 0`)
+  always passes on the first qualifying event, because that event is already
+  counted: it gates nothing. For "on the Nth event", use `gte N`.
 - Events are indexed on ingestion, before quest matching, so events sent while
   the quest was inactive or out of its dates, or tagged `load_test`, can count
   too (from the consumer code; the deployed revision is not pinned).

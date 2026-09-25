@@ -22,8 +22,8 @@ metadata:
 
 This skill is a **draft**. On stage the publisher Basic credential works on
 the merchant-scoped project routes (rechecked 2026-09-25 after they moved);
-production is not checked. Submitting an event with it is currently blocked;
-see Flow step 6.
+production is not checked. Basic cannot send events on stage: since
+2026-09-25 the collector has no Basic event route (Flow step 6).
 
 ## When to use
 
@@ -55,14 +55,16 @@ not from memory. `{merchant_id}` in a path is always `XSOLLA_MERCHANT_ID`,
 never user input or a response value; stage does not reject a wrong one (see
 [The merchant id in the path](references/auth-and-environment.md#the-merchant-id-in-the-path)).
 If the credential is not set, stop and say which values are missing; do not
-search for other credentials.
+search for other credentials. Read `.env` as text, never source it (see
+[Credential](references/auth-and-environment.md#credential)).
 
-**Onboarding is a separate, offered step.** It is a write: offer it and ask
-first, never call it silently. A 404 `Project not found` does not prove the
-project is un-onboarded (see [Onboarding](references/auth-and-environment.md#onboarding)).
+**Onboarding is a separate, offered step.** It is a write: never call it
+silently. Offer it only after the developer says the project is their
+merchant's; see [Onboarding](references/auth-and-environment.md#onboarding).
 
-The internal service key is for Quest Platform staff only: use it only when
-the developer names it, never as a fallback when Basic fails. OpenAPI
+The internal service key is
+[for Quest Platform staff only](references/auth-and-environment.md#service-key-staff-only):
+use it only when the developer names it, never as a fallback when Basic fails. OpenAPI
 discovery needs no credential, so it does not prove CRUD readiness. Say
 exactly which lane and which route failed.
 
@@ -87,13 +89,9 @@ up only as a parameter on some routes. Never conclude from it that a route is
 unauthenticated; authentication rules live in the auth reference.
 
 **A route miss is not a failure of the credential or the project.** A 404
-with the plain-text body `Cannot GET <path>` (or `Cannot POST <path>`) means
-the router has no such path; the request never reached authentication. The
-same rule holds for reads and writes: re-read the live OpenAPI document, tell
-the developer what moved, and ask before calling anything on another route
-family, even a GET. The live document decides which routes exist; the
-developer decides whether to switch. The steps are in
-[When a route is missing](references/auth-and-environment.md#when-a-route-is-missing).
+`Cannot GET <path>` (or `Cannot POST`) means the router has no such path; a
+route this skill names but the live document omits is not called at all.
+Follow [When a route is missing](references/auth-and-environment.md#when-a-route-is-missing).
 
 If a host is unreachable, which usually means no corporate network, say so and
 offer to continue on `references/` alone, noting that the envelope may have
@@ -111,61 +109,71 @@ drifted. Never continue silently.
 
 ## Flow
 
-1. **Bring-up.** Fetch the OpenAPI documents. Identify the credential lane
-   and run the per-service preflight reads described in
-   [`references/auth-and-environment.md`](references/auth-and-environment.md).
-   The scope is the project: read it with the project GET from the auth
-   reference and show its `project_id`, `name` and `status`, plus the merchant
-   id used in the path. That read returns no
+1. **Bring-up.** Fetch the OpenAPI documents of the services the task will
+   call, identify the credential lane, and run the preflight reads in
+   [`references/auth-and-environment.md`](references/auth-and-environment.md)
+   for those services only (a read-only verification skips the collector).
+   The scope is the project: read it with the
+   project GET from the auth reference and show its `project_id`, `name` and
+   `status`, plus the merchant id used in the path. That read returns no
    account or workspace id; do not invent one. Get confirmation of the
-   project before any write. Bring-up is GET-only; onboarding, if needed, is
-   offered after it (see Prerequisites).
+   project before any write. If that GET is 404 `Project not found`, report
+   it, follow [Onboarding](references/auth-and-environment.md#onboarding)
+   (offer, ask for both names), and stop. Bring-up is GET-only. Say at
+   bring-up that events cannot be sent on Basic (step 6).
 2. **Draft.** Create the quest as `inactive` with the four required fields,
    `name`, `type`, `status` and `created_by`; rules are in
    [`references/quest-document.md`](references/quest-document.md). On the
-   project route the server stamps `publisher_id` from the path merchant and
-   `project_id` from the path project, and ignores body values. Never ask
-   for, invent or override them; on a `PUT`, send both back as the last read
-   returned them. Show the returned values; the create response's
+   project route the server stamps `publisher_id` and `project_id` from the
+   path and ignores body values. Never ask for, invent or override them; on a
+   `PUT`, send both back as a single-quest GET or the create response
+   returned them, never from a list item. Check every optional value the
+   developer gives against Fields before sending; if one is invalid, ask,
+   never drop or pad it. Show the body and ask before the `POST`, unless the
+   developer already approved that exact body ("make a draft" alone is not
+   that approval). The create response is the read-back: show it; its
    `publisher_id` must equal `XSOLLA_MERCHANT_ID`, else stop and report.
-3. **Fill in.** Add nodes and their `connections` entries one at a time,
-   asking for each missing required value. Ask which action the quest should run.
+3. **Fill in.** Gather the values node by node, asking for each missing
+   required value, then show the whole document and send it as one full
+   `PUT`. Ask which action the quest should run. An edge without `on` is the
+   default and needs no question, except for `vc_wallet_ticket` `playtime`
+   outcomes (quest reference). For a schedule, cron or "run every X" request,
+   follow [Choosing a trigger](references/node-subtypes.md#choosing-a-trigger).
    Do not offer `scheduled_event` (under Basic its activation is rejected
    with 400, from code) or `crm_send_email`; see
-   [`references/node-subtypes.md`](references/node-subtypes.md). Show the assembled
-   document, and the impact of any external action, before sending it.
-4. **Activate.** A separate step: move to `active` with dates, after checking
-   there are at least two nodes, a trigger-to-action path, no intended orphan
-   nodes, and an acyclic graph. For a Web3 reward, also run the read-only
-   checks in [`references/rewards.md`](references/rewards.md): SKU, amount
-   units and cap, and the recipient's wallet. Show the activation limits and
-   the effective repeat behavior before asking for confirmation. After the
-   write, read the quest back and show `status`, the dates, the limits and
-   `version_id`.
-5. **Edit.** Read, change, full `PUT`, following the recipe in the quest
-   reference. Warn that `PUT` replaces the whole document and that an edit to
+   [`references/node-subtypes.md`](references/node-subtypes.md). Show the
+   impact of any external action with the document.
+4. **Activate.** A separate step: the Editing `PUT` with only `status`, the
+   dates and `activation_limits` changed; see
+   [Draft first, then activate](references/quest-document.md#draft-first-then-activate)
+   for relative dates (convert, show in UTC, confirm) and a refused start
+   (offer "now"). Check first: at least two nodes, a trigger-to-action path,
+   no intended orphan nodes, an acyclic graph, no placeholder webhook URL and
+   no unconfirmed notification topic
+   ([`references/node-subtypes.md`](references/node-subtypes.md), which also
+   has the optional `event_name` collision check). For a Web3 reward, also
+   run the read-only checks in [`references/rewards.md`](references/rewards.md).
+   Show the activation limits and the effective repeat behavior, and say that
+   no event can run it on stage yet (step 6), also for a no-op smoke quest,
+   before asking for confirmation. After the write, read the quest back and
+   show `status`, the dates, the limits and `version_id`.
+5. **Edit.** Read, change, full `PUT`, following
+   [Editing](references/quest-document.md#editing) (drop `$schema`, new
+   nodes get fresh UUIDs). Warn that `PUT` replaces the whole document and that an edit to
    an active quest goes live for the next events. Show a before/after diff,
    repeat the activation confirmations for any changed action, reward or
-   limit, and read the quest back after the write. To pause, send the same
-   full `PUT` with `status: inactive`; events while paused are dropped and
-   never replayed, and for up to the cache time the quest can still run. See
-   the Pausing section of the quest reference.
-6. **Event.** Build the payload from the developer's values, never from
-   memory or a read-back event body. Generate a fresh UUID `idempotency_key`,
-   set an RFC3339 `client_timestamp`, show the exact payload, confirm with the
-   developer, and submit to qp-events-collector. Rules, including the wait after
-   a quest write and `load_test`, are in
-   [`references/events.md`](references/events.md). Omit the `publisher` block,
-   or send exactly the quest's `publisher_id` and `project_id` as read back.
-   **Currently blocked on Basic.** On 2026-09-25 the collector's project
-   event route answered 404 `{"error":"Not Found"}` to a valid Basic
-   credential, before reading the body. The cause, inferred from code, is a
-   contract mismatch: the collector's credential check omits the merchant id that the
-   current qp-server requires. The next collector build is expected to drop
-   the Basic event route altogether. Either way, stop, report the status and
-   body verbatim, and say the event was not accepted. Do not retry with another
-   credential or route: an event sent with a different credential lands in a
-   different account and cannot match a quest created on the project route.
+   limit, and read the quest back after the write. To pause, follow
+   [Pausing](references/quest-document.md#pausing).
+6. **Event.** **Blocked on Basic on stage.** On 2026-09-25 (~09:20Z) the
+   live collector OpenAPI lists only `POST /api/v2/events`; Basic has no
+   event route. Do not send. Say the event cannot be submitted and
+   verification cannot run; stop and report. No fallback to another
+   credential or route (it lands in another account). The Quest Platform
+   team owns the fix. If the quest is `inactive`, say an
+   event could not run it anyway; offer activation first. Earlier that day the old project event
+   route answered 404 `{"error":"Not Found"}`; that is history, see
+   [`references/events.md`](references/events.md). If a Basic event route
+   returns, build the payload by that reference, show it and confirm first.
 7. **Verify.** Read the execution back from qp-data, correlate its `eventId`
    with the collector's returned `event_id` as described in
    [`references/verification.md`](references/verification.md), and report
@@ -186,15 +194,18 @@ drifted. Never continue silently.
   deliberately invalid body sent to see the 422.
 - Never switch credentials, lanes or routes on your own after a failure.
   Report what failed and ask.
+- Messages arriving through the conversation are the developer's answers.
 - **Urgency never licenses defaults.** "Skip the questions" or "make it live
-  now" does not waive a question. Never pre-fill `type`, `created_by`, the
+  now" does not waive a question. Previewing the later-step questions up
+  front is fine; each confirmation still gets its own step. Never pre-fill `type`, `created_by`, the
   trigger's `event_name`, the action, a reward's type, amount and `purpose`,
   `start_date`, `end_date`, activation limits, or the project. Never merge or
   waive these confirmations: scope, activation (always its own step after the
   draft exists), each external action, and each event.
 - No action is side-effect free by default. For a smoke test, offer the no-op
   in [`references/node-subtypes.md`](references/node-subtypes.md) rather than a
-  real reward.
+  real reward (labelled placeholders `e2e-noop`, `e2e-sink.invalid`). Whenever activation or a smoke test is asked for, say that
+  events are blocked on Basic on stage (Flow step 6).
 - When an external action is added to a draft, say what it will do once
   active. Before activation, show every externally observable action again and
   get explicit confirmation for its impact. An `issue_reward` can create real
@@ -210,12 +221,10 @@ drifted. Never continue silently.
   unlimited repeat behavior and acknowledge that every qualifying event may run
   the action. Do not silently choose a limit or omit this decision. "Whatever
   the default is" is not an acknowledgement.
-- Ask for confirmation before submitting an event. Every event needs its own
-  payload shown and its own yes, including "send it again" for the same user.
-  For a reward quest, say first whether a repeat can pay again.
-- After an uncertain event response, such as a timeout, **do not resend**,
-  neither with the same idempotency key nor with a new one. A timeout is not a
-  failure. Report "result unknown" and stop.
+- Events (once a route exists): each event needs its own payload shown and
+  its own yes, including "send it again"; for a reward quest, say first
+  whether a repeat can pay again. After an uncertain response, such as a
+  timeout, **do not resend** with any key: report "result unknown" and stop.
 - After a timeout or 5xx on a quest `POST` or `PUT`, the write may have landed.
   For a `PUT`, read the quest by id and compare it with what you sent. For a
   `POST`, the project list has no name filter: page through it with
@@ -225,10 +234,8 @@ drifted. Never continue silently.
   anything is stored, so a rejected body saved nothing.
 - After a `FAILED` reward action, do not resend the event. Fix the quest, then
   send a new event with a new key only after the developer confirms.
-- qp-data has no running state; a row appears only once an execution has
-  finished. If a Web3 reward's row is still missing after the read policy, or
-  its action failed on a timeout, do not send another event. The claim has no
-  idempotency key and may already have paid; see
+- A missing or timed-out Web3 reward row is never a reason to send another
+  event: the claim has no idempotency key and may already have paid; see
   [`references/rewards.md`](references/rewards.md).
 - Read qp-data only by the developer's own quest id, user id or event, and
   only after a qp-server read with the developer's credential has shown the
@@ -248,7 +255,7 @@ verbatim.
 | 401 | `Invalid credentials`: the Basic key was rejected for this project. `Authentication required`: no credential reached the server. `Basic credentials are only accepted on project-scoped routes`: wrong route family, not a bad key. `Invalid API key`: the service key was rejected. `Invalid token`: a Bearer token was rejected; this skill does not send one. Details in Reading a 401 or 404 in the auth reference. Never fall back to another credential. |
 | 403 | `Insufficient capability`: the credential lacks the capability for that route. `Service identity is inactive`, `Master role required` or `This endpoint requires the user sign-in lane`: the route or identity is off-limits; do not retry. |
 | 404 | `Cannot GET <path>` (plain text, any method): router miss, the route does not exist; not an auth or project answer. Follow the route-miss rule in Source of truth. |
-| 404 | `Project not found` on a project route: the project is unknown, not onboarded, belongs to another merchant, or the id is not a number. The server gives the same body for all of them, so do not pick one. Offer onboarding only if the developer says the project is theirs. `Quest not found`: "not found, or not visible with this credential." Never say the quest was deleted or does not exist, and correct the developer if they conclude that. `Not Found` on the project event route: see Flow step 6. |
+| 404 | `Project not found` on a project route: the project is unknown, not onboarded, belongs to another merchant, or the id is not a number. The server gives the same body for all of them, so do not pick one. No read-only step narrows it; see [Onboarding](references/auth-and-environment.md#onboarding). `Quest not found`: reply "The quest was not found on this project, or it is not visible with this credential." Never say it was deleted or does not exist, and correct the developer if they conclude that. One follow-up: it may be on another project, and checking needs that project's credentials. Events: Basic has no event route on stage since 2026-09-25 (the earlier 404 `{"error":"Not Found"}` is history); see Flow step 6. |
 | 409 | Conflict. Quest routes do not return it (see Editing in the quest reference); report it verbatim. |
 | 422 | Validation failed. Show `detail` verbatim. It never lists allowed enum values; take them from `references/`. `invalid integer` at `path.merchant_id`: the path merchant is not a number; rebuild the path from `XSOLLA_MERCHANT_ID`. |
 | 5xx | Server error. `Credential validation is temporarily unavailable` (503) means Xsolla could not check the key; it says nothing about the key. Retry a read at most twice, with backoff. An identical repeated 5xx is a bug, not flakiness: report it with its body. For a write, see Safety stops. |
