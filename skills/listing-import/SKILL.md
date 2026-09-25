@@ -301,7 +301,8 @@ Shop Builder authorizes separately from the Store `XSOLLA_PROJECT_API_KEY` that
 
 ## Evidence
 
-[`EVAL-LOG.md`](EVAL-LOG.md) records the live runs behind every claim above, the three
+`evals/listing-import/EVAL-LOG.md`, in the toolkit repo, records the live runs behind
+every claim above, the three
 assumptions real data corrected, and the manual interventions.
 
 ## Agent test

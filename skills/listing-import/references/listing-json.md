@@ -71,7 +71,7 @@ Setting two is an error; the scripts would otherwise silently pick one by declar
 
 Steam's `about_the_game` is **already HTML** — `<h2 class="bb_tag">`, `<span
 class="bb_img_ctn">`, `<video><source>` for inline trailers. The initial plan assumed BBCode
-and was wrong; see [`../EVAL-LOG.md`](../EVAL-LOG.md).
+and was wrong; see `evals/listing-import/EVAL-LOG.md` in the toolkit repo.
 
 ## `not_found`
 

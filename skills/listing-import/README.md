@@ -98,7 +98,7 @@ response for Steam app 812140, the live iTunes lookup for id 529479190, a trimme
 the live Play page for `com.supercell.clashofclans`, and the block spine of a landing
 `import-listing` actually produced. A synthetic fixture would have agreed with whatever the
 code assumed; these disagreed five times, and every disagreement was a real bug or a wrong
-assumption. See [`EVAL-LOG.md`](EVAL-LOG.md).
+assumption. See `evals/listing-import/EVAL-LOG.md` in the toolkit repo.
 
 ## Code conventions
 
