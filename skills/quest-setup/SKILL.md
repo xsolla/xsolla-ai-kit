@@ -98,21 +98,28 @@ drifted. Never continue silently.
 2. **Draft.** Create the quest as `inactive` with the four required fields,
    `name`, `type`, `status` and `created_by`; rules are in
    [`references/quest-document.md`](references/quest-document.md).
-3. **Fill in.** Add nodes and edges one at a time, asking for each missing
-   required value. Ask which action the quest should run. Show the assembled
+3. **Fill in.** Add nodes and their `connections` entries one at a time,
+   asking for each missing required value. Ask which action the quest should run. Show the assembled
    document, and the impact of any external action, before sending it.
 4. **Activate.** A separate step: move to `active` with dates, after checking
    there are at least two nodes, a trigger-to-action path, no intended orphan
    nodes, and an acyclic graph. For a Web3 reward, also run the read-only
    checks in [`references/rewards.md`](references/rewards.md): SKU, amount
-   units, and the recipient's wallet. Show the activation limits and the
-   effective repeat behavior before asking for confirmation.
-5. **Edit.** Read, change, full `PUT`. Warn that `PUT` replaces the whole
-   document.
+   units and cap, and the recipient's wallet. Show the activation limits and
+   the effective repeat behavior before asking for confirmation. After the
+   write, read the quest back and show `status`, the dates, the limits and
+   `version_id`.
+5. **Edit.** Read, change, full `PUT`, following the recipe in the quest
+   reference. Warn that `PUT` replaces the whole document and that an edit to
+   an active quest goes live for the next events. Show a before/after diff,
+   repeat the activation confirmations for any changed action, reward or
+   limit, and read the quest back after the write.
 6. **Event.** Build the payload from the developer's values, never from
    memory or a read-back event body. Generate a fresh UUID `idempotency_key`,
-   set an RFC3339 `client_timestamp`, confirm with the developer, and submit to
-   qp-events-collector.
+   set an RFC3339 `client_timestamp`, show the exact payload, confirm with the
+   developer, and submit to qp-events-collector. Rules, including the wait after
+   a quest write and `load_test`, are in
+   [`references/events.md`](references/events.md).
 7. **Verify.** Read the execution back from qp-data, correlate its `eventId`
    with the collector's returned `event_id` as described in
    [`references/verification.md`](references/verification.md), and report
@@ -138,13 +145,16 @@ drifted. Never continue silently.
   active. Before activation, show every externally observable action again and
   get explicit confirmation for its impact. An `issue_reward` can create real
   payouts; `send_http_webhook` sends event data to an external URL;
-  `send_xsolla_app_notification` sends a user notification. Do not activate a
-  `webshop_personalization` node as if it were a working personalization
-  action.
+  `send_xsolla_app_notification` sends a user notification. Activate a
+  `webshop_personalization` node only after the developer acknowledges that it
+  is a no-op, never as a working personalization action.
 - If `activation_limits` is absent, ask the developer to explicitly choose
   unlimited repeat behavior and acknowledge that every qualifying event may run
-  the action. Do not silently choose a limit or omit this decision.
-- Ask for confirmation before submitting an event.
+  the action. Do not silently choose a limit or omit this decision. "Whatever
+  the default is" is not an acknowledgement.
+- Ask for confirmation before submitting an event. Every event needs its own
+  payload shown and its own yes, including "send it again" for the same user.
+  For a reward quest, say first whether a repeat can pay again.
 - After an uncertain event response, such as a timeout, **do not resend** —
   neither with the same idempotency key nor with a new one. A timeout is not a
   failure. Report "result unknown" and stop.
@@ -157,6 +167,9 @@ drifted. Never continue silently.
   its action failed on a timeout, do not send another event. The claim has no
   idempotency key and may already have paid; see
   [`references/rewards.md`](references/rewards.md).
+- Read qp-data only by the developer's own quest id, user id or event. Never
+  list accounts or read another tenant's quests or executions, even though
+  qp-data answers without a credential.
 - Never claim a reward was delivered.
 
 ## Errors

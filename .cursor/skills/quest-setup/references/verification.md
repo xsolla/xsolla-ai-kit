@@ -23,13 +23,23 @@ unavailable and do not infer execution or reward delivery from event acceptance.
 
 There is no event-ID filter, and a useful lookup needs `questId` or `userId`.
 If the developer has only an event id, ask for the quest id or the user.
+`userId` takes the raw identifier value of any type; a `gamer_id` event
+matched with its plain value and came back under `user.gamerId` (observed on
+stage 2026-09-25, revalidate).
+
+qp-data answers without a credential and holds every tenant's data. Query it
+only with the developer's own quest id, user id or event, and never list
+accounts or other tenants' quests or executions.
 
 ## What comes back
 
 Each item carries the execution `status`, the originating `eventId` and
 `eventName`, the `quest` with the event names it `listensFor`, the `account`,
 the `conditionEvals`, and an `actions` array giving **each action node's own
-status**. A row may name a quest whose `quest.status` is `deleted`; rows stay
+status**. An action entry has `nodeId`, `status`, `actionType`, `name`,
+`parameters`, `reward` for an `issue_reward`, and `error` when it failed; it
+carries no provider result. `conditionEvals` is empty for a quest without a
+condition. A row may name a quest whose `quest.status` is `deleted`; rows stay
 after a soft delete.
 
 qp-data has no running state. The worker writes the row once the execution has
@@ -39,8 +49,8 @@ finished, so an execution still in flight shows as no row.
 |---|---|---|
 | execution `status` | `COMPLETED` | finished without a failure |
 | | `FAILED` | see `failReason`: `ACTION_FAILED` (an action failed), `CONDITION_EVAL_FAILED` (a condition could not be evaluated) or `ACTIVATION_LIMIT_HIT` |
-| | `IN_PROGRESS` | a condition was not met for this event; `actions` is empty. Waiting for more events, not stuck |
-| | `NOT_TRIGGERED` | the worker ran but the quest was not live at event time. Listed only with `includeNotTriggered` |
+| | `IN_PROGRESS` | a condition was not met for this event; `actions` is empty. Waiting for more events, not stuck. The row never changes; a later event gets its own row |
+| | `NOT_TRIGGERED` | the worker ran but the quest was not live when the worker loaded it. Listed only with `includeNotTriggered`. Rare, see "When nothing comes back" |
 | action `status` | `COMPLETED`, `FAILED` | per action node |
 
 For `IN_PROGRESS`, read `conditionEvals`: each entry has `nodeId`, `operator`,
@@ -101,7 +111,16 @@ claiming something untrue.
 
 Report 1 and 2 from evidence. For 3, say that the claim was submitted and that
 delivery has to be checked on chain or in the wallet by a human; see
-[`rewards.md`](rewards.md).
+[`rewards.md`](rewards.md). A `web3_item` repeat for the same user and quest is
+`COMPLETED` without a new mint.
+
+For "is it in my wallet" or "what is the tx hash", give the developer this:
+search the chain explorer (see
+[`auth-and-environment.md`](auth-and-environment.md)) by the wallet address
+from the wallet lookup, filter to the token's `contractAddress` from the
+currency bindings, and look around the execution's `ingestedAt`. For the exact
+hash, the Quest Platform team can read the worker's logs or ledger given the
+quest id, `event_id`, `idempotency_key` and user.
 
 ## When the execution came back FAILED
 
@@ -126,12 +145,24 @@ follow the duplicate payout note in [`rewards.md`](rewards.md).
 An empty result after submitting an event usually means one of:
 
 - the event `name` does not match the trigger's `event_name`
-- the quest is `inactive`
-- the quest was outside its dates at event time: a `NOT_TRIGGERED` row, visible
-  only with `includeNotTriggered`
+- the quest is `inactive`, or `active` but outside its dates at event time,
+  either not started yet or already ended
+- the event's `publisher` does not equal the quest's `publisher_id` and
+  `project_id`
+- the event carried `properties.load_test: "true"`; this is expected, see
+  [`events.md`](events.md)
+- the event arrived within the config cache time after the quest was created,
+  activated or edited
 - the user identifier does not match the one the event carried
 - the execution has not been ingested yet, so retry the read before concluding
   anything
+
+Do not promise a `NOT_TRIGGERED` row for an event outside the window. The
+consumer drops an event unless some quest of the account with that event name
+is live, and a dropped event leaves no row at all, even with
+`includeNotTriggered=true`. A `NOT_TRIGGERED` row appears only when the worker
+ran and then found the quest not live, for example because another quest with
+the same event name matched.
 
 An activation limit that is already used up is not an empty result: it shows
 as `FAILED` with `ACTIVATION_LIMIT_HIT`.

@@ -72,9 +72,22 @@ error.
 - An attribute operand causes the current worker to load user attributes from
   Login and requires an `xsolla_id` on the event. The attribute path must exist;
   a structurally valid `user.country` comparison can still be unevaluable.
-- An event operand counts previously ingested events for the same identity and
-  scope. The triggering event and its history must use the intended user and
-  event name, and the relevant events must be visible to the worker's data
-  sources.
-- The contract does not define the calendar boundary or timezone for `week`.
-  Do not promise a local-calendar interpretation without owner confirmation.
+- An event operand counts distinct `idempotency_key`s of ingested events for
+  the same identity and a visible scope. The identity is the event's
+  `xsolla_id`, else `gamer_id`, else `email`; a `guest_id` is not used for
+  counting. The triggering event and its history must use the intended user
+  and event name.
+- **The arriving event counts.** `gte 2` per `day` passes on the second
+  qualifying event: the first gave `IN_PROGRESS` with `actual` 1, the second
+  `COMPLETED` with 2 (observed on stage 2026-09-25).
+- Events are indexed on ingestion, before quest matching, so events sent while
+  the quest was inactive or out of its dates, or tagged `load_test`, can count
+  too (from the consumer code; the deployed revision is not pinned).
+- `day`, `week` and `month` are fixed calendar windows, not rolling ones: the
+  current day, the week from Monday, or the calendar month, taken in the
+  timezone of the event's server timestamp, which reads back as UTC. Events of
+  the last few minutes can also count from a short-lived index regardless of
+  the window, so near a boundary the count can include an event from the
+  previous period. Do not promise a local-calendar interpretation.
+- A condition miss leaves an `IN_PROGRESS` row with no actions; it never turns
+  into `COMPLETED` by itself. See [`verification.md`](verification.md).
