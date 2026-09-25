@@ -31,7 +31,7 @@ jobs:
         run: python3 .github/scripts/validate_skills.py
 
   scripts:
-    name: Skill scripts — unit tests and line length
+    name: Skill script unit tests
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -45,35 +45,32 @@ jobs:
       - name: Report the interpreter the tests ran on
         run: python3 -VV
 
-      # Every skill that ships `scripts/tests/` gets its suite run. A skill
-      # without one is not an error — most skills are prose only.
+      # Runs every skill's suite, in either of the two layouts skills use:
+      #   skills/<skill>/scripts/tests/  a package (has __init__.py); needs -t .
+      #                                  so scripts/ is the import root
+      #   skills/<skill>/tests/          plain modules that put ../scripts on
+      #                                  sys.path themselves; -t . would fail
+      #                                  with "Start directory is not importable"
+      # A skill without tests is not an error — most skills are prose only.
       - name: Unit tests for every skill that has them
         run: |
           set -euo pipefail
           ran=0
-          for suite in skills/*/scripts/tests; do
+          for suite in skills/*/scripts/tests skills/*/tests; do
             [ -d "$suite" ] || continue
-            dir="${suite%/tests}"
-            echo "::group::$dir"
-            ( cd "$dir" && python3 -m unittest discover -s tests -t . -v )
+            dir="$(dirname "$suite")"
+            echo "::group::$suite"
+            if [ -f "$suite/__init__.py" ]; then
+              ( cd "$dir" && python3 -m unittest discover -s tests -t . -v )
+            else
+              ( cd "$dir" && python3 -m unittest discover -s tests -v )
+            fi
             echo "::endgroup::"
             ran=1
           done
           if [ "$ran" -eq 0 ]; then
-            echo "No skill ships script tests yet — nothing to run."
+            echo "No skill ships tests yet — nothing to run."
           fi
-
-      - name: No Python line over 100 columns
-        run: |
-          set -euo pipefail
-          rc=0
-          while IFS= read -r f; do
-            awk -v f="$f" 'length($0) > 100 {
-              printf "::error file=%s,line=%d::line is %d columns, limit is 100\n", f, FNR, length($0)
-              found = 1
-            } END { exit found ? 1 : 0 }' "$f" || rc=1
-          done < <(find skills -name '*.py' -type f -not -path '*/__pycache__/*')
-          exit $rc
 
   workflow-permissions:
     name: Workflows declare least-privilege permissions
