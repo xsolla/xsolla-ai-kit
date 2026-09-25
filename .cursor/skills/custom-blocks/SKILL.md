@@ -21,10 +21,8 @@ metadata:
   domain: store
 ---
 
-## Status
-
-Draft. Self-contained: everything this skill needs is in this directory. It does not depend on
-any other skill in this kit.
+Detailed material lives in `references/`, linked at the step that needs it. The skill doesn't
+depend on any other skill in this kit.
 
 ## What a block is
 
