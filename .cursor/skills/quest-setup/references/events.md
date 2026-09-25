@@ -29,9 +29,9 @@ qp-server produces a 404 that looks like a missing quest.
 | `name` | yes | must match the `event_name` on the quest's `dynamic_event` trigger |
 | `client_timestamp` | yes | RFC3339 |
 | `user_ids` | yes | at least one entry |
-| `quest_id` | no | a valid UUID when present |
-| `scope` | no | `global`, `private`, `within_project`, `within_quest`, `within_publisher`. Defaults to `private`. The published schema shows a bare string and the older struct hint lists only three values; the server accepts all five |
-| `publisher` | no | if the object is present, the live schema requires both `publisher_id` and `project_id`. They must equal the quest's values, or the event matches no quest and leaves no execution row. Omit it for a quest without them |
+| `quest_id` | no | a valid UUID when present. Restricts matching to that one quest; without it, every live quest of the account with that `event_name` runs |
+| `scope` | no | `global`, `private`, `within_project`, `within_quest`, `within_publisher`. Defaults to `private`. It decides which quests' event-count conditions can count this event later, not which quest runs. Keep the default unless the developer asks. The published schema shows a bare string and the older struct hint lists only three values; the server accepts all five |
+| `publisher` | no | if the object is present, the live schema requires both `publisher_id` and `project_id`. They must equal the quest's values, or the event matches no quest and leaves no execution row; a quest without them never matches an event that has them. Omit it for a quest without them. An event without `publisher` is not filtered by publisher |
 | `properties` | no | string values only |
 
 `user_ids[].identifier_type` is `xsolla_id`, `gamer_id`, `guest_id` or `email`.
@@ -45,6 +45,38 @@ whose user already has a wallet. Check it before submitting; see
 The account is **not** in the body. It comes from the credential.
 
 A 200 returns `{"idempotency_key": "...", "event_id": "<uuid>"}`.
+
+Use only `POST /api/v2/events`. The collector's other routes,
+`/api/v2/projects/{project_id}/events` and `/api/v2/debug/trigger-outbox`, are
+not part of this skill; do not call them.
+
+## Before sending
+
+- **Wait after a quest write.** The pipeline caches quest config for up to 60
+  seconds (see [`auth-and-environment.md`](auth-and-environment.md)). After
+  creating, activating, pausing or editing a quest, wait about 90 seconds
+  before the first event, or the event may be matched against the old config.
+  Right after a pause, an event can still run the quest as active; for a quest
+  with an `issue_reward`, say so and wait before sending.
+- **Check the window.** The quest must be `active` and inside its dates at
+  event time; see [`quest-document.md`](quest-document.md).
+- **Show the exact payload**, including the `idempotency_key` you generated.
+  If the developer changes anything, generate a new key.
+
+## Test events and `load_test`
+
+`properties.load_test` set to exactly `"true"` makes quest-engine drop the
+event before it starts a workflow, where the bypass is enabled (see
+[`auth-and-environment.md`](auth-and-environment.md)). The collector still
+returns 200 with an `event_id`, but the quest never runs and qp-data gets no
+row. Report that as the expected outcome, not as unverified.
+
+- Use it only when the developer wants to test acceptance, not execution.
+- To verify execution, omit it. Each untagged event that matches a live quest
+  starts a billable workflow and runs its actions for real, so say so and get
+  the developer's explicit choice. Removing the flag from a test payload turns
+  it into a real event and needs the same decision.
+- Any value other than the exact string `"true"` does not bypass.
 
 ## Idempotency
 
@@ -65,5 +97,5 @@ out. Report "result unknown", and use the execution read-back to find out what
 really happened.
 
 If the developer later agrees to a new event, use the saved payload or ask
-them to paste it again. Never rebuild it from memory or from a read-back
+them to paste it again, show it, and get a new yes. Never rebuild it from memory or from a read-back
 `eventBody`.

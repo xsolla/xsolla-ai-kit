@@ -51,8 +51,19 @@ revalidate):
   the dev, local and prod worker configs, where every `web3_token` reward fails
   with `Web3TokenNotConfigured`, non-retryable. The quest's `publisher_id` and
   `project_id` do not change it.
-- **Default NFT catalog**: the worker sends no project when it lists or claims
-  `web3_item` SKUs, so the service's default project applies, `44056` on stage.
+- **Default NFT catalog**: when a `web3_item` body has no `project`, the worker
+  sends none when it lists or claims SKUs, so the service's default project
+  applies, `44056` on stage. A `web3_token` without `project` uses the ERC-20
+  project above.
+
+Pipeline settings that decide event timing (stage, from the service configs;
+revalidate):
+
+- **Config caches**: qp-consumer-service and the worker each cache quest config
+  for 60 seconds. The collector caches key validation for 5 minutes.
+- **`load_test` bypass**: `LOAD_TEST_BYPASS_ENABLED` is on in quest-engine on
+  stage and off in production. There, a `load_test: "true"` event is a real
+  event.
 
 For manual checks by a human only: the stage chain is Xsolla ZK Sepolia
 testnet, chain id `579029`, explorer
@@ -105,7 +116,11 @@ before the first write:
   Do not use its project-scoped event route; it depends on a qp-server
   endpoint that is not deployed.
 - `qp-data`: `GET /api/v1/quest-executions?size=1`. It answered 200 without a
-  credential on 2026-09-25. Treat that as a snapshot, not a contract.
+  credential on 2026-09-25. Treat that as a snapshot, not a contract. Check
+  only the status; the row may belong to another tenant, so do not show it.
+  Because it answers anyone, read it only by the developer's own quest id,
+  user id or event. Do not call `GET /api/v1/accounts`, and do not list other tenants'
+  quests or executions; it is not a scope readout.
 
 Bring-up and preflight are GET-only. Ask before any other call.
 

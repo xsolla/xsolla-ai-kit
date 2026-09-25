@@ -17,8 +17,8 @@ in this skill.
 | `status` | string | yes | `active` or `inactive` on write. `deleted` is set only by `DELETE`, a soft delete, and is rejected on write |
 | `created_by` | string | yes | 1 to 255 characters. Ask the developer; never derive it from the environment |
 | `description` | string | no | if present, 5 to 1000 characters |
-| `publisher_id` | string | no | 1 to 255 characters |
-| `project_id` | string | no | 1 to 255 characters |
+| `publisher_id` | string | no | 1 to 255 characters. Fixed at create: a `PUT` does not change it |
+| `project_id` | string | no | 1 to 255 characters. A `PUT` without it keeps the stored value |
 | `start_date` | RFC3339 | **only when `active`** | not earlier than exactly 24 hours before the server's now; see below |
 | `end_date` | RFC3339 | **only when `active`** | not in the past, and at or after `start_date`. Ask; there is no default |
 | `nodes` | array | **at least 2 when `active`** | optional and may be empty when `inactive` |
@@ -35,16 +35,34 @@ validator. They do not appear in the OpenAPI document.
 The `start_date` check compares instants, but its 422 message prints only the
 date, which misleads. `2026-09-22T00:00:00Z` sent at `2026-09-23T07:37Z` was
 rejected with `start_date must be on or after 2026-09-22.` (observed on stage
-2026-09-23, revalidate). Use today's date for the safest result.
+2026-09-23, revalidate). To start now, take the current instant at send time,
+not one computed earlier in the conversation, and check before sending that it
+is no more than 24 hours old.
+
+The check runs on **every** write with `status: active`, including a `PUT`
+that changes nothing else. A quest whose `start_date` is more than 24 hours old
+cannot be saved as active without moving `start_date` forward. Tell the
+developer before such an edit and ask for the new start; `end_date` must also
+still be in the future.
+
+A quest runs only while `active` and `start_date <= now <= end_date` at event
+time. A future `start_date` is accepted, but events before it do not run the
+quest; warn before sending an event outside the window.
+
+Dates come back in the server's local offset, for example `+03:00`, even when
+sent in `Z`. Compare instants, not strings.
 
 ## Responses
 
 Create and update return 200, not 201, with the whole quest. Empty `nodes`,
 `connections` and `metadata` come back as `null` rather than `[]` or `{}`;
-that is not an error. A `null` `nodes` may be sent back on an `inactive`
-draft; send real arrays when activating. The list returns
-`{page, limit, total, data[]}`, `limit` 10 by default and 100 at most, and its
-items carry no nodes, connections or `account_id`.
+that is not an error. An empty or absent `activation_limits` also comes back
+as `null`. A `null` `nodes` may be sent back on an `inactive` draft; send real
+arrays when activating. An optional field missing from a response is not set;
+it is not `0` or an empty string. The list returns
+`{page, limit, total, data[]}`, `limit` 10 by default and 100 at most; page
+through it rather than reading one page as the whole list. Its items carry no
+nodes, connections or `account_id`.
 
 ## Draft first, then activate
 
@@ -87,9 +105,15 @@ and an action.
 
 `type` is `global` or `per_user`. `count` must be at least 1.
 `time_window.duration_unit`, when present, is `day`, `week` or `month`.
-If `activation_limits` is absent, no repeat limit is configured. Before
-activation, show that behavior and require the developer to acknowledge it;
-do not silently assume a one-time or per-user limit.
+If `activation_limits` is absent, `null` or empty, no repeat limit is
+configured: every qualifying event runs the actions. Before activation, show
+that behavior and require the developer to acknowledge it; do not silently
+assume a one-time or per-user limit.
+
+A limit without `time_window` counts over the quest's whole life: `per_user`
+`count: 1` means once per user, ever. A retest then needs a new user or a new
+quest. With `time_window`, the count resets each calendar day, week or month.
+A Web3 reward has its own repeat rule on top; see `rewards.md`.
 
 Before activation, also check that the intended trigger reaches an intended
 action and that no intended node is orphaned. The server validates references
@@ -102,6 +126,54 @@ There is **no PATCH**. Update is a full-document `PUT`: read the quest, change
 what you need, and send the whole object back. Tell the developer this before
 editing, because a partial body silently drops everything it omits.
 
+Recipe: take the body of a fresh `GET`, change only the fields the developer
+asked for, and send the rest verbatim, `null` values included. `id` (the path
+wins), `created_at`, `updated_at`, `version_id` and `has_personalization` are
+ignored on `PUT`, so they may stay or be dropped. Show the before/after diff of
+the changed fields before sending.
+
+An edit to an active quest applies to the next events once the pipeline's
+config caches expire (see `events.md`). If the edit adds or changes an action,
+a reward or the limits, repeat the activation confirmations for it. If it
+changes an amount or SKU, check node names that mention the old value.
+
 `version_id` is server-assigned and changes on every write. It is ignored in
 the body: there is no optimistic concurrency, quest `PUT` never returns 409,
 and the last write wins. Read the quest immediately before a `PUT`.
+
+## Pausing
+
+There is no pause route. To pause, send the full-document `PUT` from the recipe
+with `status: inactive` and keep the dates, nodes and limits as they are. The
+date rules apply only to `active` writes, so an old `start_date` is fine here;
+reactivating later runs them again (see Fields).
+
+While the quest is inactive, the consumer drops its events: no workflow, no
+execution row, and nothing is queued or replayed on reactivation. The dropped
+events are still indexed, so they may count toward an event-count condition
+later (inferred from code). For up to the config cache time after the pause,
+events can still run the old, active config; see `events.md`. For a quest with
+an `issue_reward`, tell the developer that such an event can still pay.
+
+## Deleting
+
+`DELETE /api/v2/quests/{id}` needs `questconfig:delete` and returns 200 with
+`{"message": "Quest deleted successfully"}`. It is a soft delete: the quest and
+all its triggers get `status: deleted`, so events stop matching it (after the
+config cache time), and its qp-data rows stay. After that, `GET`, the list and
+a second `DELETE` treat it as not found (404). There is no restore route. The
+update query does not exclude deleted quests, so a `PUT` to the old id may
+overwrite and revive it (inferred from code, not tested); never use that as a
+restore, and do not `PUT` to a deleted id.
+
+Recipe:
+
+- Delete only quests the developer names by id or exact name. Never select
+  them by pattern or "all test quests" without showing the list first.
+- Re-list or `GET` right before deleting, and show each quest's name, id,
+  `status`, dates and actions. For an `active` quest or one with an
+  `issue_reward` or another external action, say it is live and what stops.
+- Say that the delete cannot be undone through the API, and get a yes.
+- Delete one quest per call. Stop on the first non-200 and report it; after a
+  timeout or 5xx, `GET` the quest to check before trying again.
+- Re-list afterwards and show that the deleted quests are gone.

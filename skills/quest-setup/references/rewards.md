@@ -33,14 +33,16 @@ smoke test, offer the no-op action in [`node-subtypes.md`](node-subtypes.md).
 | `custom` | `{"amount": <number>, "currency_ticker": "<string>"}` | `amount` greater than 0 |
 | `inventory_item` | `{"xsolla_item": <bool>, "items": [{"sku": "<string>", "quantity": <int>, "type": "<string>", "name": "<string>", "image_url": "<url>", "model_3d_url": "<url>"}], "item_sku": "<string>", "name": "<string>", "image_url": "<url>", "model_3d_url": "<url>"}` | `items` or `item_sku`; item quantity 0 to 100 and defaults to 1 at runtime |
 | `vc_wallet_ticket` | `{"quantity": <int>, "currency_ticker": "<string>"}` plus optional `playtime` | `quantity` greater than 0 |
-| `web3_item` | `{"xsolla_item": <bool>, "item_sku": <string or array>, "quantity": <int>}` | `quantity` at least 0, read back as 1 when absent. No `item_sku` means a random item, see below |
-| `web3_token` | `{"item_sku": "<string>", "amount": <integer>}` | both required. qp-server accepts an `amount` greater than 0 and at most 10000, but the payout needs a positive integer in base units, see below |
+| `web3_item` | `{"item_sku": <string or array>, "quantity": <int>}` plus optional `project` | body must not be empty. `quantity` at least 0, read back as 1 when absent. No `item_sku` means a random item, see below. The worker ignores `xsolla_item` here; omit it |
+| `web3_token` | `{"item_sku": "<string>", "amount": <integer>}` plus optional `project` | both required. qp-server rejects an `amount` of 0 or less, or above 10000, but the payout needs a positive integer in base units, see below |
 
 The optional `playtime` object on `vc_wallet_ticket` is
 `{"earn_rate_minutes": <greater than 0>, "daily_cap_minutes": <greater than 0>, "timezone": "<non-empty>"}`.
 
-For `inventory_item`, provide either `items` or the single-item `item_sku`
-form. `name`, `image_url` and `model_3d_url` are supported with the single-item
+For `inventory_item`, `xsolla_item` picks where the worker takes the
+publisher and project for the grant: `true` from the quest, `false` from the
+event's `publisher`. Ask the developer which. Provide either `items` or the
+single-item `item_sku` form. `name`, `image_url` and `model_3d_url` are supported with the single-item
 form; obtain real catalog values from the developer. An empty body can mean a
 runtime-selected item, so do not treat acceptance as proof of a particular SKU.
 
@@ -53,11 +55,17 @@ minting service's wallet lookup for that `xsolla_id`
 ([`auth-and-environment.md`](auth-and-environment.md)). A 404 means no wallet:
 the reward fails with `RecipientNotFound`, non-retryable. Report it and stop.
 
+A 200 carries `walletAddress` and `recipientSource`. Check both, not only the
+status: the worker treats only `recipientSource: thirdweb:smart` as a wallet
+the player sees in Backpack, and logs any other source as a payout the player
+may not see. Tell the developer if the source differs.
+
 ## Payout errors surface late
 
 qp-server does not check a Web3 body against the minting service. It accepts
 `0.01` and `10000`, and a SKU that is not bound, on create, `PUT` and
-activation alike. Those mistakes appear only at payout time, as a `FAILED`
+activation alike. It does enforce the `web3_token` cap: above 10000 the write
+fails with 422 `amount must not exceed 10000`. Check the cap before sending. Those mistakes appear only at payout time, as a `FAILED`
 `issue_reward` action whose `error` names the cause; see
 [`verification.md`](verification.md). Run the checks below before activation.
 
@@ -67,13 +75,31 @@ An NFT from the minting service's catalog.
 
 SKUs come from the IGS publisher catalog. The minting service lists a
 project's catalog with its read-only SKU lookup
-([`auth-and-environment.md`](auth-and-environment.md)). For `web3_item` the
-worker sends no project to the minting service, so only SKUs from the service's default catalog
-are usable through a quest today (observed on stage 2026-09-23, revalidate).
-Read that catalog and use a real `items[].sku`; do not invent one.
+([`auth-and-environment.md`](auth-and-environment.md)). Without `project` in
+the body, the worker sends no project, so the SKU must be in the service's
+default catalog. With `project` (1 to 64 letters, digits, `-` or `_`), the SKU
+must be in that project's catalog. Leave it out unless the developer names
+one, and never derive it from the quest's `project_id`. Read the catalog and use a real
+`items[].sku`; do not invent one.
 
-Omitting `item_sku` makes the worker list the default catalog and pick one item
-at random. Tell the developer before choosing that.
+Omitting `item_sku` makes the worker list the catalog and pick one item at
+random. Tell the developer before choosing that.
+
+**Once per user and quest.** The worker records each `web3_item` payout. When
+the same `xsolla_id` already has a confirmed payout for the same quest, a new
+event does not mint again: the action completes as `already_minted` and reuses
+the earlier transaction hash. If the earlier payout is unresolved, the action
+fails with `an earlier web3 payout for this user and quest is unresolved` and
+nothing is minted. This holds even with unlimited activation limits and a new
+`idempotency_key`. A second item for the same user therefore needs a new quest.
+`web3_token` has no such guard: every qualifying event can pay again.
+
+**What a `COMPLETED` reward action means.** Either the minting service returned
+a transaction hash for a new claim, or the user already had this quest's item
+and nothing new was minted. qp-data does not say which; the worker's result
+text does (`Already minted ...`). On a repeat event for the same user, report
+"completed, no second mint expected", never "two mints". Delivery is outside
+this skill's evidence, as for `web3_token` below.
 
 ## web3_token
 
@@ -99,17 +125,24 @@ be whole tokens or base units is pending confirmation from the Web3 owner. Get
 the token's decimals from the developer or the owner, never guess them, and
 show both the token amount and the base-unit integer before activation.
 
+The cap of 10000 is 0.01 of a 6-decimal token if `amount` is in base units.
+State that before the write when the developer asks for a larger payout.
+
 **`item_sku` must be a current ERC-20 binding of the worker's ERC-20 project.**
 Read the minting service's currency bindings
 ([`auth-and-environment.md`](auth-and-environment.md)) and pick a binding with
-`tokenStandard: erc20` whose `projectId` equals the worker's ERC-20 project.
+`tokenStandard: erc20` whose `projectId` equals the worker's ERC-20 project, or
+the body's `project` when set. A binding carries `sku`, `projectId`,
+`contractAddress` and `tokenStandard`, but no symbol or decimals: have the
+developer confirm which token the SKU is and its decimals.
 Bindings change, so read them each session rather than reusing a SKU from
 memory. An unbound SKU fails at payout with a 400, `no ERC-20 token is
 configured for project <id> / sku <sku>`.
 
-**The ERC-20 project comes from the worker's environment**, not from the
-quest's `publisher_id` or `project_id`. Where it is not configured, every
-`web3_token` reward fails with `Web3TokenNotConfigured`, non-retryable.
+**The ERC-20 project comes from the worker's environment**, unless the body
+sets `project`, and never from the quest's `publisher_id` or `project_id`.
+Where it is not configured, every `web3_token` reward fails with
+`Web3TokenNotConfigured`, non-retryable, even when the body sets `project`.
 Currently only stage has it; see
 [`auth-and-environment.md`](auth-and-environment.md). Do not offer this reward
 in another environment without owner confirmation.
@@ -136,6 +169,12 @@ reward action failed on a timeout, do not resend the event. Escalate to the
 Quest Platform team, who own the worker logs and ledger, with the quest id,
 `event_id`, `idempotency_key`, user and time; a human can also check the
 chain.
+
+Workers deployed on stage on 2026-09-25 also record each Web3 payout and
+refuse to pay again when an earlier attempt's outcome is unknown, failing with
+`web3 payout outcome is unknown from an earlier attempt` or, for `web3_item`,
+`an earlier web3 payout for this user and quest is unresolved`. Both mean
+escalate as above; neither permits a resend.
 
 An action `error` can carry two retryable flags, for example
 `(type: Web3TokenClaimFailed, retryable: false): ... (type: ClaimError, retryable: true)`.
