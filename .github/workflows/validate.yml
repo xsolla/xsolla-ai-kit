@@ -30,6 +30,48 @@ jobs:
       - name: Validate skills, registries, links and provider sync
         run: python3 .github/scripts/validate_skills.py
 
+  scripts:
+    name: Skill script unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.2.2
+        with:
+          persist-credentials: false
+
+      # No setup-python and no install step on purpose: skill scripts are
+      # standard-library only, so the runner's stock python3 is the same
+      # guarantee a partner gets on their own machine.
+      - name: Report the interpreter the tests ran on
+        run: python3 -VV
+
+      # Runs every skill's suite, in either of the two layouts skills use:
+      #   skills/<skill>/scripts/tests/  a package (has __init__.py); needs -t .
+      #                                  so scripts/ is the import root
+      #   skills/<skill>/tests/          plain modules that put ../scripts on
+      #                                  sys.path themselves; -t . would fail
+      #                                  with "Start directory is not importable"
+      # A skill without tests is not an error — most skills are prose only.
+      - name: Unit tests for every skill that has them
+        run: |
+          set -euo pipefail
+          ran=0
+          for suite in skills/*/scripts/tests skills/*/tests; do
+            [ -d "$suite" ] || continue
+            dir="$(dirname "$suite")"
+            echo "::group::$suite"
+            if [ -f "$suite/__init__.py" ]; then
+              ( cd "$dir" && python3 -m unittest discover -s tests -t . -v )
+            else
+              ( cd "$dir" && python3 -m unittest discover -s tests -v )
+            fi
+            echo "::endgroup::"
+            ran=1
+          done
+          if [ "$ran" -eq 0 ]; then
+            echo "No skill ships tests yet — nothing to run."
+          fi
+
   workflow-permissions:
     name: Workflows declare least-privilege permissions
     runs-on: ubuntu-latest
