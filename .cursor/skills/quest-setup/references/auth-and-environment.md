@@ -93,13 +93,11 @@ Every qp-server request carries exactly one header:
 
 `Authorization: Basic base64(<merchant_id>:<api_key>)`
 
-Build it at call time from the variables. Never print, log or commit the key
-or the encoded header; refer to the key by its first four characters. The
-ids in a path (merchant, project, quest) are not secret and may be shown; only
-the key and the encoded header are masked. Send
-only one credential per request: `Authorization` together with
-`X-REQUEST-APIKEY` returns 400 `Only one authentication method may be used per
-request`.
+Never print, log or commit the key or the encoded header; refer to the key
+by its first four characters. The ids in a path (merchant, project, quest) are
+not secret and may be shown. Send only one credential per request:
+`Authorization` together with `X-REQUEST-APIKEY` returns 400 `Only one
+authentication method may be used per request`.
 
 Where to look:
 
@@ -110,12 +108,27 @@ Where to look:
   `export ` prefix and one pair of surrounding quotes, and skip comments and
   blank lines. Never source, `.` or otherwise execute the file, and never echo
   a line of it.
+- Take all three variables from one source. If the environment and `.env` both
+  set a name with different values, say so (names only) and ask which to use.
 - If the developer names a differently named variable or file, use it after
   saying which one you will read.
 - Do not search other files, other variables, keychains or shell history for
   credentials. If a variable is missing, say which one and ask.
 - `ID 0` is a valid merchant ID and a valid project ID; never treat it as
-  absent.
+  absent. An id that looks like a placeholder (`999999`, `12345`) is still
+  sent as given only after you ask whether it is real.
+
+Request hygiene, for every call:
+
+- Check which names are set with a test that prints only the name, never a
+  value. No indirect expansion (such as `${!name}`), no `env`, `set` or
+  `printenv` dumps.
+- Parse `.env` in the same process that builds the request, and build the
+  Basic header inside that command. Never echo it or pass it through a
+  variable you print.
+- Output may show the ids, the method and route, the status, the body and the
+  key's first four characters. Nothing else: no verbose (`-v`) or trace
+  output, no request headers.
 
 A project id the developer offers, or `XSOLLA_PROJECT_ID`, is a candidate until
 `GET /api/v2/merchants/{merchant_id}/projects/{project_id}` returns 200 with
@@ -124,7 +137,17 @@ that key. Do not write before that.
 If the developer names a project id that differs from a set
 `XSOLLA_PROJECT_ID`, stop and ask which one they mean. The key most likely
 belongs to the `.env` project, so the other id probably needs its own key. Do
-not call either route before the answer.
+not call either route before the answer. If they insist on the `.env` key for
+the other id, reads are allowed; a 404 `Project not found` then cannot rule out
+a wrong key (the key is not checked for an unknown project), and no write is
+sent until that project GET returns 200.
+
+Negative-auth checks: when the developer asks, a GET on the project route with
+a made-up key or with no `Authorization` header is a read and needs no
+separate yes (stage 2026-09-25: 401 `Invalid credentials` and 401
+`Authentication required`; an unknown project id with a made-up key gets 404
+`Project not found`). Never send another real credential, and never run such a
+check on a write.
 
 ### The merchant id in the path
 
@@ -194,14 +217,11 @@ whether a read or a write failed:
 4. If you do not find it, say that the operation is not deployed on this
    environment and stop.
 
-Stage routes churn. The live OpenAPI decides the path; the developer decides
-the switch. A path in this file that the live OpenAPI does not list is stale:
-report it, do not work around it silently.
-
-The same holds **before** a call. If a route this skill names is absent from
-the live OpenAPI you fetched, do not call it, not even once as a probe. Say
-which route is missing and from which service's OpenAPI, follow steps 2 to 4
-above, and ask the developer how to continue.
+The live OpenAPI decides the path; the developer decides the switch. The same
+holds **before** a call: if a route this skill names is absent from the live
+OpenAPI you fetched, it is stale. Do not call it, not even as a probe; say
+which route is missing from which service's OpenAPI, follow steps 2 to 4, and
+ask how to continue.
 
 ### Reading a 401 or 404
 
@@ -224,14 +244,12 @@ The auth layer returns plain `{"error": "..."}` bodies. Quote them verbatim.
 project that is not onboarded, a project owned by another merchant (the key's
 merchant is not the project's stored merchant) and a non-integer project id
 all return the same 404 with the same body. For an unknown project the key is
-not even checked, so a wrong key there also gives this 404. The skill cannot
-tell these cases apart. Say so, name the merchant id and project id you used,
-and ask the developer to check them. Never report it as "the project does not
-exist" or "the key is wrong". No read-only step narrows it down: every GET
-this lane can make gets the same 404, so do not probe further. A path merchant
-that differs from the key's merchant does not produce this 404 on stage (see
-"The merchant id in the path"). Whether to offer onboarding next is decided in
-"Onboarding" below.
+not even checked, so a wrong key there also gives this 404. No GET on
+this lane tells them apart, so do not probe further. Say so, name the merchant
+id and project id you used, and ask the developer to check them; never report
+it as "the project does not exist" or "the key is wrong". A path merchant that
+differs from the key's merchant does not produce this 404 on stage. Onboarding
+is decided below.
 
 A missing quest on a known project is a different body: problem+json with
 `"detail":"Quest not found"`. Report it as "not found, or not visible with this
@@ -245,9 +263,11 @@ project is onboarded: there is nothing to offer. When it returns 404
 `{"error":"Project not found"}`, onboarding is one possible cause among those
 above. A `Cannot GET` 404 is never a reason to onboard.
 
-Offer onboarding only after the developer says the project belongs to their
-merchant (the one in `XSOLLA_MERCHANT_ID`). Until then, report the uniform 404,
-name the ids used, and ask them to check the ids; do not offer the call.
+Offer onboarding only after the developer states that the project belongs to
+their merchant, the one in `XSOLLA_MERCHANT_ID` (for example "yes, project
+310000 is ours, under this merchant"; "just try it" does not count). Until
+then, report the uniform 404, name the ids used, and ask them to check the
+ids; do not offer the call.
 
 `POST /api/v2/merchants/{merchant_id}/projects/{project_id}/onboard` with body
 `{"merchant_name": "<string>", "project_name": "<string>"}`, both required.
@@ -266,7 +286,8 @@ only after an explicit yes:
    and that onboarding fixes only the "not onboarded" one.
 3. Ask for `merchant_name` and `project_name`. Never invent them. They are
    used only for rows the call creates.
-4. Show the request, without the credential, and wait for the yes.
+4. Show the request, without the credential, say that the outcomes below come
+   from the OpenAPI and code and were not observed live, and wait for the yes.
 
 Outcomes (from the OpenAPI and code, 2026-09-25; not called live):
 
@@ -299,7 +320,9 @@ qp-data read.
 - `qp-events-collector`: nothing to preflight on Basic. Say at every bring-up
   that events cannot be sent on this lane on stage (no Basic event route,
   2026-09-25), and say it again whenever the developer asks for activation or
-  a smoke test. See `events.md`.
+  a smoke test. When the task may reach activation or a smoke test, fetch the
+  collector OpenAPI at bring-up (no credential) to recheck the missing route
+  live, and report the result with that line. See `events.md`.
 - `qp-data`: `GET /api/v1/quests?publisherId=<XSOLLA_MERCHANT_ID>&projectId=<confirmed project id>&size=1`
   (200 verified 2026-09-25, rows matched the scope). Run it only after Scope
   step 1 confirmed the project. It answers without a credential; treat that
@@ -321,7 +344,8 @@ project maps to one Quest Platform account inside the merchant's workspace.
 
 1. Read `GET /api/v2/merchants/{merchant_id}/projects/{project_id}` and show
    the merchant id you used, `project_id`, `name` and `status`. The response
-   has no merchant id of its own. Get the developer's confirmation that this
+   has no merchant id of its own. You may add the `total` from the preflight
+   quest list; name no quests unless asked. Get the developer's confirmation that this
    is the intended project before the first write.
 2. The server sets the quest's `publisher_id` to the path `{merchant_id}` and
    its `project_id` to the path `{project_id}` on every create, as strings,
@@ -349,17 +373,15 @@ account: a quest made with it does not match events sent on the project lane,
 and the reverse. Use it only when the developer explicitly chooses it, never
 as a silent fallback after a Basic failure.
 
-A quest made on this lane lives in the service key's account, not in the
-project's. A developer on Basic cannot read, edit or verify it: it answers
-`Quest not found` on the project routes (inferred from the account scoping,
-not checked). Do not switch lanes to reach it and
-do not read its qp-data rows; say that it belongs to another lane and point
-them to the Quest Platform team.
+A developer on Basic cannot read, edit or verify a quest made on this lane: it
+answers `Quest not found` on the project routes (inferred from the account
+scoping, not checked). Do not switch lanes to reach it or read its qp-data
+rows; say that it belongs to another lane and point them to the Quest
+Platform team.
 
 Status on stage, 2026-09-25: keys created after migration 000014 get 401
-`{"error":"Invalid API key"}` (seen on `GET /api/v2/quests`; a backend bug
-on the Quest Platform side). If that happens, report it verbatim and stop; do not
-debug the key. If a key does work, its account name comes from
+`{"error":"Invalid API key"}` on `GET /api/v2/quests` (a Quest Platform
+backend bug). Report it verbatim and stop; do not debug the key. If a key does work, its account name comes from
 `GET /api/v2/accounts/{account_id}`; the `name` from `POST /api/v2/keys/validate`
 is the key's name, not the account's. The OpenAPI labels the header "Master
 API key"; a service key is not a master key.

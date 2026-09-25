@@ -36,6 +36,15 @@ When the developer on the Basic lane asks to send an event:
    that an event could not run it anyway, and offer activation first; see
    [`quest-document.md`](quest-document.md).
 
+**Mixed request** (for example "create the quest, fill it in, then send a test
+event"): the event block does not cancel the rest. Do the doable parts first,
+each through its own confirmation as usual (create, fill, activate if asked).
+Then, in the same final report, state the event block from step 1 and give
+the developer what they need to retry once a route exists: the quest id, its
+current status, and the `event_name` the trigger listens for. Do not skip the
+doable parts because the event cannot run, and do not claim the quest was
+verified.
+
 Revalidate: once the live collector OpenAPI lists an event route that takes
 the project credential, this section no longer applies. The rest of this file
 describes the event body and rules for when a route exists.

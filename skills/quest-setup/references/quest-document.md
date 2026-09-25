@@ -24,10 +24,10 @@ in this skill.
 | Field | Type | Required | Notes |
 |---|---|---|---|
 | `name` | string | yes | 1 to 255 characters |
-| `type` | string | yes | `liveops`, `ads`, `xsolla_app`, `social_quest` |
+| `type` | string | yes | `liveops`, `ads`, `xsolla_app`, `social_quest`; see below. Ask; never pre-fill it |
 | `status` | string | yes | `active` or `inactive` on write. `deleted` is set only by `DELETE`, a soft delete, and is rejected on write |
 | `created_by` | string | yes | 1 to 255 characters. Ask the developer; never derive it from the environment |
-| `description` | string | no | if present, 5 to 1000 characters |
+| `description` | string | no | if present, 5 to 1000 characters. Too short gives 422 `detail` `description: description requires a minimum of 5 characters.` (observed on stage 2026-09-25) |
 | `publisher_id` | string | server-set | set by the server on create to the route's **path** `{merchant_id}` (from code; body values are ignored). Stage does not reject a path merchant that differs from the key's, and such a quest would never match events, so the path must carry exactly `XSOLLA_MERCHANT_ID`. A `PUT` does not change it. Never ask for it or invent it; on a `PUT`, send it back as the last read returned it |
 | `project_id` | string | server-set | set by the server on create to the route's path `{project_id}`. On a `PUT`, send it exactly as the last read returned it: a different value in the body would overwrite the stored one (from code). See Scope in the auth reference |
 | `start_date` | RFC3339 | **only when `active`** | not earlier than exactly 24 hours before the server's now; see below |
@@ -43,18 +43,27 @@ in this skill.
 The conditional requirements are enforced only by the server's hand-written
 validator. They do not appear in the OpenAPI document.
 
-The `start_date` check compares instants, but its 422 message prints only the
-date, which misleads. `2026-09-22T00:00:00Z` sent at `2026-09-23T07:37Z` was
-rejected with `start_date must be on or after 2026-09-22.` (observed on stage
-2026-09-23, revalidate). To start now, take the current instant at send time,
-not one computed earlier in the conversation, and check before sending that it
-is no more than 24 hours old. When a requested start is too old, offer a
-concrete alternative: the earliest allowed start is the server's now minus 24
-hours (in practice, take "now" at send time and keep a margin, for example now
-minus 23 hours, or simply now). Dates are RFC3339 instants; state them in UTC
-when confirming with the developer.
+`type` is a label. From code (adtech 873d3c7a3c; the deployed revision is not
+pinned): the server checks it against the four values, stores it and copies it
+into qp-data (quest config and execution rows) and a worker metrics label. No
+worker or consumer code branches on it, so no value changes what the quest
+does at run time. What each value means to other tools (the admin UI,
+reports) is not verified. A loose match ("for the xsolla app" suggests
+`xsolla_app`) is only a suggestion: ask a confirming question before it goes
+into a body.
 
-The check runs on **every** write with `status: active`, including a `PUT`
+The `start_date` check compares instants, but its 422 message prints only the
+date, which misleads. Example (observed on stage 2026-09-23):
+`2026-09-22T00:00:00Z` sent at `2026-09-23T07:37Z` came back as
+`start_date must be on or after 2026-09-22.` That text is an example, never
+this request's answer. When you refuse a start before sending, explain the
+rule in your own words, say nothing was sent, and offer the earliest allowed
+start: the server's now minus 24 hours (in practice take "now" at send time
+and keep a margin, for example now minus 23 hours, or simply now). To start
+now, take the current instant at send time, not one computed earlier in the
+conversation, and check before sending that it is no more than 24 hours old.
+
+The `start_date` check runs on **every** write with `status: active`, including a `PUT`
 that changes nothing else. A quest whose `start_date` is more than 24 hours old
 cannot be saved as active without moving `start_date` forward. Tell the
 developer before such an edit and ask for the new start; `end_date` must also
@@ -64,8 +73,10 @@ A quest runs only while `active` and `start_date <= now <= end_date` at event
 time. A future `start_date` is accepted, but events before it do not run the
 quest; warn before sending an event outside the window.
 
-Dates come back in the server's local offset, for example `+03:00`, even when
-sent in `Z`. Compare instants, not strings.
+Dates are RFC3339 instants. State them in UTC whenever you show them: when
+confirming, and also when reporting a read-back. Dates come back in the
+server's local offset, for example `+03:00`, even when sent in `Z`; convert
+them to UTC and compare instants, not strings.
 
 ## Responses
 
@@ -80,7 +91,7 @@ it is not `0` or an empty string. The list, `GET {scope}/quests`, returns
 `{page, limit, total, data[]}`. Query: `page` (default 1; `0` is read as 1),
 `limit` (default 10; `0` is read as 10; above 100 it is silently cut to 100,
 with no error), `publisherID`. A non-integer value is 422. There is no name
-filter: to find a quest by name, page through the whole list. Page through it
+filter: to find a quest by name, page through the whole list (a read-only name check before a create is optional, see Choosing a trigger in `node-subtypes.md`). Page through it
 rather than reading one page as the whole list. Its items carry
 `project_id` but no `publisher_id`, nodes, connections, dates or `account_id`,
 so use the list only to find a quest's `id`; for anything else (the
@@ -105,6 +116,11 @@ verbatim. For "no repeat limit", sending `activation_limits` as `null` and
 leaving it out are the same: the server model is a pointer with `omitempty`
 (`lib/models/v2` v2.9.16 `generic_quest/quest.go`, pinned by qp-server), so
 both decode to "not set". `[]` also means no limit (see Activation limits).
+
+A relative duration ("run it for 7 days") counts from the `start_date`
+actually sent: `end_date` is that start plus 7x24 hours. If the start moves
+(for example refused as too old, then "now"), recompute the end and confirm
+both dates again before sending.
 
 ## Nodes and connections
 
@@ -131,6 +147,9 @@ both decode to "not set". `[]` also means no limit (see Activation limits).
 
 The smallest quest that can be activated is two nodes and one edge: a trigger
 and an action.
+
+Name nodes after what they do, and label anything that is not real in the
+name, for example `noop` or `webhook (placeholder)`, so a later read shows it.
 
 ### Several actions on one trigger
 
@@ -214,9 +233,12 @@ stay unchanged. Show the before/after diff of
 the changed fields before sending.
 
 An edit to an active quest applies to the next events once the pipeline's
-config caches expire (see `events.md`). If the edit adds or changes an action,
-a reward or the limits, repeat the activation confirmations for it. If it
-changes an amount or SKU, check node names that mention the old value.
+config caches expire (see `events.md`). Repeat the activation confirmations
+for the changed part when the edit touches any of: an action's subtype or
+parameters, connections that change which actions run, a reward, the
+activation limits, the dates, or `status`. An edit to `name` or
+`description` only needs no repeat. If the edit changes an amount or SKU,
+check node names that mention the old value.
 
 `version_id` is server-assigned and changes on every write. It is ignored in
 the body: there is no optimistic concurrency, quest `PUT` never returns 409,

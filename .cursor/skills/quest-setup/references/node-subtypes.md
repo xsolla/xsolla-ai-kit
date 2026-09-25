@@ -55,8 +55,12 @@ the user identifiers. Never treat an arbitrary URL as a harmless placeholder.
 - **Approved** means an endpoint the developer owns or controls and names
   explicitly. A public request bin receives that JSON too; use one only after
   the developer acknowledges it.
-- Never point it at an internal host, a Quest Platform service or the minting
-  service (see [`auth-and-environment.md`](auth-and-environment.md)). A
+- Never point it at an internal host or the minting service. An **internal
+  host** is any `*.srv.local` name, `localhost`, a loopback or private IP
+  (`127.0.0.0/8`, `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `::1`,
+  `fc00::/7`), and every host in the Services table of
+  [`auth-and-environment.md`](auth-and-environment.md#services), which
+  includes the Quest Platform services and the minting service. A
   webhook cannot pay out: it posts the raw event above, not a mint claim, and
   it carries no credentials. To pay out, use an `issue_reward` Web3 reward.
   The 09-24 qp-server build rejected a minting-service host with a 422; the
@@ -97,8 +101,10 @@ Source: `adtech/lib/models/generic_quest/http_webhook.go`.
 strings. `topic` is required by `Validate()` despite its `omitempty` JSON tag.
 The validator does not constrain these strings to an enum or check a topic's
 existence. `data` is optional, a JSON object with string keys and arbitrary
-JSON values; it has no additional validation. Do not invent a topic or
-notification-type value. You may suggest the observed stage values below
+JSON values; it has no additional validation. Do not invent any of the four
+values: `topic`, `notification_type`, `title` or `message`. Ask for them, or
+show a concrete proposal and get a yes; "pick something sensible" delegates
+the choice, it does not confirm a value, so still show the proposal. You may suggest the observed stage values below
 (`qp.notifications`, `reward_earned` or `reward`) as options, labelled as
 observed on stage, but the developer confirms them before they go into the
 draft; a suggestion is not a confirmation. The worker adds the event's `properties`,
@@ -145,8 +151,9 @@ current worker routes it to `SkipExecution`. Do not use API acceptance or a
 
 That makes it the only action with no external effect, so it is the one to
 offer for a smoke test of create, event and execution. Use it only when the
-developer chooses it as a no-op, name the node so (for example `noop`), and
-never present it as personalization. For the no-op you do not need a real item
+developer chooses it as a no-op, name the node so (for example `noop`,
+never a name with "personalization" in it), and never present it as
+personalization. For the no-op you do not need a real item
 id: use a labelled placeholder such as `{"items": [{"id": "e2e-noop"}]}` (the
 validator checks only that `items` is non-empty, and the worker never reads
 it), and tell the developer it is a placeholder. Ask for real item ids only
@@ -177,8 +184,9 @@ Revalidate before relying on either; both are new and still moving.
 `event_check` is declared as a constant in the platform's models but is **not**
 in the accepted list. A node using it fails validation. Do not offer it, and if
 a developer asks for it, say it is not accepted by the API. For "after N
-events", use a `custom_attributes_check` condition with an `event` operand; see
-[`conditions.md`](conditions.md).
+events", use a `custom_attributes_check` condition with an `event` operand. A
+condition cannot read the event's `properties`; see
+[`conditions.md`](conditions.md#operands).
 
 ## Choosing a trigger
 
@@ -190,13 +198,21 @@ same trigger name runs on that event (on the project lane the account is the
 project's), so a test quest needs a unique name.
 
 If the `event_name` the developer gives looks unrelated to the quest (for
-example `level_up` on a "first purchase" quest), say so once and ask them to
-confirm it; do not change it yourself. Before activation you may offer an
-optional collision check: list the quests, then `GET` each `active` one (list
-items carry no nodes, see `quest-document.md` Responses) and report any whose
-trigger has the same `event_name`. The list covers only the route's project,
-not the whole account, so a clean result is not proof of no collision; say
-so. The check is read-only and optional; do not block on it.
+example `level_up` on a "first purchase" quest, or a test id from another case
+such as `e2e-uc03-...` on a UC02 quest), say so once and ask them to confirm
+it; do not change it yourself.
+
+Two optional read-only checks, never blocking:
+
+- **Name check before a create:** page through the list (see
+  `quest-document.md` Responses) and say if a quest with the same name already
+  exists.
+- **Collision check before activation:** offer it when the list shows another
+  `active` quest with a similar name or test prefix, or the `event_name` is
+  generic (`purchase`, `level_up`). `GET` each `active` quest (list items
+  carry no nodes) and report any whose trigger has the same `event_name`. The
+  list covers only the route's project, not the whole account, so a clean
+  result is not proof of no collision; say so.
 
 `date_and_time` is accepted by the API and its parameters are not validated
 on write, but **runtime scheduling is not implemented**. The current
@@ -207,7 +223,9 @@ will run. Do not recommend it as a working scheduler or invent schedule fields.
 For a scheduling request, explain this limitation before configuring a quest.
 `scheduled_event` is not an alternative today; see above. The alternative is a
 `dynamic_event` trigger and a scheduler the developer runs that submits the
-event at the right time.
+event at the right time. On stage that is blocked too for now: the Basic
+credential has no event route (see `events.md`), and an event sent with
+another credential lands in another account and never matches the quest.
 
 Source: local `adtech/qp-worker-generic-quest/internal/temporal/generic_quest/activity/trigger.go`,
 checked on 2026-09-22. Revalidate the deployed worker before claiming runtime behavior.
