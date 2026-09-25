@@ -17,8 +17,16 @@ are an API key and a Bearer token. The project route
 `/api/v2/projects/{project_id}/events` is gone, and there is no
 `/merchants/...` event route. So a developer on the Basic project credential
 has **no event route at all** on stage, and `POST /api/v2/events` does not
-take that credential (it answers 401
-`{"error":"X-REQUEST-APIKEY header is required"}`).
+take that credential: it answers 401 `{"error":"Authentication required"}`
+(live, 2026-09-25). From code (collector f63f2b26ce and 3491c2c369): that
+route takes only `X-REQUEST-APIKEY` or `Authorization: Bearer <Publisher
+Account JWT>`; any other header, Basic included, gets that 401 and never
+reaches qp-server. No collector build or branch found adds Basic.
+
+The Bearer lane is the only publisher lane on that route. From code, the
+collector validates the token through qp-server using the merchant and
+project ids from the body `publisher` block. This skill does not cover the
+Bearer lane and never sends a Bearer token.
 
 When the developer on the Basic lane asks to send an event:
 
@@ -81,7 +89,7 @@ answer; the route itself is gone.
 | `user_ids` | yes | at least one entry |
 | `quest_id` | no | a valid UUID when present. Restricts matching to that one quest; without it, every live quest of the project's account with that `event_name` runs |
 | `scope` | no | `global`, `private`, `within_project`, `within_quest`, `within_publisher`. Defaults to `private`. It decides which quests' event-count conditions can count this event later, not which quest runs. Keep the default unless the developer asks. The published schema shows a bare string and the older struct hint lists only three values; the server accepts all five |
-| `publisher` | no | see "The `publisher` block" below |
+| `publisher` | always send it | see "The `publisher` block" below |
 | `properties` | no | string values only |
 
 `user_ids[].identifier_type` is `xsolla_id`, `gamer_id`, `guest_id` or `email`.
@@ -92,24 +100,30 @@ An `xsolla_id` value must parse as a UUID; an `email` value must contain `@`;
 
 A quest created on the project route always carries the server-set
 `publisher_id` (the merchant id) and `project_id`. The collector does not fill
-`publisher` from the route; it keeps whatever you send. Either:
+`publisher` from a route; it keeps whatever you send. Always send
 
-- **omit it**, so the event is not filtered by publisher and matches, or
-- send **exactly** the quest's values as read back from the quest, both as
-  strings: `{"publisher_id": "<quest publisher_id>", "project_id": "<quest project_id>"}`.
-  The live schema requires both when the object is present.
+`{"publisher_id": "<XSOLLA_MERCHANT_ID>", "project_id": "<XSOLLA_PROJECT_ID>"}`
 
-Any other value, including the right merchant with another project, matches
-no quest and leaves **no** qp-data row, not even `NOT_TRIGGERED`. Never take
-the values from memory or from the credential; copy both from a single-quest
-GET (or the create response), never from the quest list: list items carry
-`project_id` but no `publisher_id`. If that read has no `publisher_id`, stop
-and ask; do not fill it in.
+with both ids as **strings**, and check that they equal the quest's
+`publisher_id` and `project_id` as read back from a single-quest GET (or the
+create response), never from the quest list: list items carry `project_id`
+but no `publisher_id`. If that read has no `publisher_id`, or its values
+differ from the credential's, stop and ask; do not fill anything in.
+
+What the lanes do with the block (from code, collector f63f2b26ce):
+
+- Bearer lane: both ids are required and must be positive-integer strings,
+  and they must match the token's project, or the collector answers 401
+  `{"error":"Invalid credential"}`.
+- API-key lane: the block is optional, but if present `publisher_id` is
+  required. The collector does not cross-check it. A value that does not
+  match the quest is dropped silently downstream and leaves **no** qp-data
+  row, not even `NOT_TRIGGERED` (per team docs; inferred, consumer code not
+  read).
 
 Some rewards read the merchant or project from the event, not from the quest,
 and fail without the block; see "Event-side requirements" in
-[`rewards.md`](rewards.md). For those, send the exact quest values; do not
-omit the block.
+[`rewards.md`](rewards.md). The rule above already covers them.
 
 A quest with a `web3_item` or `web3_token` reward needs an `xsolla_id` entry
 whose user already has a wallet. Check it before submitting; see
@@ -120,8 +134,9 @@ took it from the project in the path.
 
 A 200 returns `{"idempotency_key": "...", "event_id": "<uuid>"}`.
 
-The scopeless `POST /api/v2/events` takes an API key or a Bearer token, not
-the project credential; see
+The scopeless `POST /api/v2/events` takes an API key or a Bearer token
+(Publisher Account JWT), not the project credential; this skill covers
+neither. See
 [`auth-and-environment.md`](auth-and-environment.md) for who may use those
 lanes. Never call `/api/v2/debug/trigger-outbox`.
 
