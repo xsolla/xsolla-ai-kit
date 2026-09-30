@@ -1,13 +1,13 @@
 # The quest document
 
-The production OpenAPI and deployed Quest Platform contract must be checked
-before writes. This reference does not replace the live contract.
+Use the versioned [Quest Platform publisher API contract](qp-api-contract.md)
+for production route discovery. Production OpenAPI is intentionally
+unavailable. Before writes, make a read-only request against the selected
+public gateway; this reference does not replace checking the live response.
 
-Every quest route in this file is a project-scoped route resolved from the live
-production OpenAPI. Below, `{scope}` stands for the selected production
-project scope. The route family, credential and scope rules are owned by
-[Project-scoped routes](auth-and-environment.md#project-scoped-routes) in the
-auth reference; if the family moves again, only that file changes. A 404
+Every quest route in this file is project-scoped. Below, `{scope}` stands for
+the selected production project scope. The route family, credential and scope
+rules are owned by the [versioned API contract](qp-api-contract.md). A 404
 `text/plain` body `Cannot GET ...` means a wrong or old route, not a quest or
 auth answer; follow [When a route is missing](auth-and-environment.md#when-a-route-is-missing).
 
@@ -73,7 +73,7 @@ Create and update return 200, not 201, with the whole quest. Empty `nodes`,
 that is not an error. An empty or absent optional field such as
 `activation_limits` or `description` may come back as `null` or be omitted
 from the response entirely; treat either as
-not set. A `null` `nodes` may be sent back on an `inactive` draft; send real
+not set. A `null` `nodes` may be sent back on an `inactive` quest; send real
 arrays when activating. An optional field missing from a response is not set;
 it is not `0` or an empty string. The list, `GET {scope}/quests`, returns
 `{page, limit, total, data[]}`. Query: `page` (default 1; `0` is read as 1),
@@ -90,31 +90,57 @@ covers only the route's project.
 `status`, `created_at`, `updated_at` and, only when set, `description`. It
 carries no merchant, account or workspace id, so do not read one from it.
 
-## Draft first, then activate
+## Publication after approval
 
-Because an `inactive` quest needs only four fields, build the quest as a draft,
-fill it in while talking to the developer, and activate it as a separate,
-explicitly confirmed step. Do not try to assemble a whole valid graph before
-the first call.
+Before asking for approval, resolve the project, reward, event meaning, complete
+graph, dates, and repeat limits. Inactive quests are an internal write step
+only; they are not a separate user-facing draft workflow and are excluded from
+the active public quest list.
 
-Activation is an ordinary edit: follow the Editing recipe below (fresh `GET`,
-full `PUT`) and change only `status` to `active`, `start_date`, `end_date`
-and, if the developer set one, `activation_limits`. Everything else goes back
-verbatim. For "no repeat limit", sending `activation_limits` as `null` and
-leaving it out are equivalent when the live contract treats the field as
-optional. `[]` may also mean no limit; follow the live contract if these
-representations differ (see Activation limits).
+One approval of the exact publisher proposal authorizes this ordered sequence:
+
+1. `POST` a complete inactive quest with the full graph and reward from the
+   approved proposal (required fields plus nodes and connections).
+2. `GET` the created quest by id and confirm scope, graph, and reward.
+3. Activate with the Editing recipe below (fresh `GET`, full `PUT`): set
+   `status` to `active`, apply the approved `start_date`, `end_date`, and
+   `activation_limits`. Everything else goes back verbatim. Do not ask a second
+   approval for this activation `PUT`.
+4. `GET` again and report active status, scope, reward, dates, limits, and
+   `version_id`. Do not claim publication complete until this read-back matches
+   the approved proposal.
+
+For "no repeat limit", sending `activation_limits` as `null` and leaving it out
+are equivalent when the live contract treats the field as optional. `[]` may
+also mean no limit; follow the live contract if these forms differ (see
+Activation limits).
 
 A relative duration ("run it for 7 days") counts from the `start_date`
 actually sent: `end_date` is that start plus 7x24 hours. If the start moves
-(for example refused as too old, then "now"), recompute the end and confirm
-both dates again before sending.
+(for example refused as too old, then "now"), recompute the end and include both
+dates in the proposal before asking for approval.
 
-"Start now" is stamped when the `PUT` is built, so no exact body can be shown
-ahead. Show the rule ("`start_date` = send time in UTC, `end_date` = start
-plus N") with an example computed from the current time, and take the yes for
+"Start now" is stamped when the activation `PUT` is built. Show the rule
+("`start_date` = send time in UTC, `end_date` = start plus N") with an example
+computed from the current time inside the proposal. The one approval covers
 both. If the send happens more than 10 minutes after the example was shown,
-show a fresh example and confirm again.
+show a fresh example and request approval again.
+
+## Ambiguous or partial writes
+
+After a timeout or 5xx on a quest `POST` or `PUT`, the write may have landed.
+Reconcile with bounded read-back from the route contract before any retry:
+
+- For a `PUT`, `GET` the quest by id and compare to the intended document.
+- For a `POST`, page the project list (`limit=100` from `page=1` until
+  `page*limit >= total`) for the quest's `name`. Continue or repair the same
+  quest when safe; never create a duplicate on timeout.
+- Show what you found. Ask before any resend that would create a second quest.
+- A 422 saved nothing: validation runs before anything is stored.
+
+Tell the publisher that publication did not finish, whether the quest is
+visible, and the concrete next step. Never report publication complete until
+the active quest and approved configuration read back.
 
 ## Nodes and connections
 
@@ -194,19 +220,21 @@ per-action statuses is in [`verification.md`](verification.md).
 `type` is `global` or `per_user`. `count` must be at least 1.
 `time_window.duration_unit`, when present, is `day`, `week` or `month`.
 If `activation_limits` is absent, `null` or empty, no repeat limit is
-configured: every qualifying event runs the actions. Before activation, show
-that behavior and require the developer to acknowledge it; do not silently
-assume a one-time or per-user limit.
+configured: every qualifying event runs the actions. Show that unlimited-repeat
+behavior, and the resulting payout impact, inside the publication proposal so
+the one approval covers it. Do not ask again for the activation `PUT` unless a
+material value changed after approval, in which case show the revised proposal
+and request approval again. Never silently assume a one-time or per-user limit.
 
 A limit without `time_window` counts over the quest's whole life: `per_user`
 `count: 1` means once per user, ever. A retest then needs a new user or a new
 quest. With `time_window`, the count resets each calendar day, week or month.
 A Web3 reward has its own repeat rule on top; see `rewards.md`.
 
-Before activation, also check that the intended trigger reaches an intended
-action and that no intended node is orphaned. The server validates references
-and cycles, but those checks alone do not prove that the quest is semantically
-usable.
+During the read-only work before the proposal, and before the first write,
+check that the intended trigger reaches an intended action and that no intended
+node is orphaned. The server validates references and cycles, but those checks
+alone do not prove that the quest is semantically usable.
 
 ## Editing
 
