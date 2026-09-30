@@ -26,21 +26,32 @@ different reason.
 
 ## Named item behavior
 
-When the developer names an item, such as `Fire Sword`:
+When the publisher requests a named item (`<requested item>`):
 
-- resolve the human-readable item in the production Publisher Account catalog;
-- validate the exact `(catalog project, SKU)` pair in the production minting
-  catalog;
-- preserve the catalog project returned by that lookup in the `web3_item`
-  body;
-- default quantity to one and show it in the concise preview;
-- if multiple items match, show only their names and ask which one to use;
-- if the item is missing or the minting catalog cannot resolve it, stop before
-  a write or activation.
+- resolve it only through an available supported reward capability (catalog or
+  type-specific provider read). This skill invents no MCP tool name, payload
+  schema, or endpoint for that capability, and never uses public web search for
+  catalog lookup. **STAGE DEMO ONLY:** when the
+  [stage demo gate](stage-demo.md#gate) passes, the capability is
+  [Named item resolution](stage-demo.md#named-item-resolution); on any other
+  run none is available;
+- when the capability is available and returns exactly one verified candidate,
+  use that candidate's catalog project and SKU in the `web3_item` body;
+- when it returns multiple plausible candidates, ask the publisher to choose
+  before any Quest Platform write;
+- when the capability is absent, unavailable, or returns zero candidates, stop
+  before any Quest Platform write with a concise actionable next step. The next
+  step is making a catalog capability available (or fixing the item name when
+  the lookup found nothing). Do not ask the publisher to type a catalog project
+  or SKU: a typed value is not a verified candidate;
+- default quantity to one and show it in the concise proposal;
+- never guess an SKU or silently substitute another reward type
+  (`inventory_item`, Store API grants, direct Backpack grants, ERC-20 claim
+  endpoints, or a provider-default catalog).
 
-Never guess an SKU, use a staging catalog or ask whether the destination is
-Backpack. If the lookup returns zero, explain that the production Web3 catalog
-could not resolve the item.
+Never ask whether the destination is Backpack. Preserve the catalog project
+returned by the verified candidate; never copy the Quest Platform project as
+the catalog project by default.
 
 ## `web3_item`
 
@@ -69,8 +80,18 @@ escalate rather than resend the event.
 
 ## `web3_token`
 
-An ERC-20 payout, only when the production token binding and runtime contract
-are confirmed:
+Production runs have ERC-20 payouts disabled: the production quest worker has
+no ERC-20 project configured (`qp-worker-generic-quest/environments/prod/configs/configs.yaml`,
+`WEB3_ERC20_PROJECT: ''`). A production quest with a `web3_token` action fails at
+payout. When a production request asks for a token payout, stop before any
+Quest Platform write, say that token payouts are not available for the project
+yet, and offer a named item reward instead. Do not ask the publisher for a token
+binding or decimals, because no production binding can make the payout work.
+Use the shape below only when the selected target has ERC-20 enabled (the
+`stage` selector today).
+
+An ERC-20 payout, only when the token binding and runtime contract for the
+selected target are confirmed:
 
 ```json
 {
@@ -85,22 +106,25 @@ are confirmed:
 ```
 
 `amount` must be a positive integer in the token's base units and within the
-production contract's limit. Confirm the token decimals and binding with the
-production owner. Never guess them.
+selected target's contract limit. Confirm the token decimals and binding with
+the owner of that target. Never guess them.
 
 ## Recipient
 
 Both Web3 reward types need an `xsolla_id` in the event and a production wallet
-for that user. Check the wallet before activation and again before the event.
-A missing wallet is a non-retryable blocker. Confirm the wallet source is the
-Backpack-compatible managed wallet required by the production integration.
+for that user. When a recipient is known, check the wallet during the
+read-only work before the proposal, or otherwise before any publication write.
+Check it again before the event. A missing wallet is a non-retryable blocker,
+not an approval step. Confirm the wallet source is the Backpack-compatible
+managed wallet required by the production integration.
 
-## Payout exposure before activation
+## Payout exposure in the proposal
 
-Show three bounds in the activation preview:
+Show three bounds in the publication proposal:
 
 - **Per event and user:** `web3_item` is `quantity × selected SKU count`;
-  for a named Fire Sword this is one NFT. `web3_token` is `amount`.
+  for a once-per-user named item at quantity one this is one NFT.
+  `web3_token` is `amount`.
 - **Per user for the quest:** apply the effective activation limit to the
   per-event quantity. For a confirmed once-per-user named item this is one NFT
   per user and quest; for quantity greater than one or multiple SKUs, multiply
@@ -110,8 +134,9 @@ Show three bounds in the activation preview:
   of eligible users. If the user population, event count, activation limit or
   date window is not finite, report the total as **unbounded**.
 
-Do not activate a repeatable Web3 reward without showing these calculations and
-getting explicit confirmation for any unbounded total.
+Do not publish a repeatable Web3 reward without showing these calculations in
+the proposal. An unbounded total needs an explicit acknowledgement in that
+same approval.
 
 ## Completion evidence
 
@@ -122,5 +147,5 @@ returned by the production read-back and never resend an event after an
 uncertain result.
 
 Attaching either reward type to an activated quest can create a real payout.
-Show the reward and its exposure and get explicit confirmation before
-activation.
+Show the reward and its exposure in the publication proposal; the one approval
+covers activation of that exact configuration.
