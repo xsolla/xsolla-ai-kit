@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "project": {
+    "merchant_id": 12345,
+    "project_id": 67890,
+    "environment": "sandbox"
+  },
+  "game": {
+    "name": "Realm Rivals",
+    "platforms": ["mobile", "pc"],
+    "lifecycle": "live-service"
+  },
+  "site": {
+    "name": "Realm Rivals Live Shop",
+    "slug": "realm-rivals-live-shop",
+    "preset": "live-service-events",
+    "primary_locale": "en-US",
+    "locales": ["en-US", "de-DE"]
+  },
+  "catalog": {
+    "groups": [
+      {
+        "external_id": "featured-bundles",
+        "type": "bundle",
+        "placement": "featured"
+      },
+      {
+        "external_id": "event-currency",
+        "type": "virtual_currency",
+        "placement": "primary"
+      }
+    ],
+    "featured_skus": []
+  },
+  "brand": {},
+  "content": {
+    "events": [
+      {
+        "name": "Season launch",
+        "status": "publisher-approved"
+      }
+    ]
+  },
+  "sources": [
+    {
+      "kind": "publisher_answers"
+    }
+  ]
+}

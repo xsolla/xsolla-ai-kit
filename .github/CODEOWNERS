@@ -28,6 +28,11 @@
 /skills/merchant-setup/                   @y-klochikhin @JavadManashti
 /skills/production/                       @y-klochikhin @JavadManashti
 
+# SB AI skills — the Shop Builder path
+/skills/shop-plan/                        @apyanzin-xsolla @JavadManashti
+/skills/shop-builder-assembly/            @apyanzin-xsolla @JavadManashti
+/skills/description-to-shop/              @apyanzin-xsolla @JavadManashti
+
 # TODO: `webhooks-impl` is owned by @e.chernykh, whose GitHub handle could not be
 # resolved and who is not yet a collaborator on this repo. Left to the default owner
 # rather than written as an invalid entry — an unresolvable handle disables routing

@@ -4,3 +4,11 @@
 .env
 
 .idea/
+
+# Python caches from skill script tests. Committed, they break the
+# byte-identical .cursor/skills check.
+__pycache__/
+*.py[cod]
+
+# Xsolla CLI local config (`xsolla config init`): merchant and project ids.
+.xsolla.json

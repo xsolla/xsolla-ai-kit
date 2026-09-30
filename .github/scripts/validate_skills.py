@@ -39,6 +39,13 @@ VALID_OWNERS = {
     "p.sanachev",
     "elnur_khalilov",
     "e.chernykh",
+    # SB AI skills (integration/sb-ai)
+    "a.pyanzin",
+    "k.shah",
+    "n.budhwani",
+    "r.addoumie",
+    "s.hossain",
+    "s.sadruddin",
 }
 
 VALID_DOMAINS = {
