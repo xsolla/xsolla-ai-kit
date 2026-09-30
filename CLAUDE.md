@@ -60,6 +60,13 @@ XSOLLA_PROJECT_API_KEY=<your API key>
 ```
 Setup by `merchant-setup` skill.
 
+For Quest Platform only, the optional `XSOLLA_QP_ENV` selector defaults to
+`production`; set it to `stage` only for an explicit controlled stage run. It
+is a service selector, not a credential. Keep it when updating merchant
+settings. Each API's authentication format is specific to that API; Quest
+Platform publisher Basic authentication is documented in
+`skills/quest-setup/references/qp-api-contract.md`.
+
 ---
 
 ## Key directories
