@@ -43,7 +43,8 @@ versioned contract and preflight before use.
    gateway, even after a failure. `XSOLLA_QP_PUBLIC_BASE_URL` is a shop
    setting; the agent never sends requests to it.
 4. **No secrets on screen.** Never open `.env` in a viewer, print the
-   environment, or paste a key into a command; see
+   environment, or paste a key into a command. To see which settings exist,
+   list only the names left of `=`. See
    [Credential](references/auth-and-environment.md#credential).
 5. **Never claim delivery.** Report what the read-backs show, nothing more.
 
