@@ -13,6 +13,13 @@ module", "catalog quests section".
 - **Existing shop**: when the developer asks to add or update quests in the
   shop, run the upsert algorithm below.
 
+An explicit request to integrate quests into an existing shop authorizes the
+source edits. Do not respond with a plan that asks for approval, an open
+question about language, or a request for the endpoint URL. Infer locale from
+the shop's existing localization setup and use the configured public API
+contract. Give a brief progress update only when the work takes long enough to
+need one, then make the edits and run the shop's available checks.
+
 Out of scope: user progress / completion UI, fabricating sample quests,
 changing AdTech APIs, Site Builder blocks.
 
@@ -130,6 +137,10 @@ the product list). Never under `<nav>`, header tabs, or a top-level tablist.
 or empty `alt` when decorative. Do not put the disclaimer on a noisy
 `aria-live` region.
 
+Use the shop's existing localization system for new presentation copy. Keep
+the fixed disclaimer, empty-state and neutral-error strings above exactly as
+specified. Do not ask the developer to choose a language.
+
 ## Visual treatment
 
 The module is part of the shop catalog, so render it as a deliberate catalog
@@ -204,27 +215,27 @@ send credentials (`credentials: 'include'`) on this fetch.
 
 ## Completion reply
 
-After the source changes and local build/check complete, use a short, structured
-reply:
+Do the work before reporting completion. After local checks, keep the reply
+short and structured. State only checks actually run. For example:
 
 ```markdown
 ## Summary
-Added the quests section to the shop catalog.
+Added a quests section to the shop catalog.
 
-## Web Shop
-- Location: inside the catalog, after the product sections.
-- Includes: quest cards, reward details, and loading, empty, and unavailable states.
+## What players see
+Quest cards and reward details, with loading, empty and unavailable states.
 
-## Result
-The shop build passed. The section fetches the project's public quest list without credentials.
+## Checks
+[Report the checks actually run and their results.]
 
-## Next step
-Run the shop locally and open the catalog to see the section.
+## Try it
+Run the shop locally using its documented development command.
 ```
 
-Report only checks actually run. Do not claim that live quests loaded or are
-visible unless the app itself has read and rendered them. A deployed endpoint
-is not a prerequisite for saying the storefront integration is complete.
+Use the shop's actual commands and results instead of copying the example
+counts. Do not claim that live quests loaded or are visible unless the app
+itself has read and rendered them. A deployed endpoint is not a prerequisite
+for saying the storefront integration is complete.
 
 ## Agent rules
 
