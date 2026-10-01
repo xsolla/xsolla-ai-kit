@@ -214,7 +214,6 @@ Added the quests section to the shop catalog.
 ## Web Shop
 - Location: inside the catalog, after the product sections.
 - Includes: quest cards, reward details, and loading, empty, and unavailable states.
-- Navigation: no new tab or route.
 
 ## Result
 The shop build passed. The section fetches the project's public quest list without credentials.
