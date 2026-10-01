@@ -1,4 +1,4 @@
-import { appendFile, mkdir, readFile } from 'node:fs/promises';
+import { appendFile, mkdir, readFile, writeFile } from 'node:fs/promises';
 import type { Claims, Grants } from './handler';
 
 const DIR = new URL('./data/', import.meta.url);
@@ -21,12 +21,20 @@ export const fileGrants: Grants = {
   },
 };
 
-/** Check-then-write: safe for a single process only. Multi-instance needs a unique constraint in a real datastore. */
+/**
+ * Check-then-write is not atomic: two concurrent deliveries of the same transaction can both claim it.
+ * A real deployment needs a unique constraint in its datastore.
+ */
 export const fileClaims: Claims = {
   async claim(txnId) {
     if ((await lines(CLAIMS)).includes(txnId)) return false;
     await mkdir(DIR, { recursive: true });
     await appendFile(CLAIMS, txnId + '\n');
     return true;
+  },
+  async release(txnId) {
+    const kept = (await lines(CLAIMS)).filter((l) => l !== txnId);
+    await mkdir(DIR, { recursive: true });
+    await writeFile(CLAIMS, kept.map((l) => l + '\n').join(''));
   },
 };

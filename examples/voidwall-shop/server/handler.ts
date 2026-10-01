@@ -4,7 +4,12 @@ export interface Grants {
   grant(userId: string, items: { sku: string; quantity: number }[], txnId: string): Promise<void>;
   revoke(userId: string, txnId: string): Promise<void>;
 }
-export interface Claims { claim(txnId: string): Promise<boolean> }
+export interface Claims {
+  /** True only the first time a transaction id is claimed. */
+  claim(txnId: string): Promise<boolean>;
+  /** Undo a claim whose grant failed, so the retry is not mistaken for a duplicate. */
+  release(txnId: string): Promise<void>;
+}
 export interface Result { status: number; body?: unknown }
 
 const err = (code: string, message: string): Result => ({ status: 400, body: { error: { code, message } } });
@@ -29,7 +34,12 @@ export function createHandler(deps: { secret: string; grants: Grants; claims: Cl
         if (!userId || !txnId) return err('INVALID_PARAMETER', 'Missing user or transaction id');
         if (!(await deps.claims.claim(txnId))) return ok; // duplicate delivery
         const items = (evt.items ?? []).map((i: any) => ({ sku: String(i.sku), quantity: Number(i.quantity ?? 1) }));
-        await deps.grants.grant(userId, items, txnId);
+        try {
+          await deps.grants.grant(userId, items, txnId);
+        } catch (e) {
+          await deps.claims.release(txnId); // otherwise Xsolla's retry hits the claim and the purchase is never granted
+          throw e;
+        }
         return ok;
       }
 

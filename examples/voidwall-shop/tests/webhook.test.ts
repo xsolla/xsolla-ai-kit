@@ -37,7 +37,10 @@ describe('handler', () => {
         async grant(userId, items, txn) { grants.push({ userId, items, txn }); },
         async revoke(_u, txn) { revokes.push(txn); },
       },
-      claims: { async claim(id) { if (seen.has(id)) return false; seen.add(id); return true; } },
+      claims: {
+        async claim(id) { if (seen.has(id)) return false; seen.add(id); return true; },
+        async release(id) { seen.delete(id); },
+      },
     });
   });
 
@@ -97,5 +100,25 @@ describe('handler', () => {
   test('order_paid without a user id is a permanent 400, not a retry-forever 5xx', async () => {
     const raw = Buffer.from(JSON.stringify({ notification_type: 'order_paid', items: [], order: { id: 1 } }));
     expect((await handle(raw, sign(raw))).status).toBe(400);
+  });
+
+  test('a failed grant releases the claim, so Xsolla\'s retry grants instead of being swallowed', async () => {
+    let failing = true;
+    const retryHandle = createHandler({
+      secret: SECRET,
+      grants: {
+        async grant(userId, items, txn) { if (failing) throw new Error('disk full'); grants.push({ userId, items, txn }); },
+        async revoke() {},
+      },
+      claims: {
+        async claim(id) { if (seen.has(id)) return false; seen.add(id); return true; },
+        async release(id) { seen.delete(id); },
+      },
+    });
+    const raw = fixture('order_paid');
+    await expect(retryHandle(raw, sign(raw))).rejects.toThrow('disk full');
+    failing = false;
+    expect((await retryHandle(raw, sign(raw))).status).toBe(204);
+    expect(grants).toHaveLength(1);
   });
 });

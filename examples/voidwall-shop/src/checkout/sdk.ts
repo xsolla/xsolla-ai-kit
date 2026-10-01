@@ -19,15 +19,34 @@ const SECURE_CSS = `
 `;
 
 let currentUi: CheckoutUi | null = null;
-let listenerRegistered = false;
+let unsubscribeActions: (() => void) | null = null;
+let initialized = false;
+let initGeneration = 0;
+
+function teardown() {
+  // The listener lives on the core iframe's message client, so it dies with the iframe: drop it explicitly
+  // and register a fresh one on the next open.
+  unsubscribeActions?.();
+  unsubscribeActions = null;
+  if (!initialized) return;
+  headlessCheckout.destroy(); // removes the core iframe; init() appends a new one each time
+  initialized = false;
+}
 
 export async function initCheckout(token: string, language: string, sandbox: boolean) {
+  const generation = ++initGeneration;
   await headlessCheckout.init({ sandbox, isWebview: false, language: asLang(language) });
+  initialized = true;
+  if (generation !== initGeneration) { teardown(); return; } // closed (or superseded) while init was in flight
   headlessCheckout.setSecureComponentStyles(SECURE_CSS);
   await headlessCheckout.setToken(token);
 }
 
-export const detachUi = () => { currentUi = null; };
+export function detachUi() {
+  currentUi = null;
+  initGeneration++;
+  teardown();
+}
 
 function fieldElement(f: Field): HTMLElement | null {
   let el: HTMLElement;
@@ -43,7 +62,7 @@ function fieldElement(f: Field): HTMLElement | null {
 
 async function renderFields(ui: CheckoutUi, fields: Field[]) {
   ui.setLoading(true);
-  ui.errorEl.textContent = '';
+  // Do not clear errorEl here: show_errors is often followed by show_fields, which would wipe the message.
   ui.fieldsEl.replaceChildren(); // replace, never append, on show_fields
   const mounted: Field[] = [];
   for (const f of fields) {
@@ -115,6 +134,7 @@ function dispatch(action: any) {
 
 export async function openMethod(ui: CheckoutUi, paymentMethodId: number, returnUrl: string) {
   currentUi = ui;
+  ui.errorEl.textContent = '';
   ui.statusEl.replaceChildren();
   ui.setLoading(true);
   // paymentMethodSettings is only valid for the card method (1380); other methods must omit it.
@@ -123,9 +143,8 @@ export async function openMethod(ui: CheckoutUi, paymentMethodId: number, return
       ? { paymentMethodId: 1380, returnUrl, paymentMethodSettings: { useSingleExpirationDateField: true } }
       : { paymentMethodId, returnUrl },
   );
-  if (!listenerRegistered) { // one listener for the whole page session
-    headlessCheckout.form.onNextAction(dispatch);
-    listenerRegistered = true;
+  if (!unsubscribeActions) { // exactly one listener per live SDK session
+    unsubscribeActions = headlessCheckout.form.onNextAction(dispatch);
   }
   await renderFields(ui, form.fields);
 }

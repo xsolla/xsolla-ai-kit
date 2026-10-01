@@ -3,6 +3,7 @@ import { Widget } from '@xsolla/login-sdk';
 import { config, loginConfigured } from '../config';
 import { LOGIN_LOCALE, type Locale } from '../i18n/locales';
 import { authHeaders, guestId } from '../cart/headers';
+import { completeLogin } from './completeLogin';
 import { exchangeCode, newState, parseCallback, refreshSession } from './oauth';
 import { STATE_KEY, loadSession, saveSession } from './session';
 import type { Session } from './types';
@@ -41,8 +42,7 @@ export function AuthProvider({ locale, onLogin, children }: { locale: Locale; on
         const code = parseCallback(location.search, sessionStorage.getItem(STATE_KEY));
         sessionStorage.removeItem(STATE_KEY);
         const s = await exchangeCode({ clientId: config.loginClientId, code, redirectUri: redirectUri() });
-        set(s);
-        await onLoginRef.current?.(s);
+        await completeLogin(s, { merge: async (x) => { await onLoginRef.current?.(x); }, setSession: set });
       } catch (e) {
         console.error(e);
       } finally {
