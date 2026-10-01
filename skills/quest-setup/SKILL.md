@@ -205,6 +205,9 @@ Keep the publisher experience business-first and progressive:
   those source edits; quest publication approval alone does not. For a new shop,
   ask whether to opt in. Keep the module inside catalog content, never in
   navigation, and follow [`references/web-shop-module.md`](references/web-shop-module.md).
+  Resolve the public URL from the known production host and the connected
+  project scope; never ask the developer to supply it or gate integration on a
+  live endpoint readiness check.
 - Keep merchant IDs, project IDs, auth lanes, headers, hostnames, service names,
   internal paths and workflow narration out of normal replies. Never reveal
   credentials. Use **Summary**, **Proposed setup**, **Need from you**,

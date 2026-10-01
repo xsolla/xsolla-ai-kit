@@ -9,6 +9,7 @@ import { Footer } from './components/Footer';
 import { Header } from './components/Header';
 import { Hero } from './components/Hero';
 import { Section } from './components/Section';
+import { XsollaQuestModule } from './components/XsollaQuestModule';
 import { CheckoutModal } from './checkout/CheckoutModal';
 import { InsufficientCoresError, buyWithCores, createCartPaymentToken, fetchCoresBalance } from './checkout/api';
 import { config } from './config';
@@ -87,6 +88,7 @@ export function Shop({ locale, onLocale }: { locale: Locale; onLocale: (l: Local
             </section>
           </>
         )}
+        <XsollaQuestModule />
       </main>
       <Footer locale={locale} />
       {drawer && (
