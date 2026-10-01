@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="560" viewBox="0 0 560 560">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="42%" r="75%">
+      <stop offset="0%" stop-color="#111824"/>
+      <stop offset="60%" stop-color="#0A0E14"/>
+      <stop offset="100%" stop-color="#05070B"/>
+    </radialGradient>
+    <linearGradient id="faceL" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#0E5E72"/>
+      <stop offset="100%" stop-color="#1FA8C6"/>
+    </linearGradient>
+    <linearGradient id="faceR" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#5DF0FF"/>
+      <stop offset="100%" stop-color="#28BEE0"/>
+    </linearGradient>
+    <linearGradient id="steel" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#3D4759"/>
+      <stop offset="50%" stop-color="#2A3242"/>
+      <stop offset="100%" stop-color="#1C2230"/>
+    </linearGradient>
+    <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#2A3242"/>
+      <stop offset="100%" stop-color="#141A26"/>
+    </linearGradient>
+    <radialGradient id="bloom" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#35E0FF" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#35E0FF" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="glow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="7" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="soft" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="16"/>
+    </filter>
+  </defs>
+
+  <!-- background -->
+  <rect width="560" height="560" fill="url(#bg)"/>
+
+  <!-- ambient core bloom -->
+  <ellipse cx="280" cy="250" rx="170" ry="200" fill="url(#bloom)"/>
+
+  <!-- hex tile platform (flat-top hexagon) -->
+  <g>
+    <polygon points="460,380 370,446 190,446 100,380 190,314 370,314" fill="url(#tile)" stroke="#35E0FF" stroke-opacity="0.85" stroke-width="3"/>
+    <polygon points="430,380 360,431 200,431 130,380 200,329 360,329" fill="none" stroke="#35E0FF" stroke-opacity="0.18" stroke-width="2"/>
+    <!-- reflection of core on tile -->
+    <ellipse cx="280" cy="372" rx="70" ry="14" fill="#35E0FF" opacity="0.30" filter="url(#soft)"/>
+  </g>
+
+  <!-- bottom steel cap (behind body base) -->
+  <rect x="214" y="356" width="132" height="46" rx="12" fill="url(#steel)" stroke="#0A0E14" stroke-width="2"/>
+  <line x1="226" y1="368" x2="334" y2="368" stroke="#35E0FF" stroke-opacity="0.7" stroke-width="2"/>
+
+  <!-- glowing prism body -->
+  <g filter="url(#glow)">
+    <!-- left facet -->
+    <polygon points="280,118 208,176 208,332 280,390" fill="url(#faceL)"/>
+    <!-- right facet -->
+    <polygon points="280,118 352,176 352,332 280,390" fill="url(#faceR)"/>
+    <!-- outline seams -->
+    <polygon points="280,118 352,176 352,332 280,390 208,332 208,176" fill="none" stroke="#EAF6FF" stroke-opacity="0.85" stroke-width="2.5"/>
+    <!-- horizontal energy seams -->
+    <line x1="208" y1="220" x2="352" y2="220" stroke="#EAF6FF" stroke-opacity="0.35" stroke-width="2"/>
+    <line x1="208" y1="288" x2="352" y2="288" stroke="#EAF6FF" stroke-opacity="0.35" stroke-width="2"/>
+    <!-- center plasma filament -->
+    <line x1="280" y1="126" x2="280" y2="382" stroke="#EAF6FF" stroke-width="6" stroke-linecap="round"/>
+    <line x1="280" y1="126" x2="280" y2="382" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round"/>
+  </g>
+
+  <!-- top steel cap (over body apex) -->
+  <rect x="222" y="104" width="116" height="44" rx="12" fill="url(#steel)" stroke="#0A0E14" stroke-width="2"/>
+  <line x1="234" y1="116" x2="326" y2="116" stroke="#35E0FF" stroke-opacity="0.7" stroke-width="2"/>
+  <circle cx="280" cy="126" r="5" fill="#EAF6FF"/>
+</svg>

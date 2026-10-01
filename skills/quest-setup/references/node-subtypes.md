@@ -1,8 +1,10 @@
 # Node subtypes
 
-The node shapes below are reference material. Confirm the production OpenAPI
-and runtime behavior before using an optional subtype. The OpenAPI may type
-`subtype` as a bare `string`; use only values accepted by the live contract.
+The node shapes below are reference material. Confirm them against
+[`qp-api-contract.md`](qp-api-contract.md) and the read-back of the saved quest
+before using an optional subtype. A published OpenAPI may type `subtype` as a
+bare `string`; use only values this skill's `references/` accept. On conflict,
+`references/` wins on node rules.
 
 ## Accepted
 
@@ -37,14 +39,18 @@ identifiers. Never treat an arbitrary URL as a harmless placeholder.
 
 - **Approved** means an endpoint the developer owns or controls and names
   explicitly. A public request bin receives the event too; use one only after
-  the developer acknowledges it.
+  the developer acknowledges it while building the publication proposal (not as
+  a separate post-approval gate).
 - Never point it at a private platform service or the minting service. A
   webhook cannot pay out and carries no credentials. To pay out, use an
   `issue_reward` Web3 reward with the values listed in `rewards.md`.
-- A reserved host such as `https://e2e-sink.invalid/hook` is acceptable only as
-  a labelled placeholder in an inactive draft. Replace it before activation.
-- The webhook fires only after activation. Warn when it enters the draft and
-  confirm again before activation.
+- A reserved host such as `https://e2e-sink.invalid/hook` is never written and
+  must never appear in a publication proposal. Replace it with the developer's
+  approved endpoint before showing the proposal.
+- The webhook fires only after the quest is active. State that timing and the
+  destination in the publication proposal so the one approval covers it. Do not
+  ask again before activation unless the endpoint changed after approval, in
+  which case show the revised proposal and request approval again.
 
 An error response, timeout or unresolvable host fails the action. The runtime
 may retry it, so the endpoint may receive the same event more than once.
@@ -107,8 +113,8 @@ Two optional read-only checks are useful:
 
 - page through the list before a create and report exact or near-duplicate
   names;
-- before activation, check active quests in the selected project for the same
-  trigger name when the event is generic.
+- during the read-only checks before the proposal, check active quests in the
+  selected project for the same trigger name when the event is generic.
 
 A clean project-level result is not proof that no other scope has a collision.
 
