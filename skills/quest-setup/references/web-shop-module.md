@@ -202,6 +202,31 @@ send credentials (`credentials: 'include'`) on this fetch.
    the section. The module handles fetch errors with its neutral error state.
    Do not ask the developer for a URL.
 
+## Completion reply
+
+After the source changes and local build/check complete, use a short, structured
+reply:
+
+```markdown
+## Summary
+Added the quests section to the shop catalog.
+
+## Web Shop
+- Location: inside the catalog, after the product sections.
+- Includes: quest cards, reward details, and loading, empty, and unavailable states.
+- Navigation: no new tab or route.
+
+## Result
+The shop build passed. The section fetches the project's public quest list without credentials.
+
+## Next step
+Run the shop locally and open the catalog to see the section.
+```
+
+Report only checks actually run. Do not claim that live quests loaded or are
+visible unless the app itself has read and rendered them. A deployed endpoint
+is not a prerequisite for saying the storefront integration is complete.
+
 ## Agent rules
 
 - No raw `curl` commands in this recipe or in skill responses for this

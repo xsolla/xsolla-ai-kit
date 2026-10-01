@@ -37,23 +37,39 @@ updating the marked root when both are present. Do not require React.
 
 ## Config and IDs
 
-Reuse shop config already present from shop-setup Phase 0 / `.env`:
+Reuse the shop's project ID and the merchant/project scope already resolved by
+`quest-setup`. The public API host is selected automatically from the active
+Quest Platform environment: production by default, stage only when the
+developer explicitly selected a controlled stage run. The storefront URL is
+formed from that host and scope; do not ask the developer to find or provide a
+URL.
+
+For browser code, expose only the resolved IDs and public URL as build-time
+configuration. Prefer the shop's existing variable naming (`VITE_*` for Vite,
+`NEXT_PUBLIC_*` for Next.js). The full URL may be stored as an override only
+when the project already has a URL override setting or the developer supplied
+an exact URL.
 
 | Variable | Role |
 |---|---|
 | `XSOLLA_MERCHANT_ID` | Path `merchant_id` |
 | `XSOLLA_PROJECT_ID` | Path `project_id` |
-| `XSOLLA_QP_PUBLIC_BASE_URL` | **Storefront-only** public base for the browser GET |
+| `XSOLLA_QP_PUBLIC_BASE_URL` | Optional explicit public-base override; production host is the default |
 
 `XSOLLA_QP_PUBLIC_BASE_URL` is **not** a substitute for the agent CRUD host
 table in [`auth-and-environment.md`](auth-and-environment.md). Agents keep
-using that table for qp-server writes; the storefront reads this env (or
-`import.meta.env` / build-time public config) only for the public list.
+using that table for qp-server writes. The storefront uses the selected public
+host and resolved merchant/project IDs only for the public list.
 
 **Hard stops:**
 
-- If `XSOLLA_QP_PUBLIC_BASE_URL` is missing, stop. Do not invent a host.
-- Do not guess a production host.
+- Use `https://quests-platform.xsolla.com` when the environment selector is
+  absent or `production`; use `https://quests-stage.xsolla.com` only for an
+  explicitly selected controlled stage run. A configured public-base override
+  takes precedence after validation.
+- Resolve merchant and project IDs from the connected Quest Platform project
+  and shop configuration. If scope cannot be resolved, ask which project to
+  use; never ask the developer to find or provide the API URL.
 - Do **not** set the storefront public base to
   `https://qp-server.nl-k8s-stage.srv.local` (or any `*.srv.local`) for a
   **publicly reachable** shop. That stage host is corporate/VPN-only.
@@ -62,9 +78,10 @@ using that table for qp-server writes; the storefront reads this env (or
 
 ## Wire contract (consume verbatim)
 
-`GET {base}/api/v2/public/merchants/{merchant_id}/projects/{project_id}/quests?page=1&limit=10`
+`GET {base}/api/v2/public/merchants/{merchant_id}/projects/{project_id}/quests?page=1&limit=100`
 
-No auth header. Build `{base}` only from `XSOLLA_QP_PUBLIC_BASE_URL`.
+No auth header. The maximum page size is 100. Build `{base}` from the selected
+environment default or an existing validated override.
 
 **200 envelope:** `page`, `limit`, `total`, `data[]` with:
 
@@ -153,9 +170,10 @@ send credentials (`credentials: 'include'`) on this fetch.
 
 ## Idempotent upsert algorithm
 
-1. Read `.env` / shop config for `XSOLLA_MERCHANT_ID`, `XSOLLA_PROJECT_ID`,
-   and required `XSOLLA_QP_PUBLIC_BASE_URL`. Stop if base is missing or is a
-   public-shop-unsafe `*.srv.local` host (see Hard stops).
+1. Resolve merchant and project IDs from the connected Quest Platform scope
+   and shop config. Select the public base automatically (production by
+   default; stage only for an explicit controlled stage run). Stop only if the
+   scope is unresolved or an explicit override is invalid; do not ask for a URL.
 2. Confirm opt-in for new shops; for existing shops proceed when the developer
    asks to add/update the quest module.
 3. **Preflight marker count** across the shop tree for
@@ -178,6 +196,36 @@ send credentials (`credentials: 'include'`) on this fetch.
    write, tree-wide marker count and component-file count must each be exactly
    `1`, bootstrap import/mount counts must each be exactly `1`, and no quest
    link may be under `nav` or `role="tab"`.
+7. Confirm the source integration is complete after the local validation
+   appropriate to the shop stack. Do not probe the public endpoint for
+   readiness or make a live endpoint response a prerequisite for integrating
+   the section. The module handles fetch errors with its neutral error state.
+   Do not ask the developer for a URL.
+
+## Completion reply
+
+After the source changes and local build/check complete, use a short, structured
+reply:
+
+```markdown
+## Summary
+Added the quests section to the shop catalog.
+
+## Web Shop
+- Location: inside the catalog, after the product sections.
+- Includes: quest cards, reward details, and loading, empty, and unavailable states.
+- Navigation: no new tab or route.
+
+## Result
+The shop build passed. The section fetches the project's public quest list without credentials.
+
+## Next step
+Run the shop locally and open the catalog to see the section.
+```
+
+Report only checks actually run. Do not claim that live quests loaded or are
+visible unless the app itself has read and rendered them. A deployed endpoint
+is not a prerequisite for saying the storefront integration is complete.
 
 ## Agent rules
 
