@@ -26,14 +26,35 @@ route is not replaced with a guessed path or a route from another target.
 
 ## Minting service
 
-Use read-only catalog and wallet operations supplied by the production Web3
-integration. Never call a claim endpoint directly. Rewards are issued only by
-an activated quest.
+Use the production Web3 minting service for read-only catalog validation at
+`https://web3-minting-service.gcp-k8s-web3-prod.srv.local`. Its `GET /skus`
+and `GET /metadata/sku/{sku}` routes are public read operations and do not use
+the Quest Platform project API key. Never call a claim endpoint directly.
+Rewards are issued only by an activated quest.
 
-For a named item, resolve the human-readable item in the production Publisher
-Account catalog, then validate the exact `(catalog_project, sku)` pair in the
-production minting catalog. Preserve the catalog project returned with the
-item in the `web3_item` body. A zero or ambiguous result stops the flow.
+For candidate discovery, page through `GET /skus?project={project}&limit=100&offset={offset}`
+using the already-resolved publisher project as the lookup scope, then match
+the requested name against the returned item names. This project value scopes
+the read only; do not use it as the reward's catalog project unless the minting
+service returns it as `projectId`. The optional
+`search` parameter filters only the fetched page, so do not use it as an
+exhaustive catalog search. Increase `offset` by 100 and continue until a page
+contains no items. The response's `projectId` is the catalog project to carry
+forward. Validate each plausible candidate with
+`GET /metadata/sku/{sku}?project={projectId}` and keep only candidates whose
+metadata name matches the catalog name. Read the complete catalog before
+deciding that a name has zero or one matches. Do not issue writes to this
+service.
+
+The stage host is
+`https://web3-minting-service.gcp-k8s-web3-stage.srv.local` and may be used
+only when the explicit [stage demo gate](stage-demo.md#gate) passes. A
+production run never falls back to stage, or vice versa.
+
+For a named item, resolve it through the minting catalog reads above. Preserve
+the `projectId` returned with the verified item and validate that exact
+`(catalog_project, sku)` pair in the metadata read before using it in the
+`web3_item` body. A zero or ambiguous result stops the flow.
 
 ## Credential
 

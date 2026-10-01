@@ -29,24 +29,23 @@ different reason.
 When the publisher requests a named item (`<requested item>`):
 
 - resolve it only through an available supported reward capability (catalog or
-  type-specific provider read). This skill invents no MCP tool name, payload
-  schema, or endpoint for that capability, and never uses public web search for
-  catalog lookup. **STAGE DEMO ONLY:** when the
-  [stage demo gate](stage-demo.md#gate) passes, the capability is
-  [Named item resolution](stage-demo.md#named-item-resolution); on any other
-  run none is available;
+  type-specific provider read). For production `web3_item`, the supported
+  capability is the read-only minting catalog lookup documented in
+  [auth and environment](auth-and-environment.md#minting-service). Page through
+  the catalog, match the requested name, and validate candidate metadata before
+  using it. Never use public web search for catalog lookup. **STAGE DEMO ONLY:**
+  when the [stage demo gate](stage-demo.md#gate) passes, use the stage resolver
+  described there; otherwise use production only;
 - when the capability is available and returns exactly one verified candidate,
   use that candidate's catalog project and SKU in the `web3_item` body;
 - when it returns multiple plausible candidates, ask the publisher to choose
   before any Quest Platform write;
-- when the capability is absent, unavailable, or returns zero candidates, stop
-  before any Quest Platform write with a concise actionable next step. The next
-  step is making a catalog capability available (or fixing the item name when
-  the lookup found nothing). Do not ask the publisher to type a catalog project
-  or SKU: a typed value is not a verified candidate. When no capability is
-  available, the reply says only that the item can't be looked up in their
-  catalog yet, that nothing was created, and that the next step is connecting
-  their item catalog; it asks for nothing else;
+- if the service is unavailable or rejects the read, stop before any Quest
+  Platform write and report that the item lookup service could not be reached;
+  do not say the publisher's catalog needs connecting. If a completed search
+  returns zero candidates, say the item was not found and suggest checking its
+  exact name or whether it is enabled. Do not ask the publisher to type a
+  catalog project or SKU: a typed value is not a verified candidate;
 - default quantity to one and show it in the concise proposal;
 - never guess an SKU or silently substitute another reward type
   (`inventory_item`, Store API grants, direct Backpack grants, ERC-20 claim

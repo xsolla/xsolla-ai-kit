@@ -74,10 +74,12 @@ versioned contract and preflight before use.
    from that response; if you lost it, find it by name in the list. Never
    `POST` again for the same proposal.
 9. **Never ask for a SKU or catalog project.** A typed value is not a
-   verified item. When a named item cannot be looked up (see
-   [Named item behavior](references/rewards.md#named-item-behavior)), say
-   only that it can't be looked up in their catalog yet, that nothing was
-   created, and that the next step is connecting their item catalog.
+   verified item. For production Web3 items, use the read-only minting
+   catalog lookup in
+   [Named item behavior](references/rewards.md#named-item-behavior). If the
+   lookup service is unavailable, say so without implying the publisher's
+   catalog is disconnected. If a completed lookup finds no match, report that
+   result and suggest checking the item name or whether it is enabled.
 
 ## When to use
 
