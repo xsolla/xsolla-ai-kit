@@ -31,7 +31,7 @@ A custom headless web shop for *Voidwall* (Meridian Foundry), built by following
 
 - Input: `catalog.json` derived from CONTEXT.md (6 groups, Cores + Scrap, 5 packs, 11 skins, 5 gear items, 3 boosters, 4 bundles, Frontier Pass, Warden's Charter).
 - Idempotent upsert by SKU via Admin API. `--dry-run` prints the plan and writes nothing. Dry run is the default.
-- Uploads images from the assets folder to the Xsolla CDN and sets `image_url`.
+- Does not upload images. The storefront serves item art from its own `public/assets/` (copied from the asset pack, keyed by SKU). Setting catalog `image_url` (used by hosted Pay Station) is a follow-up once the shop has a public URL.
 - Reads the API key from `.env`; the key never reaches browser code.
 - Sets attributes `rarity` and `turret_class` on skins, consumable flag and daily limits on boosters, 1-per-user limits on Starter and Founder's, and 5-locale names and descriptions.
 - Regional prices on real-money SKUs (USD, EUR, GBP, BRL, JPY); tiers approximate.
