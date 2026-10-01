@@ -47,11 +47,10 @@ Entry conditions:
 ## Prerequisites
 
 - Confirmed merchant ID and project ID — see `merchant-setup`.
-- Publisher login through `xsolla auth login`. Portal commands authenticate with the
-  Publisher Account session, not the project API key: the CLI derives the session from
-  that login. `XSOLLA_SHOPBUILDER_SESSION` is the kit's one name for that session and
-  overrides it when set; never ask the partner to copy a token out of the browser.
-  Treat `401/403` as `needs_access`, never as a capability block.
+- Publisher login through `xsolla auth login` — the only source of the session. Portal
+  commands authenticate with that Publisher Account session, not the project API key.
+  Never pass a session or token by hand, and never ask the partner to copy one out of
+  the browser. Treat `401/403` as `needs_access`, never as a capability block.
 - Shop Builder enabled for the target project.
 - Approved content and brand assets. Never invent or reuse partner identifiers,
   credentials, content, prices, assets, or URLs.
@@ -93,10 +92,10 @@ Verify (read-back) → Human review → Handoff
    landing `_id`, page IDs, and block IDs before any mutation — block and theme calls
    are keyed by landing `_id`, not the domain. Never recreate a discovered existing
    entity; resume at the first incomplete item.
-4. **Back up** — before the first write to an existing site, export it:
-   `get-landing`, `get-structure`, `get-localization`, `list-assets`, and
-   `list-versions` for the slug, saved to a new local directory. A failed export stops
-   the run before any write.
+4. **Back up** — before the first write to an existing site (an update or a resume),
+   export it: `get-landing`, `get-structure`, `get-localization`, and `list-assets` for
+   the slug, saved to a new local directory. A failed export stops the run before any
+   write. A brand-new site has nothing to back up.
 5. **Plan and confirm** — show the ordered change groups (sections, pages, blocks,
    theme, copy, catalog links) and the exact removals, then wait for an explicit yes.
    Earlier permission to "set up my portal" is not confirmation of a plan. Re-confirm
@@ -106,9 +105,11 @@ Verify (read-back) → Human review → Handoff
    already initialized — resume, don't recreate), then add block-set templates with its
    `template` command. Everything else uses CLI commands: `add-page`, `add-block`,
    `move-block`, `update-block` (block, page, and site theme patches), `upload-asset`,
-   `add-language`, `update-localization`, `update-many-localization`. Apply one change
-   group at a time across Home, News, Rewards, Web Shop, Community, and optional
-   Launcher. Endpoint details: [references/portal-api.md](references/portal-api.md).
+   `add-language`, `update-localization`, `update-many-localization`. A change with no
+   CLI command and no script is `needs_human`: say what to do in Publisher Account and
+   record it. Apply one change group at a time across Home, News, Rewards, Web Shop,
+   Community, and optional Launcher. Every call and how it is made:
+   [references/portal-api.md](references/portal-api.md).
    Delegate the surrounding products rather than duplicating their recipes:
    `merchant-setup` for merchant/project/API key, `catalog-design` for catalog and
    pricing, `login-setup` for Login, `headless-checkout-integration` for checkout.
@@ -140,10 +141,11 @@ Two references, both loaded before issuing changes:
 
 ## Hard stops
 
-The agent never publishes, never runs the readiness check (`/check`,
-`verify-website`), never enables or generates a preview, never applies a saved version,
-and never switches the project to production. It never writes before an explicit
-confirmation of the plan, and never targets a partner's live project.
+The agent never publishes (sites, pages, news articles, or Login widget settings), never
+runs the readiness check (`/check`, `verify-website`), never enables or generates a
+preview, never reads or applies saved versions, never deletes a site, never attaches a
+domain, and never switches the project to production. It never writes before an
+explicit confirmation of the plan, and never targets a partner's live project.
 
 ## Common pitfalls
 

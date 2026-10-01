@@ -6,7 +6,6 @@ from __future__ import annotations
 import argparse
 import http.cookiejar
 import json
-import os
 import subprocess
 import sys
 import urllib.error
@@ -17,7 +16,6 @@ from typing import Callable, Mapping
 API_BASE_URL = "https://sitebuilder.xsolla.com/api"
 SESSION_URL = "https://api.xsolla.com/merchant/xsolla_login/session"
 PUBLISHER_URL = "https://publisher.xsolla.com"
-SESSION_ENV = "XSOLLA_SHOPBUILDER_SESSION"
 SESSION_COOKIES = ("pa-v4-token", "ps2[user_session]")
 LANDING_TYPES = ("sellingpage", "gplay", "steam", "store", "topup", "rfppage")
 TEMPLATES = ("home", "store", "news")
@@ -104,13 +102,9 @@ def bootstrap_cookies(token: str) -> dict[str, str]:
 def session_header(
     merchant_id: int,
     project_id: int,
-    env: Mapping[str, str] = os.environ,
     get_token: Callable[[], str] = publisher_token,
     get_cookies: Callable[[str], dict[str, str]] = bootstrap_cookies,
 ) -> str:
-    configured = env.get(SESSION_ENV, "").strip()
-    if configured:
-        return configured
     return cookie_header(get_cookies(get_token()), merchant_id, project_id)
 
 

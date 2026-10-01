@@ -4,6 +4,7 @@ import contextlib
 import importlib.util
 import io
 import json
+import os
 import unittest
 import urllib.error
 from pathlib import Path
@@ -97,18 +98,19 @@ class BuildRequestTest(unittest.TestCase):
 
 
 class SessionTest(unittest.TestCase):
-    def test_configured_session_wins_without_login(self):
-        header = portal_template.session_header(
-            11, 22,
-            env={"XSOLLA_SHOPBUILDER_SESSION": " pa-v4-token=abc "},
-            get_token=mock.Mock(side_effect=AssertionError("must not log in")),
-        )
-        self.assertEqual(header, "pa-v4-token=abc")
+    def test_a_session_passed_by_hand_is_ignored(self):
+        get_cookies = mock.Mock(return_value={"pa-v4-token": "from-login"})
+        with mock.patch.dict(os.environ, {"XSOLLA_SHOPBUILDER_SESSION": "pa-v4-token=by-hand"}):
+            header = portal_template.session_header(
+                11, 22, get_token=lambda: "jwt", get_cookies=get_cookies
+            )
+        self.assertIn("pa-v4-token=from-login", header)
+        self.assertNotIn("by-hand", header)
 
     def test_bootstraps_from_cli_login(self):
         get_cookies = mock.Mock(return_value={"pa-v4-token": "abc"})
         header = portal_template.session_header(
-            11, 22, env={}, get_token=lambda: "jwt", get_cookies=get_cookies
+            11, 22, get_token=lambda: "jwt", get_cookies=get_cookies
         )
         get_cookies.assert_called_once_with("jwt")
         self.assertEqual(
