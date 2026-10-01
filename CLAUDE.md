@@ -23,7 +23,7 @@ Skills call **Xsolla REST APIs directly**. The CLI (`xsolla/xsolla-cli`) is an o
 | `login-styling`                 | Applies a custom visual style / theme / brand to the Login UI (pairs with `login-setup`) |
 | `headless-checkout-integration` | Payments via Headless Checkout                                                           |
 | `webhooks-impl`                 | Generates webhook handler code for order/payment events                                  |
-| `quest-setup`                   | Creates and manages Quest Platform quests, events and rewards                            |
+| `quest-setup`                   | Creates and manages Quest Platform quests, events, rewards and optional Web Shop quest sections |
 | `production`                    | Sandbox → live: contract, flip flags, deploy, developer live-payment checklist           |
 
 ---
@@ -47,6 +47,9 @@ Go live / leave sandbox
 
 Create a quest that rewards players
 → triggers: quest-setup
+
+Show quests in my Web Shop
+→ triggers: quest-setup
 ```
 
 ---
@@ -59,6 +62,13 @@ XSOLLA_PROJECT_ID=<your project ID>
 XSOLLA_PROJECT_API_KEY=<your API key>
 ```
 Setup by `merchant-setup` skill.
+
+For Quest Platform only, the optional `XSOLLA_QP_ENV` selector defaults to
+`production`; set it to `stage` only for an explicit controlled stage run. It
+is a service selector, not a credential. Keep it when updating merchant
+settings. Each API's authentication format is specific to that API; Quest
+Platform publisher Basic authentication is documented in
+`skills/quest-setup/references/qp-api-contract.md`.
 
 ---
 
