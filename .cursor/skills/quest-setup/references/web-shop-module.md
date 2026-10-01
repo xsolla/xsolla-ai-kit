@@ -44,12 +44,19 @@ updating the marked root when both are present. Do not require React.
 
 ## Config and IDs
 
-Reuse the shop's project ID and the merchant/project scope already resolved by
-`quest-setup`. The public API host is selected automatically from the active
-Quest Platform environment: production by default, stage only when the
-developer explicitly selected a controlled stage run. The storefront URL is
-formed from that host and scope; do not ask the developer to find or provide a
-URL.
+Use the merchant/project pair resolved from the connected Quest Platform
+project. Do not assume the shop's Store catalog project ID is the Quest
+Platform project ID; they can differ. Reuse the shop's merchant ID only after
+confirming it matches the resolved Quest Platform merchant. Keep the Store
+catalog project setting intact, and give the Quest Platform project its own
+browser-safe setting when it differs. Never copy IDs from an example or infer
+one ID from the other.
+
+The public API host is selected automatically from the active Quest Platform
+environment: production by default, stage only when the developer explicitly
+selected a controlled stage run. The storefront URL is formed from that host
+and the resolved Quest Platform scope; do not ask the developer to find or
+provide a URL.
 
 For browser code, expose only the resolved IDs and public URL as build-time
 configuration. Prefer the shop's existing variable naming (`VITE_*` for Vite,
@@ -59,9 +66,16 @@ an exact URL.
 
 | Variable | Role |
 |---|---|
-| `XSOLLA_MERCHANT_ID` | Path `merchant_id` |
-| `XSOLLA_PROJECT_ID` | Path `project_id` |
+| `XSOLLA_QP_MERCHANT_ID` | Path `merchant_id` |
+| `XSOLLA_QP_PROJECT_ID` | Path `project_id`; separate from the Store catalog project when they differ |
 | `XSOLLA_QP_PUBLIC_BASE_URL` | Optional explicit public-base override; production host is the default |
+
+For browser builds, use the shop's public-variable convention, for example
+`VITE_XSOLLA_QP_MERCHANT_ID` and `VITE_XSOLLA_QP_PROJECT_ID` in Vite, or
+`NEXT_PUBLIC_XSOLLA_QP_MERCHANT_ID` and
+`NEXT_PUBLIC_XSOLLA_QP_PROJECT_ID` in Next.js. Keep existing Store variables
+such as `VITE_XSOLLA_PROJECT_ID` for catalog and checkout calls. Never expose
+the Quest Platform API key in browser configuration.
 
 `XSOLLA_QP_PUBLIC_BASE_URL` is **not** a substitute for the agent CRUD host
 table in [`auth-and-environment.md`](auth-and-environment.md). Agents keep
@@ -74,9 +88,12 @@ host and resolved merchant/project IDs only for the public list.
   absent or `production`; use `https://quests-stage.xsolla.com` only for an
   explicitly selected controlled stage run. A configured public-base override
   takes precedence after validation.
-- Resolve merchant and project IDs from the connected Quest Platform project
-  and shop configuration. If scope cannot be resolved, ask which project to
-  use; never ask the developer to find or provide the API URL.
+- Resolve the Quest Platform merchant/project pair from the connected Quest
+  Platform scope. Compare it with the shop's existing merchant and Store
+  project settings; use the Store project setting for quests only if it is
+  confirmed to be the same Quest Platform project. If the Quest Platform scope
+  cannot be resolved, ask which connected Quest Platform project to use; never
+  ask the developer to find or provide the API URL.
 - Do **not** set the storefront public base to
   `https://qp-server.nl-k8s-stage.srv.local` (or any `*.srv.local`) for a
   **publicly reachable** shop. That stage host is corporate/VPN-only.
@@ -102,8 +119,13 @@ environment default or an existing validated override.
 | `rewards[].quantity` | Required int |
 | `rewards[].type` | Required string |
 
-Empty success: `data: []`. Errors: 404 / 422 / network / CORS → hide the
-module or show the neutral message; **catalog must keep working**. Never
+Empty success is a 200 response with `data: []`. Do not describe a failed
+request as an empty quest list. A JSON 404 means the merchant/project pair is
+unknown, not onboarded, or mismatched; re-check the resolved pair and active
+environment without guessing. Plain-text `Cannot GET <path>` means the route
+is unavailable at that host or the path is wrong. A 422, network, or CORS
+failure is also unavailable, not empty. Show the neutral unavailable message
+for fetch or missing-configuration errors, and keep the catalog working. Never
 fabricate quests or rewards.
 
 ## Markup shape
@@ -181,10 +203,14 @@ send credentials (`credentials: 'include'`) on this fetch.
 
 ## Idempotent upsert algorithm
 
-1. Resolve merchant and project IDs from the connected Quest Platform scope
-   and shop config. Select the public base automatically (production by
-   default; stage only for an explicit controlled stage run). Stop only if the
-   scope is unresolved or an explicit override is invalid; do not ask for a URL.
+1. Resolve the Quest Platform merchant/project pair from the connected scope.
+   Compare it with shop settings, keeping the Store catalog project ID
+   separate unless it is confirmed to be the same project. Use dedicated
+   browser-safe Quest Platform settings when needed. If either ID is unresolved,
+   stop and ask which connected Quest Platform project to use; never substitute
+   sample IDs or silently reuse the catalog ID. Select the public base
+   automatically (production by default; stage only for an explicit controlled
+   stage run). Do not ask for a URL.
 2. Confirm opt-in for new shops; for existing shops proceed when the developer
    asks to add/update the quest module.
 3. **Preflight marker count** across the shop tree for
@@ -201,17 +227,26 @@ send credentials (`credentials: 'include'`) on this fetch.
    the root carries the marker, then ensure **exactly one** catalog mount.
 5. Before writing, count imports and calls for the module in the bootstrap:
    if either count is greater than `1`, stop and ask. If one exists, update it
-   in place with the current module path, IDs, and base URL. If none exists,
-   add one import and one mount. Preserve unrelated bootstrap code.
+   in place with the current module path, resolved Quest Platform IDs, and base
+   URL. Check the active local/build configuration for the required public IDs;
+   do not mistake a sample or `.env.example` value for a configured value. If a
+   required value is missing, use the resolved scope to configure the shop's
+   local environment file with browser-safe IDs only, and restart the dev
+   server so Vite or the equivalent reloads build-time variables. If the scope
+   cannot be resolved, stop and ask instead of writing a placeholder. If none
+   exists, add one import and one mount. Preserve unrelated bootstrap code.
 6. Re-run: second pass must be a no-op or overwrite the same targets. After
    write, tree-wide marker count and component-file count must each be exactly
    `1`, bootstrap import/mount counts must each be exactly `1`, and no quest
    link may be under `nav` or `role="tab"`.
 7. Confirm the source integration is complete after the local validation
-   appropriate to the shop stack. Do not probe the public endpoint for
-   readiness or make a live endpoint response a prerequisite for integrating
-   the section. The module handles fetch errors with its neutral error state.
-   Do not ask the developer for a URL.
+   appropriate to the shop stack. When the app is running, confirm the marked
+   section renders even when the request is empty or unavailable; missing IDs
+   must not silently make the requested module disappear. Do not probe the
+   public endpoint for readiness or make a live endpoint response a prerequisite
+   for integrating the section. If live data is specifically being diagnosed,
+   distinguish HTTP 200 with `data: []` from route, scope, network, and CORS
+   failures as described above. Do not ask the developer for a URL.
 
 ## Completion reply
 
