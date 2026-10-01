@@ -36,15 +36,18 @@ For candidate discovery, page through `GET /skus?project={project}&limit=100&off
 using the already-resolved publisher project as the lookup scope, then match
 the requested name against the returned item names. This project value scopes
 the read only; do not use it as the reward's catalog project unless the minting
-service returns it as `projectId`. The optional
-`search` parameter filters only the fetched page, so do not use it as an
-exhaustive catalog search. Increase `offset` by 100 and continue until a page
-contains no items. The response's `projectId` is the catalog project to carry
-forward. Validate each plausible candidate with
-`GET /metadata/sku/{sku}?project={projectId}` and keep only candidates whose
-metadata name matches the catalog name. Read the complete catalog before
-deciding that a name has zero or one matches. Do not issue writes to this
-service.
+service returns it as `projectId`. Require HTTP 200 and a valid JSON object
+with a `projectId` string, numeric `count`, and `items` array on every page.
+Abort the lookup on any HTTP error, malformed response, or project mismatch;
+never treat an error as an empty page. Continue with offsets 0, 100, 200, and
+so on until a valid page contains no items. The optional `search` parameter
+reports `searchScope: "this page only"` and is not an exhaustive catalog
+search, so do not use it to prove uniqueness or absence. The response's
+`projectId` is the catalog project to carry forward. Validate each plausible
+candidate with `GET /metadata/sku/{sku}?project={projectId}`; require HTTP 200
+and a JSON `name` matching the catalog name. Abort on any failed or malformed
+metadata read. Read the complete catalog before deciding that a name has zero
+or one matches. Do not issue writes to this service.
 
 The stage host is
 `https://web3-minting-service.gcp-k8s-web3-stage.srv.local` and may be used
