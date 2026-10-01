@@ -83,8 +83,13 @@ Verify (read-back) → Human review → Handoff
 
 1. **Intake** — collect the required input above. Resolve every ambiguity by asking;
    never choose an ambiguous match.
-2. **Preflight** — confirm PC scope, merchant/project, domain, locale, and that
-   `xsolla config list` points at the same merchant and project. If `store_url` is
+2. **Preflight** — confirm PC scope, domain, and locale, then run
+   [`scripts/preflight.py`](scripts/preflight.py)
+   `--merchant-id --project-id --environment sandbox|test`, adding
+   `--approved-test-projects <file>` for a test project. It checks that the CLI points at
+   that merchant and project, and that the project is a sandbox or is listed in the
+   approved test-project allowlist (the same check and file format as
+   `shop-builder-assembly`). If it fails, stop before any write. If `store_url` is
    supplied, validate the exact Steam host. Use only partner-approved metadata and
    assets; never substitute invented game metadata.
 3. **Discover** — list existing sites and read the target structure
@@ -100,15 +105,17 @@ Verify (read-back) → Human review → Handoff
    theme, copy, catalog links) and the exact removals, then wait for an explicit yes.
    Earlier permission to "set up my portal" is not confirmation of a plan. Re-confirm
    if the plan changes.
-6. **Draft** — on a new landing with no type, initialize the portal template with
-   [`scripts/portal_template.py`](scripts/portal_template.py) (`portal`; `409` means
-   already initialized — resume, don't recreate), then add block-set templates with its
-   `template` command. Everything else uses CLI commands: `add-page`, `add-block`,
-   `move-block`, `update-block` (block, page, and site theme patches), `upload-asset`,
-   `add-language`, `update-localization`, `update-many-localization`. A change with no
-   CLI command and no script is `needs_human`: say what to do in Publisher Account and
-   record it. Apply one change group at a time across Home, News, Rewards, Web Shop,
-   Community, and optional Launcher. Every call and how it is made:
+6. **Draft** — for a new portal, run `create-website`, then initialize the portal
+   template on that landing with [`scripts/portal_template.py`](scripts/portal_template.py)
+   `portal` (`409` means already initialized — resume, don't recreate), then add
+   block-set templates with its `template` command. Both take the same target options as
+   the preflight and refuse to write if it fails. Everything else uses CLI commands:
+   `add-page`, `add-block`, `move-block`, `update-block` (block, page, and site theme
+   patches), `upload-asset`, `add-language`, `update-localization`,
+   `update-many-localization`. A change with no CLI command and no script is
+   `needs_human`: say what to do in Publisher Account and record it. Apply one change
+   group at a time across Home, News, Rewards, Web Shop, Community, and optional
+   Launcher. Every call and how it is made:
    [references/portal-api.md](references/portal-api.md).
    Delegate the surrounding products rather than duplicating their recipes:
    `merchant-setup` for merchant/project/API key, `catalog-design` for catalog and
@@ -134,18 +141,19 @@ Two references, both loaded before issuing changes:
 - [references/agentic-onboarding.md](references/agentic-onboarding.md) — the
   specification: `GIVEN / WHEN / THEN` acceptance scenarios, the per-state evidence
   contract, and the handoff report template.
-- [references/portal-api.md](references/portal-api.md) — the Shop Builder surface for
-  Steps 3–8: which CLI command covers each intent, the endpoints the script calls, the
-  domain vs landing `_id` split, the localization payload shape, the human-only calls,
-  and the response → status mapping.
+- [references/portal-api.md](references/portal-api.md) — the calls the agent makes for
+  Steps 3–8 (CLI commands and the template script), the domain vs landing `_id` split,
+  the localization payload shape, the steps handed to the partner, and the response →
+  status mapping.
 
 ## Hard stops
 
 The agent never publishes (sites, pages, news articles, or Login widget settings), never
 runs the readiness check (`/check`, `verify-website`), never enables or generates a
 preview, never reads or applies saved versions, never deletes a site, never attaches a
-domain, and never switches the project to production. It never writes before an
-explicit confirmation of the plan, and never targets a partner's live project.
+domain, never patches block text (it deletes the string and every translation), and never
+switches the project to production. It never writes before an explicit confirmation of
+the plan or before the preflight passes, and never targets a partner's live project.
 
 ## Common pitfalls
 

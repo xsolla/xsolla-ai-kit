@@ -13,6 +13,8 @@ import urllib.parse
 import urllib.request
 from typing import Callable, Mapping
 
+from preflight import add_target_arguments, check_project
+
 API_BASE_URL = "https://sitebuilder.xsolla.com/api"
 SESSION_URL = "https://api.xsolla.com/merchant/xsolla_login/session"
 PUBLISHER_URL = "https://publisher.xsolla.com"
@@ -23,20 +25,12 @@ STATUS_BY_HTTP = {401: "needs_access", 403: "needs_access", 404: "needs_human"}
 TIMEOUT_SECONDS = 30
 
 
-def positive_int(value: str) -> int:
-    number = int(value)
-    if number <= 0:
-        raise argparse.ArgumentTypeError("must be a positive integer")
-    return number
-
-
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
     for name in ("portal", "template"):
         command = commands.add_parser(name)
-        command.add_argument("--merchant-id", required=True, type=positive_int)
-        command.add_argument("--project-id", required=True, type=positive_int)
+        add_target_arguments(command)
         command.add_argument("--domain", required=True)
         command.add_argument("--dry-run", action="store_true")
     layout = commands.choices["portal"].add_mutually_exclusive_group(required=True)
@@ -170,6 +164,9 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps({"dry_run": True, "method": "POST", "url": url, "body": body}))
         return 0
     try:
+        check_project(
+            args.merchant_id, args.project_id, args.environment, args.approved_test_projects
+        )
         cookie = session_header(args.merchant_id, args.project_id)
         http_status, response = send(url, body, cookie, args.merchant_id, args.project_id)
     except (OSError, RuntimeError) as exc:
