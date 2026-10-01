@@ -44,3 +44,15 @@ select { background: var(--void); color: var(--plasma); border: 1px solid var(--
 .note { opacity: 0.7; font-size: 0.85rem; }
 .error { color: var(--amber); }
 .footer { border-top: 1px solid var(--hull); padding: 1.5rem 1rem; text-align: center; }
+
+.quests { margin-top: 2rem; }
+.quests-eyebrow { color: var(--cyan); text-transform: uppercase; letter-spacing: 0.12em; font-size: 0.8rem; margin: 0 0 0.25rem; }
+.quest-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; margin-top: 1rem; }
+.quest-card { background: rgba(42, 50, 66, 0.75); border: 2px solid var(--violet); border-radius: var(--radius); padding: 0.75rem; display: grid; gap: 0.5rem; align-content: start; overflow-wrap: anywhere; }
+.quest-card h3 { margin: 0; }
+.quest-card p { margin: 0; }
+.quest-rewards { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem; }
+.quest-reward { display: flex; gap: 0.75rem; align-items: flex-start; background: rgba(10, 14, 20, 0.6); border: 1px solid var(--hull); border-radius: var(--radius); padding: 0.5rem; }
+.quest-reward img, .quest-reward-media { flex: none; width: 56px; height: 56px; border-radius: 4px; object-fit: cover; background: var(--hull); }
+.quest-reward > div { min-width: 0; display: grid; gap: 0.25rem; }
+.quest-badge { display: inline-block; margin-right: 0.35rem; padding: 0 0.5rem; border: 1px solid var(--cyan); border-radius: 999px; font-size: 0.75rem; color: var(--cyan); }
