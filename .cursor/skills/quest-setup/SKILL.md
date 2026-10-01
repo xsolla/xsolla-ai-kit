@@ -12,7 +12,9 @@ description: >-
   why a quest did not fire. Examples: "create a quest", "add a Web3 reward to
   my quest", "make a quest that pays a token", "trigger my quest", "send a quest
   event", "why didn't my quest complete", "list my quests", "activate a quest",
-  "quest platform API".
+  "quest platform API". Also adds an optional in-catalog quest section to a
+  headless Web Shop when asked, without adding a navigation tab. Use for
+  "show quests in my web shop" or "add a quest module to my shop".
 metadata:
   owner: r.aliyev
   domain: quests
@@ -90,6 +92,7 @@ Use this skill when the developer wants to manage Xsolla Quest Platform quests:
 - List, view or edit existing quests
 - Submit a single quest event to make a quest run
 - Check whether an event actually caused a quest to execute
+- Add or update an optional quest section inside a headless Web Shop catalog
 
 Out of scope: on-chain finality, wallet balances and Backpack display. A
 completed reward action is not proof of delivery.
@@ -157,6 +160,7 @@ noting the envelope may have drifted.
 - [`references/events.md`](references/events.md): event submission gate
 - [`references/verification.md`](references/verification.md): execution read-back gate
 - [`references/stage-demo.md`](references/stage-demo.md): **STAGE DEMO ONLY** rules, gated on `XSOLLA_QP_ENV=stage` plus the demo scope
+- [`references/web-shop-module.md`](references/web-shop-module.md): optional headless Web Shop catalog module, only when explicitly requested
 
 ## Conversation contract
 
@@ -184,7 +188,10 @@ Keep the publisher experience business-first and progressive:
   returns zero candidates; ask the publisher to choose when multiple candidates
   are plausible. **STAGE DEMO ONLY:** when the
   [stage demo gate](references/stage-demo.md#gate) passes, that file supplies
-  the resolver, read-back and Web Shop handoff; otherwise ignore it.
+  the resolver and execution read-back; otherwise ignore it. The optional
+  headless Web Shop module is independent of that gate; follow
+  [`references/web-shop-module.md`](references/web-shop-module.md) only when
+  explicitly requested.
 - Infer a human-readable event name from the request when unambiguous. Ask only
   when the event cannot be inferred or several events are plausible.
 - One approval of the exact proposal authorizes create, configure, activate and
@@ -193,6 +200,11 @@ Keep the publisher experience business-first and progressive:
   test event in it. Offer the event after publication, with its payload. If an
   answer changes a material proposal value after approval, show the revised
   proposal and ask again.
+- A Web Shop quest section is optional and requires an explicit request. For
+  an existing headless shop, an explicit request to add or update it authorizes
+  those source edits; quest publication approval alone does not. For a new shop,
+  ask whether to opt in. Keep the module inside catalog content, never in
+  navigation, and follow [`references/web-shop-module.md`](references/web-shop-module.md).
 - Keep merchant IDs, project IDs, auth lanes, headers, hostnames, service names,
   internal paths and workflow narration out of normal replies. Never reveal
   credentials. Use **Summary**, **Proposed setup**, **Need from you**,
@@ -271,6 +283,11 @@ Keep the publisher experience business-first and progressive:
 7. **Delete.** Only quests the developer names, one per call, after a fresh
    read and an explicit yes. `DELETE` is a soft delete with no restore route;
    follow the Deleting section of the quest reference.
+8. **Optional Web Shop module.** Only when explicitly requested, follow
+   [`references/web-shop-module.md`](references/web-shop-module.md). For an
+   existing shop, inspect the project and perform its idempotent upsert. For a
+   new shop, ask whether to opt in. A quest publication approval never
+   authorizes shop source edits.
 
 ## Safety stops
 
