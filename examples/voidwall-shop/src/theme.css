@@ -43,23 +43,4 @@ select { background: var(--void); color: var(--plasma); border: 1px solid var(--
 .modal > div { background: var(--void); border: 1px solid var(--hull); border-radius: var(--radius); padding: 1.25rem; width: min(520px, 94%); max-height: 92vh; overflow: auto; }
 .note { opacity: 0.7; font-size: 0.85rem; }
 .error { color: var(--amber); }
-.quest-module { margin-top: 3rem; padding: 1.5rem; border: 1px solid rgba(53, 224, 255, 0.35); border-radius: var(--radius); background: linear-gradient(135deg, rgba(20, 32, 47, 0.92), rgba(10, 14, 20, 0.94)); box-shadow: 0 0 28px rgba(53, 224, 255, 0.08); }
-.quest-module__heading { margin-bottom: 1.25rem; }
-.quest-module__eyebrow { margin: 0 0 0.25rem; color: var(--cyan); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; }
-.quest-module__heading h2 { margin: 0 0 0.35rem; font-size: clamp(1.8rem, 4vw, 2.6rem); }
-.quest-module__disclaimer, .quest-module__state { color: rgba(234, 246, 255, 0.72); }
-.quest-module__disclaimer { margin: 0; font-size: 0.88rem; }
-.quest-module__state { padding: 1rem 0; }
-.quest-module__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 1rem; }
-.quest-card { min-width: 0; padding: 1rem; border: 1px solid var(--hull); border-radius: var(--radius); background: rgba(42, 50, 66, 0.56); }
-.quest-card__copy h3 { margin: 0 0 0.35rem; color: var(--plasma); overflow-wrap: anywhere; }
-.quest-card__copy p { margin: 0; color: rgba(234, 246, 255, 0.72); white-space: pre-wrap; overflow-wrap: anywhere; }
-.quest-card__rewards { display: grid; gap: 0.6rem; margin-top: 1rem; }
-.quest-reward { display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; align-items: center; gap: 0.65rem; padding: 0.65rem; border-left: 2px solid var(--amber); background: rgba(10, 14, 20, 0.68); }
-.quest-reward__image, .quest-reward__placeholder { width: 48px; height: 48px; object-fit: cover; border-radius: 4px; }
-.quest-reward__placeholder { display: grid; place-items: center; color: var(--amber); background: var(--hull); font-size: 1.3rem; }
-.quest-reward__copy { min-width: 0; overflow-wrap: anywhere; }
-.quest-reward__copy p { margin: 0.2rem 0 0; color: rgba(234, 246, 255, 0.68); font-size: 0.82rem; }
-.quest-reward__quantity { color: var(--amber); font-weight: 700; }
-.quest-reward__type { grid-column: 2 / -1; color: var(--cyan); font-size: 0.68rem; letter-spacing: 0.1em; text-transform: uppercase; }
 .footer { border-top: 1px solid var(--hull); padding: 1.5rem 1rem; text-align: center; }
