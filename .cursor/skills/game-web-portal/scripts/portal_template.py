@@ -33,9 +33,13 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         add_target_arguments(command)
         command.add_argument("--domain", required=True)
         command.add_argument("--dry-run", action="store_true")
-    layout = commands.choices["portal"].add_mutually_exclusive_group(required=True)
+    portal = commands.choices["portal"]
+    layout = portal.add_mutually_exclusive_group(required=True)
     layout.add_argument("--single-page", dest="single_page", action="store_true")
     layout.add_argument("--hub", dest="single_page", action="store_false")
+    portal.add_argument("--game-description", required=True)
+    portal.add_argument("--store-url", default="")
+    portal.add_argument("--launcher-id", default="")
     template = commands.choices["template"]
     template.add_argument("--template", required=True, choices=TEMPLATES)
     template.add_argument("--type", default="steam", choices=LANDING_TYPES)
@@ -49,7 +53,12 @@ def build_request(args: argparse.Namespace) -> tuple[str, dict]:
         f"/landing/{domain}/{args.command}"
     )
     if args.command == "portal":
-        return url, {"isSinglePage": args.single_page}
+        return url, {
+            "IsSinglePage": args.single_page,
+            "TargetUrl": args.store_url,
+            "LauncherId": args.launcher_id,
+            "GameDescription": args.game_description,
+        }
     return url, {"type": args.type, "template": args.template}
 
 

@@ -180,9 +180,8 @@ the plan or before the preflight passes, and never targets a partner's live proj
   path ships.
 - **No Steam import.** The store-page parsing endpoint rejects Steam links in live
   tests, so metadata and assets come from the partner, not the Steam page.
-- **The portal template call's layout flag is undocumented.** `portal_template.py`
-  sends the single-page/hub choice under the name in the reference; a `400` there is
-  reported as `failed` with the response, and the portal is built from `add-page` and
-  `add-block` instead.
+- **The portal template fails without a store URL.** With an empty store URL and
+  launcher the template call returns `500` and creates nothing, so such a portal is
+  built from `add-page` and `add-block` instead.
 - **No Community page template.** That section needs a blank page and explicit blocks,
   so it returns `needs_input` rather than a guessed layout.

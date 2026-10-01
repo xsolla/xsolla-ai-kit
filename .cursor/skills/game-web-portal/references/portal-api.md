@@ -47,7 +47,7 @@ and current ordering, and it is how resume avoids building a duplicate portal.
 | Step | How | Call |
 |---|---|---|
 | Create the site | `create-website` | `POST {M}/landing/{domain}` |
-| Initialize a portal template | `portal_template.py portal` | `POST {M}/landing/{domain}/portal` — single-page or hub layout; theme derived from the game icon |
+| Initialize a portal template | `portal_template.py portal` | `POST {M}/landing/{domain}/portal` — `{ "IsSinglePage", "TargetUrl", "LauncherId", "GameDescription" }` |
 | Add a block-set template | `portal_template.py template` | `POST {M}/landing/{domain}/template` — `{ "type": "steam", "template": "home" \| "store" \| "news" }` |
 | Finalize the landing type | `set-landing-type` | `PUT {M}/landing/{domain}/admin/change-landing-type` |
 
@@ -56,10 +56,14 @@ and current ordering, and it is how resume avoids building a duplicate portal.
   read the structure instead of re-initializing. `create-website` asks for type `topup`; if
   the new landing comes back already typed, `portal` returns 409 on a site that has no portal
   yet — report `failed` with the response and build the pages with `add-page` and `add-block`.
-- The `portal` request body is not in the published contract beyond the single-page or hub
-  choice, which `portal_template.py` sends as `isSinglePage`. A `400` is reported as `failed`
-  with the response, and the pages are built with `add-page` and `add-block` instead — never
-  guess further fields.
+- The `portal` body has four fields, all required and capitalized exactly like this:
+  `IsSinglePage` (`--single-page` / `--hub`), `TargetUrl` (`--store-url`), `LauncherId`
+  (`--launcher-id`) and `GameDescription` (`--game-description`). Lower-case keys are
+  ignored and rejected with a `400`.
+- **With an empty store URL and launcher, `portal` returns `500`** and creates nothing
+  (seen live, for both layouts). Report the step `failed` with the response and build the
+  pages with `add-page` and `add-block` instead. Never put another game's store URL in the
+  request, and never guess further fields.
 - Page templates in the Publisher Account builder include `Blank`, `Store`, `Rewards`,
   `News`, `Loyalty shop`, `Promocodes`, `Single game`, `Games catalog`, and `Items store`.
   There is **no Community template** — that section needs a Blank page and explicit blocks,

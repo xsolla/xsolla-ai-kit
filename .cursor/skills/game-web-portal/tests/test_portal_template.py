@@ -21,6 +21,7 @@ SPEC.loader.exec_module(portal_template)
 
 BASE = "https://sitebuilder.xsolla.com/api/merchant/11/project/22/landing"
 TARGET = ["--merchant-id", "11", "--project-id", "22", "--environment", "sandbox"]
+PORTAL = ["portal", *TARGET, "--domain", "voidwall", "--game-description", "A demo game."]
 
 
 class FakeResponse:
@@ -48,7 +49,13 @@ def run_main(argv: list[str]) -> tuple[int, str, str]:
 class ParseArgsTest(unittest.TestCase):
     def test_portal_requires_a_layout(self):
         with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
-            portal_template.parse_args(["portal", *TARGET, "--domain", "d"])
+            portal_template.parse_args(
+                ["portal", *TARGET, "--domain", "d", "--game-description", "A demo game."]
+            )
+
+    def test_portal_requires_a_game_description(self):
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            portal_template.parse_args(["portal", *TARGET, "--domain", "d", "--hub"])
 
     def test_requires_an_environment(self):
         with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
@@ -72,17 +79,21 @@ class ParseArgsTest(unittest.TestCase):
 
 class BuildRequestTest(unittest.TestCase):
     def test_portal_hub(self):
-        args = portal_template.parse_args(["portal", *TARGET, "--domain", "voidwall", "--hub"])
+        args = portal_template.parse_args([*PORTAL, "--hub"])
         self.assertEqual(
             portal_template.build_request(args),
-            (f"{BASE}/voidwall/portal", {"isSinglePage": False}),
+            (f"{BASE}/voidwall/portal", {"IsSinglePage": False, "TargetUrl": "", "LauncherId": "",
+                                         "GameDescription": "A demo game."}),
         )
 
     def test_portal_single_page(self):
         args = portal_template.parse_args(
-            ["portal", *TARGET, "--domain", "voidwall", "--single-page"]
+            [*PORTAL, "--single-page", "--store-url", "https://store.example/app/1",
+             "--launcher-id", "L1"]
         )
-        self.assertEqual(portal_template.build_request(args)[1], {"isSinglePage": True})
+        body = portal_template.build_request(args)[1]
+        self.assertEqual((body["IsSinglePage"], body["TargetUrl"], body["LauncherId"]),
+                         (True, "https://store.example/app/1", "L1"))
 
     def test_template_defaults_to_steam(self):
         args = portal_template.parse_args(
@@ -94,7 +105,9 @@ class BuildRequestTest(unittest.TestCase):
         )
 
     def test_domain_cannot_escape_the_path(self):
-        args = portal_template.parse_args(["portal", *TARGET, "--domain", "a/../b", "--hub"])
+        args = portal_template.parse_args(
+            ["portal", *TARGET, "--domain", "a/../b", "--game-description", "x", "--hub"]
+        )
         self.assertEqual(portal_template.build_request(args)[0], f"{BASE}/a%2F..%2Fb/portal")
 
 
@@ -133,12 +146,12 @@ class SendTest(unittest.TestCase):
     def test_sends_json_with_session_headers(self):
         urlopen = mock.Mock(return_value=FakeResponse(200, b'{"domain": "voidwall"}'))
         status, body = portal_template.send(
-            f"{BASE}/voidwall/portal", {"isSinglePage": False}, "pa-v4-token=abc", 11, 22, urlopen
+            f"{BASE}/voidwall/portal", {"IsSinglePage": False}, "pa-v4-token=abc", 11, 22, urlopen
         )
         request = urlopen.call_args.args[0]
         self.assertEqual((status, body), (200, {"domain": "voidwall"}))
         self.assertEqual(request.get_method(), "POST")
-        self.assertEqual(json.loads(request.data), {"isSinglePage": False})
+        self.assertEqual(json.loads(request.data), {"IsSinglePage": False})
         self.assertEqual(request.get_header("Cookie"), "pa-v4-token=abc")
         self.assertEqual(
             request.get_header("Referer"),
@@ -179,7 +192,7 @@ class OutcomeTest(unittest.TestCase):
 
 
 class MainTest(unittest.TestCase):
-    ARGS = ["portal", *TARGET, "--domain", "voidwall", "--hub"]
+    ARGS = [*PORTAL, "--hub"]
 
     def test_dry_run_makes_no_calls(self):
         with mock.patch.object(portal_template, "check_project",
