@@ -813,9 +813,7 @@ Expected: FAIL, `../catalog/plan` not found.
 - [ ] **Step 3: Write `catalog/payloads.ts`**
 
 ```ts
-import {
-  BOOSTERS, BUNDLES, CORES_SKU, GEAR, GROUPS, PACKS, PASS, SCRAP_SKU, SKINS, coresValue,
-} from './catalog';
+import { CORES_SKU, PASS } from './catalog';
 import { allLocales, descFor, nameFor, type CopyKind, type Vars } from './copy';
 import { pricesFor } from './regional';
 import type { BoosterDef, BundleDef, GearDef, GroupDef, PackDef, SkinDef, Window } from './types';
@@ -887,8 +885,6 @@ export const buildPass = () => ({
   groups: ['passes'], is_enabled: true, is_show_in_store: true,
   virtual_item_type: 'non_consumable', prices: pricesFor(PASS.sku, PASS.usd), periods: periods(PASS.window),
 });
-
-export { SCRAP_SKU, coresValue, BUNDLES, BOOSTERS, GEAR, GROUPS, PACKS, SKINS };
 ```
 
 - [ ] **Step 4: Write `catalog/plan.ts`**
@@ -1641,8 +1637,8 @@ describe('mergeGuestCart', () => {
 
   test('a failure midway leaves the guest cart intact (no lost items)', async () => {
     const guest = fake([line('cores_500', 1), line('bundle_rime_hunter', 1)]);
-    const user = fake([]);
-    await expect(mergeGuestCart(guest.api, new Proxy(user.api, {}) && fake([], 'bundle_rime_hunter').api)).rejects.toThrow('boom');
+    const failingUser = fake([], 'bundle_rime_hunter');
+    await expect(mergeGuestCart(guest.api, failingUser.api)).rejects.toThrow('boom');
     expect(guest.state.size).toBe(2);
   });
 });
@@ -1953,15 +1949,7 @@ export function useCart() {
 }
 ```
 
-- [ ] **Step 6: Fix the failing-merge test setup, then run tests**
-
-In `tests/cart.test.ts`, the third `mergeGuestCart` test builds its failing user cart inline. Replace its `await expect(...)` line with this clearer form:
-
-```ts
-    const failingUser = fake([], 'bundle_rime_hunter');
-    await expect(mergeGuestCart(guest.api, failingUser.api)).rejects.toThrow('boom');
-    expect(guest.state.size).toBe(2);
-```
+- [ ] **Step 6: Run tests**
 
 Run: `npm test`
 Expected: all pass, including the merge-failure test (guest cart keeps both lines).
@@ -2360,7 +2348,7 @@ export function CartDrawer({ cart, locale, loggedIn, loginConfigured, busy, onCl
 
 - [ ] **Step 5: Write `src/App.tsx` and `src/main.tsx`**
 
-`src/App.tsx` (the checkout hook-up is added in Task 7; this version leaves `onCheckout` and `onBuyWithCores` as TODO-free stubs that call the functions Task 7 adds, so write Task 7's `checkout/api.ts` before running the app end to end. For this task, wire them to `() => {}` and keep the Task 7 swap explicit in its Step 6):
+`src/App.tsx` (checkout is wired in Task 7 Step 6, which replaces the two no-op `() => {}` handlers below, `onBuyWithCores` and `onCheckout`; until then the buy buttons do nothing):
 
 ```tsx
 import { useEffect, useMemo, useState } from 'react';
