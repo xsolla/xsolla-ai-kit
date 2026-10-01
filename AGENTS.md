@@ -17,6 +17,7 @@ Skills call **Xsolla REST APIs directly**. The CLI (`xsolla/xsolla-cli`) is an o
 | Skill                           | What it does                                                                             |
 |---------------------------------|------------------------------------------------------------------------------------------|
 | `shop-setup`                    | **Orchestrator** — coordinates the full zero-to-shop flow, chaining all domain skills    |
+| `localization`                  | Translates catalog + LiveOps content (items, bundles, promotions, chains) via one CSV    |
 | `merchant-setup`                | Creates and configures an Xsolla account + get API key                                   |
 | `catalog-design`                | Configures the catalog and the client flow: client catalog, purchase, order confirmation |
 | `login-setup`                   | Integrates Xsolla Login / NewID authentication                                           |
@@ -40,6 +41,10 @@ Configure my Xsolla catalog with items and pricing
 
 Integrate payments into my game
 → triggers: headless-checkout-integration
+
+Translate my catalog / localize item names / translate promotions / add a language
+→ triggers: localization
+   (catalog + LiveOps content — payment UI language is shop-setup, Login is login-styling)
 
 Go live / leave sandbox
 → triggers: production

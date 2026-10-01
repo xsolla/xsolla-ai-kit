@@ -5,7 +5,8 @@ description: >-
   AI-assembled storefront from Login + Store API + Headless Checkout SDK. START HERE
   for any request to build a shop end-to-end: it scopes the integration and chains the
   domain skills — catalog-design, login-setup, headless-checkout-integration,
-  webhooks-impl, production — in the right order. Use when a developer wants to build, create, set
+  webhooks-impl, localization (optional, after the catalog exists), production — in the
+  right order. Use when a developer wants to build, create, set
   up, or assemble a game shop, storefront, in-game store, or virtual-goods shop (the
   whole thing, not just one piece), or asks which Xsolla product to integrate next —
   including "build me a shop", "make a store", "set up a game shop", "create a virtual
@@ -271,6 +272,8 @@ Phase 4 needed? → check product requirements
 Phase 5 done? → no: implement payment token + payment UI
 Phase 6 done? → no: implement webhook handler on partner backend
 Phase 7 done? → no: go live — `production` (contract, flip sandbox, deploy, live test)
+Shop multi-language? → optional, any time after Phase 1: `localization` (catalog content
+                       into more locales; storefront UI strings stay partner-side)
 ```
 
 ---
