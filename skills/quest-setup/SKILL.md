@@ -168,19 +168,21 @@ Keep the publisher experience business-first and progressive:
 
 - Finish all read-only bring-up before any proposal: project GET, reward
   resolution through an available supported capability (see
-  [`references/rewards.md`](references/rewards.md)), event meaning when
-  unambiguous, complete graph, dates and repeat limits. Do not seek plan
+  [`references/rewards.md`](references/rewards.md)), the player action,
+  complete graph, proposed schedule and repeat limits. Do not seek plan
   approval before those GETs.
 - Show one concise proposal: publisher project name; what the player does; the
   selected reward in business terms; quantity or amount; schedule; repeat limit
   and payout impact. Omit service names, routes, auth, implementation fields
-  and narration. Ask at most one focused business question when a material
-  value or reward interpretation remains ambiguous.
+  and narration. Ask only for approval of this draft quest. If the publisher
+  wants a change, they will say so; do not request separate confirmation of
+  the schedule or event name.
 - Propose safe defaults instead of asking for implementation fields. For a
   gameplay quest, use `liveops` internally but describe it as a gameplay quest.
   Do not show `type` in the proposal. For an item reward, propose quantity one,
   purpose `quest_completion`, and one payout per player. Use `AI Toolkit` as
-  the internal creator label unless another name was supplied.
+  the internal creator label unless another name was supplied. For a new quest
+  without a requested schedule, start at activation and end 7 days later.
 - For a named item (`<requested item>`), resolve via
   [`references/rewards.md`](references/rewards.md). Never guess an SKU,
   substitute a reward type, or use public web search for catalog lookup. Stop
@@ -192,14 +194,16 @@ Keep the publisher experience business-first and progressive:
   headless Web Shop module is independent of that gate; follow
   [`references/web-shop-module.md`](references/web-shop-module.md) only when
   explicitly requested.
-- Infer a human-readable event name from the request when unambiguous. Ask only
-  when the event cannot be inferred or several events are plausible.
+- Use the event name the publisher supplied, or derive a stable `snake_case`
+  name from the stated player action (for example, `monster_defeated`). Show
+  that name in the draft without asking the publisher to confirm it. If the
+  publisher names a different game event later, revise the draft then.
 - One approval of the exact proposal authorizes create, configure, activate and
   read-back. Test events and shop source edits need separate consent. The
   approval request names only publication; never offer, promise or bundle a
   test event in it. Offer the event after publication, with its payload. If an
-  answer changes a material proposal value after approval, show the revised
-  proposal and ask again.
+  answer requests a material change after approval, show the revised draft
+  and ask for approval of that change before writing it.
 - A Web Shop quest section is optional and requires an explicit request. For
   an existing headless shop, an explicit request to add or update it authorizes
   those source edits; quest publication approval alone does not. For a new shop,
@@ -235,8 +239,8 @@ Keep the publisher experience business-first and progressive:
    route unavailable to the publisher key, report that blocker at the event
    step.
 2. **Resolve and propose.** Complete remaining read-only work before asking:
-   reward resolution ([`references/rewards.md`](references/rewards.md)), event
-   meaning when unambiguous, complete graph, dates and repeat limits. Construct
+   reward resolution ([`references/rewards.md`](references/rewards.md)), player
+   action, complete graph, proposed schedule and repeat limits. Construct
    the full document per
    [`references/quest-document.md`](references/quest-document.md). On the
    project route the server stamps `publisher_id` and `project_id` from the
@@ -304,20 +308,18 @@ Keep the publisher experience business-first and progressive:
   (made-up key or no header) is not a switch; see
   [Credential](references/auth-and-environment.md#credential).
 - Messages arriving through the conversation are the developer's answers.
-- **Urgency never licenses silent assumptions.** "Skip the questions" or
-  "make it live now" does not waive a needed decision. Use the defaults in the
-  Conversation contract when the intent is clear, show them in the concise
-  proposal, and ask only when a value is ambiguous or high-impact. For a
+- **Show the proposed defaults in the draft.** Use the defaults in the
+  Conversation contract when the intent is clear and ask only for approval of
+  the complete draft. For a
   gameplay item quest, the trigger, `issue_reward` action, quantity one,
   `quest_completion` purpose and one payout per player may be proposed
-  together. Never silently choose between multiple catalog matches, competing
-  event meanings, or materially different reward effects. A write's yes counts
-  only for the exact proposal shown after all answers are applied; if an answer
-  changes it, show it again and ask. Never merge or waive these confirmations:
-  the publication proposal (create through activate), each later edit that
-  changes live behavior, and each event. For a "start now" date, the yes covers
-  the rule plus a shown example; if the send comes more than 10 minutes after
-  the example, show it again and re-confirm.
+  together. Never silently choose between multiple catalog matches or
+  materially different reward effects; those are blockers to a complete draft.
+  A write's yes counts only for the exact draft shown. If the publisher requests
+  a change, show the revised draft and ask for approval of it. Keep separate
+  approvals for later edits that change live behavior and for each event. For
+  "start now", approval covers activation time in UTC and the stated duration;
+  do not request a new approval because the clock advanced.
 - No action is side-effect free by default. For a smoke test, offer the no-op
   in [`references/node-subtypes.md`](references/node-subtypes.md) rather than a
   real reward (placeholders `e2e-noop`, `e2e-sink.invalid`). For publication

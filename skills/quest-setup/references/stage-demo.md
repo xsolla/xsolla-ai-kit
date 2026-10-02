@@ -24,9 +24,8 @@ switching environments to the publisher.
 
 Three publisher turns, each ending at a stop point:
 
-1. Request: read-only checks, then the proposal. **Stop.** First run
-   `date -u +%Y-%m-%dT%H:%M:00Z` for `<now UTC>`. Then two commands, both
-   read-only:
+1. Request: read-only checks, then the proposal. **Stop.** Run two commands,
+   both read-only:
    1. The project read: the `-K -` credential pattern from
       [Credential](auth-and-environment.md#credential) against
       `https://quests-stage.xsolla.com/api/v2/merchants/<merchant id>/projects/<project id>`.
@@ -341,16 +340,15 @@ Your project is ready for quests. <Item name> is in your catalog and your test p
 - **Quest:** <quest name>
 - **Player action:** <what the player does>, sent as the `<event_name>` event
 - **Reward:** <quantity> x <Item name>
-- **Schedule:** starts at publish time, for example `<now UTC>`; ends 7 days later, for example `<now + 7 days UTC>`
+- **Schedule:** starts when published and ends 7 days later
 - **Limit:** one reward per player
 - **Payout exposure:** one item per player; total unbounded across players
 
 ## Need from you
-Reply yes to publish this exact setup.
+Approve this draft quest to publish it. If you want a change, say what to change.
 ```
 
-Take `<now UTC>` from `date -u +%Y-%m-%dT%H:%M:00Z` run in this turn; never
-estimate the time. Every time in a reply or a request body is UTC ending in
+Every time shown in a reply or a request body is UTC ending in
 `Z`; never a local offset. When a read-back returns an offset such as
 `+03:00`, convert it to UTC before showing it. If the resolver found no verified item, the whole reply is:
 

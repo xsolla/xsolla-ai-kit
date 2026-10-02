@@ -28,7 +28,7 @@ in this skill.
 | `publisher_id` | string | server-set | set by the server from the selected production route. Never ask for it or invent it; on a `PUT`, send it back as the last read returned it |
 | `project_id` | string | server-set | set by the server from the selected production route. On a `PUT`, send it exactly as the last read returned it. See Scope in the auth reference |
 | `start_date` | RFC3339 | **only when `active`** | not earlier than exactly 24 hours before the server's now; see below |
-| `end_date` | RFC3339 | **only when `active`** | not in the past, and at or after `start_date`. Ask; there is no default |
+| `end_date` | RFC3339 | **only when `active`** | not in the past, and at or after `start_date`. For a new quest with no requested schedule, default to 7 days after activation; show this in the draft without asking for a date |
 | `nodes` | array | **at least 2 when `active`** | optional and may be empty when `inactive` |
 | `connections` | object | required unless `inactive` and empty | see below |
 | `activation_limits` | array | no | see below |
@@ -92,8 +92,10 @@ carries no merchant, account or workspace id, so do not read one from it.
 
 ## Publication after approval
 
-Before asking for approval, resolve the project, reward, event meaning, complete
-graph, dates, and repeat limits. Inactive quests are an internal write step
+Before asking for approval of the draft quest, resolve the project, reward,
+player action, complete graph, proposed schedule, and repeat limits. If no
+schedule was requested, propose activation time as the start and 7 days later
+as the end. Do not ask separately for dates or event-name approval. Inactive quests are an internal write step
 only; they are not a separate user-facing draft workflow and are excluded from
 the active public quest list.
 
@@ -117,14 +119,14 @@ Activation limits).
 
 A relative duration ("run it for 7 days") counts from the `start_date`
 actually sent: `end_date` is that start plus 7x24 hours. If the start moves
-(for example refused as too old, then "now"), recompute the end and include both
-dates in the proposal before asking for approval.
+(for example a requested time has passed), recompute the end under the approved
+duration. Show a revised draft for approval only when this changes a fixed
+schedule that the publisher explicitly requested.
 
 "Start now" is stamped when the activation `PUT` is built. Show the rule
-("`start_date` = send time in UTC, `end_date` = start plus N") with an example
-computed from the current time inside the proposal. The one approval covers
-both. If the send happens more than 10 minutes after the example was shown,
-show a fresh example and request approval again.
+("start at activation in UTC, end N days later") in the draft. The one approval
+covers both timestamps, even when activation happens later than the draft was
+shown. Report the actual UTC timestamps from the publication read-back.
 
 ## Ambiguous or partial writes
 
