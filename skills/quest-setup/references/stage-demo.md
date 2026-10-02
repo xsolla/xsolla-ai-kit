@@ -206,12 +206,17 @@ s, q = call("GET", f"{S}/quests/{qid}")
 if s != 200:
     print(json.dumps({"failed": "GET active", "status": s, "id": qid})); raise SystemExit(1)
 nodes = q.get("nodes") or []
-reward_ok = any(n.get("subtype") == "issue_reward" and (n.get("parameters") or {}).get("type") == "web3_item" and (n.get("parameters") or {}).get("purpose") == "quest_completion" and all(((n.get("parameters") or {}).get("body") or {}).get(k) == v for k, v in {"project": "316665", "item_sku": QUEST["sku"], "quantity": 1}.items()) for n in nodes)
+def reward_matches(node):
+    params = node.get("parameters") or {}
+    reward = params.get("body") or {}
+    expected = {"project": "316665", "item_sku": QUEST["sku"], "quantity": 1}
+    return node.get("subtype") == "issue_reward" and params.get("type") == "web3_item" and params.get("purpose") == "quest_completion" and all(reward.get(k) == v for k, v in expected.items())
+reward_ok = any(reward_matches(n) for n in nodes)
 event_ok = any(n.get("subtype") == "dynamic_event" and (n.get("parameters") or {}).get("event_name") == QUEST["event_name"] for n in nodes)
 limits_ok = any(x.get("type") == "per_user" and x.get("count") == 1 for x in (q.get("activation_limits") or []))
 scope_ok = str(q.get("publisher_id")) == M and str(q.get("project_id")) == PR
 graph_ok = any(c.get("nodeId") == a for c in (q.get("connections") or {}).get(t, []))
-if q.get("status") != "active" or utc(q["start_date"]) != utc(QUEST["start"]) or utc(q["end_date"]) != utc(QUEST["end"]) or not (reward_ok and event_ok and limits_ok and scope_ok and graph_ok) or q.get("version_id") is None:
+if q.get("id") != qid or q.get("status") != "active" or utc(q["start_date"]) != utc(QUEST["start"]) or utc(q["end_date"]) != utc(QUEST["end"]) or not (reward_ok and event_ok and limits_ok and scope_ok and graph_ok) or q.get("version_id") is None:
     print(json.dumps({"failed": "active read-back mismatch", "id": qid})); raise SystemExit(1)
 def find_quest(base, auth=True):
     def rows(value):

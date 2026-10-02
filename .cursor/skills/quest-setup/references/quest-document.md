@@ -62,8 +62,8 @@ A quest runs only while `active` and `start_date <= now <= end_date` at event
 time. A future `start_date` is accepted, but events before it do not run the
 quest; warn before sending an event outside the window.
 
-Dates are RFC3339 instants. State them in UTC whenever you show them: when
-confirming, and also when reporting a read-back. Dates come back in the
+Dates are RFC3339 instants. State exact times in UTC whenever you show them,
+including a fixed schedule in the draft and a publication read-back. Dates come back in the
 server's local offset, for example `+03:00`, even when sent in `Z`; convert
 them to UTC and compare instants, not strings.
 
@@ -97,8 +97,8 @@ Before asking for approval of the draft quest, resolve the project, reward,
 player action, complete graph, proposed schedule, and repeat limits. Use a
 publisher-supplied start or propose activation time. Use a publisher-supplied
 end, or add the supplied duration to the selected start, or default to 7 days.
-Do not ask separately for dates or event-name approval. Inactive quests are an internal
-write step only; they are not a separate user-facing draft workflow and are
+Do not ask separately for dates or event-name approval. Inactive quests are an
+internal write step only; they are not a separate user-facing draft workflow and are
 excluded from the active public quest list.
 
 One approval of the exact publisher proposal authorizes this ordered sequence:
