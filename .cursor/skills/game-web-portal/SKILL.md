@@ -108,13 +108,15 @@ Verify (read-back) → Human review → Handoff
 6. **Draft** — for a new portal, run `create-website` and `set-landing-type`, then build
    each section with `add-page`, add its block with `add-block --index`, and remove the
    seeded blocks it doesn't keep with `delete-block`, following the portal layout in
-   [references/portal-api.md](references/portal-api.md). Removals happen only on pages
-   created in this run and only as listed in the confirmed plan. Everything else uses
-   CLI commands too: `move-block`, `update-block` (block, page, and site theme patches),
-   `upload-asset`, `add-language`, `update-localization`, `update-many-localization`. A
-   change with no CLI command is `needs_human`: say what to do in Publisher Account and
-   record it. Apply one change group at a time across Home, News, Rewards, Web Shop,
-   Community, and optional Launcher.
+   [references/portal-api.md](references/portal-api.md). Removals happen only on pages the
+   agent created (in this run, or as the ledger records for the same merchant, project and
+   environment), only after a fresh read shows nothing beyond the seed and the plan, and
+   only as listed in the confirmed plan. Everything else uses CLI commands too:
+   `move-block`, `update-block` (block, page, and site theme patches), `upload-asset`,
+   `add-language`, `update-localization`, `update-many-localization`. A change with no CLI
+   command is `needs_human`: say what to do in Publisher Account and record it. Apply one
+   change group at a time across Home, News, Rewards, Web Shop, Community, and optional
+   Launcher.
    Delegate the surrounding products rather than duplicating their recipes:
    `merchant-setup` for merchant/project/API key, `catalog-design` for catalog and
    pricing, `login-setup` for Login, `headless-checkout-integration` for checkout.
@@ -148,11 +150,11 @@ Two references, both loaded before issuing changes:
 
 The agent never publishes (sites, pages, news articles, or Login widget settings), never
 runs the readiness check (`/check`, `verify-website`), never enables or generates a
-preview, never reads or applies saved versions, never deletes a site or a block on a page
-that existed before the run, never attaches a domain, never patches block text (it deletes
-the string and every translation), and never switches the project to production. It never
-writes before an explicit confirmation of the plan or before the preflight passes, and
-never targets a partner's live project.
+preview, never saves or applies a site version, never deletes a site or a block on a page
+it didn't create, never attaches a domain, never patches block text (it deletes the string
+and every translation), and never switches the project to production. It never writes
+before an explicit confirmation of the plan or before the preflight passes, and never
+targets a partner's live project.
 
 ## Common pitfalls
 

@@ -70,11 +70,13 @@ On a `topup` landing, `add-page` seeds every page with the same game-sales scaff
 
 The News block shows Launcher news articles only.
 
-Remove seeded blocks only on a page created in this run, and only as the confirmed plan lists
-them: for each new page, the seeded modules it drops. `delete-block` takes each block's `_id`
-(`--blockid`), read from `get-structure` after `add-page`; pass `--force`, since the confirmed plan
-is the confirmation and the CLI's own prompt refuses without a terminal. Never delete a block on a
-page that existed before the run.
+Remove seeded blocks only on a page the agent created: in this run, or in an earlier run that the
+ledger records for the same merchant, project and environment. Re-read the page first; if it holds
+anything that isn't from the seed or the confirmed plan, stop and ask. Remove only as the confirmed
+plan lists: for each such page, the seeded modules it drops. `delete-block` takes each block's
+`_id` (`--blockid`), read from `get-structure`; pass `--force`, since the confirmed plan is the
+confirmation and the CLI's own prompt refuses without a terminal. Never delete a block on any other
+page.
 
 On resume, compare `get-structure` with this layout and add only what is missing; never add a
 page whose path already exists.
@@ -170,7 +172,7 @@ The agent never does these. Each one is reported as `needs_human`, with what to 
   same selection, no section may be empty, and the Xsolla licensing agreement must be
   signed. A successful publication is a receipt, not proof — the partner confirms the public
   URL serves the expected version and routes, and that Login and the Web Shop work.
-- Apply or roll back to a saved version.
+- Save a version, apply one, or roll back to one.
 - Delete a site.
 - Attach, change, or verify an external domain.
 - Publish Login widget settings, and publish News articles (switch them from `Draft`).
