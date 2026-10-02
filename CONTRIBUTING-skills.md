@@ -43,7 +43,7 @@ description: >-
   Use when [trigger]. Covers [domains]. Invoke for [actions].
 metadata:
   owner: <github-username>
-  domain: catalog|payments|login|webhooks|store|design|orchestrator
+  domain: catalog|payments|login|webhooks|store|design|orchestrator|go-live|quests
 ---
 ```
 
