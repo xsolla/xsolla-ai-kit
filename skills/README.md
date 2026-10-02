@@ -10,6 +10,7 @@ Each subdirectory contains a `SKILL.md` — a structured workflow file for an Xs
 | [`shop-plan`](shop-plan/SKILL.md)                                         | Orchestrator — build-path decision      | @s.sadruddin        | Draft  |
 | [`shop-builder-assembly`](shop-builder-assembly/SKILL.md)                 | Shop Builder site assembly              | @k.shah             | Draft  |
 | [`description-to-shop`](description-to-shop/SKILL.md)                     | Description → Shop Builder shop brief   | @k.shah             | Draft  |
+| [`game-web-portal`](game-web-portal/SKILL.md)                             | Game Web Portal — PC game home + shop   | @a.pyanzin          | Draft  |
 | [`merchant-setup`](merchant-setup/SKILL.md)                               | Merchant and Project setup              | @y.klochikhin       | Done   |
 | [`catalog-design`](catalog-design/SKILL.md)                               | Items, purchase & order tracking        | @p.sanachev         | Draft  |
 | [`login-setup`](login-setup/SKILL.md)                                     | Login / NewID / auth                    | @mohammed_abujalala | Draft  |

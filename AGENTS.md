@@ -27,6 +27,7 @@ Skills call **Xsolla REST APIs directly**. The CLI (`xsolla/xsolla-cli`) is an o
 | `webhooks-impl`                 | Generates webhook handler code for order/payment events                                  |
 | `production`                    | Sandbox → live: contract, flip flags, deploy, developer live-payment checklist           |
 | `description-to-shop`           | Prose → shop brief for shop-builder-assembly — reached via shop-setup, not directly      |
+| `game-web-portal`               | Builds a PC Game Web Portal (game home + shop) — reached via shop-setup, not directly    |
 
 ---
 
@@ -58,6 +59,10 @@ Go live / leave sandbox
 Build me a shop from this description — I have no design or spec
 → triggers: shop-setup, which routes to description-to-shop once the path is Shop Builder;
   description-to-shop then delegates the build to shop-builder-assembly
+
+Set up a Game Web Portal for my PC game — a game home with news, rewards and a shop
+→ triggers: shop-setup; on the Shop Builder path with the site kind portal, description-to-shop
+  or shop-builder-assembly hands off to game-web-portal
 ```
 
 ---
