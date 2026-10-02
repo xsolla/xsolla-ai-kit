@@ -96,7 +96,7 @@ successful configuration write alone is not enough.
 `event_check` is not a supported subtype unless the live production contract
 explicitly adds it. For "after N events", use a `custom_attributes_check`
 condition with an `event` operand. A condition cannot read the event's
-`properties`; see `conditions.md`.
+`properties`; see [`conditions.md`](conditions.md#operands).
 
 ## Choosing a trigger
 
