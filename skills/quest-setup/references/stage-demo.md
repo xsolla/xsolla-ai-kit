@@ -172,7 +172,7 @@ e = dict(l.split("=", 1) for l in pathlib.Path(".env").read_text().splitlines() 
 M, PR = e["XSOLLA_MERCHANT_ID"].strip(), e["XSOLLA_PROJECT_ID"].strip()
 AUTH = "Basic " + base64.b64encode(f"{M}:{e['XSOLLA_PROJECT_API_KEY'].strip()}".encode()).decode()
 S = f"https://quests-stage.xsolla.com/api/v2/merchants/{M}/projects/{PR}"
-PUB = f"https://qp-server.nl-k8s-stage.srv.local/api/v2/public/merchants/{M}/projects/{PR}/quests?page=1&limit=10"
+PUB = f"https://qp-server.nl-k8s-stage.srv.local/api/v2/public/merchants/{M}/projects/{PR}/quests"
 def call(method, url, body=None, auth=True):
     h = {"Content-Type": "application/json", **({"Authorization": AUTH} if auth else {})}
     req = urllib.request.Request(url, method=method, headers=h, data=None if body is None else json.dumps(body).encode())
@@ -206,17 +206,42 @@ s, q = call("GET", f"{S}/quests/{qid}")
 if s != 200:
     print(json.dumps({"failed": "GET active", "status": s, "id": qid})); raise SystemExit(1)
 nodes = q.get("nodes") or []
-reward_ok = any(n.get("subtype") == "issue_reward" and ((n.get("parameters") or {}).get("body") or {}).get("item_sku") == QUEST["sku"] for n in nodes)
+reward_ok = any(n.get("subtype") == "issue_reward" and (n.get("parameters") or {}).get("type") == "web3_item" and (n.get("parameters") or {}).get("purpose") == "quest_completion" and all(((n.get("parameters") or {}).get("body") or {}).get(k) == v for k, v in {"project": "316665", "item_sku": QUEST["sku"], "quantity": 1}.items()) for n in nodes)
 event_ok = any(n.get("subtype") == "dynamic_event" and (n.get("parameters") or {}).get("event_name") == QUEST["event_name"] for n in nodes)
 limits_ok = any(x.get("type") == "per_user" and x.get("count") == 1 for x in (q.get("activation_limits") or []))
-if q.get("status") != "active" or utc(q["start_date"]) != utc(QUEST["start"]) or utc(q["end_date"]) != utc(QUEST["end"]) or not (reward_ok and event_ok and limits_ok):
+scope_ok = str(q.get("publisher_id")) == M and str(q.get("project_id")) == PR
+graph_ok = any(c.get("nodeId") == a for c in (q.get("connections") or {}).get(t, []))
+if q.get("status") != "active" or utc(q["start_date"]) != utc(QUEST["start"]) or utc(q["end_date"]) != utc(QUEST["end"]) or not (reward_ok and event_ok and limits_ok and scope_ok and graph_ok) or q.get("version_id") is None:
     print(json.dumps({"failed": "active read-back mismatch", "id": qid})); raise SystemExit(1)
-s_list, lst = call("GET", S + "/quests?page=1&limit=100")
-s_public, pub = call("GET", PUB, auth=False)
-if s_list != 200 or s_public != 200 or qid not in json.dumps(lst) or qid not in json.dumps(pub):
-    print(json.dumps({"failed": "list read-back", "id": qid, "list_status": s_list, "public_status": s_public})); raise SystemExit(1)
+def find_quest(base, auth=True):
+    def rows(value):
+        if isinstance(value, list):
+            return value
+        if isinstance(value, dict):
+            for key in ("data", "items", "quests", "results"):
+                if key in value:
+                    found = rows(value[key])
+                    if found is not None:
+                        return found
+        return None
+    for page in range(1, 101):
+        status, payload = call("GET", f"{base}?page={page}&limit=100", auth=auth)
+        if status != 200:
+            return False, status
+        page_rows = rows(payload)
+        if page_rows is None:
+            return False, "unknown list envelope"
+        if any(str(row.get("id")) == qid for row in page_rows if isinstance(row, dict)):
+            return True, status
+        if len(page_rows) < 100:
+            return False, status
+    return False, "page limit"
+in_list, list_status = find_quest(S + "/quests")
+in_public_list, public_status = find_quest(PUB, auth=False)
+if not (in_list and in_public_list):
+    print(json.dumps({"failed": "list read-back", "id": qid, "list_status": list_status, "public_status": public_status})); raise SystemExit(1)
 print(json.dumps({"id": qid, "status": q.get("status"), "start_utc": utc(q["start_date"]), "end_utc": utc(q["end_date"]),
-                  "updated_at": q.get("updated_at"), "in_list": qid in json.dumps(lst), "in_public_list": qid in json.dumps(pub),
+                  "updated_at": q.get("updated_at"), "in_list": in_list, "in_public_list": in_public_list,
                   "event_name": QUEST["event_name"], "client_timestamp": d.datetime.now(d.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
                   "idempotency_key": str(uuid.uuid4())}))
 PY
