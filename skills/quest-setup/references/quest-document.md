@@ -95,9 +95,9 @@ carries no merchant, account or workspace id, so do not read one from it.
 
 Before asking for approval of the draft quest, resolve the project, reward,
 player action, complete graph, proposed schedule, and repeat limits. Use a
-publisher-supplied start, end or duration when available; otherwise propose
-activation time as the start and 7 days after the selected start as the end. Do not ask
-separately for dates or event-name approval. Inactive quests are an internal
+publisher-supplied start or propose activation time. Use a publisher-supplied
+end, or add the supplied duration to the selected start, or default to 7 days.
+Do not ask separately for dates or event-name approval. Inactive quests are an internal
 write step only; they are not a separate user-facing draft workflow and are
 excluded from the active public quest list.
 
