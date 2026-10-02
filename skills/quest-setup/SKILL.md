@@ -181,8 +181,9 @@ Keep the publisher experience business-first and progressive:
   gameplay quest, use `liveops` internally but describe it as a gameplay quest.
   Do not show `type` in the proposal. For an item reward, propose quantity one,
   purpose `quest_completion`, and one payout per player. Use `AI Toolkit` as
-  the internal creator label unless another name was supplied. For a new quest
-  without a requested schedule, start at activation and end 7 days later.
+  the internal creator label unless another name was supplied. For a new quest,
+  use any start or end the publisher supplied; otherwise start at activation
+  and end 7 days after the selected start. Do not ask for missing dates.
 - For a named item (`<requested item>`), resolve via
   [`references/rewards.md`](references/rewards.md). Never guess an SKU,
   substitute a reward type, or use public web search for catalog lookup. Stop
@@ -196,8 +197,9 @@ Keep the publisher experience business-first and progressive:
   explicitly requested.
 - Use the event name the publisher supplied, or derive a stable `snake_case`
   name from the stated player action (for example, `monster_defeated`). Show
-  that name in the draft without asking the publisher to confirm it. If the
-  publisher names a different game event later, revise the draft then.
+  that name in the draft without asking the publisher to confirm it or flagging
+  it as an open question. If the publisher names a different game event later,
+  revise the draft then.
 - One approval of the exact proposal authorizes create, configure, activate and
   read-back. Test events and shop source edits need separate consent. The
   approval request names only publication; never offer, promise or bundle a
@@ -310,8 +312,8 @@ Keep the publisher experience business-first and progressive:
 - Messages arriving through the conversation are the developer's answers.
 - **Show the proposed defaults in the draft.** Use the defaults in the
   Conversation contract when the intent is clear and ask only for approval of
-  the complete draft. For a
-  gameplay item quest, the trigger, `issue_reward` action, quantity one,
+  the complete draft. For a gameplay item quest, the trigger, `issue_reward`
+  action, quantity one,
   `quest_completion` purpose and one payout per player may be proposed
   together. Never silently choose between multiple catalog matches or
   materially different reward effects; those are blockers to a complete draft.
