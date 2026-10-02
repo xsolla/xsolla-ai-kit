@@ -1,17 +1,18 @@
 ---
 name: game-web-portal
 description: >-
-  Builds or resumes an unpublished Xsolla Game Web Portal for a PC game — a game home
-  with Home, News, Rewards, Web Shop, Community, and an optional Launcher section
-  around the store — and returns an evidence-backed handoff. Not the entry point for
-  "build me a shop" or "set up my portal": that is shop-setup, which routes here once
-  the recorded build path is portal. Use for "continue my Game Web Portal", "resume my
-  portal without duplicating pages", "add the News / Rewards / Web Shop section to my
-  portal", or wiring an existing catalog and Login into a portal. The agent never
-  publishes, never runs the readiness check, and never generates a preview key — those
-  are handed to the human in Publisher Account. PC only; App Store and Google Play
-  titles return needs_input. For a store without a game home, use shop-setup, which
-  routes to the Shop Builder or headless path instead.
+  Builds or resumes an unpublished Xsolla Game Web Portal for a PC game — a game home with
+  Home, News, Rewards, Web Shop, Community, and an optional Launcher section around the
+  store — and returns an evidence-backed handoff. Not the entry point for "build me a
+  shop" or "set up my portal": that is shop-setup. On the Shop Builder path,
+  description-to-shop or shop-builder-assembly hands off here when the recorded site kind
+  is portal. Use for "continue my Game Web Portal", "resume my portal without duplicating
+  pages", "add the News / Rewards / Web Shop section to my portal", or wiring an existing
+  catalog and Login into a portal. The agent never publishes, never runs the readiness
+  check, and never generates a preview key — those are handed to the human in Publisher
+  Account. PC only; App Store and Google Play titles return needs_input. For a store
+  without a game home, use shop-setup, which routes to the Shop Builder or headless path
+  instead.
 metadata:
   owner: a.pyanzin
   domain: orchestrator
@@ -25,15 +26,16 @@ handoff. Honest partial completion is correct; simulated completion is failure.
 
 ## When to use
 
-`shop-setup` routes here when the recorded build path is `portal` — the partner needs a
-game home around the store (news, rewards, community, launcher), not only a store. The
-path is recorded by `shop-plan`; this skill never decides it and never writes it.
+On the Shop Builder path, `description-to-shop` or `shop-builder-assembly` hands off here
+when the recorded site kind is `portal` — the partner needs a game home around the store
+(news, rewards, community, launcher), not only a store. The site kind is recorded by
+`shop-plan`; this skill never decides it and never writes it.
 
 Entry conditions:
 
-- `XSOLLA_BUILD_PATH=portal` is recorded in `.env` (see
-  [the build-path contract](../shop-plan/references/build-path-contract.md)). If it is
-  absent, hand back to `shop-setup`; if it records another path, stop and say so.
+- `XSOLLA_BUILD_PATH=shopbuilder` and `XSOLLA_SITE_KIND=portal` are recorded in `.env` (see
+  [the build-path contract](../shop-plan/references/build-path-contract.md)). If either is
+  absent, hand back to `shop-setup`; if they record another path or kind, stop and say so.
 - The title ships on PC. A Steam URL is optional and may be skipped.
 - If a store URL is supplied, its host must be exactly `store.steampowered.com`.
   Mobile, unknown, invalid, or spoofed supplied URLs return `needs_input`.

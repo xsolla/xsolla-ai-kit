@@ -61,7 +61,8 @@ Build me a shop from this description — I have no design or spec
   description-to-shop then delegates the build to shop-builder-assembly
 
 Set up a Game Web Portal for my PC game — a game home with news, rewards and a shop
-→ triggers: shop-setup, which routes to game-web-portal once the path is portal
+→ triggers: shop-setup; on the Shop Builder path with the site kind portal, description-to-shop
+  or shop-builder-assembly hands off to game-web-portal
 ```
 
 ---
