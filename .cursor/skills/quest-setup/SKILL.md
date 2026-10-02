@@ -3,8 +3,9 @@ name: quest-setup
 description: >-
   Creates, inspects and edits production Xsolla Quest Platform quests conversationally.
   Covers the whole quest document: the node graph, its connections, the seven node
-  subtypes and activation limits. Use when setting up a quest, editing or activating an
-  existing quest, or listing quests. Examples: "create a quest", "list my quests",
+  subtypes, the condition grammar and activation limits. Use when setting up a quest,
+  adding a trigger or a condition, editing or activating an existing quest, or listing
+  quests. Examples: "create a quest", "add a condition to my quest", "list my quests",
   "activate a quest", "quest platform API".
 metadata:
   owner: r.aliyev
@@ -79,6 +80,7 @@ neither answers, ask the developer.
 | Quest Platform routes, probes, source of truth | [`qp-api-contract.md`](references/qp-api-contract.md) |
 | Quest graph, publication, editing, pausing, deleting, proposal defaults, conversation contract | [`quest-document.md`](references/quest-document.md) |
 | Seven node subtypes and parameters, choosing a trigger | [`node-subtypes.md`](references/node-subtypes.md) |
+| Condition grammar | [`conditions.md`](references/conditions.md) |
 
 ## Conversation contract (summary)
 
