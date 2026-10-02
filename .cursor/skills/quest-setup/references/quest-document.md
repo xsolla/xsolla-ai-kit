@@ -28,7 +28,7 @@ in this skill.
 | `publisher_id` | string | server-set | set by the server from the selected production route. Never ask for it or invent it; on a `PUT`, send it back as the last read returned it |
 | `project_id` | string | server-set | set by the server from the selected production route. On a `PUT`, send it exactly as the last read returned it. See Scope in the auth reference |
 | `start_date` | RFC3339 | **only when `active`** | not earlier than exactly 24 hours before the server's now; see below |
-| `end_date` | RFC3339 | **only when `active`** | not in the past, and at or after `start_date`. Ask; there is no default |
+| `end_date` | RFC3339 | **only when `active`** | not in the past, and at or after `start_date`. For a new quest without a requested end or duration, default to 7 days after the selected start; show this in the draft without asking for a date |
 | `nodes` | array | **at least 2 when `active`** | optional and may be empty when `inactive` |
 | `connections` | object | required unless `inactive` and empty | see below |
 | `activation_limits` | array | no | see below |
@@ -53,16 +53,17 @@ send time, not one computed earlier in the conversation.
 
 The `start_date` check runs on **every** write with `status: active`, including a `PUT`
 that changes nothing else. A quest whose `start_date` is more than 24 hours old
-cannot be saved as active without moving `start_date` forward. Tell the
-developer before such an edit and ask for the new start; `end_date` must also
-still be in the future.
+cannot be saved as active without moving `start_date` forward. For such an edit,
+show a proposed start at edit activation time in the before/after diff; if the
+old `end_date` has passed, propose an end 7 days later. Ask for approval of the
+revised edit, not a date. Both dates must be valid when the `PUT` is sent.
 
 A quest runs only while `active` and `start_date <= now <= end_date` at event
 time. A future `start_date` is accepted, but events before it do not run the
 quest; warn before sending an event outside the window.
 
-Dates are RFC3339 instants. State them in UTC whenever you show them: when
-confirming, and also when reporting a read-back. Dates come back in the
+Dates are RFC3339 instants. State exact times in UTC whenever you show them,
+including a fixed schedule in the draft and a publication read-back. Dates come back in the
 server's local offset, for example `+03:00`, even when sent in `Z`; convert
 them to UTC and compare instants, not strings.
 
@@ -92,10 +93,13 @@ carries no merchant, account or workspace id, so do not read one from it.
 
 ## Publication after approval
 
-Before asking for approval, resolve the project, reward, event meaning, complete
-graph, dates, and repeat limits. Inactive quests are an internal write step
-only; they are not a separate user-facing draft workflow and are excluded from
-the active public quest list.
+Before asking for approval of the draft quest, resolve the project, reward,
+player action, complete graph, proposed schedule, and repeat limits. Use a
+publisher-supplied start or propose activation time. Use a publisher-supplied
+end, or add the supplied duration to the selected start, or default to 7 days.
+Do not ask separately for dates or event-name approval. Inactive quests are an
+internal write step only; they are not a separate user-facing draft workflow and are
+excluded from the active public quest list.
 
 One approval of the exact publisher proposal authorizes this ordered sequence:
 
@@ -117,14 +121,14 @@ Activation limits).
 
 A relative duration ("run it for 7 days") counts from the `start_date`
 actually sent: `end_date` is that start plus 7x24 hours. If the start moves
-(for example refused as too old, then "now"), recompute the end and include both
-dates in the proposal before asking for approval.
+(for example a requested time has passed), recompute the end under the approved
+duration. Show a revised draft for approval only when this changes a fixed
+schedule that the publisher explicitly requested.
 
 "Start now" is stamped when the activation `PUT` is built. Show the rule
-("`start_date` = send time in UTC, `end_date` = start plus N") with an example
-computed from the current time inside the proposal. The one approval covers
-both. If the send happens more than 10 minutes after the example was shown,
-show a fresh example and request approval again.
+("start at activation in UTC, end N days later") in the draft. The one approval
+covers both timestamps, even when activation happens later than the draft was
+shown. Report the actual UTC timestamps from the publication read-back.
 
 ## Ambiguous or partial writes
 
@@ -263,7 +267,12 @@ for the changed part when the edit touches any of: an action's subtype or
 parameters, connections that change which actions run, a reward, the
 activation limits, the dates, or `status`. An edit to `name` or
 `description` only needs no repeat. If the edit changes an amount or SKU,
-check node names that mention the old value.
+check node names that mention the old value. Whenever a reward changes, also
+check whether the quest name still describes it. If the name mentions the old
+reward (for example, Fire Sword changed to Ice Sword), update the quest name in
+the same proposed edit and include it in the before/after diff. Ask only if the
+intended new name is unclear. The reward-change confirmation covers the
+combined reward and name edit.
 
 `version_id` is server-assigned and changes on every write. It is ignored in
 the body: there is no optimistic concurrency, quest `PUT` never returns 409,
