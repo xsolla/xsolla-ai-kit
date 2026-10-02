@@ -145,11 +145,14 @@ says, on the public gateway. After the final `GET`, list the project quests
 
 ### Publish command
 
-Fill `QUEST` from the approved proposal: `<start UTC>` is `date -u
-+%Y-%m-%dT%H:%M:00Z` run in this turn and `<end UTC>` is 7 days later. The
-command builds the one-trigger, one-item quest, prints one JSON line, and
-stops at the first failed write (a `POST` error means no quest was created;
-fix `QUEST` and run it again).
+Fill `QUEST` from the approved draft. For the default schedule, `<start UTC>`
+is `date -u +%Y-%m-%dT%H:%M:00Z` run in the publish turn and `<end UTC>` is 7
+days later. For a publisher-supplied schedule, use its approved start or end
+and derive any missing end as 7 days after the selected start. The command
+builds the one-trigger, one-item quest, prints one JSON line, and stops at the
+first failed write. On a timeout or 5xx, reconcile per
+[Ambiguous or partial writes](quest-document.md#ambiguous-or-partial-writes)
+before any retry; never assume the quest was not created.
 
 ```sh
 python3 - <<'PY'
@@ -340,7 +343,7 @@ Your project is ready for quests. <Item name> is in your catalog and your test p
 - **Quest:** <quest name>
 - **Player action:** <what the player does>, sent as the `<event_name>` event
 - **Reward:** <quantity> x <Item name>
-- **Schedule:** starts when published and ends 7 days later
+- **Schedule:** <approved schedule; by default, starts when published and ends 7 days later>
 - **Limit:** one reward per player
 - **Payout exposure:** one item per player; total unbounded across players
 
