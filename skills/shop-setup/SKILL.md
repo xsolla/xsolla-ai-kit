@@ -70,6 +70,12 @@ Partner's site
 
 The agent builds bottom-up: data first, then identity, then payment.
 
+When an orchestrated step needs the publisher's local merchant and project
+settings, reuse `merchant-setup`'s project-local `XSOLLA_MERCHANT_ID`,
+`XSOLLA_PROJECT_ID`, and `XSOLLA_PROJECT_API_KEY` configuration. Read `.env`
+as text without exposing values, and keep credentials out of generated
+storefront code. Follow each API's own authentication contract.
+
 ### Phase 0 — Prerequisites (Publisher Account, no frontend)
 
 **Goal:** Store project with catalog exists before any UI.
@@ -228,6 +234,12 @@ After a successful payment — whether through Headless Checkout SDK or Pay Stat
 ---
 
 ## Decision Points for the Agent
+
+**Optional in-catalog quests (headless shop):** if the publisher asks for an
+optional quest section inside the existing catalog/product layout (not a
+navigation tab), follow `quest-setup` and its
+[`references/web-shop-module.md`](../quest-setup/references/web-shop-module.md).
+Keep the full implementation recipe in `quest-setup`.
 
 **Which payment UI to use:**
 
