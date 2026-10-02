@@ -23,7 +23,7 @@ Skills call **Xsolla REST APIs directly**. The CLI (`xsolla/xsolla-cli`) is an o
 | `login-styling`                 | Applies a custom visual style / theme / brand to the Login UI (pairs with `login-setup`) |
 | `headless-checkout-integration` | Payments via Headless Checkout                                                           |
 | `webhooks-impl`                 | Generates webhook handler code for order/payment events                                  |
-| `quest-setup`                   | Creates and manages Quest Platform quests |
+| `quest-setup`                   | Creates and manages Quest Platform quests, events and rewards |
 | `production`                    | Sandbox → live: contract, flip flags, deploy, developer live-payment checklist           |
 
 ---
