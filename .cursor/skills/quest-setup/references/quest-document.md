@@ -322,7 +322,7 @@ Keep the publisher experience business-first and progressive:
 
 - Finish all read-only bring-up before any proposal: project GET, reward
   resolution through an available supported capability (see
-  `rewards.md`), the player action,
+  [`rewards.md`](rewards.md)), the player action,
   complete graph, proposed schedule and repeat limits. Do not seek plan
   approval before those GETs.
 - Show one concise proposal: publisher project name; what the player does; the
@@ -340,7 +340,7 @@ Keep the publisher experience business-first and progressive:
   otherwise add their requested duration to the start, otherwise add 7 days.
   Do not ask for missing dates.
 - For a named item (`<requested item>`), resolve via
-  `rewards.md`. Never guess an SKU,
+  [`rewards.md`](rewards.md). Never guess an SKU,
   substitute a reward type, or use public web search for catalog lookup. Stop
   before any Quest Platform write when the resolver is absent, unavailable, or
   returns zero candidates; ask the publisher to choose when multiple candidates

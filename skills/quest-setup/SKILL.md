@@ -2,11 +2,13 @@
 name: quest-setup
 description: >-
   Creates, inspects and edits production Xsolla Quest Platform quests conversationally.
-  Covers the whole quest document: the node graph, its connections, the seven node
-  subtypes, the condition grammar and activation limits. Use when setting up a quest,
-  adding a trigger or a condition, editing or activating an existing quest, or listing
-  quests. Examples: "create a quest", "add a condition to my quest", "list my quests",
-  "activate a quest", "quest platform API".
+  Covers the whole quest document: the node graph and its connections, the seven node
+  subtypes, the condition grammar, activation limits, and the Web3 reward types
+  `web3_item` and `web3_token` (token payouts are disabled in production). Use when
+  setting up a quest, adding a trigger or a condition, attaching a reward, editing or
+  activating an existing quest. Examples: "create a quest", "add a Web3 reward to my
+  quest", "make a quest that pays a token", "list my quests", "activate a quest", "quest
+  platform API".
 metadata:
   owner: r.aliyev
   domain: quests
@@ -58,6 +60,10 @@ Use this skill when the developer wants to manage Xsolla Quest Platform quests:
 - Add triggers, conditions or reward actions to a quest
 - List, view or edit existing quests
 
+Out of scope: on-chain finality, wallet balances, Backpack display, Site
+Builder and custom-blocks quest UI. A completed reward action is not proof of
+delivery.
+
 ## Prerequisites
 
 The configured production publisher credential is the only lane. It works only
@@ -81,6 +87,7 @@ neither answers, ask the developer.
 | Quest graph, publication, editing, pausing, deleting, proposal defaults, conversation contract | [`quest-document.md`](references/quest-document.md) |
 | Seven node subtypes and parameters, choosing a trigger | [`node-subtypes.md`](references/node-subtypes.md) |
 | Condition grammar | [`conditions.md`](references/conditions.md) |
+| Production Web3 reward bodies | [`rewards.md`](references/rewards.md) |
 
 ## Conversation contract (summary)
 
@@ -103,7 +110,8 @@ and [Safety stops for proposals and actions](references/quest-document.md#safety
    Bring-up is GET-only. Never fetch OpenAPI or another target. Confirm project scope before a write and report only a
    short project name and status. If the project GET is 404 `Project not found`,
    follow [Onboarding](references/auth-and-environment.md#onboarding) and stop.
-2. **Resolve and propose.** Resolve the player action, graph, schedule and
+2. **Resolve and propose.** Resolve the reward
+   ([`rewards.md`](references/rewards.md)), player action, graph, schedule and
    limits. Build the document per
    [`quest-document.md`](references/quest-document.md); the server stamps
    `publisher_id` and `project_id` from the path, so never send them. Show the
