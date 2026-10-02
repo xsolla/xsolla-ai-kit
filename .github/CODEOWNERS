@@ -27,6 +27,7 @@
 /skills/shop-setup/                       @y-klochikhin @JavadManashti
 /skills/merchant-setup/                   @y-klochikhin @JavadManashti
 /skills/production/                       @y-klochikhin @JavadManashti
+/skills/quest-setup/                      @raliyev-xsolla @JavadManashti
 
 # TODO: `webhooks-impl` is owned by @e.chernykh, whose GitHub handle could not be
 # resolved and who is not yet a collaborator on this repo. Left to the default owner
