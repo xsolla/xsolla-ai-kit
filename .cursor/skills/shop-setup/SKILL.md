@@ -12,7 +12,9 @@ description: >-
   Shop Builder path it runs the shared foundation, then hands the storefront to
   description-to-shop when the request is prose only, or straight to shop-builder-assembly
   when a shop brief already exists; never start with either of those for a bare "build me
-  a shop". Also covers which Xsolla product to integrate next, "payment UI language",
+  a shop". On the portal path — a game home (news, rewards, community, launcher) around the
+  store, e.g. "set up a Game Web Portal for my game" — it hands the storefront to
+  game-web-portal. Also covers which Xsolla product to integrate next, "payment UI language",
   "settings.language", and "force English / shop locale on the token". Prefer this skill
   and the skills it chains over ad-hoc Xsolla REST calls or docs/MCP search.
 metadata:
@@ -29,15 +31,18 @@ metadata:
 ```bash
 raw=$(grep -E '^XSOLLA_BUILD_PATH=' .env 2>/dev/null | tail -n 1 | cut -d= -f2-)
 case "$raw" in
-  "")                   echo NO_DECISION ;;
-  headless|shopbuilder) echo "DECIDED:$raw" ;;
-  *)                    echo "INVALID:$raw" ;;
+  "")                          echo NO_DECISION ;;
+  headless|shopbuilder|portal) echo "DECIDED:$raw" ;;
+  *)                           echo "INVALID:$raw" ;;
 esac
 ```
 
-- **`NO_DECISION`** → invoke `shop-plan` and stop. It asks the developer to weigh headless vs.
-  Shop Builder against five criteria, shows the trade-offs, and records the confirmed choice.
-  This orchestrator never asks the path itself.
+- **`NO_DECISION`** → invoke `shop-plan` now, before asking anything. Its first message asks
+  the open criteria together with the rest of the
+  [intake](references/onboarding-contract.md#intake), or, when the request already answers the
+  criteria, shows the comparison and recommendation alongside the remaining intake questions.
+  It records the confirmed choice, then stops; at that same confirmation, write the intake to
+  the ledger. This orchestrator never asks the intake itself and never decides the path.
 - **`DECIDED:headless`** → proceed with the rest of this skill as below.
 - **`DECIDED:shopbuilder`** → run the shared foundation below (`merchant-setup`,
   `catalog-design`, `login-setup`), then hand the storefront to exactly one skill:
@@ -49,12 +54,26 @@ esac
   Neither of those is an entry point: "build me a shop" lands here first, and this step picks.
   Finish with `webhooks-impl`. Do **not** run the headless phases (Headless Checkout, headless
   login code) — the Shop Builder site is hosted and renders its own checkout and login.
+- **`DECIDED:portal`** → run the shared foundation below (`merchant-setup`, `catalog-design`,
+  `login-setup`), then hand the storefront to `game-web-portal`, and finish with
+  `webhooks-impl`. `game-web-portal` is not an entry point either: a request to set up a portal
+  lands here first. Do **not** run the headless phases — the portal is hosted and renders its own
+  checkout and login.
 - **`INVALID:<value>`** → halt and show the value. `.env` was hand-edited to something that isn't
   a recognized path. Do **not** fall through to `shop-plan` as if nothing had been decided — that
   discards a choice the developer already made. Point them at `shop-plan` to correct it.
 
 The full contract — allowed values, who may write the key, what other skills must do with it —
 is in [`shop-plan/references/build-path-contract.md`](../shop-plan/references/build-path-contract.md).
+
+## The onboarding flow
+
+Every run, on every path, follows
+[the onboarding contract](references/onboarding-contract.md): one status per step, no
+`completed` without evidence, one ledger in `.xsolla/onboarding.json`, and one handoff
+report at the end. If the ledger already exists, resume as the contract describes before
+anything else — re-read what was done, then continue from the first incomplete step. The
+agent never publishes and never switches to production.
 
 ## What is Headless Shop
 
@@ -261,6 +280,9 @@ After a successful payment — whether through Headless Checkout SDK or Pay Stat
 
 **Validate:** developer sign-off on the `production` checklist (utils OK without
 `00020004`, live card + goods granted, wallets smoked, failed path works).
+
+In the onboarding flow this phase is a handoff: give the developer the `production`
+checklist and flip nothing — see the contract's hard stops.
 
 ---
 

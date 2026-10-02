@@ -19,8 +19,8 @@ project overrides after preflight.
 | Assets | `upload-asset` | Landing ID, local file | Permanent CDN URL |
 | Copy | `add-language`, `update-localization`, `update-many-localization` | Slug, page and `L:` IDs | Localized HTML |
 | Catalog | `update-block` on `newStore.components` | Same-project group IDs | Store sections |
-| Verify | `get-structure`, `get-localization`, `verify-website` | Slug | Plan comparison and readiness result |
-| Preview | `enable-preview`, `preview-link` | Slug | Human-reviewable preview only |
+| Verify | `get-structure`, `get-localization`, then `scripts/verify_structure.py` | Slug | Plan comparison against the read-back |
+| Readiness check and preview | Not run by the agent: the partner uses Publisher Account | — | Handed over as a step for the partner |
 
 Before each Shop Builder command, `apply_plan.py` refreshes the supported
 Publisher login through `xsolla auth login`. If a read reports that session bootstrap
@@ -77,6 +77,7 @@ The CLI does not expose page deletion. If an existing target contains paths outs
 the confirmed plan, stop before writes and report the extra paths instead of leaving
 a silently mixed preset or deleting the whole website.
 
-Use `scripts/verify_structure.py` for the deterministic portion of verification. It
-does not replace `verify-website`, localization/catalog checks, or visual preview; it
-isolates structural failures from the currently tracked CLI readiness/preview defects.
+Use `scripts/verify_structure.py` for the deterministic portion of verification, then check
+localization and catalog links in the read-back. The readiness check and the visual preview
+are the partner's, in Publisher Account; the agent never calls `verify-website`,
+`enable-preview`, or `preview-link`.

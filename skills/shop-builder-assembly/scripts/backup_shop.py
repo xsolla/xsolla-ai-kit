@@ -13,8 +13,10 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
+from preflight import approved_test_project, first_landing
 from validate_shop_brief import load_brief, validate
 
+ENVIRONMENTS = ("sandbox", "test")
 SESSION_BOOTSTRAP_RETRY_DELAYS = (5, 10, 20)
 LOGIN_SETTLE_SECONDS = 2
 LOGIN_TIMEOUT_SECONDS = 45
@@ -103,9 +105,39 @@ def checksum(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def target_project(args: argparse.Namespace) -> dict:
+    """The project to back up: from the shop brief, or by identity for an update or resume."""
+    identity = (args.merchant_id, args.project_id, args.environment)
+    if args.brief is not None:
+        if any(value is not None for value in identity):
+            raise RuntimeError(
+                "pass either --brief or --merchant-id, --project-id and --environment, not both"
+            )
+        brief = load_brief(args.brief)
+        errors = validate(brief)
+        if errors:
+            raise RuntimeError("invalid shop brief: " + "; ".join(errors))
+        return brief["project"]
+    if any(value is None for value in identity):
+        raise RuntimeError("pass --brief, or all of --merchant-id, --project-id and --environment")
+    if args.merchant_id <= 0 or args.project_id <= 0:
+        raise RuntimeError("--merchant-id and --project-id must be positive integers")
+    expected = {
+        "merchant_id": args.merchant_id,
+        "project_id": args.project_id,
+        "environment": args.environment,
+    }
+    approved_test_project(args.approved_test_projects, expected)
+    return expected
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--brief", required=True, type=Path)
+    parser.add_argument("--brief", type=Path)
+    parser.add_argument("--merchant-id", type=int)
+    parser.add_argument("--project-id", type=int)
+    parser.add_argument("--environment", choices=ENVIRONMENTS)
+    parser.add_argument("--approved-test-projects", type=Path)
     parser.add_argument("--slug", required=True)
     parser.add_argument("--output-dir", required=True, type=Path)
     args = parser.parse_args()
@@ -119,27 +151,27 @@ def main() -> int:
             return 1
 
     try:
-        brief = load_brief(args.brief)
-        errors = validate(brief)
-        if errors:
-            raise RuntimeError("invalid shop brief: " + "; ".join(errors))
-        expected = brief["project"]
+        expected = target_project(args)
+        source = "the shop brief" if args.brief is not None else "the target"
         config = run_json("config", "list")
         config_data = data(config)
         if not isinstance(config_data, dict):
             raise RuntimeError("xsolla config list returned an unexpected shape")
         if config_data.get("merchant_id") != expected["merchant_id"]:
-            raise RuntimeError("CLI merchant_id does not match the shop brief")
+            raise RuntimeError(f"CLI merchant_id does not match {source}")
         if config_data.get("project_id") != expected["project_id"]:
-            raise RuntimeError("CLI project_id does not match the shop brief")
+            raise RuntimeError(f"CLI project_id does not match {source}")
         expected_sandbox = expected["environment"] == "sandbox"
         sandbox_enabled = config_data.get("sandbox") is True
         if sandbox_enabled != expected_sandbox:
-            raise RuntimeError(
-                "CLI sandbox setting does not match the shop brief environment"
-            )
+            raise RuntimeError(f"CLI sandbox setting does not match the environment of {source}")
 
         websites = run_json("shopbuilder", "list-websites")
+        if args.brief is None and first_landing(websites, args.slug) is None:
+            raise RuntimeError(
+                f"{args.slug} does not exist: a backup by merchant, project and environment "
+                "is for updating or resuming an existing site"
+            )
         landing = run_json("shopbuilder", "get-landing", "--slug", args.slug)
         structure = run_json("shopbuilder", "get-structure", "--slug", args.slug)
         localization = run_json("shopbuilder", "get-localization", "--slug", args.slug)

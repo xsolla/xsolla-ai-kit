@@ -11,7 +11,7 @@ another skill.
 |---|---|
 | **Key** | `XSOLLA_BUILD_PATH` |
 | **Location** | `.env` in the project root |
-| **Values** | exactly `headless` or `shopbuilder` — lowercase, no other spelling, no quotes, no surrounding whitespace |
+| **Values** | exactly `headless`, `shopbuilder` or `portal` — lowercase, no other spelling, no quotes, no surrounding whitespace |
 | **Written by** | `shop-plan`, and only after the developer explicitly confirms the choice |
 | **Read by** | any skill whose behavior depends on the path |
 
@@ -26,7 +26,7 @@ There are **three** states, not two, and the third is the one that gets missed:
 | State | What it means | The consumer must |
 |---|---|---|
 | Key absent | Nobody has decided yet | Invoke `shop-plan` and stop. Never assume a default path. |
-| Value is `headless` or `shopbuilder` | A developer confirmed this | Proceed if it is this skill's path; halt if it is not |
+| Value is `headless`, `shopbuilder` or `portal` | A developer confirmed this | Proceed if it is this skill's path; halt if it is not |
 | Key present, value is anything else | `.env` was hand-edited or corrupted | **Halt and tell the developer.** Never silently re-ask |
 
 The third row matters because the obvious one-line check collapses it into the first:
@@ -34,7 +34,7 @@ The third row matters because the obvious one-line check collapses it into the f
 ```bash
 # WRONG — a typo like `Headless` fails to match, so this reports "not decided"
 # and the developer gets re-interviewed about a choice they already made.
-grep -qE '^XSOLLA_BUILD_PATH=(headless|shopbuilder)$' .env
+grep -qE '^XSOLLA_BUILD_PATH=(headless|shopbuilder|portal)$' .env
 ```
 
 Discarding a recorded decision is worse than stopping, because the developer has no way to
@@ -46,9 +46,9 @@ the second time, which is exactly the "one path per shop" rule breaking.
 ```bash
 raw=$(grep -E '^XSOLLA_BUILD_PATH=' .env 2>/dev/null | tail -n 1 | cut -d= -f2-)
 case "$raw" in
-  "")                   echo NO_DECISION ;;
-  headless|shopbuilder) echo "DECIDED:$raw" ;;
-  *)                    echo "INVALID:$raw" ;;
+  "")                          echo NO_DECISION ;;
+  headless|shopbuilder|portal) echo "DECIDED:$raw" ;;
+  *)                           echo "INVALID:$raw" ;;
 esac
 ```
 

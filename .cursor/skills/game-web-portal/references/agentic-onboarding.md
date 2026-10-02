@@ -62,15 +62,11 @@ flowchart LR
 Readiness check, preview, publication, live verification and rollback come after the
 handoff and belong to the human, in Publisher Account.
 
-### Status
+### Status, ledger, resume
 
-- `completed` — effect verified.
-- `placeholder` — visible and temporary.
-- `needs_input` — value or choice missing.
-- `needs_access` — authorization invalid.
-- `needs_human` — manual action required.
-- `blocked_capability` — CLI cannot perform the action.
-- `failed` — action failed or cannot be verified.
+Statuses, the ledger, resume, and the handoff report are the kit-wide
+[onboarding contract](../../shop-setup/references/onboarding-contract.md). This file adds
+the portal's own states and evidence.
 
 ### Evidence contract
 
@@ -155,41 +151,21 @@ outcomes are what the partner is asked to confirm.
 
 ### 8. Handoff
 
+The handoff is the onboarding report in the
+[onboarding contract](../../shop-setup/references/onboarding-contract.md#handoff-report).
+The portal fills its **Storefront** section with:
+
 ```markdown
-# Xsolla Game Web Portal onboarding report
-
-Overall status:
-
-## Confirmed context
-- Merchant ID:
-- Project ID:
 - Domain:
-- Steam URL (optional; include only if supplied):
-- Primary locale:
+- Steam URL (include only if supplied):
 
-## Sections
 | Section | Page ID | Route | Status | Evidence |
 |---|---|---|---|---|
 
-## Completed
-- Verified action + evidence
-
-## Placeholders
-- Temporary content + label
-
-## Needs input / human action
-- Action + owner + value + verification
-
-## Blocked capabilities
-- Capability + impact + next step
-
-## Failed
-- Action + error + recovery
-
-## Your next steps in Publisher Account
+Your next steps in Publisher Account:
 - Run the readiness check and open the preview
 - Publish (main page first), then confirm the public URL
-- Status: not published by the agent
+- Not published by the agent
 ```
 
 Honest partial completion is correct. Simulated completion is failure.

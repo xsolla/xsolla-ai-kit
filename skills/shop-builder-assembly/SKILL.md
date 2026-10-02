@@ -50,6 +50,9 @@ until [expert-review.md](references/expert-review.md) records approval.
 2. If CLI context differs, switch it and rerun preflight; never override later commands.
 3. If the target site exists, export it before the first write with
    `scripts/backup_shop.py --brief <brief.json> --slug <slug> --output-dir <dir>`.
+   Callers without a brief, such as `game-web-portal`, pass `--merchant-id`, `--project-id`
+   and `--environment` (plus `--approved-test-projects` for a test project) instead; that
+   mode backs up an existing site only and runs the same approved-project check.
 4. Render with
    `scripts/render_plan.py <brief.json> --structure <backup-dir>/structure.json` and
    show the ordered plan, exact block removals, and catalog mappings. Preserve
@@ -93,8 +96,9 @@ If the CLI lacks an operation, stop it, record the gap, and file a CLI/API ticke
   <post-apply-structure.json>` for the deterministic structural comparison.
 - Check every requested locale, page path, navigation target, block order, catalog
   group, and asset URL.
-- Run `xsolla shopbuilder verify-website --slug <slug>`.
-- Enable preview only if the confirmed plan includes it, then return the preview link.
+- Verification is that read-back only. Never run `verify-website` (the readiness check) and
+  never enable a preview or generate a preview link: hand both to the partner, who runs the
+  readiness check and opens the preview in Publisher Account before publishing.
 - Report skips, interventions, and gaps; state that the site is **not published**.
 
 ## Stop conditions
