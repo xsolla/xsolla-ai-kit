@@ -53,7 +53,7 @@ Do not claim the quest was verified.
 
 `user_ids[].identifier_type` is `xsolla_id`, `gamer_id`, `guest_id` or `email`
 per the contract. A Web3 reward requires an `xsolla_id` whose user already has
-a wallet. Check it with the recipient read in `auth-and-environment.md` before submitting.
+a wallet. Check it with the recipient read in [`auth-and-environment.md`](auth-and-environment.md#minting-service) before submitting.
 
 A successful response returns `event_id` (and echoes `idempotency_key`). Keep
 `event_id` and use it to correlate the read-only execution result when

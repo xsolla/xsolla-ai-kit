@@ -18,9 +18,10 @@ metadata:
 
 ## Status
 
-This skill targets **production** only. Resolve Quest Platform scope from the configured integration (see
+This skill targets **production** only. Resolve Quest Platform scope and the
+Web3 catalog from the configured integration (see
 [auth and environment](references/auth-and-environment.md)); never fall back to
-another service target or credential source. Event submission and
+another service target, credential source or catalog. Event submission and
 execution read-back still need the versioned contract and preflight before use.
 
 ## Hard rules (read first)
@@ -59,6 +60,12 @@ execution read-back still need the versioned contract and preflight before use.
 9. **Stop on auth failures.** Never switch credentials, lanes or routes on your
    own after a failure; report what failed and ask. For a 401 or 404 follow
    [Reading a 401 or 404](references/auth-and-environment.md#reading-a-401-or-404).
+10. **Never ask for a SKU or catalog project.** A typed value is not a
+    verified item. Use the read-only minting catalog lookup in
+    [Named item behavior](references/rewards.md#named-item-behavior). If the
+    lookup service is unavailable, say so without implying the publisher's
+    catalog is disconnected; if it finds no match, report that and stop before
+    any write.
 
 ## When to use
 
@@ -97,7 +104,7 @@ neither answers, ask the developer.
 | Quest graph, publication, editing, pausing, deleting, proposal defaults, conversation contract | [`quest-document.md`](references/quest-document.md) |
 | Seven node subtypes and parameters, choosing a trigger | [`node-subtypes.md`](references/node-subtypes.md) |
 | Condition grammar | [`conditions.md`](references/conditions.md) |
-| Production Web3 reward bodies | [`rewards.md`](references/rewards.md) |
+| Production Web3 reward bodies, named items | [`rewards.md`](references/rewards.md) |
 | Event gate, payload, event stops | [`events.md`](references/events.md) |
 | Execution read-back, read scope | [`verification.md`](references/verification.md) |
 
@@ -113,6 +120,8 @@ and [Safety stops for proposals and actions](references/quest-document.md#safety
   for missing dates.
 - One approval of the exact proposal covers create, configure, activate and
   read-back. Test events need separate consent.
+- A named item reward is resolved via [`rewards.md`](references/rewards.md);
+  never guess an SKU or substitute a reward type.
 
 ## Flow
 
@@ -127,7 +136,8 @@ and [Safety stops for proposals and actions](references/quest-document.md#safety
    limits. Build the document per
    [`quest-document.md`](references/quest-document.md); the server stamps
    `publisher_id` and `project_id` from the path, so never send them. Show the
-   proposal and stop.
+   proposal and stop. Stop before any write if the reward is not uniquely
+   verified.
 3. **Publish.** After approval of that exact proposal follow
    [Publication after approval](references/quest-document.md#publication-after-approval):
    POST a complete inactive quest, GET it back, PUT active, GET active status,
@@ -174,5 +184,5 @@ Full text: [writes and credentials](references/auth-and-environment.md#safety-st
 
 ## Agent test
 
-**Prompt:** `Create a quest that triggers on a stated player action`
-**Result:** After read-only checks, one concise proposal, one approval for create through activate.
+**Prompt:** `Create a quest that rewards one <requested item> after the player completes the stated action`
+**Result:** After read-only checks, one concise proposal, one approval for create through activate; stop if the reward is not uniquely verified.
