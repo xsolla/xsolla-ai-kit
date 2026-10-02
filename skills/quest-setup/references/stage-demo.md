@@ -147,8 +147,8 @@ says, on the public gateway. After the final `GET`, list the project quests
 
 Fill `QUEST` from the approved draft. For the default schedule, `<start UTC>`
 is `date -u +%Y-%m-%dT%H:%M:00Z` run in the publish turn and `<end UTC>` is 7
-days later. For a publisher-supplied schedule, use its approved start or end
-and derive any missing end as 7 days after the selected start. The command
+days later. For a publisher-supplied schedule, use its approved start, end or
+duration and derive any missing end as 7 days after the selected start. The command
 builds the one-trigger, one-item quest, prints one JSON line, and stops at the
 first failed write. On a timeout or 5xx, reconcile per
 [Ambiguous or partial writes](quest-document.md#ambiguous-or-partial-writes)
