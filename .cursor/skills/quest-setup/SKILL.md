@@ -2,15 +2,19 @@
 name: quest-setup
 description: >-
   Creates, inspects and edits production Xsolla Quest Platform quests conversationally,
-  submits a quest event, and verifies that the event actually made the quest execute.
-  Covers the whole quest document: the node graph and its connections, the seven node
-  subtypes, the condition grammar, activation limits, and the Web3 reward types
-  `web3_item` and `web3_token` (token payouts are disabled in production). Use when
-  setting up a quest, adding a trigger or a condition, attaching a reward, editing or
-  activating an existing quest, firing a test event, or working out why a quest did not
-  fire. Examples: "create a quest", "add a Web3 reward to my quest", "make a quest that
-  pays a token", "trigger my quest", "send a quest event", "why didn't my quest
-  complete", "list my quests", "activate a quest", "quest platform API".
+  submits a quest event, and verifies that the event actually made the quest
+  execute. Covers the whole quest document: the node graph and its connections,
+  the seven node subtypes, the condition grammar, activation limits, and the
+  Web3 reward types `web3_item` and `web3_token` (token payouts are disabled
+  in production). Use when
+  setting up a quest, adding a trigger or a condition, attaching a reward,
+  editing or activating an existing quest, firing a test event, or working out
+  why a quest did not fire. Examples: "create a quest", "add a Web3 reward to
+  my quest", "make a quest that pays a token", "trigger my quest", "send a quest
+  event", "why didn't my quest complete", "list my quests", "activate a quest",
+  "quest platform API". Also adds an optional quest section inside a headless
+  Web Shop when asked. Use for
+  "show quests in my web shop" or "add a quest module to my shop".
 metadata:
   owner: r.aliyev
   domain: quests
@@ -38,6 +42,8 @@ execution read-back still need the versioned contract and preflight before use.
    `https://quests-platform.xsolla.com`, as in
    [`qp-api-contract.md`](references/qp-api-contract.md). Never call another
    gateway, even after a failure, and never suggest switching environments.
+   `XSOLLA_QP_PUBLIC_BASE_URL` is a shop setting; the agent never sends
+   requests to it.
 4. **No secrets on screen.** Never open `.env` in a viewer, print the
    environment, paste a key into a command, or print the API key, even to
    yourself. Parse credentials as text inside the request, as in
@@ -45,7 +51,7 @@ execution read-back still need the versioned contract and preflight before use.
    credential names exist, the project is set up: continue with the read-only
    preflight and never ask the publisher to confirm settings. Never ask the
    publisher to paste secrets or search for another key.
-5. **No IDs or hosts in replies.** Outside the event
+5. **No IDs or hosts in replies.** Outside the Web Shop URL and the event
    payload, never show merchant, project or player IDs, hosts, service names
    or environment names to the publisher. Every reply starts with a `##`
    heading: no lead-in line such as "Perfect!" or a recap before it.
@@ -76,6 +82,7 @@ Use this skill when the developer wants to manage Xsolla Quest Platform quests:
 - List, view or edit existing quests
 - Submit a single quest event to make a quest run
 - Check whether an event actually caused a quest to execute
+- Add or update an optional quest section inside a headless Web Shop catalog
 
 Out of scope: on-chain finality, wallet balances, Backpack display, Site
 Builder and custom-blocks quest UI. A completed reward action is not proof of
@@ -107,6 +114,7 @@ neither answers, ask the developer.
 | Production Web3 reward bodies, named items | [`rewards.md`](references/rewards.md) |
 | Event gate, payload, event stops | [`events.md`](references/events.md) |
 | Execution read-back, read scope | [`verification.md`](references/verification.md) |
+| Optional headless Web Shop module, only when explicitly requested | [`web-shop-module.md`](references/web-shop-module.md) |
 
 ## Conversation contract (summary)
 
@@ -119,7 +127,7 @@ and [Safety stops for proposals and actions](references/quest-document.md#safety
 - Propose safe defaults instead of asking for implementation fields; do not ask
   for missing dates.
 - One approval of the exact proposal covers create, configure, activate and
-  read-back. Test events need separate consent.
+  read-back. Test events and shop source edits need separate consent.
 - A named item reward is resolved via [`rewards.md`](references/rewards.md);
   never guess an SKU or substitute a reward type.
 
@@ -163,6 +171,9 @@ and [Safety stops for proposals and actions](references/quest-document.md#safety
 7. **Delete.** Only quests the developer names, one per call, after a fresh read
    and an explicit yes. `DELETE` is a soft delete with no restore route; see
    [Deleting](references/quest-document.md#deleting).
+8. **Optional Web Shop module.** Only when explicitly requested, follow
+   [`web-shop-module.md`](references/web-shop-module.md). Quest publication
+   approval never authorizes shop source edits.
 
 ## Safety stops (summary)
 
