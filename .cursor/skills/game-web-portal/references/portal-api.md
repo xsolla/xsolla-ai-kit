@@ -6,17 +6,14 @@ Catalog, Login, and checkout stay delegated — see `SKILL.md`.
 
 ## Context
 
-- **Base URL:** `https://sitebuilder.xsolla.com/api`
 - **Auth:** the Publisher Account session from `xsolla auth login` — the only source.
-  Every `xsolla shopbuilder` command derives the session from that login, and
-  `scripts/portal_template.py` derives it the same way. A session or token is never
-  passed by hand or copied out of a browser. A missing, stale, or unauthorized session
-  returns `401/403` → `needs_access`: run `xsolla auth login` again and resume. This is
-  *not* `XSOLLA_PROJECT_API_KEY`.
+  Every `xsolla shopbuilder` command derives the session from that login. A session or
+  token is never passed by hand or copied out of a browser. A missing, stale, or
+  unauthorized session returns `401/403` → `needs_access`: run `xsolla auth login` again
+  and resume. This is *not* `XSOLLA_PROJECT_API_KEY`.
 - **Safe target:** before the first write, `scripts/preflight.py` must pass — the CLI points
   at the intended merchant and project, and that project is a sandbox or is listed in the
-  approved test-project allowlist. `portal_template.py` runs the same check itself.
-- **Path shorthand below:** `{M}` = `/merchant/{merchantId}/project/{projectId}`
+  approved test-project allowlist.
 
 ### Two different keys — the top cause of hard failures
 
@@ -42,32 +39,45 @@ during Discover and reuse it.
 Discover is mandatory before any mutation: it supplies `landingId`, page IDs, block IDs,
 and current ordering, and it is how resume avoids building a duplicate portal.
 
-## Draft — bootstrap the portal
+## Draft — create the portal
 
-| Step | How | Call |
-|---|---|---|
-| Create the site | `create-website` | `POST {M}/landing/{domain}` |
-| Initialize a portal template | `portal_template.py portal` | `POST {M}/landing/{domain}/portal` — `{ "IsSinglePage", "TargetUrl", "LauncherId", "GameDescription" }` |
-| Add a block-set template | `portal_template.py template` | `POST {M}/landing/{domain}/template` — `{ "type": "steam", "template": "home" \| "store" \| "news" }` |
-| Finalize the landing type | `set-landing-type` | `PUT {M}/landing/{domain}/admin/change-landing-type` |
+| Step | Command |
+|---|---|
+| Create the site | `create-website` |
+| Finalize the landing type | `set-landing-type --type topup` |
+| Add each section's page | `add-page` |
+| Add each section's block after the `header` | `add-block --index 1` |
+| Remove the seeded blocks the section doesn't keep | `delete-block --force` |
 
-- Run `create-website`, then `portal` on that new landing. `portal` only works on a landing
-  with **no type assigned** and returns **409** once a portal structure exists — on resume,
-  read the structure instead of re-initializing. `create-website` asks for type `topup`; if
-  the new landing comes back already typed, `portal` returns 409 on a site that has no portal
-  yet — report `failed` with the response and build the pages with `add-page` and `add-block`.
-- The `portal` body has four fields, all required and capitalized exactly like this:
-  `IsSinglePage` (`--single-page` / `--hub`), `TargetUrl` (`--store-url`), `LauncherId`
-  (`--launcher-id`) and `GameDescription` (`--game-description`). Lower-case keys are
-  ignored and rejected with a `400`.
-- **With an empty store URL and launcher, `portal` returns `500`** and creates nothing
-  (seen live, for both layouts). Report the step `failed` with the response and build the
-  pages with `add-page` and `add-block` instead. Never put another game's store URL in the
-  request, and never guess further fields.
-- Page templates in the Publisher Account builder include `Blank`, `Store`, `Rewards`,
-  `News`, `Loyalty shop`, `Promocodes`, `Single game`, `Games catalog`, and `Items store`.
-  There is **no Community template** — that section needs a Blank page and explicit blocks,
-  so treat it as `needs_input` rather than guessing a layout.
+Portal and block-set templates are not used: they have no CLI command, and `portal` returned 500.
+
+### Portal layout
+
+On a `topup` landing, `add-page` seeds every page with the same game-sales scaffold: `header`,
+`leadGameSales`, `description`, `packs` ×3, `bento-grid` ×3, `gallery`, `requirements`, `faq`,
+`footer`. Each section gets its own block right after the `header` (`add-block --index 1`), then
+`delete-block` removes the seeded blocks the section doesn't keep. Module names come from the
+`shop-builder-assembly` [block catalog](../../shop-builder-assembly/references/block-catalog.md).
+
+| Section | Path | Section block | Final page |
+|---|---|---|---|
+| Home | `/main` | none | the seeded scaffold, kept whole as the game page |
+| News | `/news` | `news` | `header`, `news`, `footer` |
+| Rewards | `/rewards` | `rewards` | `header`, `rewards`, `footer` |
+| Web Shop | `/store` | `newStore` | `header`, `newStore`, `faq`, `footer` |
+| Community | `/community` | `embed` | `header`, `embed`, `footer` |
+| Launcher (optional) | `/launcher` | only with a real Launcher (see below) | — |
+
+The News block shows Launcher news articles only.
+
+Remove seeded blocks only on a page created in this run, and only as the confirmed plan lists
+them: for each new page, the seeded modules it drops. `delete-block` takes each block's `_id`
+(`--blockid`), read from `get-structure` after `add-page`; pass `--force`, since the confirmed plan
+is the confirmation and the CLI's own prompt refuses without a terminal. Never delete a block on a
+page that existed before the run.
+
+On resume, compare `get-structure` with this layout and add only what is missing; never add a
+page whose path already exists.
 
 ## Draft — pages and blocks
 
@@ -77,11 +87,9 @@ and current ordering, and it is how resume avoids building a duplicate portal.
 | Add / move / delete / duplicate a block | `add-block` / `move-block` / `delete-block` / `duplicate-block` |
 | Patch a block, page, or site value — including the theme | `update-block` |
 
-`add-block` takes a **module template name**, not a block ID. Read what the project
-actually uses from `get-structure` before adding — do not guess module names for News,
-Rewards, or Community. Known modules include `lead` (hero), `newStore` (catalog grid),
-`federated`, `faq`, and the default page scaffold (header, lead, description, packs, bento,
-gallery, requirements, faq, footer).
+`add-block` takes a **module template name** (`--block`), not a block ID, plus the landing
+`_id`, the page `_id`, and always `--index`: without it the block goes to the top of the page,
+above the `header`. Use only the modules in the layout above.
 
 `update-block` sends a map of `requestId → change`:
 
@@ -188,6 +196,6 @@ a missing piece is `blocked_capability`, never `completed`.
 |---|---|---|
 | `401` / `403` | `needs_access` | preserve the ledger, run `xsolla auth login`, re-read state, resume |
 | `404` on create | `needs_human` | Shop Builder is not enabled for the project; the partner enables it in Publisher Account |
-| `409` from `portal` | — | the portal is already initialized: read the structure and resume instead of recreating |
 | `500` with a `domain` where a `landingId` belongs | — | wrong key: fix and retry; not a capability block |
+| `429` while the CLI bootstraps the session | — | rate limited: wait a minute and retry; never set a session by hand |
 | Launcher build / installer / download | `blocked_capability` | not reachable from here |

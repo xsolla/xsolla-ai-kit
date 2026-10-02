@@ -16,10 +16,10 @@ existing_portal_policy: update | create-new
 ```
 
 Optional: `store_url` (Steam), approved game description and brand assets,
-analytics IDs, and locales. A Steam URL is a bootstrap shortcut and may be
-skipped; it is not a production dependency. Without it, approved metadata and
-assets must be supplied manually. Never invent or reuse partner identifiers,
-credentials, content, prices, assets, or URLs.
+analytics IDs, and locales. A Steam URL is a reference, not a production
+dependency, and may be skipped. Metadata and assets come from the partner either
+way, because Steam pages are not imported. Never invent or reuse partner
+identifiers, credentials, content, prices, assets, or URLs.
 
 ### Acceptance scenarios
 
@@ -114,8 +114,8 @@ Never recreate discovered existing entities.
 ### 3. One change group
 
 Portal structure — creation and landing type, pages, blocks, theme, assets, copy
-and localization, analytics — runs through the CLI commands and the template script
-listed in [portal-api.md](portal-api.md). Use related skills for everything else,
+and localization, analytics — runs through the CLI commands listed in
+[portal-api.md](portal-api.md). Use related skills for everything else,
 instead of repeating their command recipes:
 
 - `merchant-setup` — merchant/project/API key.

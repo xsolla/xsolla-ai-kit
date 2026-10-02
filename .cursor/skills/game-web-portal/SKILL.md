@@ -105,18 +105,16 @@ Verify (read-back) → Human review → Handoff
    theme, copy, catalog links) and the exact removals, then wait for an explicit yes.
    Earlier permission to "set up my portal" is not confirmation of a plan. Re-confirm
    if the plan changes.
-6. **Draft** — for a new portal, run `create-website`, then initialize the portal
-   template on that landing with [`scripts/portal_template.py`](scripts/portal_template.py)
-   `portal` (`409` means already initialized — resume, don't recreate), then add
-   block-set templates with its `template` command. Both take the same target options as
-   the preflight and refuse to write if it fails. Everything else uses CLI commands:
-   `add-page`, `add-block`, `move-block`, `update-block` (block, page, and site theme
-   patches), `upload-asset`, `add-language`, `update-localization`,
-   `update-many-localization`. A change with no CLI command and no script is
-   `needs_human`: say what to do in Publisher Account and record it. Apply one change
-   group at a time across Home, News, Rewards, Web Shop, Community, and optional
-   Launcher. Every call and how it is made:
-   [references/portal-api.md](references/portal-api.md).
+6. **Draft** — for a new portal, run `create-website` and `set-landing-type`, then build
+   each section with `add-page`, add its block with `add-block --index`, and remove the
+   seeded blocks it doesn't keep with `delete-block`, following the portal layout in
+   [references/portal-api.md](references/portal-api.md). Removals happen only on pages
+   created in this run and only as listed in the confirmed plan. Everything else uses
+   CLI commands too: `move-block`, `update-block` (block, page, and site theme patches),
+   `upload-asset`, `add-language`, `update-localization`, `update-many-localization`. A
+   change with no CLI command is `needs_human`: say what to do in Publisher Account and
+   record it. Apply one change group at a time across Home, News, Rewards, Web Shop,
+   Community, and optional Launcher.
    Delegate the surrounding products rather than duplicating their recipes:
    `merchant-setup` for merchant/project/API key, `catalog-design` for catalog and
    pricing, `login-setup` for Login, `headless-checkout-integration` for checkout.
@@ -141,8 +139,8 @@ Two references, both loaded before issuing changes:
 - [references/agentic-onboarding.md](references/agentic-onboarding.md) — the
   specification: `GIVEN / WHEN / THEN` acceptance scenarios, the per-state evidence
   contract, and the handoff report template.
-- [references/portal-api.md](references/portal-api.md) — the calls the agent makes for
-  Steps 3–8 (CLI commands and the template script), the domain vs landing `_id` split,
+- [references/portal-api.md](references/portal-api.md) — the CLI commands the agent runs
+  for Steps 3–8, the portal layout, the domain vs landing `_id` split,
   the localization payload shape, the steps handed to the partner, and the response →
   status mapping.
 
@@ -150,10 +148,11 @@ Two references, both loaded before issuing changes:
 
 The agent never publishes (sites, pages, news articles, or Login widget settings), never
 runs the readiness check (`/check`, `verify-website`), never enables or generates a
-preview, never reads or applies saved versions, never deletes a site, never attaches a
-domain, never patches block text (it deletes the string and every translation), and never
-switches the project to production. It never writes before an explicit confirmation of
-the plan or before the preflight passes, and never targets a partner's live project.
+preview, never reads or applies saved versions, never deletes a site or a block on a page
+that existed before the run, never attaches a domain, never patches block text (it deletes
+the string and every translation), and never switches the project to production. It never
+writes before an explicit confirmation of the plan or before the preflight passes, and
+never targets a partner's live project.
 
 ## Common pitfalls
 
@@ -180,8 +179,5 @@ the plan or before the preflight passes, and never targets a partner's live proj
   path ships.
 - **No Steam import.** The store-page parsing endpoint rejects Steam links in live
   tests, so metadata and assets come from the partner, not the Steam page.
-- **The portal template fails without a store URL.** With an empty store URL and
-  launcher the template call returns `500` and creates nothing, so such a portal is
-  built from `add-page` and `add-block` instead.
-- **No Community page template.** That section needs a blank page and explicit blocks,
-  so it returns `needs_input` rather than a guessed layout.
+- **Community needs the partner's channel.** Its `embed` block shows a social channel the
+  partner supplies; without one the section is `needs_input`, not a guessed layout.
