@@ -181,8 +181,10 @@ Keep the publisher experience business-first and progressive:
   gameplay quest, use `liveops` internally but describe it as a gameplay quest.
   Do not show `type` in the proposal. For an item reward, propose quantity one,
   purpose `quest_completion`, and one payout per player. Use `AI Toolkit` as
-  the internal creator label unless another name was supplied. For a new quest
-  without a requested schedule, start at activation and end 7 days later.
+  the internal creator label unless another name was supplied. For a new quest,
+  use the publisher's start or start at activation. Use the publisher's end,
+  otherwise add their requested duration to the start, otherwise add 7 days.
+  Do not ask for missing dates.
 - For a named item (`<requested item>`), resolve via
   [`references/rewards.md`](references/rewards.md). Never guess an SKU,
   substitute a reward type, or use public web search for catalog lookup. Stop
@@ -196,8 +198,9 @@ Keep the publisher experience business-first and progressive:
   explicitly requested.
 - Use the event name the publisher supplied, or derive a stable `snake_case`
   name from the stated player action (for example, `monster_defeated`). Show
-  that name in the draft without asking the publisher to confirm it. If the
-  publisher names a different game event later, revise the draft then.
+  that name in the draft without asking the publisher to confirm it or flagging
+  it as an open question. If the publisher names a different game event later,
+  revise the draft then.
 - One approval of the exact proposal authorizes create, configure, activate and
   read-back. Test events and shop source edits need separate consent. The
   approval request names only publication; never offer, promise or bundle a

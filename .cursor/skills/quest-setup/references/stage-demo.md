@@ -145,11 +145,17 @@ says, on the public gateway. After the final `GET`, list the project quests
 
 ### Publish command
 
-Fill `QUEST` from the approved proposal: `<start UTC>` is `date -u
-+%Y-%m-%dT%H:%M:00Z` run in this turn and `<end UTC>` is 7 days later. The
-command builds the one-trigger, one-item quest, prints one JSON line, and
-stops at the first failed write (a `POST` error means no quest was created;
-fix `QUEST` and run it again).
+Fill `QUEST` from the approved draft. For the default schedule, `<start UTC>`
+is `date -u +%Y-%m-%dT%H:%M:00Z` run in the publish turn and `<end UTC>` is 7
+days later. For a publisher-supplied schedule, use its approved start or start
+at activation; use its approved end, or add its duration to the start, or
+default to 7 days. A relative "start now" uses the current publish time. If an
+approved fixed start has become invalid, stop and show the changed schedule in
+a revised draft for approval before writing. The command
+builds the one-trigger, one-item quest, prints one JSON line, and stops at the
+first failed write. On a timeout or 5xx, reconcile per
+[Ambiguous or partial writes](quest-document.md#ambiguous-or-partial-writes)
+before any retry; never assume the quest was not created.
 
 ```sh
 python3 - <<'PY'
@@ -197,8 +203,18 @@ s, r = call("PUT", f"{S}/quests/{qid}", q)
 if s != 200:
     print(json.dumps({"failed": "PUT", "status": s, "id": qid, "error": r})); raise SystemExit(1)
 s, q = call("GET", f"{S}/quests/{qid}")
-_, lst = call("GET", S + "/quests?page=1&limit=100")
-_, pub = call("GET", PUB, auth=False)
+if s != 200:
+    print(json.dumps({"failed": "GET active", "status": s, "id": qid})); raise SystemExit(1)
+nodes = q.get("nodes") or []
+reward_ok = any(n.get("subtype") == "issue_reward" and ((n.get("parameters") or {}).get("body") or {}).get("item_sku") == QUEST["sku"] for n in nodes)
+event_ok = any(n.get("subtype") == "dynamic_event" and (n.get("parameters") or {}).get("event_name") == QUEST["event_name"] for n in nodes)
+limits_ok = any(x.get("type") == "per_user" and x.get("count") == 1 for x in (q.get("activation_limits") or []))
+if q.get("status") != "active" or utc(q["start_date"]) != utc(QUEST["start"]) or utc(q["end_date"]) != utc(QUEST["end"]) or not (reward_ok and event_ok and limits_ok):
+    print(json.dumps({"failed": "active read-back mismatch", "id": qid})); raise SystemExit(1)
+s_list, lst = call("GET", S + "/quests?page=1&limit=100")
+s_public, pub = call("GET", PUB, auth=False)
+if s_list != 200 or s_public != 200 or qid not in json.dumps(lst) or qid not in json.dumps(pub):
+    print(json.dumps({"failed": "list read-back", "id": qid, "list_status": s_list, "public_status": s_public})); raise SystemExit(1)
 print(json.dumps({"id": qid, "status": q.get("status"), "start_utc": utc(q["start_date"]), "end_utc": utc(q["end_date"]),
                   "updated_at": q.get("updated_at"), "in_list": qid in json.dumps(lst), "in_public_list": qid in json.dumps(pub),
                   "event_name": QUEST["event_name"], "client_timestamp": d.datetime.now(d.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -340,7 +356,7 @@ Your project is ready for quests. <Item name> is in your catalog and your test p
 - **Quest:** <quest name>
 - **Player action:** <what the player does>, sent as the `<event_name>` event
 - **Reward:** <quantity> x <Item name>
-- **Schedule:** starts when published and ends 7 days later
+- **Schedule:** <approved schedule; by default, starts when published and ends 7 days later>
 - **Limit:** one reward per player
 - **Payout exposure:** one item per player; total unbounded across players
 
