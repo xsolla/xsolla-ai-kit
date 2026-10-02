@@ -97,9 +97,9 @@ Before asking for approval of the draft quest, resolve the project, reward,
 player action, complete graph, proposed schedule, and repeat limits. Use a
 publisher-supplied start or end when available; otherwise propose activation
 time as the start and 7 days after the selected start as the end. Do not ask
-separately for dates or event-name approval. Inactive
-quests are an internal write step only; they are not a separate user-facing
-draft workflow and are excluded from the active public quest list.
+separately for dates or event-name approval. Inactive quests are an internal
+write step only; they are not a separate user-facing draft workflow and are
+excluded from the active public quest list.
 
 One approval of the exact publisher proposal authorizes this ordered sequence:
 

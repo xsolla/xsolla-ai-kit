@@ -197,8 +197,9 @@ Keep the publisher experience business-first and progressive:
   explicitly requested.
 - Use the event name the publisher supplied, or derive a stable `snake_case`
   name from the stated player action (for example, `monster_defeated`). Show
-  that name in the draft without asking the publisher to confirm it. If the
-  publisher names a different game event later, revise the draft then.
+  that name in the draft without asking the publisher to confirm it or flagging
+  it as an open question. If the publisher names a different game event later,
+  revise the draft then.
 - One approval of the exact proposal authorizes create, configure, activate and
   read-back. Test events and shop source edits need separate consent. The
   approval request names only publication; never offer, promise or bundle a
