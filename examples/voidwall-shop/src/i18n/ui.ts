@@ -29,10 +29,8 @@ const en = {
   support: 'Support',
   footer: 'Meridian Foundry, Lisbon. All rights reserved.',
   sandboxNote: 'Sandbox mode: no real charges.',
-  questsEyebrow: 'Earn rewards',
+  questsEyebrow: 'Active quests',
   questsTitle: 'Quests',
-  questsLoading: 'Loading quests...',
-  questsReward: 'Reward',
 } as const;
 export type UiKey = keyof typeof en;
 
@@ -49,7 +47,7 @@ export const UI: Record<Locale, Record<UiKey, string>> = {
     balance: 'Cores', notEnoughCores: "Pas assez de Cores. Achetez d'abord un pack de Cores.", purchased: 'Achat effectué !',
     close: 'Fermer', support: 'Assistance', footer: 'Meridian Foundry, Lisbonne. Tous droits réservés.',
     sandboxNote: 'Mode bac à sable : aucun débit réel.',
-    questsEyebrow: 'Gagnez des récompenses', questsTitle: 'Quêtes', questsLoading: 'Chargement des quêtes...', questsReward: 'Récompense',
+    questsEyebrow: 'Quêtes actives', questsTitle: 'Quêtes',
   },
   de: {
     tagline: 'Haltet die Linie.', heroSub: 'Skins, Ausrüstung, Booster und Cores für Wächter an der Grenze.',
@@ -62,7 +60,7 @@ export const UI: Record<Locale, Record<UiKey, string>> = {
     balance: 'Cores', notEnoughCores: 'Nicht genug Cores. Kaufe zuerst ein Core-Paket.', purchased: 'Gekauft!',
     close: 'Schließen', support: 'Support', footer: 'Meridian Foundry, Lissabon. Alle Rechte vorbehalten.',
     sandboxNote: 'Sandbox-Modus: keine echten Abbuchungen.',
-    questsEyebrow: 'Belohnungen verdienen', questsTitle: 'Quests', questsLoading: 'Quests werden geladen...', questsReward: 'Belohnung',
+    questsEyebrow: 'Aktive Quests', questsTitle: 'Quests',
   },
   ja: {
     tagline: '防衛線を守れ。', heroSub: 'フロンティアのウォーデンのためのスキン、ギア、ブースター、Cores。',
@@ -75,7 +73,7 @@ export const UI: Record<Locale, Record<UiKey, string>> = {
     balance: 'Cores', notEnoughCores: 'Coresが足りません。先にCoresパックを購入してください。', purchased: '購入しました!',
     close: '閉じる', support: 'サポート', footer: 'Meridian Foundry、リスボン。無断転載を禁じます。',
     sandboxNote: 'サンドボックスモード: 実際の請求は発生しません。',
-    questsEyebrow: '報酬を獲得', questsTitle: 'クエスト', questsLoading: 'クエストを読み込み中...', questsReward: '報酬',
+    questsEyebrow: '開催中のクエスト', questsTitle: 'クエスト',
   },
   'pt-BR': {
     tagline: 'Segurem a linha.', heroSub: 'Skins, equipamentos, boosters e Cores para Guardiões da Fronteira.',
@@ -88,6 +86,6 @@ export const UI: Record<Locale, Record<UiKey, string>> = {
     balance: 'Cores', notEnoughCores: 'Cores insuficientes. Compre um pacote de Cores primeiro.', purchased: 'Compra concluída!',
     close: 'Fechar', support: 'Suporte', footer: 'Meridian Foundry, Lisboa. Todos os direitos reservados.',
     sandboxNote: 'Modo sandbox: nenhuma cobrança real.',
-    questsEyebrow: 'Ganhe recompensas', questsTitle: 'Missões', questsLoading: 'Carregando missões...', questsReward: 'Recompensa',
+    questsEyebrow: 'Missões ativas', questsTitle: 'Missões',
   },
 };

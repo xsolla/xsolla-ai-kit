@@ -24,9 +24,8 @@ switching environments to the publisher.
 
 Three publisher turns, each ending at a stop point:
 
-1. Request: read-only checks, then the proposal. **Stop.** First run
-   `date -u +%Y-%m-%dT%H:%M:00Z` for `<now UTC>`. Then two commands, both
-   read-only:
+1. Request: read-only checks, then the proposal. **Stop.** Run two commands,
+   both read-only:
    1. The project read: the `-K -` credential pattern from
       [Credential](auth-and-environment.md#credential) against
       `https://quests-stage.xsolla.com/api/v2/merchants/<merchant id>/projects/<project id>`.
@@ -146,11 +145,17 @@ says, on the public gateway. After the final `GET`, list the project quests
 
 ### Publish command
 
-Fill `QUEST` from the approved proposal: `<start UTC>` is `date -u
-+%Y-%m-%dT%H:%M:00Z` run in this turn and `<end UTC>` is 7 days later. The
-command builds the one-trigger, one-item quest, prints one JSON line, and
-stops at the first failed write (a `POST` error means no quest was created;
-fix `QUEST` and run it again).
+Fill `QUEST` from the approved draft. For the default schedule, `<start UTC>`
+is `date -u +%Y-%m-%dT%H:%M:00Z` run in the publish turn and `<end UTC>` is 7
+days later. For a publisher-supplied schedule, use its approved start or start
+at activation; use its approved end, or add its duration to the start, or
+default to 7 days. A relative "start now" uses the current publish time. If an
+approved fixed start has become invalid, stop and show the changed schedule in
+a revised draft for approval before writing. The command
+builds the one-trigger, one-item quest, prints one JSON line, and stops at the
+first failed write. On a timeout or 5xx, reconcile per
+[Ambiguous or partial writes](quest-document.md#ambiguous-or-partial-writes)
+before any retry; never assume the quest was not created.
 
 ```sh
 python3 - <<'PY'
@@ -167,7 +172,7 @@ e = dict(l.split("=", 1) for l in pathlib.Path(".env").read_text().splitlines() 
 M, PR = e["XSOLLA_MERCHANT_ID"].strip(), e["XSOLLA_PROJECT_ID"].strip()
 AUTH = "Basic " + base64.b64encode(f"{M}:{e['XSOLLA_PROJECT_API_KEY'].strip()}".encode()).decode()
 S = f"https://quests-stage.xsolla.com/api/v2/merchants/{M}/projects/{PR}"
-PUB = f"https://qp-server.nl-k8s-stage.srv.local/api/v2/public/merchants/{M}/projects/{PR}/quests?page=1&limit=10"
+PUB = f"https://qp-server.nl-k8s-stage.srv.local/api/v2/public/merchants/{M}/projects/{PR}/quests"
 def call(method, url, body=None, auth=True):
     h = {"Content-Type": "application/json", **({"Authorization": AUTH} if auth else {})}
     req = urllib.request.Request(url, method=method, headers=h, data=None if body is None else json.dumps(body).encode())
@@ -198,10 +203,50 @@ s, r = call("PUT", f"{S}/quests/{qid}", q)
 if s != 200:
     print(json.dumps({"failed": "PUT", "status": s, "id": qid, "error": r})); raise SystemExit(1)
 s, q = call("GET", f"{S}/quests/{qid}")
-_, lst = call("GET", S + "/quests?page=1&limit=100")
-_, pub = call("GET", PUB, auth=False)
+if s != 200:
+    print(json.dumps({"failed": "GET active", "status": s, "id": qid})); raise SystemExit(1)
+nodes = q.get("nodes") or []
+def reward_matches(node):
+    params = node.get("parameters") or {}
+    reward = params.get("body") or {}
+    expected = {"project": "316665", "item_sku": QUEST["sku"], "quantity": 1}
+    return node.get("subtype") == "issue_reward" and params.get("type") == "web3_item" and params.get("purpose") == "quest_completion" and all(reward.get(k) == v for k, v in expected.items())
+reward_ok = any(reward_matches(n) for n in nodes)
+event_ok = any(n.get("subtype") == "dynamic_event" and (n.get("parameters") or {}).get("event_name") == QUEST["event_name"] for n in nodes)
+limits_ok = any(x.get("type") == "per_user" and x.get("count") == 1 for x in (q.get("activation_limits") or []))
+scope_ok = str(q.get("publisher_id")) == M and str(q.get("project_id")) == PR
+graph_ok = any(c.get("nodeId") == a for c in (q.get("connections") or {}).get(t, []))
+if q.get("id") != qid or q.get("status") != "active" or utc(q["start_date"]) != utc(QUEST["start"]) or utc(q["end_date"]) != utc(QUEST["end"]) or not (reward_ok and event_ok and limits_ok and scope_ok and graph_ok) or q.get("version_id") is None:
+    print(json.dumps({"failed": "active read-back mismatch", "id": qid})); raise SystemExit(1)
+def find_quest(base, auth=True):
+    def rows(value):
+        if isinstance(value, list):
+            return value
+        if isinstance(value, dict):
+            for key in ("data", "items", "quests", "results"):
+                if key in value:
+                    found = rows(value[key])
+                    if found is not None:
+                        return found
+        return None
+    for page in range(1, 101):
+        status, payload = call("GET", f"{base}?page={page}&limit=100", auth=auth)
+        if status != 200:
+            return False, status
+        page_rows = rows(payload)
+        if page_rows is None:
+            return False, "unknown list envelope"
+        if any(str(row.get("id")) == qid for row in page_rows if isinstance(row, dict)):
+            return True, status
+        if len(page_rows) < 100:
+            return False, status
+    return False, "page limit"
+in_list, list_status = find_quest(S + "/quests")
+in_public_list, public_status = find_quest(PUB, auth=False)
+if not (in_list and in_public_list):
+    print(json.dumps({"failed": "list read-back", "id": qid, "list_status": list_status, "public_status": public_status})); raise SystemExit(1)
 print(json.dumps({"id": qid, "status": q.get("status"), "start_utc": utc(q["start_date"]), "end_utc": utc(q["end_date"]),
-                  "updated_at": q.get("updated_at"), "in_list": qid in json.dumps(lst), "in_public_list": qid in json.dumps(pub),
+                  "updated_at": q.get("updated_at"), "in_list": in_list, "in_public_list": in_public_list,
                   "event_name": QUEST["event_name"], "client_timestamp": d.datetime.now(d.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
                   "idempotency_key": str(uuid.uuid4())}))
 PY
@@ -341,16 +386,15 @@ Your project is ready for quests. <Item name> is in your catalog and your test p
 - **Quest:** <quest name>
 - **Player action:** <what the player does>, sent as the `<event_name>` event
 - **Reward:** <quantity> x <Item name>
-- **Schedule:** starts at publish time, for example `<now UTC>`; ends 7 days later, for example `<now + 7 days UTC>`
+- **Schedule:** <approved schedule; by default, starts when published and ends 7 days later>
 - **Limit:** one reward per player
 - **Payout exposure:** one item per player; total unbounded across players
 
 ## Need from you
-Reply yes to publish this exact setup.
+Approve this draft quest to publish it.
 ```
 
-Take `<now UTC>` from `date -u +%Y-%m-%dT%H:%M:00Z` run in this turn; never
-estimate the time. Every time in a reply or a request body is UTC ending in
+Every time shown in a reply or a request body is UTC ending in
 `Z`; never a local offset. When a read-back returns an offset such as
 `+03:00`, convert it to UTC before showing it. If the resolver found no verified item, the whole reply is:
 
