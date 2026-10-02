@@ -15,11 +15,48 @@ contract.
 ## Services
 
 The integration may expose separate services for quest configuration, event
-ingestion and execution read-back. Use only the service
+ingestion, execution read-back and Web3 catalog lookups. Use only the service
 that owns the requested operation. For Quest Platform configuration, event
 ingestion and execution read-back, use the versioned route contract above.
 A missing route is not replaced with a guessed path or a route from another
 target.
+
+## Minting service
+
+Use the production Web3 minting service for read-only catalog validation at
+<!-- TODO: replace with the public hostname once the web3 team exposes one -->
+`https://web3-minting-service.gcp-k8s-web3-prod.srv.local`. Use only its
+`GET /skus` and `GET /metadata/sku/{sku}` routes, and never send the Quest
+Platform project API key to it. Never call a claim endpoint directly.
+Rewards are issued only by an activated quest.
+
+For candidate discovery, page through `GET /skus?project={project}&limit=100&offset={offset}`
+using the already-resolved publisher project as the lookup scope, then match
+the requested name against the returned item names. This project value scopes
+the read only; do not use it as the reward's catalog project unless the minting
+service returns it as `projectId`. Require HTTP 200 and a valid JSON object
+with a `projectId` string, numeric `count`, and `items` array on every page.
+Abort the lookup on any HTTP error, malformed response, or project mismatch;
+never treat an error as an empty page. Continue with offsets 0, 100, 200, and
+so on until a valid page contains no items. The optional `search` parameter
+reports `searchScope: "this page only"` and is not an exhaustive catalog
+search, so do not use it to prove uniqueness or absence. The response's
+`projectId` is the catalog project to carry forward. Validate each plausible
+candidate with `GET /metadata/sku/{sku}?project={projectId}`; require HTTP 200
+and a JSON `name` matching the catalog name. Abort on any failed or malformed
+metadata read. Read the complete catalog before deciding that a name has zero
+or one matches. Do not issue writes to this service.
+
+For the recipient check, read `GET /wallet/{xsolla_id}` on the same minting service.
+HTTP 200 with a `walletAddress` means the user has a wallet; 404 means the user has
+no wallet, which is a non-retryable blocker for a Web3 reward. Any other status or
+a malformed body aborts the check; never treat an error as a missing wallet. This is
+a read; do not issue writes to this service.
+
+For a named item, resolve it through the minting catalog reads above. Preserve
+the `projectId` returned with the verified item and validate that exact
+`(catalog_project, sku)` pair in the metadata read before using it in the
+`web3_item` body. A zero or ambiguous result stops the flow.
 
 ## Credential
 
@@ -69,6 +106,9 @@ The project Basic credential (`XSOLLA_MERCHANT_ID` plus
 use any other key as a fallback. If the developer asks for another lane, stop
 and direct them to the Quest Platform owner. Do not infer a target by probing
 hosts or by trying a credential against multiple gateways.
+
+The catalog project is not a credential and must come from the resolved item,
+never from the Quest Platform project by default.
 
 ## The merchant id in the path
 
@@ -148,6 +188,10 @@ Run one read-only preflight per service, only when the task needs that service:
   [`qp-api-contract.md`](qp-api-contract.md) before any query. If the publisher
   Basic lane is not accepted, or the production probe is a router miss, stop
   and report that read-back is unavailable; never use any other key.
+- Web3 catalog: resolve the named item and validate its catalog project and
+  SKU; for a Web3 reward, when a recipient is known, also check the recipient
+  wallet during the read-only work before the proposal, or otherwise before any
+  publication write, and again before the event.
 
 Bring-up and preflight are GET-only. Ask before any other call.
 

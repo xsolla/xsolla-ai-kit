@@ -24,6 +24,35 @@ The wrapper needs a supported `type`, a non-empty `purpose` and a non-empty
 `body`. Use `quest_completion` for a named item unless the developer requests a
 different reason.
 
+## Named item behavior
+
+When the publisher requests a named item (`<requested item>`):
+
+- resolve it only through an available supported reward capability (catalog or
+  type-specific provider read). For production `web3_item`, the supported
+  capability is the read-only minting catalog lookup documented in
+  [auth and environment](auth-and-environment.md#minting-service). Page through
+  the catalog, match the requested name, and validate candidate metadata before
+  using it. Never use public web search for catalog lookup;
+- when the capability is available and returns exactly one verified candidate,
+  use that candidate's catalog project and SKU in the `web3_item` body;
+- when it returns multiple plausible candidates, ask the publisher to choose
+  before any Quest Platform write;
+- if the service is unavailable or rejects the read, stop before any Quest
+  Platform write and report that the item lookup service could not be reached;
+  do not say the publisher's catalog needs connecting. If a completed search
+  returns zero candidates, say the item was not found and suggest checking its
+  exact name or whether it is enabled. Do not ask the publisher to type a
+  catalog project or SKU: a typed value is not a verified candidate;
+- default quantity to one and show it in the concise proposal;
+- never guess an SKU or silently substitute another reward type
+  (`inventory_item`, Store API grants, direct Backpack grants, ERC-20 claim
+  endpoints, or a provider-default catalog).
+
+Never ask whether the destination is Backpack. Preserve the catalog project
+returned by the verified candidate; never copy the Quest Platform project as
+the catalog project by default.
+
 ## `web3_item`
 
 An NFT from the production minting catalog:
@@ -41,7 +70,7 @@ An NFT from the production minting catalog:
 ```
 
 `quantity` must be a non-negative integer. For a named item, use a real SKU
-from the production minting catalog. Omitting `item_sku` lets the provider choose an
+returned by the catalog lookup. Omitting `item_sku` lets the provider choose an
 item and is not allowed for a named reward.
 
 The production runtime must enforce the once-per-user-per-quest rule. When a
@@ -88,7 +117,10 @@ event again.
 ## Recipient
 
 Both Web3 reward types need an `xsolla_id` in the event and a production wallet
-for that user. A missing wallet is a non-retryable blocker,
+for that user. When a recipient is known, check the wallet with the recipient read in
+[`auth-and-environment.md`](auth-and-environment.md#minting-service) during the
+read-only work before the proposal, or otherwise before any publication write.
+Check it again before the event. A missing wallet is a non-retryable blocker,
 not an approval step. Confirm the wallet source is the Backpack-compatible
 managed wallet required by the production integration.
 
