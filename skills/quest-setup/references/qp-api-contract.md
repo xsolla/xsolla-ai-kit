@@ -109,14 +109,14 @@ Production probes without credentials (2026-09-30, no Authorization, no secrets)
 | `GET https://quests-platform.xsolla.com/openapi.json` | 404 | OpenAPI blocked on the production gateway |
 
 Publisher Basic lane: **yes**, a publisher project key may submit events on
-this production route after the gate in `events.md`.
+this production route after the gate in [`events.md`](events.md).
 
 ## Execution read-back
 
 Quest execution read-back has no publisher-usable production route. The
 publisher Basic lane is not accepted for it, and the public gateway probe
 below returned 404. The execution statuses `NOT_TRIGGERED`, `IN_PROGRESS`,
-`COMPLETED` and `FAILED` are described in `verification.md`.
+`COMPLETED` and `FAILED` are described in [`verification.md`](verification.md).
 
 Production probes without credentials (2026-09-30):
 

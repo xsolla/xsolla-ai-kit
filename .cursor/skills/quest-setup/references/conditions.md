@@ -99,4 +99,4 @@ error.
   the window, so near a boundary the count can include an event from the
   previous period. Do not promise a local-calendar interpretation.
 - A condition miss leaves an `IN_PROGRESS` row with no actions; it never turns
-  into `COMPLETED` by itself. See `verification.md`.
+  into `COMPLETED` by itself. See [`verification.md`](verification.md).
