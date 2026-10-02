@@ -28,7 +28,7 @@ in this skill.
 | `publisher_id` | string | server-set | set by the server from the selected production route. Never ask for it or invent it; on a `PUT`, send it back as the last read returned it |
 | `project_id` | string | server-set | set by the server from the selected production route. On a `PUT`, send it exactly as the last read returned it. See Scope in the auth reference |
 | `start_date` | RFC3339 | **only when `active`** | not earlier than exactly 24 hours before the server's now; see below |
-| `end_date` | RFC3339 | **only when `active`** | not in the past, and at or after `start_date`. For a new quest without a requested end, default to 7 days after the selected start; show this in the draft without asking for a date |
+| `end_date` | RFC3339 | **only when `active`** | not in the past, and at or after `start_date`. For a new quest without a requested end or duration, default to 7 days after the selected start; show this in the draft without asking for a date |
 | `nodes` | array | **at least 2 when `active`** | optional and may be empty when `inactive` |
 | `connections` | object | required unless `inactive` and empty | see below |
 | `activation_limits` | array | no | see below |
@@ -95,9 +95,9 @@ carries no merchant, account or workspace id, so do not read one from it.
 
 Before asking for approval of the draft quest, resolve the project, reward,
 player action, complete graph, proposed schedule, and repeat limits. Use a
-publisher-supplied start or end when available; otherwise propose activation
-time as the start and 7 days after the selected start as the end. Do not ask
-separately for dates or event-name approval. Inactive quests are an internal
+publisher-supplied start or propose activation time. Use a publisher-supplied
+end, or add the supplied duration to the selected start, or default to 7 days.
+Do not ask separately for dates or event-name approval. Inactive quests are an internal
 write step only; they are not a separate user-facing draft workflow and are
 excluded from the active public quest list.
 
