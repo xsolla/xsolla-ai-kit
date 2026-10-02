@@ -25,6 +25,7 @@ On the headless path, skills call **Xsolla REST APIs directly**. The Shop Builde
 | `login-styling`                 | Applies a custom visual style / theme / brand to the Login UI (pairs with `login-setup`) |
 | `headless-checkout-integration` | Payments via Headless Checkout                                                           |
 | `webhooks-impl`                 | Generates webhook handler code for order/payment events                                  |
+| `quest-setup`                   | Creates and manages Quest Platform quests |
 | `production`                    | Sandbox → live: contract, flip flags, deploy, developer live-payment checklist           |
 | `description-to-shop`           | Prose → shop brief for shop-builder-assembly — reached via shop-setup, not directly      |
 | `shopbuilder-translate`         | Translates Shop Builder page copy. Catalog and LiveOps text are out of scope             |
@@ -68,6 +69,9 @@ Translate the Shop Builder FAQ / add German to the storefront page
 Set up a Game Web Portal for my PC game — a game home with news, rewards and a shop
 → triggers: shop-setup; on the Shop Builder path with the site kind portal, description-to-shop
   or shop-builder-assembly hands off to game-web-portal
+
+Create a quest that rewards players
+→ triggers: quest-setup
 ```
 
 ---
@@ -93,6 +97,10 @@ Shop Builder skills read it, and an absent value means a shop.
 Adding a skill that behaves differently per path? Implement against
 [the build-path contract](skills/shop-plan/references/build-path-contract.md) — it covers the
 allowed values and the three states a reader must handle (absent, decided, invalid).
+
+Each API's authentication format is specific to that API; Quest Platform
+publisher Basic authentication is documented in
+`skills/quest-setup/references/qp-api-contract.md`.
 
 ---
 
