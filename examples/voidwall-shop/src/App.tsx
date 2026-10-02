@@ -9,6 +9,7 @@ import { Footer } from './components/Footer';
 import { Header } from './components/Header';
 import { Hero } from './components/Hero';
 import { Section } from './components/Section';
+import { XsollaQuestModule } from './quests/XsollaQuestModule';
 import { CheckoutModal } from './checkout/CheckoutModal';
 import { InsufficientCoresError, buyWithCores, createCartPaymentToken, fetchCoresBalance } from './checkout/api';
 import { config } from './config';
@@ -81,6 +82,7 @@ export function Shop({ locale, onLocale }: { locale: Locale; onLocale: (l: Local
               <Section key={g.id} id={g.id} items={byGroup(items, g.id)} locale={locale} inCart={inCart}
                 onAdd={cart.add} onBuyWithCores={buyCores} />
             ))}
+            <XsollaQuestModule locale={locale} />
             <section>
               <h2>{CHARTER.name}</h2>
               <p className="note">{t.comingSoon}</p>

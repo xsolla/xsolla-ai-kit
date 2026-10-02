@@ -46,3 +46,13 @@ select { background: var(--void); color: var(--plasma); border: 1px solid var(--
 .footer { border-top: 1px solid var(--hull); padding: 1.5rem 1rem; text-align: center; }
 
 .badge { border: 1px solid var(--cyan); border-radius: 999px; padding: 0 0.5rem; font-size: 0.75rem; color: var(--cyan); }
+
+.quests { margin: 2.5rem 0; }
+.eyebrow { margin: 0; color: var(--cyan); font-size: 0.75rem; letter-spacing: 0.12em; text-transform: uppercase; }
+.quest-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; }
+.quest-card { background: rgba(42, 50, 66, 0.75); border: 1px solid var(--hull); border-radius: var(--radius); padding: 1rem; display: grid; gap: 0.5rem; align-content: start; min-width: 0; }
+.quest-card h3, .quest-card p { margin: 0; overflow-wrap: anywhere; }
+.quest-rewards { list-style: none; margin: 0.25rem 0 0; padding: 0; display: grid; gap: 0.5rem; }
+.quest-reward { display: flex; align-items: center; flex-wrap: wrap; gap: 0.6rem; border: 1px solid var(--amber); border-radius: var(--radius); padding: 0.5rem; }
+.quest-reward > div { flex: 1 1 8rem; min-width: 0; overflow-wrap: anywhere; }
+.quest-reward img, .quest-reward-media { width: 48px; height: 48px; flex: none; border-radius: 4px; object-fit: cover; background: var(--hull); }
