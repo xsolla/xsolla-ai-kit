@@ -47,7 +47,7 @@ production quest.
 
 There is no partial update route in this contract. Create the quest with
 `status: inactive`, then activate it in a later full-document `PUT`, after a fresh
-`GET` and the confirmations in The quest document.
+`GET` and the confirmations in [The quest document](quest-document.md).
 
 ## Interpreting failures
 
