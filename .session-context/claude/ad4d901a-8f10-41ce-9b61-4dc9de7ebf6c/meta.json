@@ -3,7 +3,7 @@
   "session_id": "ad4d901a-8f10-41ce-9b61-4dc9de7ebf6c",
   "transcript_kind": "claude-jsonl",
   "transcript_withheld": false,
-  "captured_at": "2026-10-05T11:59:24Z",
+  "captured_at": "2026-10-05T12:00:01Z",
   "project_dir": "/Users/raufaliyev/orca/workspaces/xsolla-ai-kit/qp-3037",
   "head": "05045b9c0374bb24a757b749998eff5534cae6e3",
   "branch": "QP-2906-reward-catalog",
