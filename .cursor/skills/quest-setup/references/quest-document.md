@@ -217,7 +217,7 @@ are node UUIDs; the letters here are placeholders.
 
 So put the action whose failure should block the others first, and tell the
 developer that a later failure does not undo an earlier payout. How to read
-per-action statuses is in `verification.md`.
+per-action statuses is in [`verification.md`](verification.md).
 
 ## Activation limits
 
@@ -390,7 +390,7 @@ Keep the publisher experience business-first and progressive:
   in [`node-subtypes.md`](node-subtypes.md) rather than a
   real reward (placeholders `e2e-noop`, `e2e-sink.invalid`). For publication
   or a smoke test, say production events are not verified until the events
-  preflight passes (production event gate).
+  preflight passes ([production event gate](events.md#production-event-gate)).
 - When an external action is part of the proposal, say what it will do once
   active. The publication approval covers that impact for the approved quest.
   An `issue_reward` can create real payouts; `send_http_webhook` sends event
