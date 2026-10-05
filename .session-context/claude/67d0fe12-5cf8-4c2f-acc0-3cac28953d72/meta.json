@@ -1,0 +1,13 @@
+{
+  "tool": "claude",
+  "session_id": "67d0fe12-5cf8-4c2f-acc0-3cac28953d72",
+  "transcript_kind": "claude-jsonl",
+  "transcript_withheld": false,
+  "captured_at": "2026-10-05T12:02:30Z",
+  "project_dir": "/Users/raufaliyev/orca/workspaces/xsolla-ai-kit/qp-3037",
+  "head": "05045b9c0374bb24a757b749998eff5534cae6e3",
+  "branch": "QP-2906-reward-catalog",
+  "user_email": "r.aliyev@xsolla.com",
+  "files_changed_vs_head": [],
+  "skipped_large_files": []
+}
