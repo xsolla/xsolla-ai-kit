@@ -1,61 +1,53 @@
-import { expect, test } from 'vitest';
-import { questSource } from '../src/config';
-import { fetchQuests, parsePage, questsUrl, safeImageUrl, type QuestSource } from '../src/quests/api';
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { expect, test, vi } from 'vitest';
+import { QUEST_COPY, QuestsUnavailableError, fetchQuests, parseQuests, questsUrl, safeImageUrl } from '../src/quests/api';
+import { QuestModuleView, type QuestState } from '../src/quests/XsollaQuestModule';
 
-const src: QuestSource = { baseUrl: 'https://quests-platform.xsolla.com/', merchantId: '1', projectId: '2' };
-const reward = { name: 'Ice Sword', description: null, image_url: 'https://cdn.example/a.png', quantity: 1, type: 'web3_item' };
+const cfg = { baseUrl: 'https://quests-platform.xsolla.com/', merchantId: '1', projectId: '2' };
+const view = (state: QuestState) => renderToStaticMarkup(createElement(QuestModuleView, { state, locale: 'en' }));
 
-test('questsUrl targets the public list, trims the base, no credentials in the url', () => {
-  expect(questsUrl(src, 1)).toBe('https://quests-platform.xsolla.com/api/v2/public/merchants/1/projects/2/quests?page=1&limit=100');
+test('url targets the public list with the max page size', () => {
+  expect(questsUrl(cfg)).toBe('https://quests-platform.xsolla.com/api/v2/public/merchants/1/projects/2/quests?page=1&limit=100');
 });
 
-test('safeImageUrl keeps only absolute http(s)', () => {
-  expect(safeImageUrl('https://a.b/c.png')).toBe('https://a.b/c.png');
-  for (const bad of ['/rel.png', 'javascript:alert(1)', 'data:image/png;base64,AA', null, undefined, 5]) expect(safeImageUrl(bad)).toBeNull();
+test('images: only absolute http(s)', () => {
+  expect(safeImageUrl('https://x.test/a.png')).toBe('https://x.test/a.png');
+  for (const bad of ['javascript:alert(1)', 'data:image/png;base64,AA', '/rel.png', 'rel.png', null, '']) expect(safeImageUrl(bad)).toBeNull();
 });
 
-test('parsePage skips null reward fields and unsafe images, omits an absent description', () => {
-  const { quests } = parsePage({ total: 1, data: [{ id: 'q1', name: 'Q', rewards: [{ ...reward, name: null, image_url: 'javascript:x' }, reward] }] });
-  expect(quests[0]).not.toHaveProperty('description');
-  expect(quests[0].rewards[0]).toMatchObject({ name: null, imageUrl: null, quantity: 1 });
-  expect(quests[0].rewards[1].imageUrl).toBe('https://cdn.example/a.png');
+test('parse keeps null reward fields as null and drops malformed quests', () => {
+  const q = parseQuests({ data: [
+    { id: 'a', name: 'Q', rewards: [{ name: null, description: null, image_url: null, quantity: 1, type: 'web3_item' }] },
+    { name: 'no id', rewards: [] },
+  ] });
+  expect(q).toHaveLength(1);
+  expect(q[0].rewards[0]).toMatchObject({ name: null, imageUrl: null, quantity: 1 });
 });
 
-test('parsePage rejects a malformed body instead of returning an empty list', () => {
-  expect(() => parsePage({})).toThrow();
-  expect(() => parsePage(null)).toThrow();
+test('fetch sends no credentials and treats failures as unavailable, not empty', async () => {
+  const ok = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ data: [] }) });
+  expect(await fetchQuests(cfg, ok as any)).toEqual([]);
+  expect(ok.mock.calls[0][1]).toMatchObject({ credentials: 'omit' });
+  expect(ok.mock.calls[0][1].headers).toBeUndefined();
+  const bad = vi.fn().mockResolvedValue({ ok: false, status: 404 });
+  await expect(fetchQuests(cfg, bad as any)).rejects.toBeInstanceOf(QuestsUnavailableError);
+  await expect(fetchQuests({ ...cfg, projectId: '' }, ok as any)).rejects.toBeInstanceOf(QuestsUnavailableError);
 });
 
-const respond = (body: unknown, status = 200) => (async () => new Response(JSON.stringify(body), { status })) as unknown as typeof fetch;
-
-test('fetchQuests returns an empty list only for a 200 with data: []', async () => {
-  expect(await fetchQuests(src, respond({ page: 1, limit: 100, total: 0, data: [] }))).toEqual([]);
+test('every state renders the marked section; empty and error stay visible', () => {
+  for (const s of [{ status: 'loading' }, { status: 'error' }, { status: 'ready', quests: [] }] as QuestState[])
+    expect(view(s)).toContain('data-xsolla-quest-module="1"');
+  expect(view({ status: 'ready', quests: [] })).toContain(QUEST_COPY.empty);
+  expect(view({ status: 'error' })).toContain(QUEST_COPY.unavailable);
+  expect(view({ status: 'loading' })).toContain(QUEST_COPY.disclaimer);
 });
 
-test('fetchQuests throws on HTTP errors and never sends credentials', async () => {
-  await expect(fetchQuests(src, respond({ error: 'Project not found' }, 404))).rejects.toThrow();
-  let init: RequestInit | undefined;
-  const spy = (async (_u: unknown, i?: RequestInit) => { init = i; return new Response(JSON.stringify({ total: 0, data: [] })); }) as unknown as typeof fetch;
-  await fetchQuests(src, spy);
-  expect(init?.credentials).toBe('omit');
-});
-
-test('fetchQuests pages until total is covered', async () => {
-  const urls: string[] = [];
-  const f = (async (u: string) => {
-    urls.push(u);
-    const page = Number(new URL(u).searchParams.get('page'));
-    const data = Array.from({ length: page === 1 ? 100 : 1 }, (_, i) => ({ id: `q${page}-${i}`, name: 'Q', rewards: [] }));
-    return new Response(JSON.stringify({ total: 101, data }));
-  }) as unknown as typeof fetch;
-  expect(await fetchQuests(src, f)).toHaveLength(101);
-  expect(urls).toHaveLength(2);
-});
-
-test('questSource needs both ids, defaults to the production host, accepts only an http(s) override', () => {
-  expect(questSource({ qpMerchantId: '', qpProjectId: '2', qpBaseUrl: '' })).toBeNull();
-  expect(questSource({ qpMerchantId: '1', qpProjectId: '', qpBaseUrl: '' })).toBeNull();
-  expect(questSource({ qpMerchantId: '1', qpProjectId: '2', qpBaseUrl: '' })?.baseUrl).toBe('https://quests-platform.xsolla.com');
-  expect(questSource({ qpMerchantId: '1', qpProjectId: '2', qpBaseUrl: 'javascript:1' })?.baseUrl).toBe('https://quests-platform.xsolla.com');
-  expect(questSource({ qpMerchantId: '1', qpProjectId: '2', qpBaseUrl: 'https://x.example/path' })?.baseUrl).toBe('https://x.example');
+test('API strings are escaped and unsafe images are replaced by a placeholder', () => {
+  const html = view({ status: 'ready', quests: [{ id: 'a', name: '<img src=x onerror=1>', rewards: [
+    { name: 'Sword', description: null, imageUrl: null, quantity: 2, type: 'web3_item' }] }] });
+  expect(html).not.toContain('<img src=x');
+  expect(html).toContain('&lt;img src=x onerror=1&gt;');
+  expect(html).toContain('quest-reward-media');
+  expect(html).toContain('x2');
 });
