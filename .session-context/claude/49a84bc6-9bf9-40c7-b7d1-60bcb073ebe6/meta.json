@@ -1,0 +1,13 @@
+{
+  "tool": "claude",
+  "session_id": "49a84bc6-9bf9-40c7-b7d1-60bcb073ebe6",
+  "transcript_kind": "claude-jsonl",
+  "transcript_withheld": false,
+  "captured_at": "2026-10-05T11:08:26Z",
+  "project_dir": "/Users/raufaliyev/GolandProjects/xsolla-ai-kit-QP-2906",
+  "head": "b646d1e3d392729b95be4a519fba53795f80b0fe",
+  "branch": "QP-2906-reward-catalog",
+  "user_email": "r.aliyev@xsolla.com",
+  "files_changed_vs_head": [],
+  "skipped_large_files": []
+}
