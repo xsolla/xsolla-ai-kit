@@ -32,7 +32,7 @@ two GET routes:
 | Route | Use |
 |---|---|
 | `GET .../admin/items/virtual_items?limit=50&offset={offset}` | page the full catalog |
-| `GET .../admin/items/virtual_items/sku/{sku}` | validate one chosen SKU |
+| `GET .../admin/items/virtual_items/sku/{sku}` | validate a SKU the publisher typed |
 
 Never issue a `POST`, `PUT`, `PATCH` or `DELETE` to any Store admin route, even
 when the publisher asks for it; creating or editing items is outside this
@@ -62,18 +62,20 @@ contains the current time. When the requested name matches only items that
 fail this rule, say the item exists but is not available as a Web3 reward
 (disabled, hidden from the store or outside its sale period) and stop.
 
-Validate the chosen SKU, including one the publisher typed, with the single-item
-read. Require HTTP 200, the same `sku` and name, and the mintable rule above.
-A 404 means the SKU is not in the catalog. Abort on any other failure. The
-catalog project for the `web3_item` body is the `XSOLLA_PROJECT_ID` both reads
-were scoped to. A zero or ambiguous result stops the flow.
+A named item is resolved from the list pages alone. A SKU the publisher typed
+is validated with the single-item read instead: require HTTP 200, the same
+`sku`, and the mintable rule above. A 404 means the SKU is not in the catalog.
+Abort on any other failure. The catalog project for the `web3_item` body is the
+`XSOLLA_PROJECT_ID` the read was scoped to. A zero or ambiguous result stops
+the flow.
 
 Observed 2026-10-05 on the kit's production project (49 virtual items):
 
 - HTTP Basic with `XSOLLA_PROJECT_ID` (documented `basicAuth`) and with
-  `XSOLLA_MERCHANT_ID` (`basicMerchantAuth`) as the username both return 200.
-  No header or a wrong key returns 401 with `errorCode` 1501. Use
-  `XSOLLA_PROJECT_ID`.
+  `XSOLLA_MERCHANT_ID` (documented `basicMerchantAuth`) as the username both
+  return 200 on both reads. No header or a wrong key returns 401 with
+  `errorCode` 1501. The skill uses `XSOLLA_MERCHANT_ID`, the same pair as the
+  Quest Platform routes.
 - `limit` below 1 returns 422. Values up to 10001 returned 200; the whole
   catalog fit on one page at every limit, so no server cap was observed. Page
   by `has_more`, not by item count.
@@ -114,12 +116,11 @@ may provide the same values instead:
 | `XSOLLA_PROJECT_ID` | Quest Platform project scope |
 | `XSOLLA_PROJECT_API_KEY` | project API key |
 
-Never print, log or commit credentials or encoded headers. For Quest Platform
-publisher routes, the API contract requires HTTP Basic with the configured
-merchant ID as the username and the project API key as the password. The two
-Store admin GET reads in [Store admin catalog](#store-admin-catalog) use HTTP
-Basic with `XSOLLA_PROJECT_ID` as the username and the same key. Send the key
-to no other Store, Catalog or unrelated route. Do not send multiple auth
+Never print, log or commit credentials or encoded headers. Quest Platform
+publisher routes and the two Store admin GET reads in
+[Store admin catalog](#store-admin-catalog) use HTTP Basic with the configured
+merchant ID as the username and the project API key as the password. Send the
+key to no other Store, Catalog or unrelated route. Do not send multiple auth
 schemes in one request.
 
 Read `.env` only as text; never source, execute, echo or interpolate the file.
@@ -127,7 +128,7 @@ Never open `.env` in a file viewer or print it, and never paste a credential
 value into command text, a script file, a log or a reply. Parse the values
 inside the same command that sends the request, so they reach the HTTP client
 without ever appearing in the command line or its output. One safe pattern is a short script that parses `.env` as text and attaches
-the route's Basic username and `XSOLLA_PROJECT_API_KEY` as the HTTP Basic pair
+`XSOLLA_MERCHANT_ID` and `XSOLLA_PROJECT_API_KEY` as the HTTP Basic pair
 on the request itself, so the values never reach the command line, the output
 or the reply. Send the request to a route from
 [`qp-api-contract.md`](qp-api-contract.md) or [Store admin catalog](#store-admin-catalog).
@@ -145,15 +146,13 @@ Resolve the three credential names as an all-or-nothing set:
    `XSOLLA_MERCHANT_ID`, `XSOLLA_PROJECT_ID`, and
    `XSOLLA_PROJECT_API_KEY` in the project-local `.env` or process environment.
 
-The project API key with its Basic username (`XSOLLA_MERCHANT_ID` for Quest
-Platform, `XSOLLA_PROJECT_ID` for the Store admin reads) is the only credential
-lane. Never request, print or
-use any other key as a fallback. If the developer asks for another lane, stop
+The project API key with the merchant ID as its Basic username is the only
+credential lane. Never request, print or use any other key as a fallback. If the developer asks for another lane, stop
 and direct them to the Quest Platform owner. Do not infer a target by probing
 hosts or by trying a credential against multiple gateways.
 
 The catalog project is not a credential. It is the `XSOLLA_PROJECT_ID` that
-the Store admin reads were scoped to, never a value the publisher typed.
+the Store admin read was scoped to, never a value the publisher typed.
 
 ## The merchant id in the path
 
@@ -233,8 +232,9 @@ Run one read-only preflight per service, only when the task needs that service:
   [`qp-api-contract.md`](qp-api-contract.md) before any query. If the publisher
   Basic lane is not accepted, or the production probe is a router miss, stop
   and report that read-back is unavailable; never use any other key.
-- Web3 catalog: page the Store admin catalog, resolve the named item and
-  validate its SKU with the single-item read; for a Web3 reward, when a recipient is known, also check the recipient
+- Web3 catalog: page the Store admin catalog and resolve the named item (or
+  validate a typed SKU with the single-item read); for a Web3 reward, when a
+  recipient is known, also check the recipient
   wallet during the read-only work before the proposal, or otherwise before any
   publication write, and again before the event.
 

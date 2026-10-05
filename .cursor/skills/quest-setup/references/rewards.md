@@ -33,9 +33,8 @@ When the publisher requests a named item (`<requested item>`):
   type-specific provider read). For production `web3_item`, the supported
   capability is the read-only Store admin catalog lookup documented in
   [auth and environment](auth-and-environment.md#store-admin-catalog). Page
-  through the whole catalog, match the requested name, and validate the chosen
-  SKU with the single-item read before using it. Never use public web search
-  for catalog lookup;
+  through the whole catalog and match the requested name against the mintable
+  items. Never use public web search for catalog lookup;
 - when the capability is available and returns exactly one verified candidate,
   use that candidate's SKU and the catalog project the read was scoped to in
   the `web3_item` body, and show the item's name, SKU and image URL (when it
@@ -57,14 +56,8 @@ When the publisher requests a named item (`<requested item>`):
   endpoints, or a provider-default catalog).
 
 Never ask whether the destination is Backpack. The catalog project is the
-`XSOLLA_PROJECT_ID` the Store admin reads were scoped to, never a value the
+`XSOLLA_PROJECT_ID` the Store admin read was scoped to, never a value the
 publisher typed and never a project from another catalog.
-
-On 2026-10-05 every SKU the minting service could mint for the kit's project
-was in the Store admin list, and the admin-only items were exactly those that
-fail the mintable rule in
-[auth and environment](auth-and-environment.md#store-admin-catalog). A
-mintable Store admin item is therefore a valid `web3_item` SKU.
 
 ## `web3_item`
 
@@ -134,8 +127,7 @@ for that user. When a recipient is known, check the wallet with the recipient re
 [`auth-and-environment.md`](auth-and-environment.md#recipient-wallet) during the
 read-only work before the proposal, or otherwise before any publication write.
 Check it again before the event. A missing wallet is a non-retryable blocker,
-not an approval step. A check that could not reach the service is reported as
-not run, never as a missing wallet. Confirm the wallet source is the Backpack-compatible
+not an approval step. Confirm the wallet source is the Backpack-compatible
 managed wallet required by the production integration.
 
 ## Payout exposure in the proposal
