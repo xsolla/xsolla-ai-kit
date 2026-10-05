@@ -47,7 +47,8 @@ execution read-back still need the versioned contract and preflight before use.
    publisher to paste secrets or search for another key.
 5. **No IDs or hosts in replies.** Outside the event
    payload, never show merchant, project or player IDs, hosts, service names
-   or environment names to the publisher. Every reply starts with a `##`
+   or environment names to the publisher (a reward item's SKU and image URL
+   are fine). Every reply starts with a `##`
    heading: no lead-in line such as "Perfect!" or a recap before it.
 6. **Never claim delivery.** Report what the read-backs show, nothing more.
 7. **Stop points.** End the turn and wait for the publisher: after the
@@ -61,7 +62,7 @@ execution read-back still need the versioned contract and preflight before use.
    own after a failure; report what failed and ask. For a 401 or 404 follow
    [Reading a 401 or 404](references/auth-and-environment.md#reading-a-401-or-404).
 10. **Never ask for a SKU or catalog project.** A typed value is not a
-    verified item. Use the read-only minting catalog lookup in
+    verified item. Use the read-only Store admin catalog lookup in
     [Named item behavior](references/rewards.md#named-item-behavior). If the
     lookup service is unavailable, say so without implying the publisher's
     catalog is disconnected; if it finds no match, report that and stop before

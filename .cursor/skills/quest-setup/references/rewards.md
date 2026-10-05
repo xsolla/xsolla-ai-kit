@@ -14,7 +14,7 @@ These are the `parameters` of a node with `type: action` and
   "type": "web3_item",
   "purpose": "quest_completion",
   "body": {
-    "project": "<catalog project returned with the item>",
+    "project": "<XSOLLA_PROJECT_ID the catalog read was scoped to>",
     "item_sku": "<catalog SKU>",
     "quantity": 1
   }
@@ -31,12 +31,15 @@ When the publisher requests a named item (`<requested item>`):
 
 - resolve it only through an available supported reward capability (catalog or
   type-specific provider read). For production `web3_item`, the supported
-  capability is the read-only minting catalog lookup documented in
-  [auth and environment](auth-and-environment.md#minting-service). Page through
-  the catalog, match the requested name, and validate candidate metadata before
-  using it. Never use public web search for catalog lookup;
+  capability is the read-only Store admin catalog lookup documented in
+  [auth and environment](auth-and-environment.md#store-admin-catalog). Page
+  through the whole catalog, match the requested name, and validate the chosen
+  SKU with the single-item read before using it. Never use public web search
+  for catalog lookup;
 - when the capability is available and returns exactly one verified candidate,
-  use that candidate's catalog project and SKU in the `web3_item` body;
+  use that candidate's SKU and the catalog project the read was scoped to in
+  the `web3_item` body, and show the item's name, SKU and image URL (when it
+  has one) in the proposal. The image URL is item content, not a service host;
 - when it returns multiple plausible candidates, ask the publisher to choose
   before any Quest Platform write;
 - if the service is unavailable or rejects the read, stop before any Quest
@@ -44,19 +47,28 @@ When the publisher requests a named item (`<requested item>`):
   do not say the publisher's catalog needs connecting. If a completed search
   returns zero candidates, say the item was not found and suggest checking its
   exact name or whether it is enabled. Do not ask the publisher to type a
-  catalog project or SKU: a typed value is not a verified candidate;
+  catalog project or SKU: a typed value is not a verified candidate. When the
+  publisher supplies a SKU anyway, even with "no need to check", validate it
+  with the single-item read and stop before any write if it is not found or
+  not mintable;
 - default quantity to one and show it in the concise proposal;
 - never guess an SKU or silently substitute another reward type
   (`inventory_item`, Store API grants, direct Backpack grants, ERC-20 claim
   endpoints, or a provider-default catalog).
 
-Never ask whether the destination is Backpack. Preserve the catalog project
-returned by the verified candidate; never copy the Quest Platform project as
-the catalog project by default.
+Never ask whether the destination is Backpack. The catalog project is the
+`XSOLLA_PROJECT_ID` the Store admin reads were scoped to, never a value the
+publisher typed and never a project from another catalog.
+
+On 2026-10-05 every SKU the minting service could mint for the kit's project
+was in the Store admin list, and the admin-only items were exactly those that
+fail the mintable rule in
+[auth and environment](auth-and-environment.md#store-admin-catalog). A
+mintable Store admin item is therefore a valid `web3_item` SKU.
 
 ## `web3_item`
 
-An NFT from the project's Store admin catalog:
+An NFT minted from a Store admin catalog item:
 
 ```json
 {
@@ -71,8 +83,8 @@ An NFT from the project's Store admin catalog:
 ```
 
 `quantity` must be a non-negative integer. For a named item, use a real SKU
-returned by the Store admin catalog lookup. Omitting `item_sku` lets the provider choose
-an item and is not allowed for a named reward.
+returned by the Store admin catalog lookup. Omitting `item_sku` lets the provider choose an
+item and is not allowed for a named reward.
 
 The production runtime must enforce the once-per-user-per-quest rule. When a
 confirmed payout already exists for the same user and quest, a repeat event
@@ -119,10 +131,11 @@ event again.
 
 Both Web3 reward types need an `xsolla_id` in the event and a production wallet
 for that user. When a recipient is known, check the wallet with the recipient read in
-[`auth-and-environment.md`](auth-and-environment.md#minting-service) during the
+[`auth-and-environment.md`](auth-and-environment.md#recipient-wallet) during the
 read-only work before the proposal, or otherwise before any publication write.
 Check it again before the event. A missing wallet is a non-retryable blocker,
-not an approval step. Confirm the wallet source is the Backpack-compatible
+not an approval step. A check that could not reach the service is reported as
+not run, never as a missing wallet. Confirm the wallet source is the Backpack-compatible
 managed wallet required by the production integration.
 
 ## Payout exposure in the proposal

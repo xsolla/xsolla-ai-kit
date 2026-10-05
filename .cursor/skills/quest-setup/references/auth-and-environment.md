@@ -5,7 +5,8 @@ The publisher project can be a test or live project. Never change the service
 target or credential source as a fallback after an error.
 
 Service credentials and certificate configuration belong to the configured
-integration. Do not hardcode private hostnames, private CA details or service
+integration. Do not hardcode private hostnames (other than the
+[recipient wallet](#recipient-wallet) host), private CA details or service
 keys in this public skill. For Quest Platform publisher routes, use the
 versioned [API contract](qp-api-contract.md), then make a read-only request
 against the public gateway before any write. Production OpenAPI is
@@ -21,42 +22,82 @@ ingestion and execution read-back, use the versioned route contract above.
 A missing route is not replaced with a guessed path or a route from another
 target.
 
-## Minting service
+## Store admin catalog
 
-Use the production Web3 minting service for read-only catalog validation at
-<!-- TODO: replace with the public hostname once the web3 team exposes one -->
-`https://web3-minting-service.gcp-k8s-web3-prod.srv.local`. Use only its
-`GET /skus` and `GET /metadata/sku/{sku}` routes, and never send the Quest
-Platform project API key to it. Never call a claim endpoint directly.
-Rewards are issued only by an activated quest.
+Resolve a named `web3_item` through the Store admin virtual items reads at
+`https://store.xsolla.com/api/v2/project/{project_id}/admin/items/virtual_items`,
+with `{project_id}` set to the resolved `XSOLLA_PROJECT_ID`. Use only these
+two GET routes:
 
-For candidate discovery, page through `GET /skus?project={project}&limit=100&offset={offset}`
-using the already-resolved publisher project as the lookup scope, then match
-the requested name against the returned item names. This project value scopes
-the read only; do not use it as the reward's catalog project unless the minting
-service returns it as `projectId`. Require HTTP 200 and a valid JSON object
-with a `projectId` string, numeric `count`, and `items` array on every page.
-Abort the lookup on any HTTP error, malformed response, or project mismatch;
-never treat an error as an empty page. Continue with offsets 0, 100, 200, and
-so on until a valid page contains no items. The optional `search` parameter
-reports `searchScope: "this page only"` and is not an exhaustive catalog
-search, so do not use it to prove uniqueness or absence. The response's
-`projectId` is the catalog project to carry forward. Validate each plausible
-candidate with `GET /metadata/sku/{sku}?project={projectId}`; require HTTP 200
-and a JSON `name` matching the catalog name. Abort on any failed or malformed
-metadata read. Read the complete catalog before deciding that a name has zero
-or one matches. Do not issue writes to this service.
+| Route | Use |
+|---|---|
+| `GET .../admin/items/virtual_items?limit=50&offset={offset}` | page the full catalog |
+| `GET .../admin/items/virtual_items/sku/{sku}` | validate one chosen SKU |
 
-For the recipient check, read `GET /wallet/{xsolla_id}` on the same minting service.
-HTTP 200 with a `walletAddress` means the user has a wallet; 404 means the user has
-no wallet, which is a non-retryable blocker for a Web3 reward. Any other status or
-a malformed body aborts the check; never treat an error as a missing wallet. This is
-a read; do not issue writes to this service.
+Never issue a `POST`, `PUT`, `PATCH` or `DELETE` to any Store admin route, even
+when the publisher asks for it; creating or editing items is outside this
+skill. Never call a claim endpoint directly. Rewards are issued only by an
+activated quest.
 
-For a named item, resolve it through the minting catalog reads above. Preserve
-the `projectId` returned with the verified item and validate that exact
-`(catalog_project, sku)` pair in the metadata read before using it in the
-`web3_item` body. A zero or ambiguous result stops the flow.
+Start at offset 0 and, while the page's `has_more` is `true`, advance the
+offset by the number of items on that page.
+Require HTTP 200 and a JSON object with an `items` array, a boolean `has_more`
+and a numeric `total_items_count` on every page. Abort the lookup on a 401, any
+other non-200 status, a malformed body, an empty page with `has_more: true`,
+or a final item count different from
+`total_items_count`; never treat an aborted read as an empty catalog. Read the
+complete catalog before deciding that a name has zero, one or several matches.
+
+Each item has `sku`, a localized `name` object (for example `{"en": "Fire
+Sword"}`), a localized `description` or `null`, `image_url` or `null`, `type`,
+`is_enabled`, `is_show_in_store`, `periods`, `groups` and `attributes`. Match
+the requested name case-insensitively against `name.en` first, then against the
+other locales. An exact match is a candidate; when there is no exact match,
+items whose name contains the requested words are candidates to show, never to
+pick on your own.
+
+Only an item that is mintable is a valid `web3_item` SKU: `is_enabled` and
+`is_show_in_store` are both `true`, and `periods` is empty or one period
+contains the current time. When the requested name matches only items that
+fail this rule, say the item exists but is not available as a Web3 reward
+(disabled, hidden from the store or outside its sale period) and stop.
+
+Validate the chosen SKU, including one the publisher typed, with the single-item
+read. Require HTTP 200, the same `sku` and name, and the mintable rule above.
+A 404 means the SKU is not in the catalog. Abort on any other failure. The
+catalog project for the `web3_item` body is the `XSOLLA_PROJECT_ID` both reads
+were scoped to. A zero or ambiguous result stops the flow.
+
+Observed 2026-10-05 on the kit's production project (49 virtual items):
+
+- HTTP Basic with `XSOLLA_PROJECT_ID` (documented `basicAuth`) and with
+  `XSOLLA_MERCHANT_ID` (`basicMerchantAuth`) as the username both return 200.
+  No header or a wrong key returns 401 with `errorCode` 1501. Use
+  `XSOLLA_PROJECT_ID`.
+- `limit` below 1 returns 422. Values up to 10001 returned 200; the whole
+  catalog fit on one page at every limit, so no server cap was observed. Page
+  by `has_more`, not by item count.
+- The single-item read returns the same item object; an unknown SKU returns
+  404 with `errorCode` 4001.
+- Parity: the minting service's SKU list held 47 SKUs, all in the admin list
+  and identical to the public client catalog. The two admin-only items were
+  one with `is_show_in_store: false` and one whose only period starts in the
+  future. `type`, `groups` and `attributes` did not separate them.
+
+## Recipient wallet
+
+The recipient check is the only call to the Web3 minting service:
+`GET https://web3-minting-service.gcp-k8s-web3-prod.srv.local/wallet/{xsolla_id}`.
+It resolves only on the corporate network and needs no credential; never send
+the project API key to it and never issue writes to it.
+
+HTTP 200 with a `walletAddress` means the user has a wallet; 404 means the user
+has no wallet, which is a non-retryable blocker for a Web3 reward. Any other
+status or a malformed body aborts the check; never treat an error as a missing
+wallet. When the host cannot be resolved or reached, report the wallet check as
+not run, never as "no wallet" and never as a confirmed wallet. Name the
+unverified recipient wallet in the proposal or the event payload review so the
+publisher's approval covers it.
 
 ## Credential
 
@@ -75,18 +116,21 @@ may provide the same values instead:
 
 Never print, log or commit credentials or encoded headers. For Quest Platform
 publisher routes, the API contract requires HTTP Basic with the configured
-merchant ID as the username and the project API key as the password. Do not
-generalize this QP-specific Basic format to Catalog, Store or unrelated APIs.
-Do not send multiple auth schemes in one request.
+merchant ID as the username and the project API key as the password. The two
+Store admin GET reads in [Store admin catalog](#store-admin-catalog) use HTTP
+Basic with `XSOLLA_PROJECT_ID` as the username and the same key. Send the key
+to no other Store, Catalog or unrelated route. Do not send multiple auth
+schemes in one request.
 
 Read `.env` only as text; never source, execute, echo or interpolate the file.
 Never open `.env` in a file viewer or print it, and never paste a credential
 value into command text, a script file, a log or a reply. Parse the values
 inside the same command that sends the request, so they reach the HTTP client
 without ever appearing in the command line or its output. One safe pattern is a short script that parses `.env` as text and attaches
-`XSOLLA_MERCHANT_ID` and `XSOLLA_PROJECT_API_KEY` as the HTTP Basic pair on the
-request itself, so the values never reach the command line, the output or the
-reply. Send the request to a route from [`qp-api-contract.md`](qp-api-contract.md).
+the route's Basic username and `XSOLLA_PROJECT_API_KEY` as the HTTP Basic pair
+on the request itself, so the values never reach the command line, the output
+or the reply. Send the request to a route from
+[`qp-api-contract.md`](qp-api-contract.md) or [Store admin catalog](#store-admin-catalog).
 Describe each call by method, route and body; do not hand the publisher a raw
 HTTP command.
 
@@ -101,14 +145,15 @@ Resolve the three credential names as an all-or-nothing set:
    `XSOLLA_MERCHANT_ID`, `XSOLLA_PROJECT_ID`, and
    `XSOLLA_PROJECT_API_KEY` in the project-local `.env` or process environment.
 
-The project Basic credential (`XSOLLA_MERCHANT_ID` plus
-`XSOLLA_PROJECT_API_KEY`) is the only credential lane. Never request, print or
+The project API key with its Basic username (`XSOLLA_MERCHANT_ID` for Quest
+Platform, `XSOLLA_PROJECT_ID` for the Store admin reads) is the only credential
+lane. Never request, print or
 use any other key as a fallback. If the developer asks for another lane, stop
 and direct them to the Quest Platform owner. Do not infer a target by probing
 hosts or by trying a credential against multiple gateways.
 
-The catalog project is not a credential and must come from the resolved item,
-never from the Quest Platform project by default.
+The catalog project is not a credential. It is the `XSOLLA_PROJECT_ID` that
+the Store admin reads were scoped to, never a value the publisher typed.
 
 ## The merchant id in the path
 
@@ -188,8 +233,8 @@ Run one read-only preflight per service, only when the task needs that service:
   [`qp-api-contract.md`](qp-api-contract.md) before any query. If the publisher
   Basic lane is not accepted, or the production probe is a router miss, stop
   and report that read-back is unavailable; never use any other key.
-- Web3 catalog: resolve the named item and validate its catalog project and
-  SKU; for a Web3 reward, when a recipient is known, also check the recipient
+- Web3 catalog: page the Store admin catalog, resolve the named item and
+  validate its SKU with the single-item read; for a Web3 reward, when a recipient is known, also check the recipient
   wallet during the read-only work before the proposal, or otherwise before any
   publication write, and again before the event.
 
