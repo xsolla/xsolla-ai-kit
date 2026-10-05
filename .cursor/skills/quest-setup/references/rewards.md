@@ -26,7 +26,7 @@ different reason.
 
 ## `web3_item`
 
-An NFT from the production minting catalog:
+An NFT from the project's Store admin catalog:
 
 ```json
 {
@@ -41,7 +41,7 @@ An NFT from the production minting catalog:
 ```
 
 `quantity` must be a non-negative integer. For a named item, use a real SKU
-from the production minting catalog. Omitting `item_sku` lets the provider choose an
+from the Store admin catalog. Omitting `item_sku` lets the provider choose an
 item and is not allowed for a named reward.
 
 The production runtime must enforce the once-per-user-per-quest rule. When a
