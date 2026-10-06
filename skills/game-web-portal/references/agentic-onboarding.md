@@ -29,7 +29,9 @@ identifiers, credentials, content, prices, assets, or URLs.
 2. **The partner's site:** GIVEN the partner created the site from the Multi-page web
    portal template, WHEN onboarding starts, THEN inspect it and add only the missing
    sections, without duplicates; ambiguous matches require selection. GIVEN no site at
-   the domain, THEN return `needs_human`: the agent never creates a site.
+   the domain, THEN return `needs_human`: the agent never creates a site. GIVEN a site
+   without `/news`, `/rewards` or `/store`, THEN return `needs_input`: it wasn't made from
+   the template.
 3. **Access:** GIVEN a mutation returns `401/403`, WHEN work is partial, THEN
    return `needs_access`, reauthenticate, re-read, resume.
 4. **Login:** GIVEN sign-in succeeds, WHEN binding fails, THEN Login and
@@ -105,55 +107,60 @@ Never recreate discovered existing entities.
 - If `store_url` is omitted, confirm approved metadata and assets are available.
 - Resolve ambiguity and disclose unsupported/human gates.
 
-### 2. Existing state
+### 2. Preflight
+
+- Run `scripts/preflight.py` for the merchant, project and approved test-project
+  allowlist. If it fails, stop before any write.
+
+### 3. Existing state
 
 - List websites and read the target structure.
+- Confirm the site has the template's `/news`, `/rewards` and `/store` pages.
 - Capture landing, page, and block IDs.
 - Compare existing and desired state.
 - Resume at the first incomplete item.
 
-### 3. One change group
+### 4. Back up
 
-Portal structure — pages, blocks, theme, assets, copy
-and localization, analytics — runs through the CLI commands listed in
-[portal-api.md](portal-api.md). Use related skills for everything else,
-instead of repeating their command recipes:
+- Export the site to a new local directory before the first write. A failed export
+  stops the run.
+
+### 5. Plan and confirm
+
+- Show the ordered change groups and the exact removals; wait for an explicit yes.
+
+### 6. One change group
+
+Portal structure — pages, blocks, theme, assets, copy and localization, analytics — runs
+through the CLI commands listed in [portal-api.md](portal-api.md). Use related skills for
+everything else, instead of repeating their command recipes:
 
 - `merchant-setup` — merchant/project/API key.
-- `catalog-design` — catalog and pricing.
+- `catalog-design` — the catalog and pricing the Web Shop sells.
 - `login-setup` — Login.
-- `headless-checkout-integration` — checkout.
 
-Sections: Home, News, Rewards, Web Shop, Community, optional Launcher.
-Placeholders require approval and visible labels. Launcher requires a real
-Launcher, uploaded build, generated installer, and verified download.
+Checkout is the Web Shop's hosted Pay Station: nothing to integrate.
 
-### 4. Verify
+Sections: Home, News, Rewards and Web Shop from the template, and Community added by the
+agent. Placeholders require approval and visible labels. The Launcher section is the
+partner's: it requires a real Launcher, uploaded build, generated installer, and verified
+download.
+
+### 7. Verify
 
 - Read back changed entities and compare them with the confirmed plan.
 - Keep unverified items out of **Completed**.
 
-### 5. Draft gate
+### 8. Draft gate, review and hand over
 
-`draft_ready` requires correct ownership/domain/type/locale, no duplicate
-routes, read-back-verified content, disclosed placeholders, and explicit
-Login/commerce status.
-
-### 6. Review and hand over
-
+- `draft_ready` requires correct ownership/domain/type/locale, no duplicate routes,
+  read-back-verified content, disclosed placeholders, and explicit Login/commerce status.
 - Present Completed, placeholders, blockers, and failures.
 - Hand the human, as `needs_human`: the readiness check, the preview, publication
   (per page, main page first), live verification, and any rollback.
 - Never publish, run the readiness check, or generate a preview key.
 
-### 7. After the human publishes
-
-If the partner comes back after publishing, a resumed run may read the public site
-and report what it sees. HTTP 200 with stale content is incomplete; the expected
-version and routes, working Login and binding, and verified Web Shop/Launcher
-outcomes are what the partner is asked to confirm.
-
-### 8. Handoff
+### 9. Handoff
 
 ```markdown
 # Xsolla Game Web Portal onboarding report
@@ -191,5 +198,12 @@ Overall status:
 - Publish (main page first), then confirm the public URL
 - Status: not published by the agent
 ```
+
+### After the human publishes
+
+If the partner comes back after publishing, a resumed run may read the public site
+and report what it sees. HTTP 200 with stale content is incomplete; the expected
+version and routes, working Login and binding, and verified Web Shop/Launcher
+outcomes are what the partner is asked to confirm.
 
 Honest partial completion is correct. Simulated completion is failure.

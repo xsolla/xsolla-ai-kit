@@ -2,7 +2,8 @@
 
 The portal itself (sites, pages, blocks, theme, copy) is Shop Builder. This file lists the
 calls the agent makes for Steps 3–8 of `SKILL.md`, and the steps it hands to the partner.
-Catalog, Login, and checkout stay delegated — see `SKILL.md`.
+Catalog and Login stay delegated, and checkout is the Web Shop's hosted Pay Station — see
+`SKILL.md`.
 
 ## Context
 
@@ -14,9 +15,8 @@ Catalog, Login, and checkout stay delegated — see `SKILL.md`.
 - **Safe target:** before the first write, `scripts/preflight.py` must pass — the CLI points
   at the intended merchant and project, and that project is listed in the approved
   test-project allowlist.
-- **No sandbox:** Shop Builder writes always reach the project itself. Never pass
-  `--sandbox`: with it the CLI refuses a write unless `--force` is passed, and `delete-block`
-  needs `--force`, so that refusal would be skipped.
+- **No sandbox:** Shop Builder writes always reach the project itself, and `--sandbox` gives
+  no isolation. Never pass it.
 
 ### Two different keys — the top cause of hard failures
 
@@ -51,9 +51,9 @@ footer) and most sections.
 
 | Step | Command |
 |---|---|
-| Add each missing section's page | `add-page` |
-| Add its blocks at the top of the page | `add-block --index 0`, then `--index 1` |
-| Remove the seeded blocks the section doesn't keep | `delete-block --force` |
+| Add each missing section's page | `add-page --slug <domain> --name <name> --path <path>` |
+| Add its blocks at the top of the page | `add-block --landing-id <landingId> --page-id <pageId> --block <module> --index 0`, then `--index 1` |
+| Remove a seeded block the section doesn't keep | `delete-block --landing-id <landingId> --page-id <pageId> --blockid <blockId> --force` |
 
 ### Portal layout
 
@@ -64,7 +64,7 @@ footer) and most sections.
 | Rewards | `/rewards` | the template | as the template made it |
 | Web Shop | `/store` | the template | as the template made it |
 | Community | `/community` | added by the agent | `lead`, `embed` |
-| Launcher (optional) | `/launcher` | added only with a real Launcher (see below) | — |
+| Launcher (optional) | — | the partner (see below) | — |
 
 The template's other pages (Loyalty shop, Promocodes) stay as they are. The News block shows
 Launcher news articles only. If `/news`, `/rewards` or `/store` is missing, the site wasn't made
@@ -74,8 +74,8 @@ On this template, `add-page` seeds a new page with 11 game-sales blocks — `lea
 `description`, `packs` ×3, `bento-grid` ×3, `gallery`, `requirements`, `faq` — and no header or
 footer, which come from the site layout. The page gets no page type and no sidebar link. For
 Community, add `lead` (`--index 0`) and `embed` (`--index 1`), then remove the 11 seeded blocks.
-Module names come from the `shop-builder-assembly`
-[block catalog](../../shop-builder-assembly/references/block-catalog.md).
+Module names come from the `shop-builder-assembly` [block
+catalog](../../shop-builder-assembly/references/block-catalog.md).
 
 Remove seeded blocks only on a page the agent created in this run. Re-read the page first; if it
 holds anything that isn't from the seed or the confirmed plan, stop and ask. Remove only as the
@@ -93,8 +93,8 @@ removed: list them for the partner to remove, as `needs_human`.
 | Intent | Command |
 |---|---|
 | Add a page | `add-page` — `--name` (1–80 chars), `--path` (lowercase `a–z`, `0–9`, hyphen, slash; max 80) |
-| Add / move / delete / duplicate a block | `add-block` / `move-block` / `delete-block` / `duplicate-block` |
-| Patch a block, page, or site value — including the theme | `update-block` |
+| Add / move / delete a block | `add-block` / `move-block` / `delete-block` |
+| Hide or show a block, or patch the site theme | `update-block` |
 
 `add-block` takes a **module template name** (`--block`), not a block ID, plus the landing
 `_id`, the page `_id`, and always `--index`: without it the block goes to position 0, not to
@@ -107,8 +107,8 @@ the end. Use only the modules in the layout above.
         "patches": [{"op": "replace", "path": ["hidden"], "value": true}]}}
 ```
 
-- `type` is `block` | `page` | `site`; `id` is the block `_id`, page `_id`, or the
-  `landingId` (site-level).
+- `type` is `block` (its `hidden` flag) or `site` (the theme); `id` is the block `_id` or
+  the `landingId`. Page and site settings are the partner's.
 - `path` is a segment array. `op` is `add` | `remove` | `replace`.
 - Protected, never patched: `_id`, `module`, `blockVersion`.
 - **Never patch block text.** Patching a text value such as `["values","title"]` deletes the
@@ -128,7 +128,7 @@ The theme is a `site` patch:
 
 | Intent | Command |
 |---|---|
-| List assets | `list-assets` |
+| List assets | `list-assets --landing-id <landingId>` |
 | Upload an asset | `upload-asset` |
 
 Upload only partner-approved assets.
@@ -158,6 +158,8 @@ Block text lives in the localization store, not on the block: blocks reference a
 |---|---|
 | Analytics connector (`gtm` or `ga`) | `add-connector` |
 | Access restrictions | `update-restrictions` |
+
+Use these only when the confirmed plan lists them.
 
 Login itself — the project, auth methods, JWT validation, account binding, and widget
 styling — stays with `login-setup` and `login-styling`. Sign-in succeeding is not binding
@@ -200,7 +202,8 @@ The agent never does these. Each one is reported as `needs_human`, with what to 
 A Launcher is only `completed` with a real Launcher on the project, an uploaded build, a
 generated installer, and a verified installer download — evidence that must come from the
 Launcher product itself. Builds, installers, and downloads are not reachable from here, so
-a missing piece is `blocked_capability`, never `completed`.
+the agent adds no Launcher page: the section is the partner's, and a missing piece is
+`blocked_capability`, never `completed`.
 
 ## Failure → status mapping
 
@@ -208,6 +211,7 @@ a missing piece is `blocked_capability`, never `completed`.
 |---|---|---|
 | `401` / `403` | `needs_access` | run `xsolla auth login`, re-read state, resume |
 | No site at `domain` | `needs_human` | the partner creates it from the Multi-page web portal template, or enables Shop Builder for the project |
+| No `/news`, `/rewards` or `/store` page | `needs_input` | the site wasn't made from the template: the partner confirms the site or creates one from it |
 | `500` with a `domain` where a `landingId` belongs | — | wrong key: fix and retry; not a capability block |
 | `429` while the CLI bootstraps the session | — | rate limited: wait a minute and retry; never set a session by hand |
 | Launcher build / installer / download | `blocked_capability` | not reachable from here |

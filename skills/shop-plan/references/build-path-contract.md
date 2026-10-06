@@ -71,7 +71,7 @@ The kind is a second key, recorded with the path:
 | **Location** | `.env`, next to `XSOLLA_BUILD_PATH` |
 | **Values** | exactly `shop` or `portal`, with the same spelling rules as the path |
 | **Written by** | `shop-plan`, at the same confirmation as the path, and only when the path is `shopbuilder` |
-| **Read by** | `description-to-shop`, `shop-builder-assembly` and `game-web-portal`; `shop-setup` routes on the path alone |
+| **Read by** | `shop-plan`, to report a recorded decision; `description-to-shop`, `shop-builder-assembly` and `game-web-portal`; `shop-setup` routes on the path alone |
 
 | State | What it means | The consumer must |
 |---|---|---|
@@ -80,7 +80,8 @@ The kind is a second key, recorded with the path:
 | Value is `shop` or `portal` | A developer confirmed this | Build a shop, or hand off to `game-web-portal` |
 | Key present, value is anything else | `.env` was hand-edited or corrupted | **Halt and tell the developer.** Never silently re-ask |
 
-Check it only after the path check returned `DECIDED:shopbuilder`:
+An empty value (`XSOLLA_SITE_KIND=`) counts as absent, as it does for the path. Check it only
+after the path check returned `DECIDED:shopbuilder`:
 
 ```bash
 kind=$(grep -E '^XSOLLA_SITE_KIND=' .env 2>/dev/null | tail -n 1 | cut -d= -f2-)

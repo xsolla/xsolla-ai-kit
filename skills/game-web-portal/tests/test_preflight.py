@@ -18,10 +18,19 @@ APPROVAL = {"merchant_id": 11, "project_id": 22, "approved_by": "Product owner",
             "approval_reference": "approval thread"}
 
 
+TMP = tempfile.TemporaryDirectory()
+
+
+def tearDownModule() -> None:
+    TMP.cleanup()
+
+
 def allowlist(*projects: dict, version: int = 1) -> Path:
-    fh = tempfile.NamedTemporaryFile("w", suffix=".json", delete=False, encoding="utf-8")
-    json.dump({"version": version, "projects": list(projects)}, fh)
-    fh.close()
+    fh = tempfile.NamedTemporaryFile(
+        "w", suffix=".json", dir=TMP.name, delete=False, encoding="utf-8"
+    )
+    with fh:
+        json.dump({"version": version, "projects": list(projects)}, fh)
     return Path(fh.name)
 
 
@@ -68,6 +77,12 @@ class CliConfigTest(unittest.TestCase):
         done = mock.Mock(stdout=json.dumps({"ok": True, "data": CONFIG}))
         with mock.patch.object(preflight.subprocess, "run", return_value=done):
             self.assertEqual(preflight.cli_config(), CONFIG)
+
+    def test_cli_error_is_reported(self):
+        done = mock.Mock(stdout=json.dumps({"ok": False, "error": "not logged in"}))
+        with mock.patch.object(preflight.subprocess, "run", return_value=done):
+            with self.assertRaisesRegex(RuntimeError, "not logged in"):
+                preflight.cli_config()
 
     def test_missing_config_names_the_fix(self):
         done = mock.Mock(stdout="Config file .xsolla.json not found in current or home directory")

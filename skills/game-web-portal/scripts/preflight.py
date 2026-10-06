@@ -27,6 +27,8 @@ def cli_config() -> dict:
         raise RuntimeError(
             "no Xsolla CLI project context: run `xsolla config init` for the test project"
         ) from None
+    if isinstance(value, dict) and value.get("ok") is False:
+        raise RuntimeError(f"xsolla config list failed: {value.get('error', value)}")
     if isinstance(value, dict) and value.get("ok") is True and "data" in value:
         value = value["data"]
     if not isinstance(value, dict):
@@ -68,15 +70,11 @@ def check_project(
     return approved_test_project(allowlist, merchant_id, project_id)
 
 
-def add_target_arguments(parser: argparse.ArgumentParser) -> None:
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--merchant-id", required=True, type=positive_int)
     parser.add_argument("--project-id", required=True, type=positive_int)
     parser.add_argument("--approved-test-projects", required=True, type=Path)
-
-
-def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
-    add_target_arguments(parser)
     args = parser.parse_args(argv)
     try:
         approval = check_project(args.merchant_id, args.project_id, args.approved_test_projects)

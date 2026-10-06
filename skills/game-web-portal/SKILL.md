@@ -4,16 +4,15 @@ description: >-
   Builds or resumes an unpublished Xsolla Game Web Portal for a PC game — a game home with
   Home, News, Rewards, Web Shop, Community, and an optional Launcher section around the
   store — on the site the partner created from the Multi-page web portal template, and
-  returns an evidence-backed handoff. Not the entry point for "build me a
-  shop" or "set up my portal": that is shop-setup. On the Shop Builder path,
-  description-to-shop or shop-builder-assembly hands off here when the recorded site kind
-  is portal. Use for "continue my Game Web Portal", "resume my portal without duplicating
-  pages", "add the News / Rewards / Web Shop section to my portal", or wiring an existing
-  catalog and Login into a portal. The agent never publishes, never runs the readiness
-  check, and never generates a preview key — those are handed to the human in Publisher
-  Account. PC only; App Store and Google Play titles return needs_input. For a store
-  without a game home, use shop-setup, which routes to the Shop Builder or headless path
-  instead.
+  returns an evidence-backed handoff. Not the entry point for "build me a shop" or "set up
+  my portal": that is shop-setup. On the Shop Builder path, description-to-shop or
+  shop-builder-assembly hands off here when the recorded site kind is portal. Use for
+  "continue my Game Web Portal", "resume my portal without duplicating pages", "add the
+  Community section to my portal", or wiring an existing catalog and Login into a portal.
+  The agent never publishes, never runs the readiness check, and never generates a preview
+  key — those are handed to the human in Publisher Account. PC only; App Store and Google
+  Play titles return needs_input. For a store without a game home, use shop-setup, which
+  routes to the Shop Builder or headless path instead.
 metadata:
   owner: a.pyanzin
   domain: orchestrator
@@ -35,8 +34,10 @@ when the recorded site kind is `portal` — the partner needs a game home around
 Entry conditions:
 
 - `XSOLLA_BUILD_PATH=shopbuilder` and `XSOLLA_SITE_KIND=portal` are recorded in `.env` (see
-  [the build-path contract](../shop-plan/references/build-path-contract.md)). If either is
-  absent, hand back to `shop-setup`; if they record another path or kind, stop and say so.
+  [the build-path contract](../shop-plan/references/build-path-contract.md)). With no path
+  recorded, hand back to `shop-setup`. With the site kind absent or `shop`, the recorded site
+  is a shop: stop and say so, since only `shop-plan` changes it. Any other path or kind:
+  stop and say so.
 - The title ships on PC. A Steam URL is optional and may be skipped.
 - If a store URL is supplied, its host must be exactly `store.steampowered.com`.
   Mobile, unknown, invalid, or spoofed supplied URLs return `needs_input`.
@@ -49,7 +50,8 @@ Entry conditions:
   template (Storefronts → Websites → Multi-page web portal → Manual). The agent never
   creates a site: one created through the CLI has no layout, so the Editor, publication
   and preview can't open it. Without the partner's site, the run stops at `needs_human`
-  with that instruction.
+  with that instruction; a site without `/news`, `/rewards` or `/store` wasn't made from
+  the template, and the run stops at `needs_input`.
 
 ## Prerequisites
 
@@ -90,17 +92,18 @@ Verify (read-back) → Human review → Handoff
 1. **Intake** — collect the required input above. Resolve every ambiguity by asking;
    never choose an ambiguous match.
 2. **Preflight** — confirm PC scope, domain, and locale, then run
-   [`scripts/preflight.py`](scripts/preflight.py)
-   `--merchant-id --project-id --approved-test-projects <file>`. It checks that the CLI
-   points at that merchant and project, and that the project is listed in the approved
-   test-project allowlist (the same file format as `shop-builder-assembly`). If it fails,
-   stop before any write. If `store_url` is supplied, validate the exact Steam host. Use
-   only partner-approved metadata and assets; never substitute invented game metadata.
+   [`scripts/preflight.py`](scripts/preflight.py) with `--merchant-id`, `--project-id` and
+   `--approved-test-projects <file>`. It checks that the CLI points at that merchant and
+   project, and that the project is listed in the approved test-project allowlist (the same
+   file format as `shop-builder-assembly`). If it fails, stop before any write. If
+   `store_url` is supplied, validate the exact Steam host. Use only partner-approved
+   metadata and assets; never substitute invented game metadata.
 3. **Discover** — find the partner's site at `domain` and read its structure
    (`xsolla shopbuilder list-websites`, `get-landing`, `get-structure`). Capture the
    landing `_id`, page IDs, and block IDs before any mutation — block and theme calls
-   are keyed by landing `_id`, not the domain. Never recreate a discovered existing
-   entity; resume at the first incomplete item.
+   are keyed by landing `_id`, not the domain. Confirm the site has the template's `/news`,
+   `/rewards` and `/store` pages. Never recreate a discovered existing entity; resume at
+   the first incomplete item.
 4. **Back up** — before the first write, export the site: `get-landing`,
    `get-structure` and `get-localization` for the slug, and `list-assets` for the
    landing `_id`, saved to a new local directory. A failed export stops the run before
@@ -115,16 +118,17 @@ Verify (read-back) → Human review → Handoff
    [references/portal-api.md](references/portal-api.md). The template's own pages keep
    their blocks. Removals happen only on pages the agent created in this run, only after a
    fresh read shows nothing beyond the seed and the plan, and only as listed in the
-   confirmed plan. Everything else uses CLI commands too:
-   `move-block`, `update-block` (block, page, and site theme patches), `upload-asset`,
-   `add-language`, `update-localization`, `update-many-localization`. A change with no CLI
-   command is `needs_human`: say what to do in Publisher Account and record it. Apply one
-   change group at a time across Home, News, Rewards, Web Shop, Community, and optional
-   Launcher.
-   Delegate the surrounding products rather than duplicating their recipes:
-   `merchant-setup` for merchant/project/API key, `catalog-design` for catalog and
-   pricing, `login-setup` for Login, `headless-checkout-integration` for checkout.
-   Placeholders require approval and a visible label.
+   confirmed plan. Everything else uses CLI commands too: `move-block`, `update-block`
+   (a block's `hidden` flag and the site theme), `upload-asset`, `add-language`,
+   `update-localization`, `update-many-localization`, and `add-connector` or
+   `update-restrictions` when the plan lists them. A change with no CLI command is
+   `needs_human`: say what to do in Publisher Account and record it. Apply one change
+   group at a time across Home, News, Rewards, Web Shop, and Community; the Launcher
+   section is the partner's. Delegate the surrounding products rather than duplicating
+   their recipes: `merchant-setup` for merchant/project/API key, `catalog-design` for the
+   catalog and pricing the Web Shop sells, `login-setup` for Login. Checkout is the Web
+   Shop's hosted Pay Station, so there is nothing to integrate. Placeholders require
+   approval and a visible label.
 7. **Verify (read-back)** — read back every changed entity (`get-structure`,
    `get-localization`, page and block reads) and compare it with the confirmed plan.
    A mutation response is not evidence. Keep unverified items out of **Completed**.
@@ -146,9 +150,8 @@ Two references, both loaded before issuing changes:
   specification: `GIVEN / WHEN / THEN` acceptance scenarios, the per-state evidence
   contract, and the handoff report template.
 - [references/portal-api.md](references/portal-api.md) — the CLI commands the agent runs
-  for Steps 3–8, the portal layout, the domain vs landing `_id` split,
-  the localization payload shape, the steps handed to the partner, and the response →
-  status mapping.
+  for Steps 3–8, the portal layout, the domain vs landing `_id` split, the localization
+  payload shape, the steps handed to the partner, and the response → status mapping.
 
 ## Hard stops
 
@@ -158,8 +161,8 @@ preview, never creates a site, never saves or applies a site version, never dele
 an asset, a language, an analytics connector, access restrictions, or a block on a page it
 didn't create in this run, never attaches a domain, never patches block text (it deletes the
 string and every translation), and never switches the project to production. It never writes
-before an explicit confirmation of the plan or before the preflight passes, never passes
-`--sandbox`, and never targets a partner's live project.
+to the project before an explicit confirmation of the plan or before the preflight passes,
+never passes `--sandbox`, and never targets a partner's live project.
 
 ## Common pitfalls
 
