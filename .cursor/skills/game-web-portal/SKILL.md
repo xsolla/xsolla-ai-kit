@@ -56,8 +56,8 @@ Entry conditions:
 - Shop Builder enabled for the target project.
 - Approved content and brand assets. Never invent or reuse partner identifiers,
   credentials, content, prices, assets, or URLs.
-- Required input, collected in a single question rather than one at a time (when
-  `shop-setup` ran the intake, these are already recorded — do not ask again):
+- Required input, collected in a single question rather than one at a time. Read the
+  merchant and project from `.env` instead of asking again:
 
 ```yaml
 merchant_id:

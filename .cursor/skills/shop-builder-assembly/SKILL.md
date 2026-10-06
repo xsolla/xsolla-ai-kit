@@ -21,6 +21,10 @@ metadata:
 Build an unpublished Publisher Account **Shop Builder site**, not a custom frontend,
 in a dedicated non-partner test project through `xsolla shopbuilder`.
 
+A Game Web Portal is built by `game-web-portal`, not here. First read `XSOLLA_SITE_KIND` with the
+[build-path contract's check](../shop-plan/references/build-path-contract.md#the-site-kind-shop-builder-only):
+for `portal`, hand off to `game-web-portal` and stop; an invalid value halts. A shop continues.
+
 ## Inputs
 
 Normalize publisher answers, existing stores, descriptions, and designs into the
