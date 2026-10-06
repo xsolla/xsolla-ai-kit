@@ -220,7 +220,8 @@ game. I have no website and no frontend skills or time to build one. An Xsolla-h
 totally fine. I need it live this week. English only, and just my logo and brand colors are enough."
 
 Result: `shop-plan` selected, the comparison shown, Shop Builder recommended with the criteria that
-drove it named, nothing written until "yes", then `shopbuilder` recorded once and the agent stopped.
-Across 19 fixed intents, two rounds each (2026-09-23): the recommended path matched the known
-answer 20/20, zero writes before confirmation across 28 runs, and headless prompts still reached
-their own skills 10/10. ✅
+drove it named, nothing written until "yes", then `shopbuilder` and the site kind `shop` recorded
+once and the agent stopped. Across 22 fixed intents, two rounds each (2026-10-06, including two
+portal intents and a store that is not a portal): the recommended path and site kind matched the
+known answer 27/27, zero writes or `xsolla` calls before confirmation across 35 runs, and headless
+prompts still reached their own skills 10/10. ✅
