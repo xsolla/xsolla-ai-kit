@@ -1,0 +1,13 @@
+{
+  "tool": "claude",
+  "session_id": "dbbffeaf-ccf6-4e2f-9082-a57db21834ff",
+  "transcript_kind": "claude-jsonl",
+  "transcript_withheld": false,
+  "captured_at": "2026-10-06T06:04:39Z",
+  "project_dir": "/Users/raufaliyev/orca/workspaces/xsolla-ai-kit/parrotfish",
+  "head": "531e6fc1cd7fa3acad957263f2dfb620e204f8c7",
+  "branch": "raliyev-xsolla/fix-localhost-refs-in",
+  "user_email": "r.aliyev@xsolla.com",
+  "files_changed_vs_head": [],
+  "skipped_large_files": []
+}
