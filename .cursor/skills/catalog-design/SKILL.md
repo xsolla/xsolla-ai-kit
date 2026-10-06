@@ -39,7 +39,8 @@ Use this skill when the developer wants to:
 - Confirm purchases: webhooks on the server or order tracking on the client
 
 Out of scope: player inventory, server-side cart, refund handling, payment UI
-configuration (→ `headless-checkout-integration`), webhook handler code (→ `webhooks-impl`).
+configuration (→ `headless-checkout-integration`), webhook handler code (→ `webhooks-impl`),
+attaching item/bundle/currency images (→ `asset-upload`).
 
 ## Prerequisites
 
@@ -65,7 +66,8 @@ export XSOLLA_PROJECT_API_KEY=<your API key>
    **game sales via keys** — a key package per platform → upload keys, see
    `references/game-keys.md`. Admin calls use basic auth
    (`XSOLLA_MERCHANT_ID:XSOLLA_PROJECT_API_KEY`); verify each request body via the
-   Xsolla MCP first.
+   Xsolla MCP first. There is no image-upload field in the create call — items are
+   created with `image_url` unset; attach art afterward with `asset-upload`.
 
 2. **Set up pricing.** Recommend regional prices in local currencies for key markets
    via the `prices` array; keep the currency list and default currency identical across
