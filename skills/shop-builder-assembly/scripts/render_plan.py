@@ -333,7 +333,7 @@ def build_plan(brief: dict, current_structure: object | None = None) -> dict:
             "No event data supplied; omit event-specific copy and scarcity claims."
         )
     plan = {
-        "version": 1,
+        "version": 2,
         "target": {
             "merchant_id": brief["project"]["merchant_id"],
             "project_id": brief["project"]["project_id"],
@@ -351,6 +351,7 @@ def build_plan(brief: dict, current_structure: object | None = None) -> dict:
             "backup",
             "theme",
             "pages",
+            "site_layout",
             "navigation",
             "blocks",
             "copy_assets",
@@ -359,6 +360,11 @@ def build_plan(brief: dict, current_structure: object | None = None) -> dict:
             "preview",
         ],
         "pages": pages,
+        "site_layout": {
+            "module": "common-layout",
+            "when": "after-pages",
+            "if_missing": True,
+        },
         "navigation": [
             {"name": page["name"], "path": page["path"], "page_id": page["page_id"]}
             for page in pages
@@ -375,6 +381,7 @@ def build_plan(brief: dict, current_structure: object | None = None) -> dict:
         "brief_sha256": canonical_hash(brief),
         "implemented_phases": [
             "pages",
+            "site_layout",
             "navigation",
             "blocks",
             "locales",
