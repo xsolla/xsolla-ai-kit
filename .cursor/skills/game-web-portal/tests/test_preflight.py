@@ -13,8 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 import preflight  # noqa: E402
 
-SANDBOX = {"merchant_id": 11, "project_id": 22, "sandbox": True}
-TEST = {"merchant_id": 11, "project_id": 22, "sandbox": False}
+CONFIG = {"merchant_id": 11, "project_id": 22}
 APPROVAL = {"merchant_id": 11, "project_id": 22, "approved_by": "Product owner",
             "approval_reference": "approval thread"}
 
@@ -27,52 +26,48 @@ def allowlist(*projects: dict, version: int = 1) -> Path:
 
 
 class CheckProjectTest(unittest.TestCase):
-    def test_sandbox_needs_no_allowlist(self):
-        self.assertIsNone(preflight.check_project(11, 22, "sandbox", config=SANDBOX))
-
-    def test_listed_test_project_passes(self):
-        approval = preflight.check_project(11, 22, "test", allowlist(APPROVAL), config=TEST)
+    def test_listed_project_passes(self):
+        approval = preflight.check_project(11, 22, allowlist(APPROVAL), config=CONFIG)
         self.assertEqual(approval["approved_by"], "Product owner")
 
-    def test_test_project_without_allowlist_stops(self):
-        with self.assertRaisesRegex(RuntimeError, "--approved-test-projects is required"):
-            preflight.check_project(11, 22, "test", config=TEST)
-
-    def test_unlisted_test_project_stops(self):
+    def test_unlisted_project_stops(self):
         other = {**APPROVAL, "project_id": 99}
         with self.assertRaisesRegex(RuntimeError, "not in the approved test-project allowlist"):
-            preflight.check_project(11, 22, "test", allowlist(other), config=TEST)
+            preflight.check_project(11, 22, allowlist(other), config=CONFIG)
+
+    def test_cli_sandbox_setting_does_not_skip_the_allowlist(self):
+        with self.assertRaisesRegex(RuntimeError, "not in the approved test-project allowlist"):
+            preflight.check_project(11, 22, allowlist(), config={**CONFIG, "sandbox": True})
 
     def test_cli_pointing_at_another_project_stops(self):
         with self.assertRaisesRegex(RuntimeError, "does not match the target"):
-            preflight.check_project(11, 22, "sandbox", config={**SANDBOX, "project_id": 99})
+            preflight.check_project(11, 22, allowlist(APPROVAL),
+                                    config={**CONFIG, "project_id": 99})
 
-    def test_sandbox_flag_must_match_the_environment(self):
-        with self.assertRaisesRegex(RuntimeError, "sandbox setting"):
-            preflight.check_project(11, 22, "sandbox", config=TEST)
-        with self.assertRaisesRegex(RuntimeError, "sandbox setting"):
-            preflight.check_project(11, 22, "test", allowlist(APPROVAL), config=SANDBOX)
+    def test_unreadable_allowlist_stops(self):
+        with self.assertRaisesRegex(RuntimeError, "cannot read approved test projects"):
+            preflight.check_project(11, 22, Path("/nonexistent/allowlist.json"), config=CONFIG)
 
     def test_approval_fields_are_required(self):
         for field in ("approved_by", "approval_reference"):
             with self.subTest(field=field):
                 with self.assertRaisesRegex(RuntimeError, field):
-                    preflight.check_project(11, 22, "test", allowlist({**APPROVAL, field: " "}),
-                                            config=TEST)
+                    preflight.check_project(11, 22, allowlist({**APPROVAL, field: " "}),
+                                            config=CONFIG)
 
     def test_malformed_allowlist_stops(self):
         with self.assertRaisesRegex(RuntimeError, "version 1"):
-            preflight.check_project(11, 22, "test", allowlist(APPROVAL, version=2), config=TEST)
+            preflight.check_project(11, 22, allowlist(APPROVAL, version=2), config=CONFIG)
         with self.assertRaisesRegex(RuntimeError, "integer IDs"):
-            preflight.check_project(11, 22, "test", allowlist({**APPROVAL, "project_id": "22"}),
-                                    config=TEST)
+            preflight.check_project(11, 22, allowlist({**APPROVAL, "project_id": "22"}),
+                                    config=CONFIG)
 
 
 class CliConfigTest(unittest.TestCase):
     def test_unwraps_the_cli_envelope(self):
-        done = mock.Mock(stdout=json.dumps({"ok": True, "data": SANDBOX}))
+        done = mock.Mock(stdout=json.dumps({"ok": True, "data": CONFIG}))
         with mock.patch.object(preflight.subprocess, "run", return_value=done):
-            self.assertEqual(preflight.cli_config(), SANDBOX)
+            self.assertEqual(preflight.cli_config(), CONFIG)
 
     def test_missing_config_names_the_fix(self):
         done = mock.Mock(stdout="Config file .xsolla.json not found in current or home directory")
@@ -82,15 +77,26 @@ class CliConfigTest(unittest.TestCase):
 
 
 class MainTest(unittest.TestCase):
-    def test_refusal_exits_one_on_stderr(self):
+    def run_main(self, *argv: str) -> tuple[int, str, str]:
         stdout, stderr = io.StringIO(), io.StringIO()
-        with mock.patch.object(preflight, "cli_config", return_value=TEST), \
+        with mock.patch.object(preflight, "cli_config", return_value=CONFIG), \
                 contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
-            code = preflight.main(
-                ["--merchant-id", "11", "--project-id", "22", "--environment", "test"]
-            )
-        self.assertEqual((code, stdout.getvalue()), (1, ""))
-        self.assertIn("--approved-test-projects", stderr.getvalue())
+            code = preflight.main(["--merchant-id", "11", "--project-id", "22", *argv])
+        return code, stdout.getvalue(), stderr.getvalue()
+
+    def test_allowlist_is_required(self):
+        with self.assertRaises(SystemExit), contextlib.redirect_stderr(io.StringIO()):
+            self.run_main()
+
+    def test_refusal_exits_one_on_stderr(self):
+        code, stdout, stderr = self.run_main("--approved-test-projects", str(allowlist()))
+        self.assertEqual((code, stdout), (1, ""))
+        self.assertIn("not in the approved test-project allowlist", stderr)
+
+    def test_pass_prints_the_approval(self):
+        code, stdout, _ = self.run_main("--approved-test-projects", str(allowlist(APPROVAL)))
+        self.assertEqual(code, 0)
+        self.assertEqual(json.loads(stdout)["approval"]["approval_reference"], "approval thread")
 
 
 if __name__ == "__main__":

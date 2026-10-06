@@ -12,8 +12,11 @@ Catalog, Login, and checkout stay delegated — see `SKILL.md`.
   unauthorized session returns `401/403` → `needs_access`: run `xsolla auth login` again
   and resume. This is *not* `XSOLLA_PROJECT_API_KEY`.
 - **Safe target:** before the first write, `scripts/preflight.py` must pass — the CLI points
-  at the intended merchant and project, and that project is a sandbox or is listed in the
-  approved test-project allowlist.
+  at the intended merchant and project, and that project is listed in the approved
+  test-project allowlist.
+- **No sandbox:** Shop Builder writes always reach the project itself. Never pass
+  `--sandbox`: with it the CLI refuses a write unless `--force` is passed, and `delete-block`
+  needs `--force`, so that refusal would be skipped.
 
 ### Two different keys — the top cause of hard failures
 
@@ -70,16 +73,16 @@ On a `topup` landing, `add-page` seeds every page with the same game-sales scaff
 
 The News block shows Launcher news articles only.
 
-Remove seeded blocks only on a page the agent created: in this run, or in an earlier run that the
-ledger records for the same merchant, project and environment. Re-read the page first; if it holds
-anything that isn't from the seed or the confirmed plan, stop and ask. Remove only as the confirmed
-plan lists: for each such page, the seeded modules it drops. `delete-block` takes each block's
-`_id` (`--blockid`), read from `get-structure`; pass `--force`, since the confirmed plan is the
-confirmation and the CLI's own prompt refuses without a terminal. Never delete a block on any other
-page.
+Remove seeded blocks only on a page the agent created in this run. Re-read the page first; if it
+holds anything that isn't from the seed or the confirmed plan, stop and ask. Remove only as the
+confirmed plan lists: for each such page, the seeded modules it drops. `delete-block` takes each
+block's `_id` (`--blockid`), read from `get-structure`; pass `--force`, since the confirmed plan is
+the confirmation and the CLI's own prompt refuses without a terminal. Never delete a block on any
+other page.
 
 On resume, compare `get-structure` with this layout and add only what is missing; never add a
-page whose path already exists.
+page whose path already exists. Seeded blocks left on a page from an earlier run are not
+removed: list them for the partner to remove, as `needs_human`.
 
 ## Draft — pages and blocks
 
@@ -123,7 +126,6 @@ The theme is a `site` patch:
 |---|---|
 | List assets | `list-assets` |
 | Upload an asset | `upload-asset` |
-| Delete an asset | `delete-asset` |
 
 Upload only partner-approved assets.
 
@@ -135,21 +137,23 @@ Block text lives in the localization store, not on the block: blocks reference a
 |---|---|---|
 | Read the whole store | `get-localization` | — |
 | Set one string | `update-localization` | `{ "pageId", "id": "L:<uuid>", "locale": "en-US", "value": "<p>…</p>" }` |
-| Set many for one locale | `update-many-localization` | `{ "locale", "perScopeValues": { "<pageId>": { "L:<id>": { "translation": "<p>…</p>" } } } }` |
-| Add / remove a locale | `add-language` / `delete-language` | `{ "language": "en-US" }` |
+| Set many for one locale | `update-many-localization` | `{ "locale", "perScopeValues": { "<pageId>": { "L:<id>": { "description": "<existing>", "translation": "<p>…</p>" } } } }` |
+| Add a locale | `add-language` | `{ "language": "en-US" }` |
 
 - Page strings live under `pages.<pageId>.texts."L:<id>"`, shared strings under
   `common."L:<id>"` (pass `common` as the scope key). Keep the `L:` prefix.
-- In `update-many-localization` the per-id value **must** be `{ "translation": "<html>" }`.
-  Any other shape returns 200 and writes an **empty** string for that locale — destructive.
-  Other locales on the same string are preserved.
+- In `update-many-localization` the per-id value **must** be
+  `{ "description": "<existing>", "translation": "<html>" }`. A missing `description` is
+  cleared, so send the string's current one from `get-localization` (`""` for a new string).
+  A missing `translation` writes an **empty** string for that locale — destructive. Other
+  locales on the same string are preserved.
 
 ## Analytics and access
 
 | Intent | Command |
 |---|---|
-| Analytics connector (`gtm` or `ga`) | `add-connector` / `delete-connector` |
-| Access restrictions | `update-restrictions` / `delete-restrictions` |
+| Analytics connector (`gtm` or `ga`) | `add-connector` |
+| Access restrictions | `update-restrictions` |
 
 Login itself — the project, auth methods, JWT validation, account binding, and widget
 styling — stays with `login-setup` and `login-styling`. Sign-in succeeding is not binding
@@ -173,7 +177,7 @@ The agent never does these. Each one is reported as `needs_human`, with what to 
   signed. A successful publication is a receipt, not proof — the partner confirms the public
   URL serves the expected version and routes, and that Login and the Web Shop work.
 - Save a version, apply one, or roll back to one.
-- Delete a site.
+- Delete a site, an asset, a language, an analytics connector, or access restrictions.
 - Attach, change, or verify an external domain.
 - Publish Login widget settings, and publish News articles (switch them from `Draft`).
 
@@ -196,7 +200,7 @@ a missing piece is `blocked_capability`, never `completed`.
 
 | Response | Status | Action |
 |---|---|---|
-| `401` / `403` | `needs_access` | preserve the ledger, run `xsolla auth login`, re-read state, resume |
+| `401` / `403` | `needs_access` | run `xsolla auth login`, re-read state, resume |
 | `404` on create | `needs_human` | Shop Builder is not enabled for the project; the partner enables it in Publisher Account |
 | `500` with a `domain` where a `landingId` belongs | — | wrong key: fix and retry; not a capability block |
 | `429` while the CLI bootstraps the session | — | rate limited: wait a minute and retry; never set a session by hand |

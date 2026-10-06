@@ -41,8 +41,9 @@ Entry conditions:
   Mobile, unknown, invalid, or spoofed supplied URLs return `needs_input`.
 - Without a Steam URL, continue using the supplied `game_name` and partner-approved
   metadata, copy, and assets. Never invent missing content.
-- A merchant/project pair is confirmed and the target is a sandbox or dedicated test
-  project — never a partner's live project.
+- A merchant/project pair is confirmed and the target is a dedicated test project on the
+  approved test-project allowlist — never a partner's live project. Shop Builder has no
+  sandbox: every write reaches the project itself.
 - The caller has decided whether an existing portal at the domain should be updated
   or a new one created.
 
@@ -76,7 +77,7 @@ dependency.
 ## Steps
 
 The run is a state flow. Every mutation is preceded by an existing-vs-desired-state
-check and followed by read-back and a ledger update.
+check and followed by read-back.
 
 ```text
 Intake → Preflight → Discover → Back up → Plan and confirm → Draft →
@@ -87,13 +88,11 @@ Verify (read-back) → Human review → Handoff
    never choose an ambiguous match.
 2. **Preflight** — confirm PC scope, domain, and locale, then run
    [`scripts/preflight.py`](scripts/preflight.py)
-   `--merchant-id --project-id --environment sandbox|test`, adding
-   `--approved-test-projects <file>` for a test project. It checks that the CLI points at
-   that merchant and project, and that the project is a sandbox or is listed in the
-   approved test-project allowlist (the same check and file format as
-   `shop-builder-assembly`). If it fails, stop before any write. If `store_url` is
-   supplied, validate the exact Steam host. Use only partner-approved metadata and
-   assets; never substitute invented game metadata.
+   `--merchant-id --project-id --approved-test-projects <file>`. It checks that the CLI
+   points at that merchant and project, and that the project is listed in the approved
+   test-project allowlist (the same file format as `shop-builder-assembly`). If it fails,
+   stop before any write. If `store_url` is supplied, validate the exact Steam host. Use
+   only partner-approved metadata and assets; never substitute invented game metadata.
 3. **Discover** — list existing sites and read the target structure
    (`xsolla shopbuilder list-websites`, `get-landing`, `get-structure`). Capture the
    landing `_id`, page IDs, and block IDs before any mutation — block and theme calls
@@ -111,9 +110,8 @@ Verify (read-back) → Human review → Handoff
    each section with `add-page`, add its block with `add-block --index`, and remove the
    seeded blocks it doesn't keep with `delete-block`, following the portal layout in
    [references/portal-api.md](references/portal-api.md). Removals happen only on pages the
-   agent created (in this run, or as the ledger records for the same merchant, project and
-   environment), only after a fresh read shows nothing beyond the seed and the plan, and
-   only as listed in the confirmed plan. Everything else uses CLI commands too:
+   agent created in this run, only after a fresh read shows nothing beyond the seed and the
+   plan, and only as listed in the confirmed plan. Everything else uses CLI commands too:
    `move-block`, `update-block` (block, page, and site theme patches), `upload-asset`,
    `add-language`, `update-localization`, `update-many-localization`. A change with no CLI
    command is `needs_human`: say what to do in Publisher Account and record it. Apply one
@@ -152,11 +150,12 @@ Two references, both loaded before issuing changes:
 
 The agent never publishes (sites, pages, news articles, or Login widget settings), never
 runs the readiness check (`/check`, `verify-website`), never enables or generates a
-preview, never saves or applies a site version, never deletes a site or a block on a page
-it didn't create, never attaches a domain, never patches block text (it deletes the string
-and every translation), and never switches the project to production. It never writes
-before an explicit confirmation of the plan or before the preflight passes, and never
-targets a partner's live project.
+preview, never saves or applies a site version, never deletes a site, an asset, a language,
+an analytics connector, access restrictions, or a block on a page it didn't create in this
+run, never attaches a domain, never patches block text (it deletes the string and every
+translation), and never switches the project to production. It never writes before an
+explicit confirmation of the plan or before the preflight passes, never passes `--sandbox`,
+and never targets a partner's live project.
 
 ## Common pitfalls
 
@@ -171,9 +170,8 @@ targets a partner's live project.
 4. **Launcher marked complete without a verified download.** A Launcher needs a real
    Launcher on the project, an uploaded build, a generated installer, and a verified
    installer download. Refuse publish-anyway when that evidence is missing.
-5. **Access expiry losing progress.** On `401/403` mid-run, preserve the ledger and
-   return `needs_access`, then re-run `xsolla auth login`, re-read state, and resume —
-   do not restart the portal.
+5. **Access expiry losing progress.** On `401/403` mid-run, return `needs_access`, then
+   re-run `xsolla auth login`, re-read state, and resume — do not restart the portal.
 6. **Reporting completion without read-back.** Nothing enters **Completed** while
    read-back is pending.
 
@@ -185,3 +183,6 @@ targets a partner's live project.
   tests, so metadata and assets come from the partner, not the Steam page.
 - **Community needs the partner's channel.** Its `embed` block shows a social channel the
   partner supplies; without one the section is `needs_input`, not a guessed layout.
+- **Deprecated block endpoints.** `add-block`, `move-block` and `delete-block` call Shop
+  Builder endpoints marked deprecated for future removal. They work today; the skill moves
+  with the CLI when those commands switch to the newer routes.

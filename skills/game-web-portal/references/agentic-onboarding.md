@@ -30,7 +30,7 @@ identifiers, credentials, content, prices, assets, or URLs.
 2. **Existing portal:** GIVEN the domain exists, WHEN onboarding starts, THEN
    inspect and resume without duplicates; ambiguous matches require selection.
 3. **Access:** GIVEN a mutation returns `401/403`, WHEN work is partial, THEN
-   preserve the ledger, return `needs_access`, reauthenticate, re-read, resume.
+   return `needs_access`, reauthenticate, re-read, resume.
 4. **Login:** GIVEN sign-in succeeds, WHEN binding fails, THEN Login and
    onboarding remain incomplete until binding is verified.
 5. **Publication:** GIVEN the draft is ready, WHEN the run ends, THEN the agent has
@@ -130,7 +130,6 @@ Launcher, uploaded build, generated installer, and verified download.
 ### 4. Verify
 
 - Read back changed entities and compare them with the confirmed plan.
-- Update the ledger.
 - Keep unverified items out of **Completed**.
 
 ### 5. Draft gate
