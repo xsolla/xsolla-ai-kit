@@ -42,36 +42,40 @@ during Discover and reuse it.
 Discover is mandatory before any mutation: it supplies `landingId`, page IDs, block IDs,
 and current ordering, and it is how resume avoids building a duplicate portal.
 
-## Draft — create the portal
+## Draft — build on the partner's site
+
+The partner creates the site in Publisher Account from the **Multi-page web portal** template.
+The agent never creates one: `create-website` makes a site with no layout, which the Editor,
+publication and preview can't open. The template creates the layout (the sidebar, header and
+footer) and most sections.
 
 | Step | Command |
 |---|---|
-| Create the site | `create-website` |
-| Finalize the landing type | `set-landing-type --type topup` |
-| Add each section's page | `add-page` |
-| Add each section's block after the `header` | `add-block --index 1` |
+| Add each missing section's page | `add-page` |
+| Add its blocks at the top of the page | `add-block --index 0`, then `--index 1` |
 | Remove the seeded blocks the section doesn't keep | `delete-block --force` |
-
-Portal and block-set templates are not used: they have no CLI command, and `portal` returned 500.
 
 ### Portal layout
 
-On a `topup` landing, `add-page` seeds every page with the same game-sales scaffold: `header`,
-`leadGameSales`, `description`, `packs` ×3, `bento-grid` ×3, `gallery`, `requirements`, `faq`,
-`footer`. Each section gets its own block right after the `header` (`add-block --index 1`), then
-`delete-block` removes the seeded blocks the section doesn't keep. Module names come from the
-`shop-builder-assembly` [block catalog](../../shop-builder-assembly/references/block-catalog.md).
-
-| Section | Path | Section block | Final page |
+| Section | Path | From | Final page |
 |---|---|---|---|
-| Home | `/main` | none | the seeded scaffold, kept whole as the game page |
-| News | `/news` | `news` | `header`, `news`, `footer` |
-| Rewards | `/rewards` | `rewards` | `header`, `rewards`, `footer` |
-| Web Shop | `/store` | `newStore` | `header`, `newStore`, `faq`, `footer` |
-| Community | `/community` | `embed` | `header`, `embed`, `footer` |
-| Launcher (optional) | `/launcher` | only with a real Launcher (see below) | — |
+| Home | `/` | the template | as the template made it |
+| News | `/news` | the template | as the template made it (`lead`, `news`, `lead`) |
+| Rewards | `/rewards` | the template | as the template made it |
+| Web Shop | `/store` | the template | as the template made it |
+| Community | `/community` | added by the agent | `lead`, `embed` |
+| Launcher (optional) | `/launcher` | added only with a real Launcher (see below) | — |
 
-The News block shows Launcher news articles only.
+The template's other pages (Loyalty shop, Promocodes) stay as they are. The News block shows
+Launcher news articles only. If `/news`, `/rewards` or `/store` is missing, the site wasn't made
+from this template: stop with `needs_input` instead of building those sections.
+
+On this template, `add-page` seeds a new page with 11 game-sales blocks — `leadGameSales`,
+`description`, `packs` ×3, `bento-grid` ×3, `gallery`, `requirements`, `faq` — and no header or
+footer, which come from the site layout. The page gets no page type and no sidebar link. For
+Community, add `lead` (`--index 0`) and `embed` (`--index 1`), then remove the 11 seeded blocks.
+Module names come from the `shop-builder-assembly`
+[block catalog](../../shop-builder-assembly/references/block-catalog.md).
 
 Remove seeded blocks only on a page the agent created in this run. Re-read the page first; if it
 holds anything that isn't from the seed or the confirmed plan, stop and ask. Remove only as the
@@ -93,8 +97,8 @@ removed: list them for the partner to remove, as `needs_human`.
 | Patch a block, page, or site value — including the theme | `update-block` |
 
 `add-block` takes a **module template name** (`--block`), not a block ID, plus the landing
-`_id`, the page `_id`, and always `--index`: without it the block goes to the top of the page,
-above the `header`. Use only the modules in the layout above.
+`_id`, the page `_id`, and always `--index`: without it the block goes to position 0, not to
+the end. Use only the modules in the layout above.
 
 `update-block` sends a map of `requestId → change`:
 
@@ -184,6 +188,8 @@ The agent never does these. Each one is reported as `needs_human`, with what to 
 **Not yet available from the CLI — the partner does them in the builder:**
 
 - Rename, duplicate, or delete a page; link a page under a parent in the navigation.
+- Add each page the agent added (such as Community) to the sidebar menu.
+- On a PC portal, hide the template's App Store and Google Play badges in the sidebar.
 - Page and site settings, and site feature toggles.
 - Show a store component (such as subscriptions) on the Web Shop.
 - Launcher news articles. The News section is `placeholder` while its articles are `Draft`.
@@ -201,7 +207,7 @@ a missing piece is `blocked_capability`, never `completed`.
 | Response | Status | Action |
 |---|---|---|
 | `401` / `403` | `needs_access` | run `xsolla auth login`, re-read state, resume |
-| `404` on create | `needs_human` | Shop Builder is not enabled for the project; the partner enables it in Publisher Account |
+| No site at `domain` | `needs_human` | the partner creates it from the Multi-page web portal template, or enables Shop Builder for the project |
 | `500` with a `domain` where a `landingId` belongs | — | wrong key: fix and retry; not a capability block |
 | `429` while the CLI bootstraps the session | — | rate limited: wait a minute and retry; never set a session by hand |
 | Launcher build / installer / download | `blocked_capability` | not reachable from here |

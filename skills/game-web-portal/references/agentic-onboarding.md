@@ -12,7 +12,6 @@ project_id:
 domain:
 game_name:
 primary_locale:
-existing_portal_policy: update | create-new
 ```
 
 Optional: `store_url` (Steam), approved game description and brand assets,
@@ -27,8 +26,10 @@ identifiers, credentials, content, prices, assets, or URLs.
    approved metadata/assets are supplied, THEN continue without Steam parsing.
    GIVEN a store URL, its exact host must be `store.steampowered.com`; Mobile,
    unknown, invalid, or spoofed supplied URLs return `needs_input`.
-2. **Existing portal:** GIVEN the domain exists, WHEN onboarding starts, THEN
-   inspect and resume without duplicates; ambiguous matches require selection.
+2. **The partner's site:** GIVEN the partner created the site from the Multi-page web
+   portal template, WHEN onboarding starts, THEN inspect it and add only the missing
+   sections, without duplicates; ambiguous matches require selection. GIVEN no site at
+   the domain, THEN return `needs_human`: the agent never creates a site.
 3. **Access:** GIVEN a mutation returns `401/403`, WHEN work is partial, THEN
    return `needs_access`, reauthenticate, re-read, resume.
 4. **Login:** GIVEN sign-in succeeds, WHEN binding fails, THEN Login and
@@ -99,7 +100,7 @@ Never recreate discovered existing entities.
 
 ### 1. Context
 
-- Confirm merchant/project, domain, locale, and create/update policy.
+- Confirm merchant/project, the partner's site domain, and locale.
 - Confirm PC scope. Validate the exact Steam host only when `store_url` is supplied.
 - If `store_url` is omitted, confirm approved metadata and assets are available.
 - Resolve ambiguity and disclose unsupported/human gates.
@@ -113,7 +114,7 @@ Never recreate discovered existing entities.
 
 ### 3. One change group
 
-Portal structure — creation and landing type, pages, blocks, theme, assets, copy
+Portal structure — pages, blocks, theme, assets, copy
 and localization, analytics — runs through the CLI commands listed in
 [portal-api.md](portal-api.md). Use related skills for everything else,
 instead of repeating their command recipes:

@@ -3,7 +3,8 @@ name: game-web-portal
 description: >-
   Builds or resumes an unpublished Xsolla Game Web Portal for a PC game — a game home with
   Home, News, Rewards, Web Shop, Community, and an optional Launcher section around the
-  store — and returns an evidence-backed handoff. Not the entry point for "build me a
+  store — on the site the partner created from the Multi-page web portal template, and
+  returns an evidence-backed handoff. Not the entry point for "build me a
   shop" or "set up my portal": that is shop-setup. On the Shop Builder path,
   description-to-shop or shop-builder-assembly hands off here when the recorded site kind
   is portal. Use for "continue my Game Web Portal", "resume my portal without duplicating
@@ -44,8 +45,11 @@ Entry conditions:
 - A merchant/project pair is confirmed and the target is a dedicated test project on the
   approved test-project allowlist — never a partner's live project. Shop Builder has no
   sandbox: every write reaches the project itself.
-- The caller has decided whether an existing portal at the domain should be updated
-  or a new one created.
+- The partner has created the site in Publisher Account from the **Multi-page web portal**
+  template (Storefronts → Websites → Multi-page web portal → Manual). The agent never
+  creates a site: one created through the CLI has no layout, so the Editor, publication
+  and preview can't open it. Without the partner's site, the run stops at `needs_human`
+  with that instruction.
 
 ## Prerequisites
 
@@ -66,7 +70,6 @@ project_id:
 domain:
 game_name:
 primary_locale:
-existing_portal_policy: update | create-new
 ```
 
 Optional: `store_url` (Steam), approved description, logo, hero, screenshots,
@@ -93,25 +96,26 @@ Verify (read-back) → Human review → Handoff
    test-project allowlist (the same file format as `shop-builder-assembly`). If it fails,
    stop before any write. If `store_url` is supplied, validate the exact Steam host. Use
    only partner-approved metadata and assets; never substitute invented game metadata.
-3. **Discover** — list existing sites and read the target structure
+3. **Discover** — find the partner's site at `domain` and read its structure
    (`xsolla shopbuilder list-websites`, `get-landing`, `get-structure`). Capture the
    landing `_id`, page IDs, and block IDs before any mutation — block and theme calls
    are keyed by landing `_id`, not the domain. Never recreate a discovered existing
    entity; resume at the first incomplete item.
-4. **Back up** — before the first write to an existing site (an update or a resume),
-   export it: `get-landing`, `get-structure`, `get-localization`, and `list-assets` for
-   the slug, saved to a new local directory. A failed export stops the run before any
-   write. A brand-new site has nothing to back up.
+4. **Back up** — before the first write, export the site: `get-landing`,
+   `get-structure` and `get-localization` for the slug, and `list-assets` for the
+   landing `_id`, saved to a new local directory. A failed export stops the run before
+   any write.
 5. **Plan and confirm** — show the ordered change groups (sections, pages, blocks,
    theme, copy, catalog links) and the exact removals, then wait for an explicit yes.
    Earlier permission to "set up my portal" is not confirmation of a plan. Re-confirm
    if the plan changes.
-6. **Draft** — for a new portal, run `create-website` and `set-landing-type`, then build
-   each section with `add-page`, add its block with `add-block --index`, and remove the
-   seeded blocks it doesn't keep with `delete-block`, following the portal layout in
-   [references/portal-api.md](references/portal-api.md). Removals happen only on pages the
-   agent created in this run, only after a fresh read shows nothing beyond the seed and the
-   plan, and only as listed in the confirmed plan. Everything else uses CLI commands too:
+6. **Draft** — map each section to the template's page by path, then build only the
+   missing ones: `add-page`, its blocks with `add-block --index`, and `delete-block` for
+   the seeded blocks it doesn't keep, following the portal layout in
+   [references/portal-api.md](references/portal-api.md). The template's own pages keep
+   their blocks. Removals happen only on pages the agent created in this run, only after a
+   fresh read shows nothing beyond the seed and the plan, and only as listed in the
+   confirmed plan. Everything else uses CLI commands too:
    `move-block`, `update-block` (block, page, and site theme patches), `upload-asset`,
    `add-language`, `update-localization`, `update-many-localization`. A change with no CLI
    command is `needs_human`: say what to do in Publisher Account and record it. Apply one
@@ -150,12 +154,12 @@ Two references, both loaded before issuing changes:
 
 The agent never publishes (sites, pages, news articles, or Login widget settings), never
 runs the readiness check (`/check`, `verify-website`), never enables or generates a
-preview, never saves or applies a site version, never deletes a site, an asset, a language,
-an analytics connector, access restrictions, or a block on a page it didn't create in this
-run, never attaches a domain, never patches block text (it deletes the string and every
-translation), and never switches the project to production. It never writes before an
-explicit confirmation of the plan or before the preflight passes, never passes `--sandbox`,
-and never targets a partner's live project.
+preview, never creates a site, never saves or applies a site version, never deletes a site,
+an asset, a language, an analytics connector, access restrictions, or a block on a page it
+didn't create in this run, never attaches a domain, never patches block text (it deletes the
+string and every translation), and never switches the project to production. It never writes
+before an explicit confirmation of the plan or before the preflight passes, never passes
+`--sandbox`, and never targets a partner's live project.
 
 ## Common pitfalls
 
@@ -183,6 +187,9 @@ and never targets a partner's live project.
   tests, so metadata and assets come from the partner, not the Steam page.
 - **Community needs the partner's channel.** Its `embed` block shows a social channel the
   partner supplies; without one the section is `needs_input`, not a guessed layout.
+- **The partner creates the site.** Until a site created through the CLI gets a layout,
+  the portal is built on the partner's template site, and a page the agent adds has no
+  page type and no link in the sidebar menu; the partner adds the link.
 - **Deprecated block endpoints.** `add-block`, `move-block` and `delete-block` call Shop
   Builder endpoints marked deprecated for future removal. They work today; the skill moves
   with the CLI when those commands switch to the newer routes.
