@@ -15,7 +15,7 @@ Honest partial completion is correct. Simulated completion is failure.
 shop-plan (intake, path, site kind)
 → shop-setup: merchant-setup → catalog-design → login-setup
 → storefront: description-to-shop / shop-builder-assembly, or game-web-portal for a portal
-→ verify → human review → handoff report
+→ game-web-portal only: verify → human review → handoff report
 → shop-setup continues: webhooks-impl → production
 ```
 
@@ -24,22 +24,24 @@ The headless path has no ledger: nothing on it reads one.
 
 ## Intake
 
-The values the Shop Builder part needs are asked **once, in one message**: `shop-plan`'s first
-message, together with its criteria. Skip what the developer already stated, and show inferred
-values back instead of assuming them.
+The values the Shop Builder part needs are asked in one message: `shop-plan`'s first message,
+together with its criteria. For a portal, nothing in it is asked again; on the shop path,
+`description-to-shop` still asks for what it needs. Skip what the developer already stated, and
+show inferred values back instead of assuming them.
 
-| Group | Values | Used by |
+| Group | Ledger keys | Used by |
 |---|---|---|
 | Plan | `shop-plan`'s criteria: the path, and on Shop Builder the site kind | `shop-plan` |
-| Game | name, platforms, an approved short description, store URL (optional), brand assets (optional) | the storefront skills |
-| Site | the site's domain — for a portal, the site the partner creates from the Multi-page web portal template — and the primary and other locales | the storefront skills |
+| Game | `game_name`, `platforms`, `description` (approved), `store_url` (optional), `brand_assets` (optional) | `game-web-portal` |
+| Site | `domain` (optional: the site the partner creates from the Multi-page web portal template may not exist yet), `primary_locale`, `locales` | `game-web-portal` |
 
 The account, catalog, sign-in methods and webhooks are not part of this intake:
 `merchant-setup`, `catalog-design`, `login-setup` and `webhooks-impl` ask for them themselves.
 
-Values are written to the ledger when the developer confirms the plan, in the same step that
-records the path and the site kind. After that, the storefront skills read them from the ledger
-and ask again only for a value that is missing, that conflicts with what a step finds, that a
+`shop-plan` shows the values with its recommendation, and writes them to the ledger when the
+developer confirms, in the same step that records the path and the site kind. After that,
+`game-web-portal` reads them from the ledger and asks again only for a value that is missing
+(such as a domain that didn't exist yet), that conflicts with what a step finds, that a
 destructive change needs, or that is an approval.
 
 ## Statuses
@@ -58,7 +60,8 @@ Every step carries exactly one:
 
 A step is `completed` only when its evidence below has been observed in this run or
 re-read on resume. A mutation response is a receipt, not evidence. Anything not yet
-verified stays out of `completed`.
+verified stays out of `completed`. A step that is under way has no status yet; its `ids` may
+already hold what it created.
 
 ## Steps and their evidence
 
@@ -70,7 +73,7 @@ verified stays out of `completed`.
 | `catalog` | `catalog-design` | Every catalog group the site uses reads back from the project | Read each group |
 | `login` | `login-setup` | `XSOLLA_LOGIN_PROJECT_ID` is set and the Login project reads back | Read the Login project |
 | `storefront` | the storefront skill | Its read-back matches the confirmed plan | The same read-back |
-| `verify` | the storefront skill | The site was exported to a new local directory before its first write, and read back after the last write | The export directory and a fresh read-back |
+| `verify` | the storefront skill | The site was exported to a new `.xsolla/backup-<timestamp>/` directory before its first write, and read back after the last write | The export directory and a fresh read-back |
 | `review` | the developer | The developer approved the draft, with every placeholder and gap disclosed | The ledger |
 | `handoff` | the storefront skill | The report below was rendered from the ledger | — |
 
@@ -92,7 +95,7 @@ ledger. The storefront skill records them when it starts, from the project's act
   "version": 1,
   "path": "shopbuilder",
   "site_kind": "portal",
-  "intake": { "game_name": "…", "primary_locale": "en-US" },
+  "intake": { "game_name": "…", "domain": "my-game", "primary_locale": "en-US" },
   "steps": [
     {
       "id": "merchant",
@@ -106,6 +109,8 @@ ledger. The storefront skill records them when it starts, from the project's act
       "status": "completed",
       "evidence": ["/community read back as planned"],
       "ids": {
+        "merchant_id": 0,
+        "project_id": 0,
         "site": "my-game",
         "landing_id": "…",
         "created_pages": [
@@ -124,18 +129,18 @@ ledger. The storefront skill records them when it starts, from the project's act
 
 Update a step's entry after every step, including a `failed` or `needs_*` one, with the
 reason in `evidence`. `ids` holds what later steps and a resume need: project, Login
-project, catalog groups, site domain and landing `_id`, and every page the agent created,
-with the seeded blocks it found there. `game-web-portal` records those with
+project, catalog groups, and on the storefront step the merchant, project, site domain and
+landing `_id` it worked on, with every page the agent created. `game-web-portal` records each
+page — its path and seeded blocks — with
 [`scripts/seeded_blocks.py record`](../../game-web-portal/scripts/seeded_blocks.py) right after
-it creates the page. The `merchant` step records the merchant and project; a resumed run
-uses them, with the recorded pages, to tell its own pages from the partner's.
+it creates it, and updates the entry after each removal.
 
 ## Resume
 
 On every start of a storefront skill that follows this contract, before any write:
 
-1. **Read the ledger.** If its `path` or `site_kind` differs from `.env`, stop and show both —
-   never pick one.
+1. **Read the ledger.** If its `path` or `site_kind` differs from `.env`, stop, show both, and
+   ask the developer to rerun `shop-plan` — never pick one.
 2. **Re-read every `completed` step** using the last column of the evidence table. If the
    evidence no longer holds, downgrade the step to `failed` (or `needs_access` on
    `401/403`) and say why.
@@ -144,9 +149,12 @@ On every start of a storefront skill that follows this contract, before any writ
 4. **A step with no entry, but Xsolla state that shows it** (credentials in `.env`, a Login
    project, an existing site at the domain): discover it, record the step if its evidence
    verifies, then continue as in 3.
-5. **Seeded blocks on a page an earlier run created** are removed only on the same merchant
-   and project, and only while `seeded_blocks.py check` reports them untouched. A changed or
-   gone block stays, and is listed for the partner as `needs_human`.
+5. **A seeded block is removed** only on a page the agent created and recorded, only when the
+   storefront step's merchant, project and landing equal the preflight-confirmed target, and
+   only when `seeded_blocks.py check`, on reads taken right before the removal, reports it
+   `untouched`. A `changed` block stays and is listed for the partner as `needs_human`; a
+   `gone` one needs nothing. A page at a planned path with no record is never trimmed: it is
+   reported, with its blocks, as `needs_human`.
 
 ### No duplicates
 
@@ -169,6 +177,7 @@ The storefront skills that follow this contract never:
 - switch a project, token, or SDK to production;
 - run the Shop Builder readiness check (`verify-website`) or enable or generate a preview;
 - save or apply a site version;
+- delete a block other than a recorded seeded block that rule 5 allows;
 - write to the project before the developer explicitly confirmed the plan for that write;
 - target a project that is not on the approved test-project allowlist.
 

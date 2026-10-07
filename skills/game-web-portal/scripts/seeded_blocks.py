@@ -12,6 +12,8 @@ from pathlib import Path
 
 def load(path: Path) -> dict:
     value = json.loads(path.read_text(encoding="utf-8"))
+    if isinstance(value, dict) and value.get("ok") is False:
+        raise RuntimeError(f"{path} holds a failed CLI call: {value.get('error', value)}")
     if isinstance(value, dict) and value.get("ok") is True and "data" in value:
         value = value["data"]
     if not isinstance(value, dict):
@@ -19,11 +21,8 @@ def load(path: Path) -> dict:
     return value
 
 
-def page_blocks(structure: dict, page_id: str) -> list[dict]:
-    for page in structure.get("pages", []):
-        if page.get("_id") == page_id:
-            return page.get("blocks", [])
-    raise RuntimeError(f"page {page_id} is not in the structure")
+def find_page(structure: dict, page_id: str) -> dict | None:
+    return next((p for p in structure.get("pages") or [] if p.get("_id") == page_id), None)
 
 
 def string_ids(value: object) -> list[str]:
@@ -46,8 +45,8 @@ def block_hash(block: dict, localization: dict, page_id: str) -> str:
         {k: v for k, v in c.items() if k != "_id"} if isinstance(c, dict) else c
         for c in block.get("components") or []
     ]
-    page_texts = (localization.get("pages", {}).get(page_id) or {}).get("texts", {})
-    common = localization.get("common", {})
+    page_texts = ((localization.get("pages") or {}).get(page_id) or {}).get("texts") or {}
+    common = localization.get("common") or {}
     content["strings"] = {
         i: page_texts.get(i, common.get(i)) for i in sorted(set(string_ids(content)))
     }
@@ -57,20 +56,43 @@ def block_hash(block: dict, localization: dict, page_id: str) -> str:
 
 def record(structure: dict, localization: dict, page_id: str) -> dict:
     """The ledger entry for a page the agent just created: every block on it is seeded."""
+    page = find_page(structure, page_id)
+    if page is None:
+        raise RuntimeError(f"page {page_id} is not in the structure")
     return {
         "page_id": page_id,
+        "path": page.get("path"),
         "seeded_blocks": [
             {"_id": b["_id"], "module": b.get("module"),
              "hash": block_hash(b, localization, page_id)}
-            for b in page_blocks(structure, page_id)
+            for b in page.get("blocks", [])
         ],
     }
+
+
+def ledger_entry(ledger: dict, page_id: str) -> dict:
+    for step in ledger.get("steps") or []:
+        if step.get("id") != "storefront":
+            continue
+        for entry in (step.get("ids") or {}).get("created_pages") or []:
+            if entry.get("page_id") == page_id:
+                blocks = entry.get("seeded_blocks")
+                if not isinstance(blocks, list) or any(
+                    not isinstance(b, dict) or not all(k in b for k in ("_id", "module", "hash"))
+                    for b in blocks
+                ):
+                    raise RuntimeError(
+                        f"page {page_id}: seeded_blocks must list _id, module and hash"
+                    )
+                return entry
+    raise RuntimeError(f"page {page_id} has no ledger record: never trim it")
 
 
 def check(structure: dict, localization: dict, entry: dict) -> dict:
     """Split recorded seeded blocks into untouched (removable), changed, and gone."""
     page_id = entry["page_id"]
-    current = {b["_id"]: b for b in page_blocks(structure, page_id)}
+    page = find_page(structure, page_id)
+    current = {b["_id"]: b for b in (page or {}).get("blocks", [])}
     result: dict = {"page_id": page_id, "untouched": [], "changed": [], "gone": []}
     for seeded in entry["seeded_blocks"]:
         block = current.get(seeded["_id"])
@@ -90,20 +112,19 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--structure", required=True, type=Path, help="get-structure output")
     parser.add_argument("--localization", required=True, type=Path,
                         help="get-localization output")
-    parser.add_argument("--page-id", help="record: the page the agent just created")
-    parser.add_argument("--entry", type=Path, help="check: the page's ledger entry")
+    parser.add_argument("--page-id", required=True, help="the page the agent created")
+    parser.add_argument("--ledger", type=Path, help="check: .xsolla/onboarding.json")
     args = parser.parse_args(argv)
     try:
         structure, localization = load(args.structure), load(args.localization)
         if args.action == "record":
-            if not args.page_id:
-                raise RuntimeError("record needs --page-id")
             output = record(structure, localization, args.page_id)
         else:
-            if not args.entry:
-                raise RuntimeError("check needs --entry")
-            output = check(structure, localization, load(args.entry))
-    except (OSError, KeyError, RuntimeError, json.JSONDecodeError) as exc:
+            if not args.ledger:
+                raise RuntimeError("check needs --ledger")
+            entry = ledger_entry(load(args.ledger), args.page_id)
+            output = check(structure, localization, entry)
+    except (OSError, RuntimeError, json.JSONDecodeError) as exc:
         print(str(exc), file=sys.stderr)
         return 1
     print(json.dumps(output, indent=2))
