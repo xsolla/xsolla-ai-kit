@@ -119,8 +119,8 @@ Never recreate discovered existing entities.
 
 ### 4. Back up
 
-- Export the site to a new local directory before the first write. A failed export
-  stops the run.
+- Export the site to a new `.xsolla/backup-<timestamp>/` directory before the first
+  write. A failed export stops the run.
 
 ### 5. Plan and confirm
 
@@ -165,17 +165,16 @@ The handoff is the onboarding report in the
 The portal fills its **Storefront** section with:
 
 ```markdown
-- Domain:
 - Steam URL (include only if supplied):
 
 | Section | Page ID | Route | Status | Evidence |
 |---|---|---|---|---|
 
-Your next steps in Publisher Account:
+Before publishing, in Publisher Account:
 - Reload the Editor before checking the portal: it doesn't refresh after CLI writes yet
+- Add the pages the agent added to the sidebar menu
 - Run the readiness check and open the preview
-- Publish (main page first), then confirm the public URL
-- Not published by the agent
+- Publish the main page first, then confirm the public URL
 ```
 
 ### After the human publishes

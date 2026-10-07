@@ -77,21 +77,23 @@ Community, add `lead` (`--index 0`) and `embed` (`--index 1`), then remove the 1
 Module names come from the `shop-builder-assembly` [block
 catalog](../../shop-builder-assembly/references/block-catalog.md).
 
-Right after `add-page`, read `get-structure` and `get-localization`, and record the new page's
-seeded blocks in the ledger with `scripts/seeded_blocks.py record`, passing both reads as
-`--structure` and `--localization` and the new page as `--page-id`. Remove seeded blocks only on a
-page the agent created and recorded. In this run, re-read the page first; if it holds anything
-that isn't from the seed or the confirmed plan, stop and ask. Remove only as the confirmed plan
-lists: for each such page, the seeded modules it drops. `delete-block` takes each
-block's `_id` (`--blockid`), read from `get-structure`; pass `--force`, since the confirmed plan is
-the confirmation and the CLI's own prompt refuses without a terminal. Never delete a block on any
-other page.
+Right after `add-page`, read `get-structure` and `get-localization`, and record the new page — its
+path and seeded blocks — in the ledger with `scripts/seeded_blocks.py record`, passing both reads as
+`--structure` and `--localization` and the new page as `--page-id`.
 
-On resume, compare `get-structure` with this layout and add only what is missing; never add a
-page whose path already exists. Seeded blocks left on a page an earlier run created are removed
-only on the same merchant and project, and only those `seeded_blocks.py check --entry <the page's
-ledger entry>` reports `untouched`. A `changed` or `gone` block stays, and is listed for the
-partner as `needs_human`.
+Remove a seeded block only on a page the agent created and recorded, only as the confirmed plan
+lists, and only on the merchant, project and landing the ledger's storefront step records. Right
+before removing, read `get-structure` and `get-localization` again and run `seeded_blocks.py check`
+with them, `--page-id` and `--ledger .xsolla/onboarding.json`; delete only the blocks it reports
+`untouched`. A `changed` block stays and is listed for the partner as `needs_human`; a `gone` one
+needs nothing. Do removals before any copy or locale change: a changed string marks its block
+`changed`. `delete-block` takes each block's `_id` (`--blockid`); pass `--force`, since the
+confirmed plan is the confirmation and the CLI's own prompt refuses without a terminal. Update the
+page's ledger entry after each removal. Never delete a block on any other page.
+
+On resume, compare `get-structure` with this layout and add only what is missing; never add a page
+whose path already exists. A page at a planned path with no ledger record is never trimmed: report
+it, with its blocks, as `needs_human`.
 
 ## Draft — pages and blocks
 

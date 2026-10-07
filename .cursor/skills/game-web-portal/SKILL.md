@@ -35,9 +35,9 @@ Entry conditions:
 
 - `XSOLLA_BUILD_PATH=shopbuilder` and `XSOLLA_SITE_KIND=portal` are recorded in `.env` (see
   [the build-path contract](../shop-plan/references/build-path-contract.md)). With no path
-  recorded, hand back to `shop-setup`. With the site kind absent or `shop`, the recorded
-  site is a shop: stop and say so, since only `shop-plan` changes it. Any other path or
-  kind: stop and say so.
+  recorded, hand back to `shop-setup`. With the site kind absent or `shop`, the recorded site
+  is a shop: stop and say so, since only `shop-plan` changes it. Any other path or kind:
+  stop and say so.
 - The title ships on PC. A Steam URL is optional and may be skipped.
 - If a store URL is supplied, its host must be exactly `store.steampowered.com`.
   Mobile, unknown, invalid, or spoofed supplied URLs return `needs_input`.
@@ -107,8 +107,8 @@ Verify (read-back) → Human review → Handoff
    the first incomplete item.
 4. **Back up** — before the first write, export the site: `get-landing`,
    `get-structure` and `get-localization` for the slug, and `list-assets` for the
-   landing `_id`, saved to a new local directory. A failed export stops the run before
-   any write.
+   landing `_id`, saved to a new `.xsolla/backup-<timestamp>/` directory, which git
+   ignores. A failed export stops the run before any write.
 5. **Plan and confirm** — show the ordered change groups (sections, pages, blocks,
    theme, copy, catalog links) and the exact removals, then wait for an explicit yes.
    Earlier permission to "set up my portal" is not confirmation of a plan. Re-confirm
@@ -117,21 +117,21 @@ Verify (read-back) → Human review → Handoff
    ones: `add-page`, its blocks with `add-block --index`, and `delete-block` for the seeded
    blocks it doesn't keep, following the portal layout in
    [references/portal-api.md](references/portal-api.md). The template's own pages keep their
-   blocks. Right after `add-page`, record the new page's seeded blocks in the ledger with
-   [`scripts/seeded_blocks.py`](scripts/seeded_blocks.py) `record`. Removals happen only on
-   pages the agent created and recorded, only as listed in the confirmed plan: in this run
-   after a fresh read shows nothing beyond the seed and the plan, and in an earlier run only
-   for blocks `seeded_blocks.py check` reports untouched. Everything else uses CLI commands
-   too: `move-block`, `update-block` (a block's `hidden` flag and the site theme),
-   `upload-asset`, `add-language`, `update-localization`, `update-many-localization`, and
-   `add-connector` or `update-restrictions` when the plan lists them. A change with no CLI
-   command is `needs_human`: say what to do in Publisher Account and record it. Apply one
-   change group at a time across Home, News, Rewards, Web Shop, and Community; the Launcher
-   section is the partner's. Delegate the surrounding products rather than duplicating their
-   recipes: `merchant-setup` for merchant/project/API key, `catalog-design` for the catalog
-   and pricing the Web Shop sells, `login-setup` for Login. Checkout is the Web Shop's
-   hosted Pay Station, so there is nothing to integrate. Placeholders require approval and a
-   visible label.
+   blocks. Right after `add-page`, record the new page with
+   [`scripts/seeded_blocks.py`](scripts/seeded_blocks.py) `record`. Remove a seeded block
+   only on a page the agent created and recorded, only as the confirmed plan lists, and only
+   when `seeded_blocks.py check` on reads taken right before the removal reports it
+   `untouched`; do removals before any copy or locale change, which would mark its block
+   `changed`. Everything else uses CLI commands too: `move-block`, `update-block` (a block's
+   `hidden` flag and the site theme), `upload-asset`, `add-language`, `update-localization`,
+   `update-many-localization`, and `add-connector` or `update-restrictions` when the plan
+   lists them. A change with no CLI command is `needs_human`: say what to do in Publisher
+   Account and record it. Apply one change group at a time across Home, News, Rewards, Web
+   Shop, and Community; the Launcher section is the partner's. Delegate the surrounding
+   products rather than duplicating their recipes: `merchant-setup` for merchant/project/API
+   key, `catalog-design` for the catalog and pricing the Web Shop sells, `login-setup` for
+   Login. Checkout is the Web Shop's hosted Pay Station, so there is nothing to integrate.
+   Placeholders require approval and a visible label.
 7. **Verify (read-back)** — read back every changed entity (`get-structure`,
    `get-localization`, page and block reads) and compare it with the confirmed plan.
    A mutation response is not evidence. Keep unverified items out of **Completed**.
@@ -193,9 +193,9 @@ never passes `--sandbox`, and never targets a partner's live project.
   tests, so metadata and assets come from the partner, not the Steam page.
 - **Community needs the partner's channel.** Its `embed` block shows a social channel the
   partner supplies; without one the section is `needs_input`, not a guessed layout.
-- **The partner creates the site.** Until a site created through the CLI gets a layout, the
-  portal is built on the partner's template site, and a page the agent adds has no page type
-  and no link in the sidebar menu; the partner adds the link.
+- **The partner creates the site.** Until a site created through the CLI gets a layout,
+  the portal is built on the partner's template site, and a page the agent adds has no
+  page type and no link in the sidebar menu; the partner adds the link.
 - **Deprecated block endpoints.** `add-block`, `move-block` and `delete-block` call Shop
   Builder endpoints marked deprecated for future removal. They work today; the skill moves
   with the CLI when those commands switch to the newer routes.

@@ -155,6 +155,9 @@ you, and you only need a store. Trade-off: you lose the design ceiling headless 
 Go with this, or would you rather build headless?
 ```
 
+On Shop Builder, the same message lists the intake values that will be recorded, so the
+developer's yes covers them too.
+
 If the answers genuinely pull in different directions (e.g. wants full custom UI *and* has
 zero dev capacity *and* needs it live tomorrow) — don't average them into a guess. Say plainly
 which criteria conflict and ask the developer to break the tie themselves.
@@ -185,12 +188,17 @@ set_key() {
 set_key XSOLLA_BUILD_PATH shopbuilder   # or headless
 set_key XSOLLA_SITE_KIND portal         # Shop Builder only: shop or portal
 grep -q '^\.env' .gitignore 2>/dev/null || echo '.env' >> .gitignore
+# Shop Builder only: the ledger's directory, kept out of git
+mkdir -p .xsolla
+grep -qxF '.xsolla/' .gitignore 2>/dev/null || echo '.xsolla/' >> .gitignore
 ```
 
-On headless, record the path only. On Shop Builder, at the same confirmation, start the ledger
-with the intake, the path and the site kind, as
-[the onboarding contract](references/onboarding-contract.md#the-ledger) describes. Report what
-was recorded and stop — do not chain into `shop-setup` or any build step:
+On headless, record the path only. On Shop Builder, at the same confirmation, write
+`.xsolla/onboarding.json` with the intake, the path and the site kind, as
+[the onboarding contract](references/onboarding-contract.md#the-ledger) describes. When the
+developer reconsiders, update the ledger's path, site kind and intake in the same step, or delete
+it on a switch to headless. Report what was recorded and stop — do not chain into `shop-setup`
+or any build step:
 
 ```
 Recorded: Shop Builder, a Game Web Portal. Run shop-setup when you're ready to build.
@@ -212,7 +220,8 @@ Recorded: Shop Builder, a Game Web Portal. Run shop-setup when you're ready to b
 
 ## Known limitations
 
-- **Only the build path is planned.** Catalog and images/themes are not gathered here yet.
+- **Only the path, the site kind and the Shop Builder intake are planned.** The catalog is not
+  gathered here yet.
 - **Only `shop-setup` checks the recorded path, and only the Shop Builder skills read the site
   kind.** No other skill reads them, so invoking one directly (e.g. `headless-checkout-integration`
   on a `shopbuilder` project) isn't stopped.
