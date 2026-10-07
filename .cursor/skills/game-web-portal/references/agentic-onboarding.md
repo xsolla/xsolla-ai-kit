@@ -4,7 +4,8 @@
 
 ### Input
 
-Collect missing required values in one question:
+Collect missing required values in one question; values `shop-plan`'s intake recorded in the
+ledger are not asked again:
 
 ```yaml
 merchant_id:
@@ -33,7 +34,7 @@ identifiers, credentials, content, prices, assets, or URLs.
    without `/news`, `/rewards` or `/store`, THEN return `needs_input`: it wasn't made from
    the template.
 3. **Access:** GIVEN a mutation returns `401/403`, WHEN work is partial, THEN
-   return `needs_access`, reauthenticate, re-read, resume.
+   preserve the ledger, return `needs_access`, reauthenticate, re-read, resume.
 4. **Login:** GIVEN sign-in succeeds, WHEN binding fails, THEN Login and
    onboarding remain incomplete until binding is verified.
 5. **Publication:** GIVEN the draft is ready, WHEN the run ends, THEN the agent has
@@ -65,15 +66,11 @@ flowchart LR
 Readiness check, preview, publication, live verification and rollback come after the
 handoff and belong to the human, in Publisher Account.
 
-### Status
+### Status, ledger, resume
 
-- `completed` — effect verified.
-- `placeholder` — visible and temporary.
-- `needs_input` — value or choice missing.
-- `needs_access` — authorization invalid.
-- `needs_human` — manual action required.
-- `blocked_capability` — CLI cannot perform the action.
-- `failed` — action failed or cannot be verified.
+Statuses, the ledger, resume, and the handoff report are the
+[onboarding contract](../../shop-plan/references/onboarding-contract.md). This file adds
+the portal's own states and evidence.
 
 ### Evidence contract
 
@@ -149,6 +146,7 @@ download.
 ### 7. Verify
 
 - Read back changed entities and compare them with the confirmed plan.
+- Update the ledger.
 - Keep unverified items out of **Completed**.
 
 ### 8. Draft gate, review and hand over
@@ -162,42 +160,22 @@ download.
 
 ### 9. Handoff
 
+The handoff is the onboarding report in the
+[onboarding contract](../../shop-plan/references/onboarding-contract.md#handoff-report).
+The portal fills its **Storefront** section with:
+
 ```markdown
-# Xsolla Game Web Portal onboarding report
-
-Overall status:
-
-## Confirmed context
-- Merchant ID:
-- Project ID:
 - Domain:
-- Steam URL (optional; include only if supplied):
-- Primary locale:
+- Steam URL (include only if supplied):
 
-## Sections
 | Section | Page ID | Route | Status | Evidence |
 |---|---|---|---|---|
 
-## Completed
-- Verified action + evidence
-
-## Placeholders
-- Temporary content + label
-
-## Needs input / human action
-- Action + owner + value + verification
-
-## Blocked capabilities
-- Capability + impact + next step
-
-## Failed
-- Action + error + recovery
-
-## Your next steps in Publisher Account
+Your next steps in Publisher Account:
 - Reload the Editor before checking the portal: it doesn't refresh after CLI writes yet
 - Run the readiness check and open the preview
 - Publish (main page first), then confirm the public URL
-- Status: not published by the agent
+- Not published by the agent
 ```
 
 ### After the human publishes

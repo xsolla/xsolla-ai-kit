@@ -77,16 +77,21 @@ Community, add `lead` (`--index 0`) and `embed` (`--index 1`), then remove the 1
 Module names come from the `shop-builder-assembly` [block
 catalog](../../shop-builder-assembly/references/block-catalog.md).
 
-Remove seeded blocks only on a page the agent created in this run. Re-read the page first; if it
-holds anything that isn't from the seed or the confirmed plan, stop and ask. Remove only as the
-confirmed plan lists: for each such page, the seeded modules it drops. `delete-block` takes each
+Right after `add-page`, read `get-structure` and `get-localization`, and record the new page's
+seeded blocks in the ledger with `scripts/seeded_blocks.py record`, passing both reads as
+`--structure` and `--localization` and the new page as `--page-id`. Remove seeded blocks only on a
+page the agent created and recorded. In this run, re-read the page first; if it holds anything
+that isn't from the seed or the confirmed plan, stop and ask. Remove only as the confirmed plan
+lists: for each such page, the seeded modules it drops. `delete-block` takes each
 block's `_id` (`--blockid`), read from `get-structure`; pass `--force`, since the confirmed plan is
 the confirmation and the CLI's own prompt refuses without a terminal. Never delete a block on any
 other page.
 
 On resume, compare `get-structure` with this layout and add only what is missing; never add a
-page whose path already exists. Seeded blocks left on a page from an earlier run are not
-removed: list them for the partner to remove, as `needs_human`.
+page whose path already exists. Seeded blocks left on a page an earlier run created are removed
+only on the same merchant and project, and only those `seeded_blocks.py check --entry <the page's
+ledger entry>` reports `untouched`. A `changed` or `gone` block stays, and is listed for the
+partner as `needs_human`.
 
 ## Draft — pages and blocks
 
@@ -209,7 +214,7 @@ the agent adds no Launcher page: the section is the partner's, and a missing pie
 
 | Response | Status | Action |
 |---|---|---|
-| `401` / `403` | `needs_access` | run `xsolla auth login`, re-read state, resume |
+| `401` / `403` | `needs_access` | preserve the ledger, run `xsolla auth login`, re-read state, resume |
 | No site at `domain` | `needs_human` | the partner creates it from the Multi-page web portal template, or enables Shop Builder for the project |
 | No `/news`, `/rewards` or `/store` page | `needs_input` | the site wasn't made from the template: the partner confirms the site or creates one from it |
 | `500` with a `domain` where a `landingId` belongs | — | wrong key: fix and retry; not a capability block |
