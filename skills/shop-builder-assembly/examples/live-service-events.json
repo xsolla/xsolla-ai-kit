@@ -3,7 +3,8 @@
   "project": {
     "merchant_id": 12345,
     "project_id": 67890,
-    "environment": "sandbox"
+    "environment": "test",
+    "test_project_acknowledged": true
   },
   "game": {
     "name": "Realm Rivals",

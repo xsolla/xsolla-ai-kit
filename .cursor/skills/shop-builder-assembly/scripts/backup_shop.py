@@ -44,6 +44,8 @@ def refresh_supported_login() -> None:
 
 
 def run_json(*args: str) -> object:
+    if any(arg == "--force" or arg.startswith("--force=") for arg in args):
+        raise RuntimeError("--force is prohibited in Shop Builder assembly")
     command = ["xsolla", *args, "--json"]
     if args and args[0] == "shopbuilder":
         refresh_supported_login()
@@ -132,12 +134,8 @@ def main() -> int:
             raise RuntimeError("CLI merchant_id does not match the shop brief")
         if config_data.get("project_id") != expected["project_id"]:
             raise RuntimeError("CLI project_id does not match the shop brief")
-        expected_sandbox = expected["environment"] == "sandbox"
-        sandbox_enabled = config_data.get("sandbox") is True
-        if sandbox_enabled != expected_sandbox:
-            raise RuntimeError(
-                "CLI sandbox setting does not match the shop brief environment"
-            )
+        if config_data.get("sandbox") is not False:
+            raise RuntimeError("CLI sandbox must be disabled for Shop Builder")
 
         websites = run_json("shopbuilder", "list-websites")
         landing = run_json("shopbuilder", "get-landing", "--slug", args.slug)

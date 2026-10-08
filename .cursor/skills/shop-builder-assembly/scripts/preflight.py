@@ -14,6 +14,8 @@ from validate_shop_brief import load_brief, validate
 
 
 def run_json(*args: str) -> object:
+    if any(arg == "--force" or arg.startswith("--force=") for arg in args):
+        raise RuntimeError("--force is prohibited in Shop Builder assembly")
     result = subprocess.run(
         ["xsolla", *args, "--json"], capture_output=True, text=True, check=False
     )
@@ -78,10 +80,10 @@ def group_external_ids(value: object) -> set[str]:
     }
 
 
-def approved_test_project(path: Path | None, expected: dict) -> dict | None:
+def approved_test_project(path: Path | None, expected: dict) -> dict:
     """Return the separate approval record for a dedicated test project."""
     if expected["environment"] != "test":
-        return None
+        raise RuntimeError("Shop Builder assembly requires a dedicated test project")
     if path is None:
         raise RuntimeError(
             "--approved-test-projects is required for a dedicated test project"
@@ -152,12 +154,8 @@ def main() -> int:
         test_project_approval = approved_test_project(
             args.approved_test_projects, expected
         )
-        expected_sandbox = expected["environment"] == "sandbox"
-        sandbox_enabled = config.get("sandbox") is True
-        if sandbox_enabled != expected_sandbox:
-            raise RuntimeError(
-                "CLI sandbox setting does not match the shop brief environment"
-            )
+        if config.get("sandbox") is not False:
+            raise RuntimeError("CLI sandbox must be disabled for Shop Builder")
         if config.get("merchant_id") != expected["merchant_id"]:
             raise RuntimeError("CLI merchant_id does not match the shop brief")
         if config.get("project_id") != expected["project_id"]:
@@ -202,16 +200,12 @@ def main() -> int:
                 "merchant_id": expected["merchant_id"],
                 "project_id": expected["project_id"],
                 "environment": expected["environment"],
-                "sandbox": sandbox_enabled,
+                "sandbox": False,
                 "test_project_acknowledged": expected.get(
                     "test_project_acknowledged", False
                 ),
-                "test_project_allowlisted": test_project_approval is not None,
-                "approval_reference": (
-                    test_project_approval["approval_reference"]
-                    if test_project_approval
-                    else None
-                ),
+                "test_project_allowlisted": True,
+                "approval_reference": test_project_approval["approval_reference"],
             },
             "auth": {"publisher_account_active": True},
             "target": {

@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import copy
+import contextlib
 import importlib.util
+import io
 import json
 import subprocess
 import sys
@@ -116,14 +118,16 @@ class ShopBriefTests(unittest.TestCase):
 
     def test_non_test_environment_is_rejected(self) -> None:
         brief = copy.deepcopy(self.brief)
-        brief["project"]["environment"] = "production"
-        self.assertIn(
-            "project.environment must be sandbox or test", validator.validate(brief)
-        )
+        for environment in ("sandbox", "production"):
+            with self.subTest(environment=environment):
+                brief["project"]["environment"] = environment
+                self.assertIn(
+                    "project.environment must be test", validator.validate(brief)
+                )
 
     def test_dedicated_test_project_requires_acknowledgement(self) -> None:
         brief = copy.deepcopy(self.brief)
-        brief["project"]["environment"] = "test"
+        brief["project"]["test_project_acknowledged"] = False
         self.assertIn(
             "project.test_project_acknowledged must be true for a dedicated test project",
             validator.validate(brief),
@@ -159,7 +163,7 @@ class ShopBriefTests(unittest.TestCase):
         cases = [
             ("platforms", ["mobile", []], "game.platforms must use:"),
             ("lifecycle", [], "game.lifecycle must use:"),
-            ("environment", [], "project.environment must be sandbox or test"),
+            ("environment", [], "project.environment must be test"),
             ("preset", [], "site.preset must use:"),
             ("locales", 7, "site.locales must be a non-empty list"),
             ("group type", [], "catalog.groups[0].type must use:"),
@@ -277,6 +281,41 @@ class ShopBriefTests(unittest.TestCase):
                     "approval_reference"
                 ],
             )
+
+    def test_sandbox_project_cannot_skip_allowlist(self) -> None:
+        expected = {"merchant_id": 100, "project_id": 200, "environment": "sandbox"}
+        with self.assertRaisesRegex(RuntimeError, "dedicated test project"):
+            preflight.approved_test_project(None, expected)
+
+    def test_read_scripts_refuse_force_before_running_cli(self) -> None:
+        for module in (preflight, backup_shop):
+            with self.subTest(module=module.__name__):
+                with mock.patch.object(module.subprocess, "run") as run:
+                    with self.assertRaisesRegex(RuntimeError, "--force is prohibited"):
+                        module.run_json("shopbuilder", "delete-block", "--force")
+                    run.assert_not_called()
+
+    def test_preflight_rejects_enabled_cli_sandbox_before_shopbuilder_reads(self) -> None:
+        brief = ROOT / "examples" / "mobile-single-page.json"
+        stderr = io.StringIO()
+        with (
+            mock.patch.object(sys, "argv", ["preflight.py", str(brief)]),
+            mock.patch.object(preflight.shutil, "which", return_value="xsolla"),
+            mock.patch.object(
+                preflight,
+                "approved_test_project",
+                return_value={"approval_reference": "test approval"},
+            ),
+            mock.patch.object(
+                preflight,
+                "run_json",
+                return_value={"merchant_id": 12345, "project_id": 67890, "sandbox": True},
+            ) as run_json,
+            contextlib.redirect_stderr(stderr),
+        ):
+            self.assertEqual(1, preflight.main())
+        self.assertIn("CLI sandbox must be disabled", stderr.getvalue())
+        run_json.assert_called_once_with("config", "list")
 
     def test_test_project_rejects_different_allowlisted_identity(self) -> None:
         expected = {
