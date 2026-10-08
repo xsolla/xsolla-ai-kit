@@ -194,6 +194,7 @@ Overall status:
 - Action + error + recovery
 
 ## Your next steps in Publisher Account
+- Reload the Editor before checking the portal: it doesn't refresh after CLI writes yet
 - Run the readiness check and open the preview
 - Publish (main page first), then confirm the public URL
 - Status: not published by the agent
