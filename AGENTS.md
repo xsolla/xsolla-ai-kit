@@ -29,6 +29,7 @@ Skills call **Xsolla REST APIs directly**. The CLI (`xsolla/xsolla-cli`) is an o
 | `description-to-shop`           | Prose → shop brief for shop-builder-assembly — reached via shop-setup, not directly      |
 | `shopbuilder-translate`         | Translates Shop Builder page copy. Catalog and LiveOps text are out of scope             |
 | `game-web-portal`               | Builds a PC Game Web Portal (game home + shop) — handed off by the Shop Builder skills   |
+| `figma-to-webshop`              | Builds a Shop Builder site that matches a design comp — native/custom triage, theming    |
 
 ---
 
@@ -68,6 +69,10 @@ Translate the Shop Builder FAQ / add German to the storefront page
 Set up a Game Web Portal for my PC game — a game home with news, rewards and a shop
 → triggers: shop-setup; on the Shop Builder path with the site kind portal, description-to-shop
   or shop-builder-assembly hands off to game-web-portal
+
+Turn this Figma design into a webshop / make the storefront match the comp
+→ triggers: figma-to-webshop (a design exists; triages each section into native vs. custom
+  blocks, themes the site, and verifies against a screenshot — it never publishes)
 ```
 
 ---
