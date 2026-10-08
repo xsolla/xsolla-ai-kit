@@ -44,9 +44,15 @@ class CheckProjectTest(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "not in the approved test-project allowlist"):
             preflight.check_project(11, 22, allowlist(other), config=CONFIG)
 
-    def test_cli_sandbox_setting_does_not_skip_the_allowlist(self):
-        with self.assertRaisesRegex(RuntimeError, "not in the approved test-project allowlist"):
-            preflight.check_project(11, 22, allowlist(), config={**CONFIG, "sandbox": True})
+    def test_cli_sandbox_mode_stops(self):
+        with self.assertRaisesRegex(RuntimeError, "sandbox mode is on"):
+            preflight.check_project(11, 22, allowlist(APPROVAL), config={**CONFIG, "sandbox": True})
+
+    def test_cli_sandbox_off_or_missing_passes(self):
+        for config in (CONFIG, {**CONFIG, "sandbox": False}):
+            with self.subTest(config=config):
+                approval = preflight.check_project(11, 22, allowlist(APPROVAL), config=config)
+                self.assertEqual(approval["approved_by"], "Product owner")
 
     def test_cli_pointing_at_another_project_stops(self):
         with self.assertRaisesRegex(RuntimeError, "does not match the target"):

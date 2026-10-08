@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Refuse a portal write unless the CLI targets an approved test project."""
+"""Refuse a portal write unless the CLI targets an approved test project, with sandbox mode off."""
 
 from __future__ import annotations
 
@@ -67,6 +67,8 @@ def check_project(
     config = cli_config() if config is None else config
     if config.get("merchant_id") != merchant_id or config.get("project_id") != project_id:
         raise RuntimeError("the CLI's configured merchant/project does not match the target")
+    if config.get("sandbox") is True:
+        raise RuntimeError("the CLI's sandbox mode is on: Shop Builder has no sandbox, turn it off")
     return approved_test_project(allowlist, merchant_id, project_id)
 
 

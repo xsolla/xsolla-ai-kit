@@ -95,10 +95,10 @@ Verify (read-back) → Human review → Handoff
 2. **Preflight** — confirm PC scope, domain, and locale, then run
    [`scripts/preflight.py`](scripts/preflight.py) with `--merchant-id`, `--project-id` and
    `--approved-test-projects <file>`. It checks that the CLI points at that merchant and
-   project, and that the project is listed in the approved test-project allowlist (the same
-   file format as `shop-builder-assembly`). If it fails, stop before any write. If
-   `store_url` is supplied, validate the exact Steam host. Use only partner-approved
-   metadata and assets; never substitute invented game metadata.
+   project with its sandbox mode off, and that the project is listed in the approved
+   test-project allowlist (the same file format as `shop-builder-assembly`). If it fails,
+   stop before any write. If `store_url` is supplied, validate the exact Steam host. Use
+   only partner-approved metadata and assets; never substitute invented game metadata.
 3. **Discover** — find the partner's site at `domain` and read its structure
    (`xsolla shopbuilder list-websites`, `get-landing`, `get-structure`). Capture the
    landing `_id`, page IDs, and block IDs before any mutation — block and theme calls
