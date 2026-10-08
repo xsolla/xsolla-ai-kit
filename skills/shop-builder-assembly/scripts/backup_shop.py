@@ -134,7 +134,7 @@ def main() -> int:
             raise RuntimeError("CLI merchant_id does not match the shop brief")
         if config_data.get("project_id") != expected["project_id"]:
             raise RuntimeError("CLI project_id does not match the shop brief")
-        if config_data.get("sandbox") is not False:
+        if config_data.get("sandbox") is True:
             raise RuntimeError("CLI sandbox must be disabled for Shop Builder")
 
         websites = run_json("shopbuilder", "list-websites")

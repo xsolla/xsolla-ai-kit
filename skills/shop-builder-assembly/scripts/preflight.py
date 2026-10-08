@@ -154,7 +154,7 @@ def main() -> int:
         test_project_approval = approved_test_project(
             args.approved_test_projects, expected
         )
-        if config.get("sandbox") is not False:
+        if config.get("sandbox") is True:
             raise RuntimeError("CLI sandbox must be disabled for Shop Builder")
         if config.get("merchant_id") != expected["merchant_id"]:
             raise RuntimeError("CLI merchant_id does not match the shop brief")

@@ -317,6 +317,32 @@ class ShopBriefTests(unittest.TestCase):
         self.assertIn("CLI sandbox must be disabled", stderr.getvalue())
         run_json.assert_called_once_with("config", "list")
 
+    def test_preflight_accepts_config_without_sandbox_key(self) -> None:
+        brief = ROOT / "examples" / "mobile-single-page.json"
+        stdout = io.StringIO()
+        config = {"merchant_id": 12345, "project_id": 67890}
+        accounts = {
+            "accounts": [
+                {"context": "publisher", "active": True, "expired": False}
+            ]
+        }
+        with (
+            mock.patch.object(sys, "argv", ["preflight.py", str(brief)]),
+            mock.patch.object(preflight.shutil, "which", return_value="xsolla"),
+            mock.patch.object(
+                preflight,
+                "approved_test_project",
+                return_value={"approval_reference": "test approval"},
+            ),
+            mock.patch.object(
+                preflight, "run_json", side_effect=[config, accounts, {}, {}]
+            ) as run_json,
+            contextlib.redirect_stdout(stdout),
+        ):
+            self.assertEqual(0, preflight.main())
+        self.assertFalse(json.loads(stdout.getvalue())["context"]["sandbox"])
+        self.assertEqual(4, run_json.call_count)
+
     def test_test_project_rejects_different_allowlisted_identity(self) -> None:
         expected = {
             "merchant_id": 100,
