@@ -10,7 +10,7 @@
     {
       "name": "xsolla-ai-kit",
       "source": "./",
-      "description": "All Xsolla workflow skills in one plugin: shop-setup (entry point), shop-plan (headless or Shop Builder), merchant-setup, catalog-design, login-setup, login-styling, headless-checkout-integration, webhooks-impl, production, and the Shop Builder path: description-to-shop and shop-builder-assembly.",
+      "description": "All Xsolla workflow skills in one plugin: shop-setup (entry point), shop-plan (headless or Shop Builder), merchant-setup, catalog-design, login-setup, login-styling, headless-checkout-integration, webhooks-impl, production, and, in preview, the Shop Builder path: description-to-shop and shop-builder-assembly.",
       "category": "productivity",
       "keywords": [
         "xsolla",
