@@ -84,12 +84,14 @@ path and seeded blocks — in the ledger with `scripts/seeded_blocks.py record`,
 Remove a seeded block only on a page the agent created and recorded, only as the confirmed plan
 lists, and only on the merchant, project and landing the ledger's storefront step records. Right
 before removing, read `get-structure` and `get-localization` again and run `seeded_blocks.py check`
-with them, `--page-id` and `--ledger .xsolla/onboarding.json`; delete only the blocks it reports
-`untouched`. A `changed` block stays and is listed for the partner as `needs_human`; a `gone` one
-needs nothing. Do removals before any copy or locale change: a changed string marks its block
-`changed`. `delete-block` takes each block's `_id` (`--blockid`); pass `--force`, since the
-confirmed plan is the confirmation and the CLI's own prompt refuses without a terminal. Update the
-page's ledger entry after each removal. Never delete a block on any other page.
+with them, `--page-id`, `--ledger .xsolla/onboarding.json`, the `--merchant-id` and `--project-id`
+preflight passed, and the `--landing-id` read in Discover. It refuses when the ledger's storefront
+step records another target; otherwise delete only the blocks it reports `untouched`. A `changed`
+block stays and is listed for the partner as `needs_human`; a `gone` one needs nothing. Do removals
+before any copy or locale change: a changed string marks its block `changed`. `delete-block` takes
+each block's `_id` (`--blockid`); pass `--force`, since the confirmed plan is the confirmation and
+the CLI's own prompt refuses without a terminal. Update the page's ledger entry after each removal.
+Never delete a block on any other page.
 
 On resume, compare `get-structure` with this layout and add only what is missing; never add a page
 whose path already exists. A page at a planned path with no ledger record is never trimmed: report

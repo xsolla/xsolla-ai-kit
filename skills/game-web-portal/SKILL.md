@@ -120,18 +120,19 @@ Verify (read-back) → Human review → Handoff
    blocks. Right after `add-page`, record the new page with
    [`scripts/seeded_blocks.py`](scripts/seeded_blocks.py) `record`. Remove a seeded block
    only on a page the agent created and recorded, only as the confirmed plan lists, and only
-   when `seeded_blocks.py check` on reads taken right before the removal reports it
-   `untouched`; do removals before any copy or locale change, which would mark its block
-   `changed`. Everything else uses CLI commands too: `move-block`, `update-block` (a block's
-   `hidden` flag and the site theme), `upload-asset`, `add-language`, `update-localization`,
-   `update-many-localization`, and `add-connector` or `update-restrictions` when the plan
-   lists them. A change with no CLI command is `needs_human`: say what to do in Publisher
-   Account and record it. Apply one change group at a time across Home, News, Rewards, Web
-   Shop, and Community; the Launcher section is the partner's. Delegate the surrounding
-   products rather than duplicating their recipes: `merchant-setup` for merchant/project/API
-   key, `catalog-design` for the catalog and pricing the Web Shop sells, `login-setup` for
-   Login. Checkout is the Web Shop's hosted Pay Station, so there is nothing to integrate.
-   Placeholders require approval and a visible label.
+   when `seeded_blocks.py check`, on reads taken right before the removal and the target
+   preflight passed, reports it `untouched`; do removals before any copy or locale change,
+   which would mark its block `changed`. Everything else uses CLI commands too: `move-block`,
+   `update-block` (a block's `hidden` flag and the site theme), `upload-asset`,
+   `add-language`, `update-localization`, `update-many-localization`, and `add-connector` or
+   `update-restrictions` when the plan lists them. A change with no CLI command is
+   `needs_human`: say what to do in Publisher Account and record it. Apply one change group
+   at a time across Home, News, Rewards, Web Shop, and Community; the Launcher section is the
+   partner's. Delegate the surrounding products rather than duplicating their recipes:
+   `merchant-setup` for merchant/project/API key, `catalog-design` for the catalog and
+   pricing the Web Shop sells, `login-setup` for Login. Checkout is the Web Shop's hosted Pay
+   Station, so there is nothing to integrate. Placeholders require approval and a visible
+   label.
 7. **Verify (read-back)** — read back every changed entity (`get-structure`,
    `get-localization`, page and block reads) and compare it with the confirmed plan.
    A mutation response is not evidence. Keep unverified items out of **Completed**.

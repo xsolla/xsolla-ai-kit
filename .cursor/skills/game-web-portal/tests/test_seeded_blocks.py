@@ -29,6 +29,7 @@ LOCALIZATION = {
         "L:q1": {"description": "d", "translations": {"en-US": "<p>Q</p>"}},
     }}},
 }
+TARGET = {"merchant_id": 1, "project_id": 2, "landing_id": "landing-1"}
 TMP = tempfile.TemporaryDirectory()
 
 
@@ -43,8 +44,8 @@ def write(name: str, value: dict, envelope: bool = True) -> Path:
     return path
 
 
-def ledger(*entries: dict) -> dict:
-    return {"steps": [{"id": "storefront", "ids": {"created_pages": list(entries)}}]}
+def ledger(*entries: dict, ids: dict = TARGET) -> dict:
+    return {"steps": [{"id": "storefront", "ids": {**ids, "created_pages": list(entries)}}]}
 
 
 class SeededBlocksTest(unittest.TestCase):
@@ -129,16 +130,27 @@ class SeededBlocksTest(unittest.TestCase):
 class LedgerEntryTest(unittest.TestCase):
     def test_finds_the_page_in_the_storefront_step(self):
         entry = {"page_id": PAGE, "seeded_blocks": []}
-        self.assertIs(seeded_blocks.ledger_entry(ledger(entry), PAGE), entry)
+        self.assertIs(seeded_blocks.ledger_entry(ledger(entry), PAGE, TARGET), entry)
 
     def test_a_page_without_a_record_is_never_trimmed(self):
         with self.assertRaisesRegex(RuntimeError, "no ledger record"):
-            seeded_blocks.ledger_entry(ledger(), PAGE)
+            seeded_blocks.ledger_entry(ledger(), PAGE, TARGET)
 
     def test_a_malformed_record_names_the_fields(self):
         broken = {"page_id": PAGE, "seeded_blocks": [{"_id": "b1"}]}
         with self.assertRaisesRegex(RuntimeError, "_id, module and hash"):
-            seeded_blocks.ledger_entry(ledger(broken), PAGE)
+            seeded_blocks.ledger_entry(ledger(broken), PAGE, TARGET)
+
+    def test_another_merchant_project_or_landing_is_never_trimmed(self):
+        entry = {"page_id": PAGE, "seeded_blocks": []}
+        for key, other in (("merchant_id", 9), ("project_id", 9), ("landing_id", "landing-9")):
+            with self.subTest(key), self.assertRaisesRegex(RuntimeError, "never trim"):
+                seeded_blocks.ledger_entry(ledger(entry), PAGE, {**TARGET, key: other})
+
+    def test_a_ledger_without_the_target_is_never_trimmed(self):
+        entry = {"page_id": PAGE, "seeded_blocks": []}
+        with self.assertRaisesRegex(RuntimeError, "never trim"):
+            seeded_blocks.ledger_entry(ledger(entry, ids={}), PAGE, TARGET)
 
 
 class MainTest(unittest.TestCase):
@@ -152,17 +164,26 @@ class MainTest(unittest.TestCase):
         return ["--structure", str(write("s.json", STRUCTURE)),
                 "--localization", str(write("l.json", LOCALIZATION)), "--page-id", PAGE]
 
+    def target(self) -> list[str]:
+        return ["--merchant-id", "1", "--project-id", "2", "--landing-id", "landing-1"]
+
     def test_record_then_check_against_the_ledger(self):
         code, out, _ = self.run_main("record", *self.reads())
         self.assertEqual(code, 0)
         path = write("ledger.json", ledger(json.loads(out)), envelope=False)
-        code, out, _ = self.run_main("check", *self.reads(), "--ledger", str(path))
+        code, out, _ = self.run_main("check", *self.reads(), "--ledger", str(path), *self.target())
         self.assertEqual((code, len(json.loads(out)["untouched"])), (0, 3))
 
     def test_check_without_a_ledger_exits_one(self):
-        code, out, err = self.run_main("check", *self.reads())
+        code, out, err = self.run_main("check", *self.reads(), *self.target())
         self.assertEqual((code, out), (1, ""))
         self.assertIn("--ledger", err)
+
+    def test_check_without_the_target_exits_one(self):
+        path = write("ledger.json", ledger(), envelope=False)
+        code, out, err = self.run_main("check", *self.reads(), "--ledger", str(path))
+        self.assertEqual((code, out), (1, ""))
+        self.assertIn("--merchant-id, --project-id, --landing-id", err)
 
     def test_a_failed_cli_read_is_reported(self):
         failed = write("failed.json", {"ok": False, "error": "HTTP 401"}, envelope=False)
