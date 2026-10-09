@@ -13,8 +13,8 @@ Catalog and Login stay delegated, and checkout is the Web Shop's hosted Pay Stat
   unauthorized session returns `401/403` → `needs_access`: run `xsolla auth login` again
   and resume. This is *not* `XSOLLA_PROJECT_API_KEY`.
 - **Safe target:** before the first write, `scripts/preflight.py` must pass — the CLI points
-  at the intended merchant and project, and that project is listed in the approved
-  test-project allowlist.
+  at the intended merchant and project with its sandbox mode off, and that project is listed in
+  the approved test-project allowlist.
 - **No sandbox:** Shop Builder writes always reach the project itself, and `--sandbox` gives
   no isolation. Never pass it.
 
@@ -77,16 +77,25 @@ Community, add `lead` (`--index 0`) and `embed` (`--index 1`), then remove the 1
 Module names come from the `shop-builder-assembly` [block
 catalog](../../shop-builder-assembly/references/block-catalog.md).
 
-Remove seeded blocks only on a page the agent created in this run. Re-read the page first; if it
-holds anything that isn't from the seed or the confirmed plan, stop and ask. Remove only as the
-confirmed plan lists: for each such page, the seeded modules it drops. `delete-block` takes each
-block's `_id` (`--blockid`), read from `get-structure`; pass `--force`, since the confirmed plan is
-the confirmation and the CLI's own prompt refuses without a terminal. Never delete a block on any
-other page.
+Right after `add-page`, read `get-structure` and `get-localization`, and record the new page — its
+path and seeded blocks — in the ledger with `scripts/seeded_blocks.py record`, passing both reads as
+`--structure` and `--localization` and the new page as `--page-id`.
 
-On resume, compare `get-structure` with this layout and add only what is missing; never add a
-page whose path already exists. Seeded blocks left on a page from an earlier run are not
-removed: list them for the partner to remove, as `needs_human`.
+Remove a seeded block only on a page the agent created and recorded, only as the confirmed plan
+lists, and only on the merchant, project and landing the ledger's storefront step records. Right
+before removing, read `get-structure` and `get-localization` again and run `seeded_blocks.py check`
+with them, `--page-id`, `--ledger .xsolla/onboarding.json`, the `--merchant-id` and `--project-id`
+preflight passed, and the `--landing-id` read in Discover. It refuses when the ledger's storefront
+step records another target; otherwise delete only the blocks it reports `untouched`. A `changed`
+block stays and is listed for the partner as `needs_human`; a `gone` one needs nothing. Do removals
+before any copy or locale change: a changed string marks its block `changed`. `delete-block` takes
+each block's `_id` (`--blockid`); pass `--force`, since the confirmed plan is the confirmation and
+the CLI's own prompt refuses without a terminal. Update the page's ledger entry after each removal.
+Never delete a block on any other page.
+
+On resume, compare `get-structure` with this layout and add only what is missing; never add a page
+whose path already exists. A page at a planned path with no ledger record is never trimmed: report
+it, with its blocks, as `needs_human`.
 
 ## Draft — pages and blocks
 
@@ -209,7 +218,7 @@ the agent adds no Launcher page: the section is the partner's, and a missing pie
 
 | Response | Status | Action |
 |---|---|---|
-| `401` / `403` | `needs_access` | run `xsolla auth login`, re-read state, resume |
+| `401` / `403` | `needs_access` | preserve the ledger, run `xsolla auth login`, re-read state, resume |
 | No site at `domain` | `needs_human` | the partner creates it from the Multi-page web portal template, or enables Shop Builder for the project |
 | No `/news`, `/rewards` or `/store` page | `needs_input` | the site wasn't made from the template: the partner confirms the site or creates one from it |
 | `500` with a `domain` where a `landingId` belongs | — | wrong key: fix and retry; not a capability block |

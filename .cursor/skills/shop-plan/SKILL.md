@@ -116,9 +116,12 @@ What's still open is how the storefront itself gets built, so six quick question
 
 ### 2. Ask the six criteria — one message
 
-Ask all six in a single message. Infer an answer only when the request already states it
-plainly (e.g. "embed this in my existing React app" answers custom UI *and* hosting) — but still
-show your inference back before moving on, so a wrong read gets caught immediately.
+Ask all six in a single message. Unless the request is plainly headless, the same message also
+asks the rest of the [intake](references/onboarding-contract.md#intake) — the game and site
+details the Shop Builder part needs — so the developer answers one round of questions, not two.
+Infer an answer only when the request already states it plainly (e.g. "embed this in my existing
+React app" answers custom UI *and* hosting) — but still show your inference back before moving
+on, so a wrong read gets caught immediately.
 
 1. **Custom UI needs.** Do you already have a frontend/site this plugs into, or do you want one
    built for you?
@@ -152,6 +155,9 @@ you, and you only need a store. Trade-off: you lose the design ceiling headless 
 Go with this, or would you rather build headless?
 ```
 
+On Shop Builder, the same message lists the intake values that will be recorded, so the
+developer's yes covers them too.
+
 If the answers genuinely pull in different directions (e.g. wants full custom UI *and* has
 zero dev capacity *and* needs it live tomorrow) — don't average them into a guess. Say plainly
 which criteria conflict and ask the developer to break the tie themselves.
@@ -160,8 +166,9 @@ which criteria conflict and ask the developer to break the tie themselves.
 
 **Nothing is written — no `.env`, no other local file — until the developer has seen the
 trade-offs and the recommendation, and has said yes.** Silence, a topic change, or moving on to
-another question is not confirmation. If they push back or ask a follow-up, answer it and ask
-again; don't write on a guess that they've come around.
+another question is not confirmation. Neither is a "yes" that arrives before the comparison and
+recommendation were shown: show them first, then ask again. If they push back or ask a follow-up,
+answer it and ask again; don't write on a guess that they've come around.
 
 ### 5. Record the choice, then stop
 
@@ -178,13 +185,22 @@ set_key() {
     echo "$1=$2" >> .env
   fi
 }
-set_key XSOLLA_BUILD_PATH shopbuilder   # or headless
-set_key XSOLLA_SITE_KIND portal         # Shop Builder only: shop or portal
+build_path=shopbuilder   # or headless
+set_key XSOLLA_BUILD_PATH "$build_path"
 grep -q '^\.env' .gitignore 2>/dev/null || echo '.env' >> .gitignore
+if [ "$build_path" = shopbuilder ]; then
+  set_key XSOLLA_SITE_KIND portal   # shop or portal
+  mkdir -p .xsolla
+  grep -qxF '.xsolla/' .gitignore 2>/dev/null || echo '.xsolla/' >> .gitignore
+fi
 ```
 
-On headless, record the path only. Report what was recorded and stop — do not chain into
-`shop-setup` or any build step:
+On headless, record the path only. On Shop Builder, at the same confirmation, write
+`.xsolla/onboarding.json` with the intake, the path and the site kind, as
+[the onboarding contract](references/onboarding-contract.md#the-ledger) describes. When the
+developer reconsiders, update the ledger's path, site kind and intake in the same step, or delete
+it on a switch to headless. Report what was recorded and stop — do not chain into `shop-setup`
+or any build step:
 
 ```
 Recorded: Shop Builder, a Game Web Portal. Run shop-setup when you're ready to build.
@@ -206,7 +222,8 @@ Recorded: Shop Builder, a Game Web Portal. Run shop-setup when you're ready to b
 
 ## Known limitations
 
-- **Only the build path is planned.** Catalog and images/themes are not gathered here yet.
+- **Only the path, the site kind and the Shop Builder intake are planned.** The catalog is not
+  gathered here yet.
 - **Only `shop-setup` checks the recorded path, and only the Shop Builder skills read the site
   kind.** No other skill reads them, so invoking one directly (e.g. `headless-checkout-integration`
   on a `shopbuilder` project) isn't stopped.
