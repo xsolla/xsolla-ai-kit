@@ -21,6 +21,10 @@ metadata:
 Build an unpublished Publisher Account **Shop Builder site**, not a custom frontend,
 in a dedicated non-partner test project through `xsolla shopbuilder`.
 
+A Game Web Portal is built by `game-web-portal`, not here. First read `XSOLLA_SITE_KIND` with the
+[build-path contract's check](../shop-plan/references/build-path-contract.md#the-site-kind-shop-builder-only):
+for `portal`, hand off to `game-web-portal` and stop; an invalid value halts. A shop continues.
+
 ## Inputs
 
 Normalize publisher answers, existing stores, descriptions, and designs into the
@@ -43,9 +47,8 @@ until [expert-review.md](references/expert-review.md) records approval.
 
 ## Non-negotiable safety gate
 
-1. Run `scripts/preflight.py <brief.json>`; for a non-sandbox test project, also pass
-   `--approved-test-projects <local-allowlist.json>`. Read back the matched merchant
-   ID, project ID, safety environment, approval reference, active Publisher login,
+1. Run `scripts/preflight.py <brief.json> --approved-test-projects <local-allowlist.json>`.
+   Read back the matched merchant ID, project ID, safety environment, approval reference, active Publisher login,
    target site, and catalog groups.
 2. If CLI context differs, switch it and rerun preflight; never override later commands.
 3. If the target site exists, export it before the first write with
@@ -59,10 +62,10 @@ until [expert-review.md](references/expert-review.md) records approval.
    the first remote write. Earlier permission to "build a shop" is not confirmation
    of a new plan. Re-render and reconfirm if the brief or plan changes.
 
-The brief must target a sandbox or acknowledged dedicated test project. A `test`
-target must match a separate local allowlist with exact IDs, approver, and approval
-reference. Never use a partner project, publish, attach a production domain, enable
-live payments, or apply a saved version. A human publishes in Publisher Account.
+The brief must target an acknowledged dedicated test project and match a separate
+local allowlist with exact IDs, approver, and approval reference. Never use sandbox
+as a Shop Builder target or use a partner project. Never publish, attach a production
+domain, enable live payments, or apply a saved version. A human publishes in Publisher Account.
 
 A new site has generated blocks whose IDs do not exist before creation. Confirm the
 bootstrap, then export, re-render, and reconfirm before deleting any generated block.
@@ -83,7 +86,8 @@ After confirmation, apply the plan in this dependency order:
    SKUs have been verified in the same project. Localize a section title before
    enabling its `L:` ID.
 
-Use pre-written scripts for repeated work; never invent HTTP or `curl` workarounds.
+Use pre-written scripts for repeated work; never pass `--force` or invent HTTP or
+`curl` workarounds. If an operation requires `--force`, stop and report it.
 If the CLI lacks an operation, stop it, record the gap, and file a CLI/API ticket.
 
 ## Verification and handoff
@@ -100,6 +104,6 @@ If the CLI lacks an operation, stop it, record the gap, and file a CLI/API ticke
 ## Stop conditions
 
 Stop before writes when project identity is ambiguous, backup fails, confirmation is
-missing, the target is neither sandbox nor an acknowledged dedicated test project,
+missing, the target is not an acknowledged dedicated test project,
 catalog/project IDs do not match, or the plan requires an unverified block module.
 Preserve completed safe work and explain the smallest action needed to continue.

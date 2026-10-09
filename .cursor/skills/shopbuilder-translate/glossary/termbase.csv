@@ -1,0 +1,12 @@
+# One approved rendering per locale for recurring game nouns. Extend it as you go; never
+# invent a second rendering of a term already listed. Inconsistent rarity-tier naming
+# across cards is the clearest tell of a rushed game-store localization.
+source,de-DE,ja-JP,pt-BR,es-ES,notes
+Legendary,Legendär,レジェンダリー,Lendário,Legendario,rarity tier
+Epic,Episch,エピック,Épico,Épico,rarity tier
+Rare,Selten,レア,Raro,Raro,rarity tier
+Skin,Skin,スキン,Skin,Skin,keep English loanword in de/pt
+Bundle,Paket,バンドル,Pacote,Pack,
+Starter Pack,Starterpaket,スターターパック,Pacote Inicial,Pack Inicial,
+XP Booster,EP-Booster,EXPブースター,Impulsionador de XP,Potenciador de XP,de uses EP not XP
+Cosmetic only,Rein kosmetisch,見た目のみ,Apenas cosmético,Solo estético,recurring trust line

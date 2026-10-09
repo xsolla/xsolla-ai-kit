@@ -108,8 +108,8 @@ def validate(brief: dict) -> list[str]:
         if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
             errors.append(f"project.{field} must be a positive integer")
     environment = project.get("environment")
-    if not isinstance(environment, str) or environment not in {"sandbox", "test"}:
-        errors.append("project.environment must be sandbox or test")
+    if environment != "test":
+        errors.append("project.environment must be test")
     if environment == "test" and project.get("test_project_acknowledged") is not True:
         errors.append(
             "project.test_project_acknowledged must be true for a dedicated test project"
