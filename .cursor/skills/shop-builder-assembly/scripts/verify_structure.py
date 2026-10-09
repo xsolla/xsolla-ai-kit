@@ -47,6 +47,26 @@ def verify(plan: dict, structure: object) -> dict:
     if current.get("published") not in (None, False):
         errors.append("test landing is published")
 
+    if plan.get("site_layout"):
+        layouts = current.get("layouts")
+        blocks = current.get("blocks")
+        block_ids = (
+            {
+                block if isinstance(block, str) else block.get("_id")
+                for block in blocks
+                if isinstance(block, (str, dict))
+            }
+            if isinstance(blocks, list)
+            else set()
+        )
+        if (
+            not isinstance(layouts, list)
+            or len(layouts) != 1
+            or not isinstance(layouts[0], str)
+            or layouts[0] not in block_ids
+        ):
+            errors.append("site-level common layout is missing or inconsistent")
+
     current_pages = current.get("pages")
     if not isinstance(current_pages, list):
         raise ValueError("structure.pages must be a list")

@@ -5,7 +5,8 @@ from a normalized JSON shop brief.
 
 ## Prerequisites
 
-- Xsolla CLI with `shopbuilder` commands
+- Xsolla CLI build that includes `shopbuilder create-block`; the corresponding
+  Shop Builder API support must be deployed before assembly uses it
 - `xsolla auth login` completed for a Publisher account
 - An acknowledged dedicated test project with CLI sandbox mode disabled
 - Existing catalog group IDs for any `newStore` sections
@@ -40,7 +41,9 @@ from a normalized JSON shop brief.
    ```
 
    For a new slug, render without `--structure` and confirm the bootstrap-only plan.
-   Bootstrap creates the landing and page paths. Then back up generated templates and
+   Bootstrap creates the landing and page paths, then adds a site-level common
+   layout if none exists. It never adds the layout before page/template setup.
+   Then back up generated templates and
    repeat with `--structure` before removing blocks. Use the same re-backup and
    reconfirmation boundary after adding missing paths to an existing site.
 
@@ -70,6 +73,9 @@ catalog. Federated wrappers use their effective `values.blockId` module.
   have confirmed defects captured in `references/test-findings.md`.
 - The CLI has no page-deletion command. Application stops before writes when an
   existing target contains pages outside the confirmed plan.
+- Bare `create-website` still leaves a blank site without a layout; this skill adds
+  one after pages. Editor/Publish/private-preview checks require the API change to
+  be deployed and a fresh test-project run; neither is implied by unit tests.
 - The official block inventory is fully documented, and every observed official
   module has a UI-created exported contract. Subscriptions is documented but absent
   from the observed palette/export, while five palette entries are absent from the

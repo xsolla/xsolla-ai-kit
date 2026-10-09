@@ -121,6 +121,44 @@ def structure(slug: str) -> dict:
     return value
 
 
+def ensure_common_layout(slug: str) -> str:
+    """Attach the site layout after pages so template headers/footers survive."""
+    def block_ids(value: object) -> set[str]:
+        if not isinstance(value, list):
+            return set()
+        return {
+            block if isinstance(block, str) else block.get("_id")
+            for block in value
+            if isinstance(block, str) or isinstance(block, dict)
+        }
+
+    current = structure(slug)
+    layouts = current.get("layouts")
+    if not isinstance(layouts, list):
+        raise RuntimeError("get-structure returned no layouts list")
+    if layouts:
+        if not all(isinstance(layout_id, str) for layout_id in layouts):
+            raise RuntimeError("get-structure returned invalid layout IDs")
+        if layouts[0] not in block_ids(current.get("blocks")):
+            raise RuntimeError("existing common layout is missing from site blocks")
+        return layouts[0]
+    created = data(
+        run_json(
+            "shopbuilder", "create-block", "--slug", slug, "--block", "common-layout"
+        )
+    )
+    block = created.get("block") if isinstance(created, dict) else None
+    block_id = block.get("_id") if isinstance(block, dict) else None
+    if not isinstance(block_id, str):
+        raise RuntimeError("create-block returned no layout block ID")
+    saved = structure(slug)
+    if block_id not in saved.get("layouts", []) or block_id not in block_ids(
+        saved.get("blocks")
+    ):
+        raise RuntimeError("created common layout is missing from the saved structure")
+    return block_id
+
+
 def page_for_path(value: dict, path: str) -> dict | None:
     for page in value["pages"]:
         if isinstance(page, dict) and page.get("path") == path:
@@ -866,6 +904,7 @@ def main() -> int:
 
         created_pages = add_missing_pages(slug, plan["pages"])
         locales = ensure_locales(slug, plan["locales"])
+        layout_id = ensure_common_layout(slug)
         if not existed:
             print(
                 json.dumps(
@@ -877,6 +916,7 @@ def main() -> int:
                         "slug": slug,
                         "landing_id": landing_id,
                         "created_pages": created_pages,
+                        "layout_id": layout_id,
                         "locales": locales,
                         "next_action": (
                             "Back up the generated site, render a target-bound plan, "
@@ -900,6 +940,7 @@ def main() -> int:
                         "slug": slug,
                         "landing_id": landing_id,
                         "created_pages": created_pages,
+                        "layout_id": layout_id,
                         "locales": locales,
                         "next_action": (
                             "Back up the changed site, re-render its generated block IDs, "
@@ -924,6 +965,7 @@ def main() -> int:
                     "confirmation_id": plan["confirmation_id"],
                     "slug": slug,
                     "landing_id": landing_id,
+                    "layout_id": layout_id,
                     "site_existed": existed,
                     "pages": pages,
                     "navigation": navigation,

@@ -14,6 +14,7 @@ project overrides after preflight.
 | Bootstrap | `create-website --type topup` | Name, slug | Empty landing with `type:null` |
 | Bootstrap | `set-landing-type --type store` | Slug | Configured webshop landing |
 | Pages | `add-page` | Slug, name, path | Page with default template blocks |
+| Site layout | `create-block --slug <slug> --block common-layout` (only if missing) | Pages already created | Site-level layout required by Editor, Publish, and preview; avoids suppressing template header/footer |
 | Blocks | `add-block`, `move-block`, and page-scoped `update-block` removal patches | Landing/page/block IDs | Ordered page block list |
 | Theme | `update-block` with `type:site` and `type:page` | Landing/page IDs, targeted patches | Site and page source themes |
 | Assets | `upload-asset` | Landing ID, local file | Permanent CDN URL |

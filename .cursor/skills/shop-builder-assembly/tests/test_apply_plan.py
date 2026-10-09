@@ -134,6 +134,56 @@ class ApplyPlanTests(unittest.TestCase):
         self.assertEqual("home", apply_plan.page_for_path(structure, "/")["_id"])
         self.assertIsNone(apply_plan.page_for_path(structure, "/store"))
 
+    def test_common_layout_is_created_only_after_missing_layout_check(self) -> None:
+        before = {"pages": [], "layouts": [], "blocks": []}
+        after = {
+            "pages": [],
+            "layouts": ["layout-id"],
+            "blocks": ["layout-id"],
+        }
+        with (
+            mock.patch.object(apply_plan, "structure", side_effect=[before, after]),
+            mock.patch.object(
+                apply_plan,
+                "run_json",
+                return_value={"ok": True, "data": {"block": {"_id": "layout-id"}}},
+            ) as run_json,
+        ):
+            self.assertEqual("layout-id", apply_plan.ensure_common_layout("shop"))
+        run_json.assert_called_once_with(
+            "shopbuilder", "create-block", "--slug", "shop", "--block", "common-layout"
+        )
+
+    def test_common_layout_reuses_existing_layout(self) -> None:
+        current = {
+            "pages": [],
+            "layouts": ["layout-id"],
+            "blocks": ["layout-id"],
+        }
+        with (
+            mock.patch.object(apply_plan, "structure", return_value=current),
+            mock.patch.object(apply_plan, "run_json") as run_json,
+        ):
+            self.assertEqual("layout-id", apply_plan.ensure_common_layout("shop"))
+        run_json.assert_not_called()
+
+    def test_common_layout_rejects_unpersisted_layout(self) -> None:
+        with (
+            mock.patch.object(
+                apply_plan,
+                "structure",
+                side_effect=[
+                    {"pages": [], "layouts": [], "blocks": []},
+                    {"pages": [], "layouts": [], "blocks": []},
+                ],
+            ),
+            mock.patch.object(
+                apply_plan, "run_json", return_value={"block": {"_id": "missing"}}
+            ),
+        ):
+            with self.assertRaisesRegex(RuntimeError, "missing from the saved"):
+                apply_plan.ensure_common_layout("shop")
+
     def test_verified_backup_requires_identity_and_matching_checksums(self) -> None:
         expected = {
             "merchant_id": 100,
@@ -871,6 +921,29 @@ class ApplyPlanTests(unittest.TestCase):
         result = verify_structure.verify(plan, structure)
         self.assertTrue(result["ok"])
         self.assertEqual(["sb-offer-chain"], result["pages"][0]["blocks"])
+
+    def test_structure_verifier_requires_planned_common_layout(self) -> None:
+        plan = {
+            "target": {"merchant_id": 100, "project_id": 200, "slug": "shop"},
+            "site_layout": {"module": "common-layout"},
+            "locales": ["en-US"],
+            "pages": [],
+        }
+        structure = {
+            "merchantId": 100,
+            "projectId": 200,
+            "domain": "shop",
+            "type": "store",
+            "published": None,
+            "languages": ["en-US"],
+            "pages": [],
+            "layouts": [],
+            "blocks": [],
+        }
+        self.assertFalse(verify_structure.verify(plan, structure)["ok"])
+        structure["layouts"] = ["layout-id"]
+        structure["blocks"] = ["layout-id"]
+        self.assertTrue(verify_structure.verify(plan, structure)["ok"])
 
 
 if __name__ == "__main__":
