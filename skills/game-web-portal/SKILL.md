@@ -107,8 +107,9 @@ Verify (read-back) → Human review → Handoff
    the first incomplete item.
 4. **Back up** — before the first write, export the site: `get-landing`,
    `get-structure` and `get-localization` for the slug, and `list-assets` for the
-   landing `_id`, saved to a new `.xsolla/backup-<timestamp>/` directory, which git
-   ignores. A failed export stops the run before any write.
+   landing `_id`, saved to a new `.xsolla/backup-<timestamp>/` directory. Add `.xsolla/` to
+   `.gitignore` first if it isn't there: a site export can hold a preview token. A failed
+   export stops the run before any write.
 5. **Plan and confirm** — show the ordered change groups (sections, pages, blocks,
    theme, copy, catalog links) and the exact removals, then wait for an explicit yes.
    Earlier permission to "set up my portal" is not confirmation of a plan. Re-confirm
