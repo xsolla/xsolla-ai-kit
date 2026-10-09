@@ -70,11 +70,17 @@ def record(structure: dict, localization: dict, page_id: str) -> dict:
     }
 
 
-def ledger_entry(ledger: dict, page_id: str) -> dict:
+def ledger_entry(ledger: dict, page_id: str, target: dict) -> dict:
     for step in ledger.get("steps") or []:
         if step.get("id") != "storefront":
             continue
-        for entry in (step.get("ids") or {}).get("created_pages") or []:
+        ids = step.get("ids") or {}
+        recorded = {key: ids.get(key) for key in target}
+        if recorded != target:
+            raise RuntimeError(
+                f"the ledger records {recorded}, not the preflight target {target}: never trim"
+            )
+        for entry in ids.get("created_pages") or []:
             if entry.get("page_id") == page_id:
                 blocks = entry.get("seeded_blocks")
                 if not isinstance(blocks, list) or any(
@@ -114,15 +120,22 @@ def main(argv: list[str] | None = None) -> int:
                         help="get-localization output")
     parser.add_argument("--page-id", required=True, help="the page the agent created")
     parser.add_argument("--ledger", type=Path, help="check: .xsolla/onboarding.json")
+    parser.add_argument("--merchant-id", type=int, help="check: the merchant preflight passed")
+    parser.add_argument("--project-id", type=int, help="check: the project preflight passed")
+    parser.add_argument("--landing-id", help="check: the landing _id read in Discover")
     args = parser.parse_args(argv)
     try:
         structure, localization = load(args.structure), load(args.localization)
         if args.action == "record":
             output = record(structure, localization, args.page_id)
         else:
-            if not args.ledger:
-                raise RuntimeError("check needs --ledger")
-            entry = ledger_entry(load(args.ledger), args.page_id)
+            target = {"merchant_id": args.merchant_id, "project_id": args.project_id,
+                      "landing_id": args.landing_id}
+            missing = [f"--{key.replace('_', '-')}" for key in ("ledger", *target)
+                       if getattr(args, key) is None]
+            if missing:
+                raise RuntimeError(f"check needs {', '.join(missing)}")
+            entry = ledger_entry(load(args.ledger), args.page_id, target)
             output = check(structure, localization, entry)
     except (OSError, RuntimeError, json.JSONDecodeError) as exc:
         print(str(exc), file=sys.stderr)
