@@ -57,6 +57,9 @@ export XSOLLA_PROJECT_API_KEY=<your API key>
   docs, not from this file. If the MCP is unavailable, fetch the linked
   developers.xsolla.com pages.
 
+If an [Xsolla API MCP](https://github.com/xsolla/xsolla-mcp) is connected, prefer it
+for the Admin API calls in step 1 (reads and creates); otherwise use REST as documented.
+
 ## Steps
 
 1. **Choose the archetype and set up the catalog (Admin API).** Ask which of the two
@@ -66,6 +69,7 @@ export XSOLLA_PROJECT_API_KEY=<your API key>
    `references/game-keys.md`. Admin calls use basic auth
    (`XSOLLA_MERCHANT_ID:XSOLLA_PROJECT_API_KEY`); verify each request body via the
    Xsolla MCP first.
+   Set `is_show_in_store: true` on items and bundles intended for the storefront.
 
 2. **Set up pricing.** Recommend regional prices in local currencies for key markets
    via the `prices` array; keep the currency list and default currency identical across
