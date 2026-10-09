@@ -119,8 +119,9 @@ Never recreate discovered existing entities.
 
 ### 4. Back up
 
-- Export the site to a new `.xsolla/backup-<timestamp>/` directory before the first
-  write. A failed export stops the run.
+- Add `.xsolla/` to `.gitignore` if it isn't there, then export the site to a new
+  `.xsolla/backup-<timestamp>/` directory before the first write. A failed export stops
+  the run.
 
 ### 5. Plan and confirm
 
