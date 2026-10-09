@@ -134,7 +134,7 @@ scripts/verify.sh <domain> <target-locale> --json
 
 ## No sandbox
 
-`--sandbox` does not change the URL. Shop Builder `get-structure --sandbox` warns `shopbuilder has no Xsolla sandbox` and still requests the live site. The scripts never pass `--sandbox`. The allowlist is the control: environment `test`, and the project must be on the approved-test-project list.
+`--sandbox` does not change the URL. Shop Builder `get-structure --sandbox` warns `shopbuilder has no Xsolla sandbox` and still requests the live site. The scripts never pass `--sandbox`. `preflight.sh` reads `xsolla config list` and stops when `sandbox` is true. A missing key counts as off. The allowlist is the control: environment `test`, and the project must be on the approved-test-project list.
 
 ## One writer
 

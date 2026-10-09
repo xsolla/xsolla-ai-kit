@@ -46,6 +46,44 @@ else
   warn "XSOLLA_APPROVED_TEST_PROJECTS is unset or not a file — apply.sh --commit will refuse to write"
 fi
 
+echo "== CLI sandbox =="
+# Shop Builder has no sandbox. Same rule as game-web-portal: refuse only when
+# config sandbox is true. A missing key counts as off.
+if [ -z "$XS" ]; then
+  bad "cannot check CLI sandbox mode without the xsolla CLI"
+elif ! command -v python3 >/dev/null 2>&1; then
+  bad "python3 is required to read the CLI sandbox flag"
+else
+  cfg="$("$XS" config list --json 2>/dev/null || true)"
+  sandbox="$(printf '%s' "$cfg" | python3 -c '
+import json, sys
+raw = sys.stdin.read().strip()
+def finish(value):
+    print(value)
+    raise SystemExit(0)
+if not raw:
+    finish("unreadable")
+try:
+    doc = json.loads(raw)
+except json.JSONDecodeError:
+    finish("unreadable")
+if isinstance(doc, dict) and doc.get("ok") is False:
+    finish("unreadable")
+if isinstance(doc, dict) and doc.get("ok") is True and "data" in doc:
+    doc = doc["data"]
+if not isinstance(doc, dict):
+    finish("unreadable")
+finish("true" if doc.get("sandbox") is True else "false")
+')"
+  if [ "$sandbox" = "true" ]; then
+    bad "the CLI's sandbox mode is on: Shop Builder has no sandbox, turn it off"
+  elif [ "$sandbox" = "false" ]; then
+    ok "CLI sandbox is off"
+  else
+    bad "could not read CLI config to check sandbox mode"
+  fi
+fi
+
 echo "== tooling =="
 command -v python3 >/dev/null 2>&1 && ok "python3" || bad "python3 not installed"
 

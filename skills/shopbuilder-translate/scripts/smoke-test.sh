@@ -221,4 +221,39 @@ unset FAKE_FAIL_CMD
 chk "an unreadable language list exits non-zero" "[ $nlrc -ne 0 ]"
 chk "an unreadable language list is reported" "grep -q 'get-structure' nolang.out"
 
+echo "== preflight: CLI sandbox =="
+cat > "$TMP/fake-preflight.sh" <<'EOF'
+#!/usr/bin/env bash
+if [ "${1:-}" = "--version" ]; then echo "xsolla version test"; exit 0; fi
+if [ "${1:-} ${2:-}" = "shopbuilder --help" ]; then
+  printf '  get-structure\n  get-localization\n  update-many-localization\n  add-language\n  get-block\n'
+  exit 0
+fi
+if [ "${1:-} ${2:-}" = "auth list-account" ]; then echo "one account"; exit 0; fi
+if [ "${1:-} ${2:-}" = "config list" ]; then
+  if [ -n "${FAKE_CONFIG_JSON:-}" ]; then printf '%s\n' "$FAKE_CONFIG_JSON"
+  else printf '%s\n' '{"ok":true,"data":{"merchant_id":1,"project_id":2}}'; fi
+  exit 0
+fi
+echo "unhandled $*" >&2
+exit 1
+EOF
+chmod +x "$TMP/fake-preflight.sh"
+XSOLLA_CLI="$TMP/fake-preflight.sh" XSOLLA_MERCHANT_ID=1 XSOLLA_PROJECT_ID=2 \
+  bash "$HERE/preflight.sh" > pf-missing.out 2>&1; mrc=$?
+chk "a missing sandbox key passes" "[ $mrc -eq 0 ]"
+chk "a missing sandbox key is off" "grep -q 'CLI sandbox is off' pf-missing.out"
+FAKE_CONFIG_JSON='{"ok":true,"data":{"merchant_id":1,"project_id":2,"sandbox":false}}' \
+  XSOLLA_CLI="$TMP/fake-preflight.sh" XSOLLA_MERCHANT_ID=1 XSOLLA_PROJECT_ID=2 \
+  bash "$HERE/preflight.sh" > pf-false.out 2>&1; frc=$?
+chk "sandbox false passes" "[ $frc -eq 0 ]"
+set +e
+FAKE_CONFIG_JSON='{"ok":true,"data":{"merchant_id":1,"project_id":2,"sandbox":true}}' \
+  XSOLLA_CLI="$TMP/fake-preflight.sh" XSOLLA_MERCHANT_ID=1 XSOLLA_PROJECT_ID=2 \
+  bash "$HERE/preflight.sh" > pf-true.out 2>&1; trc=$?
+set -e
+chk "sandbox true is refused" "[ $trc -ne 0 ]"
+chk "sandbox true names the flag" "grep -q 'sandbox mode is on' pf-true.out"
+chk "sandbox true does not pass" "! grep -q 'preflight passed' pf-true.out"
+
 echo; echo "$pass passed, $failn failed"; [ "$failn" -eq 0 ]
