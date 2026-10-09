@@ -11,7 +11,8 @@ values, but must preserve `sources` so the user can see where decisions came fro
   "project": {
     "merchant_id": 12345,
     "project_id": 67890,
-    "environment": "sandbox"
+    "environment": "test",
+    "test_project_acknowledged": true
   },
   "game": {
     "name": "Space Legends",
@@ -39,8 +40,8 @@ values, but must preserve `sources` so the user can see where decisions came fro
 
 Allowed presets: `auto`, `mobile-single-page`, `pc-multi-page`, and
 `live-service-events`. Allowed catalog group types: `virtual_good`, `bundle`, and
-`virtual_currency`. `project.environment` may be `sandbox` or `test`. For `test`, the
-`project` object must also contain `"test_project_acknowledged": true`. Before a write,
+`virtual_currency`. `project.environment` must be `test`, and the `project`
+object must contain `"test_project_acknowledged": true`. Before a write,
 `preflight.py` and `apply_plan.py` additionally require a separate local allowlist:
 
 ```json
@@ -64,7 +65,7 @@ project identity to approval evidence; a self-declared brief is not enough.
 
 | Field | Purpose |
 |---|---|
-| `project.*` | Hard safety boundary. IDs and CLI sandbox setting must match. `test` requires an explicit dedicated-test-project acknowledgement. |
+| `project.*` | Hard safety boundary. IDs must match, CLI sandbox mode must be off, and a dedicated-test-project acknowledgement is required. |
 | `game.platforms` | Any of `mobile`, `pc`, `console`, `web`; drives automatic preset selection. |
 | `game.lifecycle` | `launch`, `evergreen`, or `live-service`; drives event and offer defaults. |
 | `site.slug` | Existing target or requested new Xsolla domain slug. Never guess it for an existing site. |

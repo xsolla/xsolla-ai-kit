@@ -350,6 +350,12 @@ class ApplyPlanTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "wrong project"):
                 apply_plan.run_preflight(Path("brief.json"), None)
 
+    def test_run_json_refuses_force_before_login_or_write(self) -> None:
+        with mock.patch.object(apply_plan.subprocess, "run") as run:
+            with self.assertRaisesRegex(RuntimeError, "--force is prohibited"):
+                apply_plan.run_json("shopbuilder", "delete-block", "--force")
+            run.assert_not_called()
+
     def test_run_json_retries_pre_request_session_bootstrap_rate_limit(self) -> None:
         limited = mock.Mock(
             returncode=1,
