@@ -185,12 +185,14 @@ set_key() {
     echo "$1=$2" >> .env
   fi
 }
-set_key XSOLLA_BUILD_PATH shopbuilder   # or headless
-set_key XSOLLA_SITE_KIND portal         # Shop Builder only: shop or portal
+build_path=shopbuilder   # or headless
+set_key XSOLLA_BUILD_PATH "$build_path"
 grep -q '^\.env' .gitignore 2>/dev/null || echo '.env' >> .gitignore
-# Shop Builder only: the ledger's directory, kept out of git
-mkdir -p .xsolla
-grep -qxF '.xsolla/' .gitignore 2>/dev/null || echo '.xsolla/' >> .gitignore
+if [ "$build_path" = shopbuilder ]; then
+  set_key XSOLLA_SITE_KIND portal   # shop or portal
+  mkdir -p .xsolla
+  grep -qxF '.xsolla/' .gitignore 2>/dev/null || echo '.xsolla/' >> .gitignore
+fi
 ```
 
 On headless, record the path only. On Shop Builder, at the same confirmation, write
