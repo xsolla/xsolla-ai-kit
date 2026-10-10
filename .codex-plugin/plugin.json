@@ -1,7 +1,7 @@
 {
   "name": "xsolla-ai-kit",
-  "version": "1.0.0",
-  "description": "Xsolla agent skills toolkit — guided, end-to-end workflows for merchant setup, catalog design, Login/NewID, Pay Station, webhooks, storefront build, and shop branding, calling Xsolla REST APIs directly.",
+  "version": "1.1.0",
+  "description": "Xsolla agent skills toolkit — guided workflows from zero to a live game shop: a headless shop you host (payments, catalog, login, webhooks) or, in preview, an unpublished Shop Builder site assembled from a plain-language game description.",
   "author": {
     "name": "Xsolla",
     "url": "https://xsolla.com"
@@ -17,14 +17,16 @@
     "catalog",
     "webhooks",
     "storefront",
-    "login"
+    "login",
+    "shop-builder",
+    "web-shop"
   ],
   "skills": "./skills/",
   "mcpServers": "./mcp-servers.json",
   "interface": {
     "displayName": "Xsolla AI Toolkit",
     "shortDescription": "Guided Xsolla workflows from zero to a live game shop",
-    "longDescription": "Bundles every Xsolla workflow skill: shop-setup (orchestrator), merchant-setup, catalog-design, login-setup, headless-checkout-integration, webhooks-impl. Skills call Xsolla REST APIs directly — no CLI dependency.",
+    "longDescription": "Bundles every Xsolla workflow skill. shop-setup is the entry point and shop-plan decides the build path. Headless path: merchant-setup, catalog-design, login-setup, login-styling, headless-checkout-integration, webhooks-impl, production; these call Xsolla REST APIs directly. Shop Builder path, in preview: description-to-shop turns a game description into a shop brief, and shop-builder-assembly builds an unpublished Shop Builder site from it through the Xsolla CLI in an allowlisted test project.",
     "developerName": "Xsolla",
     "category": "Productivity",
     "websiteURL": "https://xsolla.com"

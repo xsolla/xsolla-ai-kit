@@ -10,4 +10,4 @@ shop-setup (orchestrator)
     └── production                       → Sandbox → live (contract, flags, deploy, live tests)
 ```
 
-Skills call Xsolla REST APIs directly. The CLI (`xsolla/xsolla-cli`) is an optional shortcut once it ships.
+On the headless path, skills call Xsolla REST APIs directly. The Shop Builder path uses the Xsolla CLI 1.9.4 or later today (`brew install xsolla/xsolla-cli/xsolla`).

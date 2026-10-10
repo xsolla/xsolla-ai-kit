@@ -2,7 +2,11 @@
 
 Agent skills for Xsolla — works with Claude Code, GitHub Copilot, Codex CLI, Windsurf, Roo Code, Augment, and more.
 
-Install the kit in your AI coding tool and your agent can integrate Xsolla's APIs directly into your game, or build a fully functional headless web shop you own and host with full control of the frontend. It works with the AI coding tools you already use, with no engine lock-in and no proprietary assistant. Instead of generating code that looks right but breaks in production, your agent follows validated, production-ready logic encoding the correct integration paths, so the first AI-assisted attempt is the right one, with validation built in. From setting up a project and configuring a catalog to integrating Pay Station and implementing webhooks, the kit takes you from zero to a working integration.
+Install the kit in your AI coding tool and your agent can integrate Xsolla's APIs directly into your game, build a fully functional headless web shop you own and host with full control of the frontend, or, in preview, assemble a Shop Builder site from a plain-language description of your game. It works with the AI coding tools you already use, with no engine lock-in and no proprietary assistant. Instead of generating code that looks right but breaks in production, your agent follows validated, production-ready logic encoding the correct integration paths, so the first AI-assisted attempt is the right one, with validation built in. From setting up a project and configuring a catalog to integrating Pay Station and implementing webhooks, the kit takes you from zero to a working integration.
+
+On the Shop Builder path, in preview, the agent turns your game description into a validated shop brief and builds an unpublished Shop Builder site from it through the Xsolla CLI, in a dedicated test project you approve. You review the site and publish it yourself in Publisher Account.
+
+To use it today, install the Xsolla CLI 1.9.4 or later: `brew install xsolla/xsolla-cli/xsolla`.
 
 ## What's inside
 
@@ -76,10 +80,14 @@ XSOLLA_PROJECT_API_KEY=<your API key>
 
 | Skill | Domain | Owner | Status  |
 |-------|--------|-------|---------|
-| `shop-setup` | Orchestrator — full zero-to-shop flow | @y.klochikhin | Done    |
+| `shop-setup` | Entry point — build path, then the flow | @y.klochikhin | Done    |
+| `shop-plan` | Orchestrator — headless or Shop Builder | @s.sadruddin | Draft   |
+| `description-to-shop` | Description → Shop Builder shop brief | @k.shah | Draft   |
+| `shop-builder-assembly` | Shop Builder site assembly | @k.shah | Draft   |
 | `merchant-setup` | Merchant and Project setup  | @y.klochikhin | Done    |
 | `catalog-design` | Items, pricing, virtual currency, bundles | @p.sanachev | Planned |
 | `login-setup` | Login / NewID / auth | @mohammed_abujalala | Planned |
+| `login-styling` | Login UI theming / branding | @a.springut | Draft   |
 | `headless-checkout-integration` | Payments via Headless Checkout | @y.klochikhin | Done |
 | `webhooks-impl` | Webhook handler generation | @e.chernykh | Done |
 | `production` | Sandbox → live / go-live | @y.klochikhin | Done |
@@ -97,9 +105,10 @@ specific skill:
 | Codex CLI    | No per-skill command — describe the task; Codex routes via AGENTS.md |
 | Others       | Natural language; skills load from SKILL.md / generated rules   |
 
-`shop-setup` is the entry point — it scopes the build and chains the domain
-skills (`catalog-design`, `login-setup`, `headless-checkout-integration`,
-`webhooks-impl`, `production`).
+`shop-setup` is the entry point. It confirms the build path with `shop-plan`, then
+chains the domain skills: on the headless path `catalog-design`, `login-setup`,
+`headless-checkout-integration`, `webhooks-impl` and `production`; on the Shop
+Builder path `description-to-shop` and `shop-builder-assembly`.
 
 ## Contributing
 
