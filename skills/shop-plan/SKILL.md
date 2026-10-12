@@ -198,9 +198,9 @@ fi
 On headless, record the path only. On Shop Builder, at the same confirmation, write
 `.xsolla/onboarding.json` with the intake, the path and the site kind, as
 [the onboarding contract](references/onboarding-contract.md#the-ledger) describes. When the
-developer reconsiders, update the ledger's path, site kind and intake in the same step, or delete
-it on a switch to headless. Report what was recorded and stop — do not chain into `shop-setup`
-or any build step:
+developer reconsiders, update the ledger's path, site kind and intake in the same step. On a
+switch to headless, delete the ledger and remove `XSOLLA_SITE_KIND` from `.env`. Report what was
+recorded and stop — do not chain into `shop-setup` or any build step:
 
 ```
 Recorded: Shop Builder, a Game Web Portal. Run shop-setup when you're ready to build.
