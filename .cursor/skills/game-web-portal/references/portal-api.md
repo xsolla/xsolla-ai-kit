@@ -53,7 +53,7 @@ footer) and most sections.
 |---|---|
 | Add each missing section's page | `add-page --slug <domain> --name <name> --path <path>` |
 | Add its blocks at the top of the page | `add-block --landing-id <landingId> --page-id <pageId> --block <module> --index 0`, then `--index 1` |
-| Remove a seeded block the section doesn't keep | `delete-block --landing-id <landingId> --page-id <pageId> --blockid <blockId> --force` |
+| Remove a seeded block the section doesn't keep | `delete-block --landing-id <landingId> --page-id <pageId> --blockid <blockId>` |
 
 ### Portal layout
 
@@ -80,9 +80,9 @@ catalog](../../shop-builder-assembly/references/block-catalog.md).
 Remove seeded blocks only on a page the agent created in this run. Re-read the page first; if it
 holds anything that isn't from the seed or the confirmed plan, stop and ask. Remove only as the
 confirmed plan lists: for each such page, the seeded modules it drops. `delete-block` takes each
-block's `_id` (`--blockid`), read from `get-structure`; pass `--force`, since the confirmed plan is
-the confirmation and the CLI's own prompt refuses without a terminal. Never delete a block on any
-other page.
+block's `_id` (`--blockid`), read from `get-structure`. Never pass `--force`: when `delete-block`
+won't run without it, stop and list the seeded blocks the plan removes for the partner to remove,
+as `needs_human`. Never delete a block on any other page.
 
 On resume, compare `get-structure` with this layout and add only what is missing; never add a
 page whose path already exists. Seeded blocks left on a page from an earlier run are not
