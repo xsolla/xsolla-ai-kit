@@ -66,6 +66,11 @@ case "$GROUP $CMD" in
   "shopbuilder update-many-localization")
       echo '{"ok":true,"data":{}}' ;;
   "shopbuilder add-language"|"shopbuilder delete-language")
+      # FAKE_LANG_TAKEN: the language was enabled after the caller last read the list.
+      if [ "$CMD" = "add-language" ] && [ -n "${FAKE_LANG_TAKEN:-}" ]; then
+        echo "language is taken" >&2
+        exit 1
+      fi
       # No language file: the caller is not exercising order. Succeed so a store that
       # already opens in the target does not need a mutable list.
       [ -n "${FAKE_LANG_FILE:-}" ] || { echo '{"ok":true,"data":{}}'; exit 0; }

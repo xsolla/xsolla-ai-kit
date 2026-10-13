@@ -293,9 +293,10 @@ def live_drift(base_path, live_path):
     return changed
 
 def backup_before_write():
-    """Allowlist, then a read-only export, before the first write. Not a production denylist."""
+    """Allowlist, then a read-only export, before the first write. Not a production denylist.
+    Returns the exported structure."""
     if not COMMIT:
-        return
+        return None
     allowlist_allows()
     domain_on_project()
     script = os.path.join(os.environ['SCRIPTDIR'], 'export-backup.sh')
@@ -328,21 +329,28 @@ def backup_before_write():
             print(f"  {line}")
         sys.exit(1)
     print(f"  export -> {out}")
+    return structure
 
-backup_before_write()
+structure = backup_before_write()
 
 # --- language: only behind the gate above, and before the copy ---------------
 # add-language appends to the site language list. It does not change the language the
-# shop opens in. Copy written to a locale that is not enabled never renders. A 400 whose
-# message says the language is taken means the locale is already enabled: that is success.
+# shop opens in. Copy written to a locale that is not enabled never renders. If the
+# pre-write export already lists the locale, add-language is skipped. A 400 whose message
+# says the language is taken also means the locale is already enabled: that is success.
 print(f"\n== language: enable {TGT} on {DOMAIN} ==")
 lang_args = [XS, 'shopbuilder', 'add-language', '--slug', DOMAIN, '--language', TGT]
 save("add-language.cmd.json", lang_args)
 print("   ", " ".join(lang_args))
-if COMMIT:
+enabled_here = False
+site_languages = structure.get('languages') if isinstance(structure, dict) else None
+if COMMIT and isinstance(site_languages, list) and TGT in site_languages:
+    print(f"    -> {TGT} is already enabled (pre-write export): add-language skipped")
+elif COMMIT:
     r = subprocess.run(lang_args, capture_output=True, text=True)
     save("add-language.response.json", {"rc": r.returncode, "stdout": r.stdout, "stderr": r.stderr})
     if r.returncode == 0:
+        enabled_here = True
         print(f"    -> enabled {TGT}")
     elif 'language is taken' in (r.stdout + r.stderr).lower():
         print(f"    -> {TGT} is already enabled")
@@ -377,8 +385,13 @@ if per_scope:
 if write_failed:
     print("\nBLOCKED — a write failed (" + ", ".join(write_failed) + ").")
     print("The copy was not written. Do not treat this run as a success.")
-    print(f"{TGT} stays enabled on {DOMAIN}, so shoppers can pick it without this copy.")
-    print("Fix the failure and re-run with --commit.")
+    if enabled_here:
+        print(f"This run enabled {TGT} on {DOMAIN}, so shoppers can pick it without this copy.")
+        print("Fix the failure and re-run with --commit. To take the language out of the")
+        print("selector until then, show this command to a human. This script does not run it:")
+        print(f"    {XS} shopbuilder delete-language --slug {DOMAIN} --language {TGT}")
+    else:
+        print(f"{TGT} was already enabled on {DOMAIN} before this run. Fix the failure and re-run with --commit.")
     sys.exit(1)
 
 # --- reconciliation ---------------------------------------------------------

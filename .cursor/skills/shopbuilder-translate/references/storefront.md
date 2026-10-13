@@ -91,7 +91,7 @@ If any unit already has a different target-locale value, `--commit` alone blocks
 
 `--commit` checks the approved-test-project allowlist, then lists that project's websites with `list-websites` (merchant and project ids, no `--all`). If the slug is not in that list, nothing is written. It then runs `export-backup.sh` again into `l10n/pre-write/<timestamp>/`. If the live text for a string about to be written changed since extract, nothing is written. A write that returns non-zero fails the run. `get-structure` is not the check that the domain belongs to the project.
 
-Only after those checks does `--commit` enable the language with `add-language`, then write the copy. `add-language` appends. It does not change the language the shop opens in. If the locale is already enabled, the command returns 400 and the message "language is taken". That is success. Any other failure stops the run before any copy is written.
+Only after those checks does `--commit` enable the language with `add-language`, then write the copy. `add-language` appends. It does not change the language the shop opens in. If the pre-write export already lists the locale, `add-language` is skipped. If it still returns 400 and the message "language is taken", that is success too. Any other failure stops the run before any copy is written. If the copy write fails after this run enabled the language, the run prints the `delete-language` command for that language. Show it to the user. This skill does not run it.
 
 Both gates must be open or writes succeed and never render.
 
@@ -155,7 +155,7 @@ Do not edit the landing in Publisher Account while this skill runs. Concurrent w
 | `preflight.sh` | CLI, Shop Builder subcommands, auth, merchant and project |
 | `export-backup.sh <domain> <dir>` | Read-only `get-structure` and `get-localization` |
 | `extract.sh <src> <tgt> [backup]` | `translatable.json`. No domain argument |
-| `apply.sh <domain> <tgt> [--commit] [--report] [--confirm-overwrites]` | Page copy only. Dry run default. `--commit` checks the allowlist, exports, enables the language, then writes. "language is taken" means already enabled. It does not change the opening language |
+| `apply.sh <domain> <tgt> [--commit] [--report] [--confirm-overwrites]` | Page copy only. Dry run default. `--commit` checks the allowlist, exports, enables the language unless the export already lists it, then writes. It does not change the opening language |
 | `verify.sh <domain> <tgt> [--json]` | Live read-back |
 | `ingest-user-translations.sh <locale> <file>` | Publisher JSON or TXT into `translated.json`. Keeps targets already filled. No store write |
 
