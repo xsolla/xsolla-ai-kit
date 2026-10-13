@@ -218,7 +218,6 @@ doc = {
     'domain': (structure or {}).get('domain'),
     'counts': {
       'total': len(units),
-      'catalog': sum(1 for u in units if u['surface'] == 'catalog'),
       'block': sum(1 for u in units if u['surface'] == 'block'),
       'common_scope': sum(1 for u in units if u.get('scope') == 'common'),
       'legal_flagged': sum(1 for u in units if u['kind'] == 'legal'),
@@ -239,7 +238,6 @@ with open(os.path.join(OUT, 'translatable.json'), 'w') as f:
 
 c = doc['meta']['counts']
 print(f"  units            {c['total']}")
-print(f"    catalog        {c['catalog']}")
 print(f"    block          {c['block']}  (of which {c['common_scope']} in the common scope)")
 print(f"    legal (DO NOT TRANSLATE — route to counsel)  {c['legal_flagged']}")
 print(f"    asset URLs (NOT translatable)  {c['assets_skipped']}")
