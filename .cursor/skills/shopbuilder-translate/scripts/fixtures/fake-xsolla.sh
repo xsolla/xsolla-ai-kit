@@ -56,7 +56,9 @@ case "$GROUP $CMD" in
         exit 1
       fi
       if [ -n "${FAKE_LANG_FILE:-}" ] && [ -f "$FAKE_LANG_FILE" ]; then
-        body="$(jq -c --slurpfile langs "$FAKE_LANG_FILE" '.languages = $langs[0]' "$STORE/structure.json")"
+        # baseline/ is already an envelope: set the list on the structure inside it.
+        body="$(jq -c --slurpfile langs "$FAKE_LANG_FILE" \
+          'if has("data") then .data.languages = $langs[0] else .languages = $langs[0] end' "$STORE/structure.json")"
         printf '{"ok":true,"data":%s}' "$body"
       else
         emit "$STORE/structure.json"

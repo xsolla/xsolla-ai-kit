@@ -35,15 +35,15 @@ After the storefront exists. Silent failures and the script list: [references/st
 scripts/preflight.sh
 scripts/export-backup.sh <domain> l10n/backup/<timestamp>
 scripts/extract.sh en-US ja-JP
-scripts/enable-language.sh <domain> ja-JP
 scripts/apply.sh <domain> ja-JP                 # dry run
+# explicit yes, then: enable the language and write
 scripts/apply.sh <domain> ja-JP --commit --confirm-overwrites
 scripts/verify.sh <domain> ja-JP
 ```
 
 `export-backup.sh` reads the live site with `get-structure` and `get-localization` and writes those two files. It does not change the site. Before any write, the project must be on the approved-test-project allowlist (`XSOLLA_APPROVED_TEST_PROJECTS`). A project that is not on the list is not written. The slug must also appear in that project's `list-websites` result. `get-structure` is not that check.
 
-`enable-language.sh` runs `add-language`. If the locale is already enabled, the command returns 400 and the message "language is taken"; that is success. Any other failure stops the run.
+`--commit` enables the language with `add-language`, then writes the copy. It runs `add-language` only after the allowlist, the `list-websites` check and the pre-write export. If the locale is already enabled, the command returns 400 and the message "language is taken"; that is success. Any other failure stops the run before any copy is written.
 
 `--commit` blocks when it would replace an existing translation until `--confirm-overwrites`. `--commit` exports the site again into `l10n/pre-write/` and blocks if the text about to be written changed since extract. A write that returns non-zero fails the run.
 

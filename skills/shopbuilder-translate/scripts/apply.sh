@@ -3,11 +3,13 @@
 #
 # Shop Builder page copy only. Catalog and LiveOps text are out of scope.
 # Default is a DRY RUN: builds and saves every payload, sends nothing.
-#   --commit              write page copy. Does not change the language the shop opens in.
+#   --commit              enable the target language, then write page copy. Does not change
+#                         the language the shop opens in.
 #                         Before the first write, checks the approved-test-project allowlist,
 #                         lists that project's websites, and blocks unless the slug is in
 #                         that list. Then it exports the live site read-only and blocks if
-#                         that text changed since extract. A failed write exits non-zero.
+#                         that text changed since extract. Only then does it run add-language
+#                         and write the copy. A failed write exits non-zero.
 #   --report              reconcile the localization store against translated.json
 #   --confirm-overwrites  required on --commit whenever a unit already has a target-locale
 #                         value that differs from what is about to be written. Without it,
@@ -329,6 +331,24 @@ def backup_before_write():
 
 backup_before_write()
 
+# --- language: only behind the gate above, and before the copy ---------------
+# add-language appends to the site language list. It does not change the language the
+# shop opens in. Copy written to a locale that is not enabled never renders. A 400 whose
+# message says the language is taken means the locale is already enabled: that is success.
+print(f"\n== language: enable {TGT} on {DOMAIN} ==")
+lang_args = [XS, 'shopbuilder', 'add-language', '--slug', DOMAIN, '--language', TGT]
+save("add-language.cmd.json", lang_args)
+print("   ", " ".join(lang_args))
+if COMMIT:
+    r = subprocess.run(lang_args, capture_output=True, text=True)
+    save("add-language.response.json", {"rc": r.returncode, "stdout": r.stdout, "stderr": r.stderr})
+    if r.returncode == 0:
+        print(f"    -> enabled {TGT}")
+    elif 'language is taken' in (r.stdout + r.stderr).lower():
+        print(f"    -> {TGT} is already enabled")
+    else:
+        block(f"add-language failed (rc={r.returncode}): {(r.stderr or r.stdout).strip()[:160]}")
+
 # --- blocks (surface B): the localization store, NOT update-block -----------
 # Block text is referenced by an "L:" id; the text lives in a separate store keyed by the
 # slug. update-block on ["values","title"] deletes that string and every translation of it,
@@ -357,6 +377,8 @@ if per_scope:
 if write_failed:
     print("\nBLOCKED — a write failed (" + ", ".join(write_failed) + ").")
     print("The copy was not written. Do not treat this run as a success.")
+    print(f"{TGT} stays enabled on {DOMAIN}, so shoppers can pick it without this copy.")
+    print("Fix the failure and re-run with --commit.")
     sys.exit(1)
 
 # --- reconciliation ---------------------------------------------------------
@@ -381,7 +403,7 @@ if REPORT:
 
 print(f"\npayloads -> {PAYDIR}")
 if not COMMIT:
-    print("DRY RUN — nothing was sent. --commit writes the copy and does not change the language the shop opens in.")
+    print(f"DRY RUN — nothing was sent. --commit enables {TGT}, writes the copy, and does not change the language the shop opens in.")
     print("Review the payloads, then re-run with --commit.")
 else:
     print("\nCopy was written. This run did not change the language the shop opens in.")
