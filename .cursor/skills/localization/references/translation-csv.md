@@ -13,11 +13,10 @@ re-implement in another stack when Python is unavailable.
 cleanup on project 314067):** `items`, `groups`, `virtual_currency`, `vc_package`,
 `bundle`, `value_points`, `game`, `attribute`.
 
-**LiveOps entities (writes verified 2026-09-08):** `discount_promotion`,
-`bonus_promotion`, `promocode`, `coupon`, `unique_catalog_offer` — all on the **v3**
-API — plus `daily_chain`, `offer_chain` and `reward_chain` on v2. Each entity declares
-its API version in the registry (`"api": "v3"`), because promotions do not live under
-`/v2` and probing there returns a misleading 403. Each was localized against a live
+**LiveOps entities:** `discount_promotion`, `bonus_promotion`, `promocode`, `coupon`,
+`unique_catalog_offer` are on API **v3** (`"api": "v3"` in the registry). `daily_chain`,
+`offer_chain` and `reward_chain` are on API **v2** (the registry default). Promotions
+do not live under `/v2`; probing there returns a misleading 403. Each was localized against a live
 object and rolled back or deleted afterwards, so `import --write` accepts them; the
 fields that must be stripped are per entity in
 [write-safety.md](write-safety.md), and their field lists are narrower than older ones
@@ -51,11 +50,9 @@ Deferred (with reason, verified by probing project 314067):
 - **personalized-catalog filter rules** — readable, but not player-facing, so
   deliberately skipped rather than blocked.
 
-An earlier version of this file deferred *all* LiveOps promotions here, on the grounds
-that `/admin/promotions*` returned 403 and a LiveOps-enabled key was needed. That was
-wrong — the path was wrong, not the key: promotions live on `/v3` and chains on `/v2`,
-and an ordinary project key reads eight of the nine. See the correction in
-[coverage-matrix.md](coverage-matrix.md).
+Promotions live on `/v3` and chains, including `reward_chain`, live on `/v2`. An
+ordinary project key reads eight of the nine LiveOps types. Only `upsell` is forbidden.
+See [coverage-matrix.md](coverage-matrix.md).
 
 ## Why the script owns the file (batching)
 
@@ -66,7 +63,9 @@ LLM hand-typing CSV drops rows and mis-escapes commas/quotes/newlines/emoji.
 
 So for AI translation the model works in **batches**: the script hands it a slice of
 pending rows, the model returns only the translated values, the script writes them
-back into the file. The full dataset lives on disk (unbounded, exact); the model's
+back into the file. That batch is catalog text sent to the agent's model. Say so
+before the first `batch` on a real project. `de-DE` and `de` are one column; a
+locale with no column is an error. The full dataset lives on disk (unbounded, exact); the model's
 context only ever holds one batch. The agent runs the script via Bash; the user only
 converses. `import` previews unless `--write` is passed, so the confirm step cannot be
 skipped by forgetting a flag.
@@ -276,18 +275,5 @@ measured write-form exceptions, the race-window protocol, the snapshot/rollback 
 and the post-write verification are all in [write-safety.md](write-safety.md). `PATCH` is
 measured there too, and not used.
 
-## Other surfaces (same contract, different I/O)
-
-The CSV schema, `missing`/fill-only rules, and guardrails are shared. Only the
-adapter changes:
-
-| | Catalog (this script) | Site Builder |
-|---|---|---|
-| Address | `sku` + `field` | `domain` + `common`/`pages` + key |
-| Read | admin GET (paginated) | `GET /localization/extract/{domain}` |
-| Write | per-SKU `PUT` (replace item) | `POST /localization/load/{domain}` (replace whole site) |
-| Auth | Basic | Bearer |
-| Race guard | per-item PUT (small blast radius) | **re-extract → diff → abort if changed** (load is full-replace) |
-
-A Site Builder adapter maps its strings to the same wide CSV, then loads a fresh
-full bundle (re-extracted immediately before write) to narrow the race window.
+Shop Builder page copy is not this contract. It is the `shopbuilder-translate` skill.
+This file does not describe a site extract or load.

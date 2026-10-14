@@ -89,89 +89,14 @@ keys that must be stripped are measured per entity, never guessed — see
 [write-safety.md](write-safety.md). Clearing the gate is a create → localize → verify →
 restore run on one object, then dropping `write_unverified` from its registry entry.
 
-**Correction, 2026-09-08.** LiveOps was previously written off as "403 endpoint
-forbidden, needs a different key". That was wrong: the probe used the wrong path.
 Promotions live on **`/v3`** at `/admin/promotion/item`, `/admin/promotion/bonus`,
-`/admin/coupon`, `/admin/promocode`, `/admin/unique_catalog_offer`; chains on **`/v2`**
-at `/admin/daily_chain`, `/admin/offer_chain` and `/admin/reward_chain`. An ordinary
-project key reads **eight of the nine** — only `upsell` is genuinely forbidden. The
-lesson is narrow and worth keeping: a 403 on a guessed path is evidence about the path,
-not about the key.
+`/admin/coupon`, `/admin/promocode`, `/admin/unique_catalog_offer`. Chains, including
+`reward_chain`, live on **`/v2`** at `/admin/daily_chain`, `/admin/offer_chain` and
+`/admin/reward_chain`. An ordinary project key reads eight of the nine. Only `upsell`
+is forbidden. A 403 on a guessed path is evidence about the path, not about the key.
 
-## Layer 2b — Money (NOT language)
+## Not this skill
 
-Listed only so it is not mistaken for a language task. The mechanics are owned by
-`catalog-design` → `references/pricing.md`; this skill does not repeat them.
-
-| Content | Owner | Effort |
-|---|---|---|
-| Local currency / price by country | `catalog-design` → `pricing.md` (regional `prices[]`) | medium |
-| Regional availability | `catalog-design` → `pricing.md` (`regions`) | medium |
-
-## Layer 3 — Payment UI
-
-| Content | Mechanism | Effort |
-|---|---|---|
-| Payment form language | `settings.language` on the token + SDK `init({ language })` (no in-UI picker) | small |
-| Charge currency | resolved from price/country | — |
-
-## Layer 4 — Login (identity)
-
-| Content | Mechanism | Effort |
-|---|---|---|
-| Login widget UI language | `preferredLocale` on the SDK (`login-setup`) | small |
-| Login emails (verification, password reset) | configured on the Xsolla side | medium |
-
-## Layer 1 — Storefront UI (partner code, not an Xsolla API)
-
-| Content | Localizable | Effort |
-|---|---|---|
-| Chrome: nav, hero, buttons, cart, footer, banners | ✅ own i18n | — |
-| Language switcher + persistence + `<html lang>` | ✅ | small |
-| Number / price / date formatting (`Intl`) | ✅ | small |
-| Empty / loading / error / toast states | ✅ | small |
-| `<title>` / meta / Open Graph (SEO, link shares) | ✅ | small |
-| Locale URL routing (`/ru/`, `?lang=`) | ✅ | medium |
-| Missing-locale fallback (`value[locale] \|\| value.en \|\| first`) | ✅ | small |
-| Fonts / glyph coverage (Cyrillic, CJK) | ⚠️ | small–medium |
-| RTL layout (Arabic, Hebrew) | ⚠️ | medium–large |
-| Image alt text / text baked into images | ✅ | small–medium |
-| Legal pages: ToS, privacy, refund policy | ✅ partner content | medium |
-
-## Layer 5 — Xsolla buyer communications (go-live)
-
-| Content | Mechanism |
-|---|---|
-| Receipts / invoices | locale on the Xsolla side |
-| Payment / refund emails | configured on the Xsolla side |
-
-## Frequently forgotten
-
-- **Offer chains are their own LiveOps product**, not a flavour of daily login chains:
-  a sequence of steps where the next unlocks after the previous one, with its own
-  localizable chain title and description
-  (<https://developers.xsolla.com/liveops/promotion-tools/offer-chains/>). Easy to miss
-  when auditing coverage, because it sits under promotion tools rather than the catalog.
-- **A `null` field produces no CSV row.** `export` skips a field that is not a
-  `{lang: value}` object, so a `long_description` that has never been filled in never
-  reaches the CSV. That is correct — there is no source text to translate — but it means
-  "this entity has three localizable fields" and "this catalog has three fields to
-  translate" are different statements. In a catalog where every `long_description` is
-  `null`, the field simply never appears. `export` now reports how many fields it skipped
-  for this reason, so the absence is stated rather than silent.
-- **All three fields are verified writable on all six entities** — virtual items,
-  bundles, virtual currency, currency packages, value points and game keys. One pass on
-  2026-09-08: an object of each created with English `name`, `description` and
-  `long_description`, all 18 strings translated, written and read back carrying `de`.
-  Before that the only evidence was the key coming back as `null`, which
-  shows the field exists but not that it accepts a translation.
-- **Groups have no `long_description`.** Verified by GET on 314067 (2026-09-07): the key
-  is absent from a group entirely, while unfilled fields elsewhere come back as `null` —
-  so the field does not exist in the model. Bundles, virtual currency, currency packages
-  and value points, by contrast, **do** carry `long_description`.
-- **More than `name`/`description` is localizable:** `long_description`, attribute
-  values, and a reward chain's `popup_header`, `popup_instruction` and per-step names.
-  The set is per entity — the table above is the authority.
-- `image_url` is **not** language-keyed; localized banners are a client-side swap.
-- SEO layer (`<title>`, meta, OG, `/ru/` routing) is easy to skip and hurts sharing/search.
-- Fonts/glyphs and RTL are layout risks, not API work — check them when adding a script.
+Prices and regional availability belong to `catalog-design`. Payment UI language,
+Login widget language, storefront chrome, and buyer emails are not catalog writes.
+Shop Builder page copy is `shopbuilder-translate`.

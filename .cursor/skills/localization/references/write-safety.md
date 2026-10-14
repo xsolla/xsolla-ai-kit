@@ -161,10 +161,6 @@ the user has seen the conflict and chosen. The body is rebuilt from the fresh re
 either way, so a concurrent edit *outside* the translated fields is carried through
 rather than replaced by a stale copy.
 
-Site Builder has the same problem with a bigger blast radius (`load` replaces the entire
-site), and its contract already says **re-extract → diff → abort if changed**. The
-catalog version is per object, so it can ask instead of aborting.
-
 ## Backup of the translations being replaced
 
 Separate from the snapshot, and for a different reader. The snapshot is JSON, holds
@@ -201,13 +197,14 @@ There is no server-side undo and the API keeps no versions.
 
 - `import` runs in **two passes**: it plans every object first, then writes the
   snapshot, then PUTs. The snapshot therefore covers **the whole run**, not just
-  whichever object happened to be first. A single-pass version that snapshots from
-  inside the write loop captures one object while replacing many — this shipped as a real
-  bug; a 3-object test found it, a 1-object test cannot.
+  whichever object happened to be first. Snapshotting from inside the write loop
+  captures one object while replacing many.
 - It **aborts rather than writing** if the snapshot cannot be created
-  (`--no-snapshot` to override, `--snapshot PATH` to place it).
+  (`--no-snapshot` to override, `--snapshot PATH` to place it). With no path given,
+  the file lands in `l10n-snapshots/` beside the CSV, not in the repository root.
+- The snapshot records `project_id`. `restore` refuses a snapshot from another
+  project, and a snapshot that names no project.
 - `restore <snapshot.json> --write` PUTs the captured state back, previewing by default.
-  Verified live: byte-identical restoration.
 - **Whole-catalog runs that exercised all of the above**, on project 314067, every object
   rolled back or deleted afterwards: 2026-09-02, all 8 catalog entity types created →
   localized → verified `{en,ru,de}` → cleaned up (an invalid `pt-PT` was caught by

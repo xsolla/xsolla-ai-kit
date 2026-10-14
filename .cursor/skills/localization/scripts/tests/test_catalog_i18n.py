@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Offline test suite for catalog_i18n.py — no network, no credentials, no live project.
 
-    python3 skills/localization/scripts/test_catalog_i18n.py
+    python3 skills/localization/scripts/tests/test_catalog_i18n.py
 
 Every case here is a defect that actually shipped, or an invariant whose violation
 shipped. They share one shape: **work discarded without a word** — a row that addressed
@@ -13,12 +13,14 @@ review rounds.
 write-ordering invariants. It does NOT re-measure the API's write form — the 422/1102
 rules and the pass-through field list are empirical and live in references/write-safety.md.
 """
-import contextlib, csv, importlib.util, io, json, os, sys, tempfile
+import contextlib, csv, importlib.util, io, json, os, sys, tempfile, unittest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-spec = importlib.util.spec_from_file_location("ci", os.path.join(HERE, "catalog_i18n.py"))
+SCRIPTS = os.path.dirname(HERE)
+spec = importlib.util.spec_from_file_location("ci", os.path.join(SCRIPTS, "catalog_i18n.py"))
 ci = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(ci)
+REAL_SNAPSHOT = ci._snapshot
 
 # Shaped exactly like load_env()'s return: a dict of env vars, not a bespoke struct.
 # It used to be {"pid":…, "key":…}, which no code path actually produces — so anything
@@ -174,9 +176,11 @@ def _():
         def merge_from(name, data, binary=False):
             p = os.path.join(d, name)
             if binary:
-                open(p, "wb").write(data)
+                with open(p, "wb") as f:
+                    f.write(data)
             else:
-                open(p, "w", newline="").write(data)
+                with open(p, "w", newline="") as f:
+                    f.write(data)
             return run(ci.merge, work, p)
 
         rc, out = merge_from("latin1.csv", HDR_FR.encode("latin-1") + ROW_ACCENT, binary=True)
@@ -212,7 +216,8 @@ def _():
 
         def merge_from(name, text):
             p = os.path.join(d, name)
-            open(p, "w", newline="").write(text)
+            with open(p, "w", newline="") as f:
+                f.write(text)
             return run(ci.merge, work, p)
 
         rc, out = merge_from("meta.csv", HDR_META + ROW_META)
@@ -464,7 +469,7 @@ def _():
             return 200, dict(ITEM, sku=path.rsplit("/", 1)[-1])
         return 204, {}
 
-    def fake_snapshot(p, objects):
+    def fake_snapshot(p, objects, project_id=None, csv_path=None):
         order.append("SNAPSHOT")
         snapped["n"] = len(objects)
         return "snap.json"
@@ -491,8 +496,9 @@ def _():
             return 200, json.loads(json.dumps(CHAIN))
         return 204, {}
 
-    def fake_snapshot(p, objects):
+    def fake_snapshot(p, objects, project_id=None, csv_path=None):
         snapped["objects"] = json.loads(json.dumps(objects))
+        snapped["project_id"] = project_id
         return "snap.json"
 
     ci.api, ci._snapshot = api, fake_snapshot
@@ -595,6 +601,160 @@ def _():
     assert not log, log
 
 
+@case("a list without has_more is paged by count")
+def _():
+    pages = {"n": 0}
+
+    def api(env, method, path, body=None, api_version="v2", **kw):
+        pages["n"] += 1
+        if "offset=0" in path:
+            items = [{"sku": f"s{i}", "name": {"en": "a"}} for i in range(50)]
+        elif "offset=50" in path:
+            items = [{"sku": f"s{i}", "name": {"en": "a"}} for i in range(50, 100)]
+        elif "offset=100" in path:
+            items = [{"sku": f"s{i}", "name": {"en": "a"}} for i in range(100, 120)]
+        else:
+            return 500, "unexpected"
+        return 200, {"items": items, "total_items_count": 120}
+    ci.api = api
+    objs, st = ci.fetch_all(ENV, "/admin/promocode")
+    assert st == 200, st
+    assert len(objs) == 120, len(objs)
+    assert pages["n"] == 3, pages
+
+
+@case("a failed later page is an error, not a successful partial list")
+def _():
+    def api(env, method, path, body=None, api_version="v2", **kw):
+        if "offset=0" in path:
+            return 200, {"items": [{"sku": f"s{i}"} for i in range(50)]}
+        return 500, "boom"
+    ci.api = api
+    objs, st = ci.fetch_all(ENV, "/admin/promocode")
+    assert st == 500, st
+    assert len(objs) == 50, len(objs)
+
+
+@case("batch de-DE reads the de column and does not reopen filled cells")
+def _():
+    with tempfile.TemporaryDirectory() as d:
+        p = write_csv(os.path.join(d, "t.csv"),
+                      [["items", "x", "", "name", "", "Sword", "Schwert"],
+                       ["items", "y", "", "name", "", "Bow", ""]],
+                      header=["entity", "id", "subid", "field", "context", "en", "de"])
+        rc, out = run(ci.batch, p, "de-DE", 50)
+        assert rc in (0, None), out
+        data = json.loads(out.split("locale", 1)[-1] and out[out.find("{"):])
+        assert data["locale"] == "de", data
+        assert data["remaining"] == 1, data
+        assert data["batch"][0]["id"] == "y", data
+
+
+@case("batch with no such column refuses instead of marking every row pending")
+def _():
+    with tempfile.TemporaryDirectory() as d:
+        p = write_csv(os.path.join(d, "t.csv"),
+                      [["items", "x", "", "name", "", "Sword", "Schwert"]])
+        rc, out = run(ci.batch, p, "xx", 50)
+        assert rc == 1, out
+        assert "no column" in out, out
+
+
+@case("fill de-DE writes the de column and does not add a second one")
+def _():
+    with tempfile.TemporaryDirectory() as d:
+        p = write_csv(os.path.join(d, "t.csv"),
+                      [["items", "y", "", "name", "", "Bow", ""]],
+                      header=["entity", "id", "subid", "field", "context", "en", "de"])
+        src = os.path.join(d, "in.json")
+        with open(src, "w", encoding="utf-8") as f:
+            json.dump([{"entity": "items", "id": "y", "subid": "", "field": "name",
+                         "translation": "Bogen"}], f)
+        rc, out = run(ci.fill, p, "de-DE", src)
+        assert rc == 0, out
+        with open(p, encoding="utf-8") as f:
+            rows = list(csv.DictReader(f))
+        assert rows[0]["de"] == "Bogen", rows
+        assert "de-DE" not in rows[0], rows[0]
+
+
+@case("discover says when the attribute list fails")
+def _():
+    def api(env, method, path, body=None, api_version="v2", **kw):
+        if "/attribute" in path:
+            return 503, "nope"
+        return 200, []
+    ci.api = api
+    rc, out = run(ci.discover, ENV)
+    assert "attribute" in out and "list failed" in out, out
+
+
+@case("ids in request paths are percent-encoded")
+def _():
+    assert ci._fmt("/admin/items/virtual_items/sku/{id}", id="a b") == \
+        "/admin/items/virtual_items/sku/a%20b"
+    assert "%C3%A9" in ci._fmt("/x/{id}", id="é")
+
+
+@case("a snapshot records the project id and does not land in the working directory root")
+def _():
+    with tempfile.TemporaryDirectory() as d:
+        csv_path = os.path.join(d, "work.csv")
+        with open(csv_path, "w"):
+            pass
+        out = REAL_SNAPSHOT(None, [{"entity": "items", "id": "a", "object": {}}],
+                           project_id="999999", csv_path=csv_path)
+        assert os.path.basename(os.path.dirname(out)) == "l10n-snapshots", out
+        assert os.path.dirname(os.path.dirname(out)) == d, out
+        with open(out, encoding="utf-8") as f:
+            saved = json.load(f)
+        assert saved["project_id"] == "999999", saved
+
+
+@case("restore refuses a snapshot from a different project")
+def _():
+    with tempfile.TemporaryDirectory() as d:
+        snap = os.path.join(d, "snap.json")
+        with open(snap, "w") as f:
+            json.dump({"taken": "t", "project_id": "111", "objects": [
+                {"entity": "items", "id": "a", "object": dict(ITEM)}]}, f)
+        rc, out = run(ci.restore, ENV, snap, write=False)
+        assert rc == 1, out
+        assert "111" in out and "999999" in out, out
+
+
+@case("restore refuses a snapshot that names no project")
+def _():
+    with tempfile.TemporaryDirectory() as d:
+        snap = os.path.join(d, "snap.json")
+        with open(snap, "w") as f:
+            json.dump({"taken": "t", "objects": [
+                {"entity": "items", "id": "a", "object": dict(ITEM)}]}, f)
+        rc, out = run(ci.restore, ENV, snap, write=False)
+        assert rc == 1, out
+        assert "project_id" in out, out
+
+
+@case("a reward-chain step edit is a conflict, not a silent overwrite")
+def _():
+    calls = {"n": 0}
+
+    def api(env, method, path, body=None, api_version="v2", **kw):
+        calls["n"] += 1
+        chain = json.loads(json.dumps(CHAIN))
+        if method == "GET" and calls["n"] > 1:
+            chain["steps"][0]["name"] = {"en": "Edited by a person"}
+        if method == "PUT":
+            return 204, {}
+        return 200, chain
+    ci.api = api
+    rc, out = imp([["reward_chain", "c1", "12", "step_name", "", "Step", "Schritt"]],
+                  write=True, snapshot=False, verify=False, backup=False)
+    assert rc == 1, out
+    assert "CONFLICT" in out, out
+    assert "step_name" in out, out
+
+
 def main():
     failed = []
     for name, fn in _results:
@@ -609,6 +769,11 @@ def main():
             print(f"  ERR  {name}\n         {type(e).__name__}: {str(e)[:400]}")
     print(f"\n{len(_results) - len(failed)}/{len(_results)} passed")
     return 1 if failed else 0
+
+
+class TestCatalogI18n(unittest.TestCase):
+    def test_suite(self):
+        self.assertEqual(main(), 0)
 
 
 if __name__ == "__main__":
