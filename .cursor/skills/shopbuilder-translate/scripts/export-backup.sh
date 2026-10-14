@@ -21,7 +21,7 @@ mkdir -p "$OUT"
   > "$OUT/structure.json"
 "$XS" shopbuilder get-localization --slug "$DOMAIN" > "$OUT/localization.json"
 
-python3 - "$OUT" <<'PY'
+python3 -X utf8 - "$OUT" <<'PY'
 import json, sys
 from pathlib import Path
 out = Path(sys.argv[1])

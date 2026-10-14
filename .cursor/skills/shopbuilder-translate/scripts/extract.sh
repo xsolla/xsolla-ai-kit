@@ -23,7 +23,7 @@ BASE="${3:-$(ls -d l10n/backup/*/ 2>/dev/null | sort | tail -1)}"
 OUT="l10n/work/$TGT"; mkdir -p "$OUT"
 echo "extract  baseline=$BASE  $SRC -> $TGT"
 
-BASE="$BASE" SRC="$SRC" TGT="$TGT" OUT="$OUT" python3 <<'PY'
+BASE="$BASE" SRC="$SRC" TGT="$TGT" OUT="$OUT" python3 -X utf8 <<'PY'
 import json, os, re, math, datetime
 
 BASE, SRC, TGT, OUT = os.environ['BASE'], os.environ['SRC'], os.environ['TGT'], os.environ['OUT']

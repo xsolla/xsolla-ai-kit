@@ -33,7 +33,7 @@ for b in cosmetics virtual_good rgba 'cdn\\.x' skin_ember 'L:'; do
 done
 
 echo "== ingest: publisher JSON/TXT fills translated.json =="
-python3 -c 'import json; json.dump({"block:blk_hero:values.title":"<h1>Aus Datei</h1>"}, open("pub.json","w"))'
+python3 -X utf8 -c 'import json; json.dump({"block:blk_hero:values.title":"<h1>Aus Datei</h1>"}, open("pub.json","w"))'
 bash "$HERE/ingest-user-translations.sh" de-DE pub.json >/dev/null
 chk "ingest filled the named unit" "jq -e '.units[]|select(.id==\"block:blk_hero:values.title\")|.target==\"<h1>Aus Datei</h1>\"' l10n/work/de-DE/translated.json"
 printf '%s\n' 'block:common:L:c1	<p>Aus TXT</p>' > pub.txt

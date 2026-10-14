@@ -17,7 +17,7 @@ BASE="$WORKDIR/translatable.json"
 OUT="$WORKDIR/translated.json"
 [ -f "$BASE" ] || { echo "missing $BASE — run extract.sh first" >&2; exit 1; }
 
-TGT="$TGT" BASE="$BASE" OUT="$OUT" SRCFILE="$SRCFILE" python3 <<'PY'
+TGT="$TGT" BASE="$BASE" OUT="$OUT" SRCFILE="$SRCFILE" python3 -X utf8 <<'PY'
 import json, os, re, copy
 
 base = json.load(open(os.environ["BASE"]))

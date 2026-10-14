@@ -38,7 +38,7 @@ WORK="l10n/work/$TGT/translated.json"
 SCRIPTDIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DOMAIN="$DOMAIN" TGT="$TGT" WORK="$WORK" COMMIT="$COMMIT" REPORT="$REPORT" \
 CONFIRM_OVERWRITES="$CONFIRM_OVERWRITES" \
-SCRIPTDIR="$SCRIPTDIR" python3 <<'PY'
+SCRIPTDIR="$SCRIPTDIR" python3 -X utf8 <<'PY'
 import json, os, re, subprocess, sys, collections, time
 
 DOMAIN, TGT, WORK = os.environ['DOMAIN'], os.environ['TGT'], os.environ['WORK']
@@ -89,7 +89,7 @@ def run(args, tag, sandbox=False):
     print("   ", " ".join(a if len(a) < 60 else a[:57] + "..." for a in args))
     if not COMMIT:
         return 0
-    r = subprocess.run(args, capture_output=True, text=True)
+    r = subprocess.run(args, capture_output=True, text=True, encoding='utf-8')
     save(f"{tag}.response.json", {"rc": r.returncode, "stdout": r.stdout, "stderr": r.stderr})
     print(f"    -> rc={r.returncode}" + ("" if r.returncode == 0 else f" {r.stderr[:160]}"))
     if r.returncode != 0:
@@ -220,7 +220,8 @@ def allowlist_allows():
             break
     if matched is None:
         block(f"merchant {merchant} project {project} is not on the approved-test-project allowlist.")
-    r = subprocess.run([XS, 'config', 'list', '--json'], capture_output=True, text=True)
+    r = subprocess.run([XS, 'config', 'list', '--json'], capture_output=True, text=True,
+                       encoding='utf-8')
     try:
         config = json.loads(r.stdout)
     except json.JSONDecodeError:
@@ -241,7 +242,7 @@ def domain_on_project():
     r = subprocess.run(
         [XS, 'shopbuilder', 'list-websites',
          '--merchant-id', M, '--project-id', P, '--json'],
-        capture_output=True, text=True)
+        capture_output=True, text=True, encoding='utf-8')
     if r.returncode != 0:
         detail = (r.stderr or r.stdout or 'list-websites failed').strip()
         block(f"could not list websites for the allowlisted project: {detail}")
@@ -347,7 +348,7 @@ site_languages = structure.get('languages') if isinstance(structure, dict) else 
 if COMMIT and isinstance(site_languages, list) and TGT in site_languages:
     print(f"    -> {TGT} is already enabled (pre-write export): add-language skipped")
 elif COMMIT:
-    r = subprocess.run(lang_args, capture_output=True, text=True)
+    r = subprocess.run(lang_args, capture_output=True, text=True, encoding='utf-8')
     save("add-language.response.json", {"rc": r.returncode, "stdout": r.stdout, "stderr": r.stderr})
     if r.returncode == 0:
         enabled_here = True
