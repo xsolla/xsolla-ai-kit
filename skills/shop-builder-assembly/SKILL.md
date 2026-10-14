@@ -100,6 +100,9 @@ If the CLI lacks an operation, stop it, record the gap, and file a CLI/API ticke
 - Run `xsolla shopbuilder verify-website --slug <slug>`.
 - Enable preview only if the confirmed plan includes it, then return the preview link.
 - Report skips, interventions, and gaps; state that the site is **not published**.
+- If the plan includes the Custom code (`html`) block, tell the user it is added empty
+  and hidden: they paste their code and make the block visible in the Site Builder
+  editor. Never write HTML, CSS, or JavaScript into it.
 
 ## Stop conditions
 

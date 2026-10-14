@@ -81,6 +81,19 @@ class ShopBriefTests(unittest.TestCase):
         ]
         self.assertEqual([], validator.validate(brief))
 
+    def test_custom_code_block_is_flagged_in_plan_warnings(self) -> None:
+        brief = copy.deepcopy(self.brief)
+        brief["content"]["page_overrides"] = [
+            {"name": "Home", "path": "/", "blocks": ["header", "html", "footer"]}
+        ]
+        self.assertEqual([], validator.validate(brief))
+        warning = (
+            "The Custom code block is added empty and hidden; paste your code and "
+            "make the block visible in the Site Builder editor."
+        )
+        self.assertIn(warning, render_plan.build_plan(brief)["warnings"])
+        self.assertNotIn(warning, render_plan.build_plan(self.brief)["warnings"])
+
     def test_unmapped_subscription_module_is_rejected(self) -> None:
         brief = copy.deepcopy(self.brief)
         brief["content"]["page_overrides"] = [
