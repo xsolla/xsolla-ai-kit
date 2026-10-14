@@ -49,7 +49,8 @@ Usage:
             (no --write = preview; --dry is accepted as an explicit alias for it)
   restore:  catalog_i18n.py restore <snapshot.json> [--write] [--env PATH]
 """
-import base64, csv, json, os, re, sys, time, urllib.request, urllib.error
+import argparse, base64, csv, json, os, re, sys, time, urllib.request, urllib.error
+from urllib.parse import quote
 
 API_BASE = "https://store.xsolla.com/api"
 # Catalog entities live on v2; LiveOps promotions on v3. Each entity says which via
@@ -188,13 +189,6 @@ LOCALE_5TO2 = {"en-US": "en", "ar-AE": "ar", "bg-BG": "bg", "my-MM": "my",
 META_COLS = ["entity", "id", "subid", "field", "context"]
 REQUIRED_COLS = ["entity", "id", "field"]
 
-# Flags that take a value, so an unknown flag cannot silently swallow a positional.
-VALUE_FLAGS = {"--env", "--entity", "--size", "--from", "--max-len", "--locale",
-               "--source", "--pace", "--snapshot", "--on-conflict", "--backup"}
-BARE_FLAGS = {"--missing", "--overwrite", "--dry", "--write", "--allow-field-loss",
-              "--no-snapshot", "--no-verify", "--no-backup", "--allow-unverified"}
-
-
 def _norm_locale(code):
     """Canonical 2-letter code, or None if it is not an Xsolla catalog locale."""
     c = (code or "").strip()
@@ -207,6 +201,15 @@ def _norm_locale(code):
         if k.lower() == lower:
             return v
     return lower if lower in CATALOG_LOCALES else None
+
+
+def _fmt(template, **parts):
+    """Fill a path template, percent-encoding every id.
+
+    A space or non-ASCII character in a SKU used to be interpolated raw, and the
+    request crashed or addressed the wrong object.
+    """
+    return template.format(**{k: quote(str(v), safe="") for k, v in parts.items()})
 
 
 def _unquote(v):
@@ -386,29 +389,73 @@ def _as_list(data):
 # comparing the count we got against the total the server reported turns a silent
 # cap into a loud warning instead of a quietly half-translated catalog.
 TOTAL_KEYS = ("total_items_count", "total_count", "total", "total_promotions_count")
+PAGE_SIZE = 50
+
+
+def _list_key(obj):
+    if not isinstance(obj, dict):
+        return None
+    for k in ("sku", "external_id", "reward_chain_id", "id"):
+        if obj.get(k) not in (None, ""):
+            return f"{k}:{obj[k]}"
+    return None
 
 
 def fetch_all(env, list_path, api_version="v2"):
-    out, offset, total = [], 0, None
+    """Page until the list is exhausted.
+
+    LiveOps lists often omit `has_more` and cap a page at 50, so stopping when
+    that flag is absent exports 50 of 120 and still reports success. Keep going
+    while a full page comes back. A later page that fails is an error, not a
+    successful partial export. A repeated page means the endpoint ignored
+    offset (groups do); stop, and if the server named a larger total, fail.
+    """
+    out, offset, total, seen = [], 0, None, set()
+    pages = 0
     while True:
-        st, data = api(env, "GET", f"{list_path}?limit=50&offset={offset}", api_version=api_version)
+        pages += 1
+        if pages > 200:
+            print(f"  ! ERROR: {list_path} still paging after {len(out)} object(s) — "
+                  f"the listing is INCOMPLETE.")
+            return out, 0
+        st, data = api(env, "GET", f"{list_path}?limit={PAGE_SIZE}&offset={offset}",
+                       api_version=api_version)
         if st != 200:
-            st, data = api(env, "GET", list_path, api_version=api_version)
-            return _as_list(data), st
+            if offset == 0:
+                st2, data2 = api(env, "GET", list_path, api_version=api_version)
+                if st2 == 200:
+                    return _as_list(data2), 200
+                return [], st
+            print(f"  ! ERROR: {list_path} page at offset {offset} failed HTTP {st} — "
+                  f"the listing is INCOMPLETE ({len(out)} object(s) fetched).")
+            return out, st
         if isinstance(data, dict):
             for k in TOTAL_KEYS:
                 if isinstance(data.get(k), int):
                     total = data[k]
                     break
         batch = _as_list(data)
-        out += batch
-        if not (isinstance(data, dict) and data.get("has_more")):
+        added = 0
+        for obj in batch:
+            key = _list_key(obj)
+            if key is not None:
+                if key in seen:
+                    continue
+                seen.add(key)
+            out.append(obj)
+            added += 1
+        if batch and added == 0:
             break
-        offset += len(batch) or 50
+        has_more = bool(isinstance(data, dict) and data.get("has_more"))
+        full = len(batch) >= PAGE_SIZE
+        if has_more or (full and (total is None or len(out) < total)):
+            offset += len(batch) or PAGE_SIZE
+            continue
+        break
     if total is not None and len(out) != total:
-        print(f"  ! WARNING: {list_path} returned {len(out)} object(s) but the server "
-              f"reports {total} — the listing is INCOMPLETE, so anything derived from "
-              f"it (coverage, the exported CSV) covers only part of the catalog.")
+        print(f"  ! ERROR: {list_path} returned {len(out)} object(s) but the server "
+              f"reports {total} — the listing is INCOMPLETE.")
+        return out, 0
     return out, 200
 
 
@@ -425,7 +472,7 @@ def _hydrate(env, e, objs):
         return objs
     out = []
     for o in objs:
-        st, full = api(env, "GET", e["path"].format(id=o.get(e["id"])),
+        st, full = api(env, "GET", _fmt(e["path"], id=o.get(e["id"])),
                        api_version=e.get("api", "v2"))
         out.append(full if st == 200 and isinstance(full, dict) else o)
     return out
@@ -469,7 +516,9 @@ def discover(env):
         cov = " · ".join(f"{loc} {filled[loc]}/{total}" for loc in sorted(filled)) or "no locales"
         print(f"  {name}: {len(objs)} object(s), {total} strings — {cov}")
     attrs, st = fetch_attributes(env)
-    if st == 200 and attrs:
+    if st != 200:
+        print(f"  attribute: (list failed HTTP {st})")
+    elif attrs:
         names = len(attrs)
         vals = sum(len(a.get("values") or []) for a in attrs)
         filled = {}
@@ -492,7 +541,7 @@ def fetch_attributes(env):
     full = []
     for a in lst:
         aid = a.get("external_id")
-        st2, d = api(env, "GET", ATTR["get"].format(id=aid))
+        st2, d = api(env, "GET", _fmt(ATTR["get"], id=aid))
         full.append(d if st2 == 200 else a)
     return full, 200
 
@@ -852,15 +901,38 @@ def _key(r):
     return (r["entity"], r["id"], r.get("subid", ""), r["field"])
 
 
+def _locale_column(cols, locale, what):
+    """Map a user locale onto a CSV column.
+
+    `de-DE` and `de` are the same language. Comparing them as different columns
+    made `batch --locale de-DE` treat every human `de` cell as empty, and the
+    following `fill --locale de` replaced those translations.
+    A locale with no column is an error, not "every row is pending".
+    """
+    raw = (locale or "").strip()
+    if not raw:
+        sys.exit(f"{what}: --locale required")
+    names = [(c or "").strip() for c in cols]
+    canon = _norm_locale(raw)
+    if canon and canon in names:
+        if canon != raw:
+            print(f"  {what}: locale '{raw}' is column '{canon}'")
+        return canon
+    if raw in names:
+        return raw
+    known = ", ".join(c for c in names if c not in META_COLS) or "(none)"
+    sys.exit(f"{what}: no column for locale '{raw}'. Language columns: {known}. "
+             f"A missing column is not an empty translation.")
+
+
 def batch(path, locale, size):
-    if not locale:
-        sys.exit("batch: --locale required")
     fieldnames, rows = _read_csv(path)
     src, _ = _cols(fieldnames, path)
+    col = _locale_column(fieldnames, locale, "batch")
     pending = [{"entity": r["entity"], "id": r["id"], "subid": r.get("subid", ""),
                 "field": r["field"], "context": r.get("context", ""), "source": r.get(src, "")}
-               for r in rows if not (r.get(locale) or "").strip()]
-    print(json.dumps({"locale": locale, "remaining": len(pending), "batch": pending[:size]},
+               for r in rows if not (r.get(col) or "").strip()]
+    print(json.dumps({"locale": col, "remaining": len(pending), "batch": pending[:size]},
                      ensure_ascii=False, indent=2))
 
 
@@ -929,8 +1001,6 @@ def _parse_fill(raw, locale):
 
 
 def fill(path, locale, source_arg):
-    if not locale:
-        sys.exit("fill: --locale required")
     if source_arg in (None, "-", ""):
         raw = sys.stdin.read()
     else:
@@ -943,24 +1013,19 @@ def fill(path, locale, source_arg):
 
     cols, rows = _read_csv(path)
     _cols(cols, path)
-    if locale not in [(c or "").strip() for c in cols]:
-        canon = _norm_locale(locale)
-        hint = (f" Did you mean '{canon}'? The CSV columns are 2-letter codes."
-                if canon and canon in cols else
-                f" Columns: {', '.join(c for c in cols if c not in META_COLS)}.")
-        sys.exit(f"fill: no '{locale}' column in {path}.{hint}")
+    col = _locale_column(cols, locale, "fill")
 
     used, n = set(), 0
     for r in rows:
         k = _key(r)
         v = entries.get(k)
         if v and v.strip():
-            r[locale] = v.strip(); used.add(k); n += 1
+            r[col] = v.strip(); used.add(k); n += 1
     with open(path, "w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=cols); w.writeheader(); w.writerows(rows)
 
     unmatched = [k for k in entries if k not in used]
-    print(f"filled {n} cell(s) for '{locale}' in {path}")
+    print(f"filled {n} cell(s) for '{col}' in {path}")
     for pr in problems:
         print(f"  ! unusable {pr}")
     if unmatched:
@@ -972,7 +1037,7 @@ def fill(path, locale, source_arg):
             print(f"      ... and {len(unmatched) - 10} more")
     if problems or unmatched:
         print(f"  -> the {n} cell(s) above ARE saved; re-send only the discarded ones "
-              f"(re-run `batch --locale {locale}` to get their exact addresses).")
+              f"(re-run `batch --locale {col}` to get their exact addresses).")
         return 1
     return 0
 
@@ -1482,7 +1547,7 @@ def plan_attribute(env, aid, rows, locales, overwrite):
     planned write. Same endpoint and same body shape as the write itself, so the
     rollback path is exercised by every attribute write test.
     """
-    st, attr = api(env, "GET", ATTR["get"].format(id=aid))
+    st, attr = api(env, "GET", _fmt(ATTR["get"], id=aid))
     if st != 200:
         print(f"  ! skip attribute/{aid}: GET {st}")
         # 4-tuple: the caller unpacks (puts, planned, failures, snaps). Returning three
@@ -1497,10 +1562,10 @@ def plan_attribute(env, aid, rows, locales, overwrite):
         if planned:
             planned_n += len(planned)
             print(f"  attribute/{aid} name: {', '.join(planned)}")
-            puts.append((f"attribute/{aid} name", ATTR["put_name"].format(id=aid),
+            puts.append((f"attribute/{aid} name", _fmt(ATTR["put_name"], id=aid),
                          {"external_id": aid, "name": obj}, len(planned)))
             snaps.append({"entity": "attribute", "id": aid, "subid": "", "field": "name",
-                          "path": ATTR["put_name"].format(id=aid),
+                          "path": _fmt(ATTR["put_name"], id=aid),
                           "body": {"external_id": aid, "name": dict(attr.get("name") or {})}})
     values = {v.get("external_id"): v.get("value") for v in (attr.get("values") or [])}
     for r in [r for r in rows if r["field"] == "value" and r.get("subid")]:
@@ -1510,10 +1575,10 @@ def plan_attribute(env, aid, rows, locales, overwrite):
             planned_n += len(planned)
             print(f"  attribute/{aid}/value/{vid}: {', '.join(planned)}")
             puts.append((f"attribute/{aid}/value/{vid}",
-                         ATTR["put_value"].format(id=aid, subid=vid),
+                         _fmt(ATTR["put_value"], id=aid, subid=vid),
                          {"external_id": vid, "value": obj}, len(planned)))
             snaps.append({"entity": "attribute", "id": aid, "subid": vid, "field": "value",
-                          "path": ATTR["put_value"].format(id=aid, subid=vid),
+                          "path": _fmt(ATTR["put_value"], id=aid, subid=vid),
                           "body": {"external_id": vid, "value": dict(values.get(vid) or {})}})
     return puts, planned_n, 0, snaps
 
@@ -1558,7 +1623,25 @@ def _merge_nested(e, obj, rws, locales, overwrite, missing=None):
     return (dict(obj, **{n["collection"]: members}) if changed else obj), planned
 
 
-def _snapshot(path, objects):
+def _artifact_path(explicit, csv_path, kind, filename):
+    """Where a snapshot or backup file goes.
+
+    An explicit path is used as given. Otherwise the file lands in
+    `l10n-snapshots/` or `l10n-backups/` beside the CSV, not as a loose file
+    in the developer's project root.
+    """
+    if explicit:
+        parent = os.path.dirname(os.path.abspath(explicit))
+        if parent:
+            os.makedirs(parent, exist_ok=True)
+        return explicit
+    base = os.path.dirname(os.path.abspath(csv_path)) if csv_path else os.getcwd()
+    folder = os.path.join(base, f"l10n-{kind}")
+    os.makedirs(folder, exist_ok=True)
+    return os.path.join(folder, filename)
+
+
+def _snapshot(path, objects, project_id=None, csv_path=None):
     """Write the pre-write state of every object about to be touched.
 
     A catalog PUT REPLACES the object, so there is no server-side undo: without
@@ -1570,8 +1653,11 @@ def _snapshot(path, objects):
     pre-write state back. Both shapes live in the same list, so a run that mixes
     attributes with flat entities rolls back in one `restore`.
     """
-    out = path or (f"catalog-snapshot-{time.strftime('%Y%m%d-%H%M%S')}.json")
-    payload = {"taken": time.strftime("%Y-%m-%dT%H:%M:%S"), "objects": objects}
+    out = _artifact_path(path, csv_path, "snapshots",
+                         f"catalog-snapshot-{time.strftime('%Y%m%d-%H%M%S')}.json")
+    payload = {"taken": time.strftime("%Y-%m-%dT%H:%M:%S"),
+               "project_id": None if project_id is None else str(project_id),
+               "objects": objects}
     try:
         with open(out, "w", encoding="utf-8") as f:
             json.dump(payload, f, ensure_ascii=False, indent=1)
@@ -1596,7 +1682,16 @@ def restore(env, path, write=False, pace=DEFAULT_PACE):
     objects = snap.get("objects") or []
     if not objects:
         sys.exit(f"restore: {path} contains no objects")
-    print(f"snapshot taken {snap.get('taken', '?')}, {len(objects)} object(s)")
+    snap_pid = snap.get("project_id")
+    cur = str(env["XSOLLA_PROJECT_ID"])
+    if not snap_pid:
+        sys.exit(f"restore: {path} has no project_id, so it cannot be tied to a catalog. "
+                 f"Refusing — a snapshot taken before this field existed could overwrite "
+                 f"matching items in project {cur}, prices included.")
+    if str(snap_pid) != cur:
+        sys.exit(f"restore: snapshot belongs to project {snap_pid}, but XSOLLA_PROJECT_ID "
+                 f"is {cur}. Refusing to restore into a different catalog.")
+    print(f"snapshot taken {snap.get('taken', '?')}, project {snap_pid}, {len(objects)} object(s)")
 
     written = failed = 0
     for i, rec in enumerate(objects):
@@ -1624,7 +1719,7 @@ def restore(env, path, write=False, pace=DEFAULT_PACE):
                 failed += 1
                 continue
             label = f"{ent}/{oid}"
-            put_path, body, api_v = (e["path"].format(id=oid), _put_body(e, obj, {}),
+            put_path, body, api_v = (_fmt(e["path"], id=oid), _put_body(e, obj, {}),
                                      e.get("api", "v2"))
             what = f"{len(obj)} field(s)"
         print(f"  {label}: restore {what}")
@@ -1661,7 +1756,7 @@ class _Backup:
     the run dies half way through.
     """
 
-    def __init__(self, path, locales, source="en"):
+    def __init__(self, path, locales, source="en", csv_path=None):
         # The source column is what makes this file re-importable rather than merely
         # readable: `_cols` requires a source plus at least one target, so a backup
         # written with target locales alone was refused by the very command it exists
@@ -1669,7 +1764,8 @@ class _Backup:
         # source-locale text, so the file round-trips through `import --overwrite`.
         self.source = source
         self.locales = [l for l in locales if l != source]
-        self.path = path or f"catalog-backup-{time.strftime('%Y%m%d-%H%M%S')}.csv"
+        self.path = _artifact_path(path, csv_path, "backups",
+                                   f"catalog-backup-{time.strftime('%Y%m%d-%H%M%S')}.csv")
         self.rows = 0
         try:
             self.fh = open(self.path, "w", newline="", encoding="utf-8")
@@ -1765,6 +1861,35 @@ def _verify_written(env, put_path, info):
                 problems.append(f"{n['collection']}[{sub}]: locale(s) did not land: "
                                 + ", ".join(sorted(bad)))
     return problems
+
+
+def _nested_drift(e, base, fresh):
+    """Step-name changes the top-level field compare cannot see.
+
+    A reward chain's step names ride inside the same PUT as the chain. Skipping
+    them let a concurrent edit to a step be overwritten without a conflict.
+    """
+    n = (e or {}).get("nested")
+    if not n:
+        return []
+    def names(obj):
+        out = {}
+        for m in (obj or {}).get(n["collection"]) or []:
+            if not isinstance(m, dict):
+                continue
+            field = m.get(n["field"])
+            out[str(m.get(n["id"]))] = field if isinstance(field, dict) else {}
+        return out
+    was, now = names(base), names(fresh)
+    lines = []
+    for i in sorted(set(was) | set(now), key=str):
+        if was.get(i) == now.get(i):
+            continue
+        locs = sorted(set(was.get(i) or {}) | set(now.get(i) or {}))
+        bits = [f"{l} {(was.get(i) or {}).get(l)!r} -> {(now.get(i) or {}).get(l)!r}"
+                for l in locs if (was.get(i) or {}).get(l) != (now.get(i) or {}).get(l)]
+        lines.append(f"{n['row_field']}[{i}]: " + ", ".join(bits))
+    return lines
 
 
 def import_csv(env, path, source=None, overwrite=False, write=False, allow_field_loss=False,
@@ -1869,7 +1994,7 @@ def import_csv(env, path, source=None, overwrite=False, write=False, allow_field
         e = ENTITIES.get(ent)
         if not e:
             print(f"  ! skip {ent}/{oid}: unknown entity"); failed += 1; continue
-        st, obj = api(env, "GET", e["path"].format(id=oid), api_version=e.get("api", "v2"))
+        st, obj = api(env, "GET", _fmt(e["path"], id=oid), api_version=e.get("api", "v2"))
         if st != 200:
             print(f"  ! skip {ent}/{oid}: GET {st}"); failed += 1; continue
         merged, planned = {}, []
@@ -1926,8 +2051,8 @@ def import_csv(env, path, source=None, overwrite=False, write=False, allow_field
             print(f"    !! this write would WIPE: {', '.join(lost)}")
         if e.get("write_unverified"):
             unverified.add(ent)
-        plans[(ent, oid)] = {"e": e, "rows": rws, "base": obj, "fields": list(merged)}
-        puts.append((f"{ent}/{oid}", e["path"].format(id=oid),
+        plans[(ent, oid)] = {"e": e, "rows": rws, "base": pre_nested, "fields": list(merged)}
+        puts.append((f"{ent}/{oid}", _fmt(e["path"], id=oid),
                      _put_body(e, obj, merged, allow_field_loss), len(planned), ent, oid))
 
     print()
@@ -1970,8 +2095,10 @@ def import_csv(env, path, source=None, overwrite=False, write=False, allow_field
                  f"overrides this; only use it with a snapshot and a rollback plan.")
 
     # --- pass 2: write. The snapshot lands first, or nothing is touched at all.
-    snap_file = _snapshot(snapshot_path, snap_objects) if (snapshot and snap_objects) else None
-    bak = _Backup(backup_path, locales, source=src) if backup else None
+    snap_file = (_snapshot(snapshot_path, snap_objects,
+                           project_id=env["XSOLLA_PROJECT_ID"], csv_path=path)
+                 if (snapshot and snap_objects) else None)
+    bak = _Backup(backup_path, locales, source=src, csv_path=path) if backup else None
     if bak:
         print(f"  current translations will be backed up to {bak.path} as each object "
               f"is read, before it is replaced")
@@ -1993,7 +2120,8 @@ def import_csv(env, path, source=None, overwrite=False, write=False, allow_field
                 print(f"  {label} -> re-read before write FAILED {st}; not written")
                 continue
             changed = [f for f in info["fields"] if info["base"].get(f) != fresh.get(f)]
-            if changed:
+            drift = _nested_drift(info["e"], info["base"], fresh)
+            if changed or drift:
                 detail = []
                 for f in changed:
                     was, now = info["base"].get(f) or {}, fresh.get(f) or {}
@@ -2001,6 +2129,7 @@ def import_csv(env, path, source=None, overwrite=False, write=False, allow_field
                     detail.append(f"{f}: " + ", ".join(
                         f"{l} {was.get(l)!r} -> {now.get(l)!r}" for l in locs
                         if was.get(l) != now.get(l)))
+                detail.extend(drift)
                 conflicts.append(f"{label}: {' | '.join(detail)}")
                 if on_conflict != "overwrite":
                     failed += 1
@@ -2084,127 +2213,129 @@ def import_csv(env, path, source=None, overwrite=False, write=False, allow_field
     return 1 if failed else 0
 
 
-# --- arg helpers ---------------------------------------------------------------
+# --- commands ------------------------------------------------------------------
 
-def _flag(argv, name, default=None):
-    if name not in argv:
-        return default
-    i = argv.index(name) + 1
-    if i >= len(argv):
-        sys.exit(f"{name} needs a value")
-    val = argv[i]
-    if val.startswith("--"):
-        sys.exit(f"{name} needs a value, got the flag '{val}' — a missing value used "
-                 f"to bind the next flag as the value and silently use the default.")
-    return val
+def _env_from(ns):
+    return load_env(["--env", ns.env] if ns.env else [])
 
 
-def _positional(rest):
-    """The single positional argument, skipping flags. An UNKNOWN flag is fatal:
-    treating it as bare would silently swallow its value as the positional (a
-    typo'd `--source fr` used to become the locale list)."""
-    val, i = None, 0
-    while i < len(rest):
-        a = rest[i]
-        if a in VALUE_FLAGS:
-            i += 2
-        elif a in BARE_FLAGS:
-            i += 1
-        elif a.startswith("--"):
-            sys.exit(f"unknown flag '{a}'. Known: "
-                     f"{', '.join(sorted(VALUE_FLAGS | BARE_FLAGS))}")
-        else:
-            val, i = a, i + 1
-    return val
+def _checked_locales(raw_locales, source):
+    bad = {l: _norm_locale(l) for l in list(raw_locales) + [source]}
+    unknown = [l for l, c in bad.items() if not c]
+    if unknown:
+        sys.exit(f"export: {', '.join(repr(u) for u in unknown)} is not an Xsolla "
+                 f"catalog locale — see references/supported-languages.md.")
+    locales = [bad[l] for l in raw_locales]
+    source = bad[source]
+    if source in locales:
+        sys.exit(f"export: source '{source}' is also a target locale — drop it "
+                 f"from the target list.")
+    return locales, source
 
 
-def _conflict_mode(argv):
-    mode = (_flag(argv, "--on-conflict", "skip") or "skip").strip()
-    if mode not in ("skip", "overwrite"):
-        sys.exit(f"--on-conflict: '{mode}' — expected 'skip' (default) or 'overwrite'")
-    return mode
+def _build_parser():
+    p = argparse.ArgumentParser(prog="catalog_i18n.py")
+    sub = p.add_subparsers(dest="cmd", required=True)
+
+    def env(sp):
+        sp.add_argument("--env", default=None, help="path to a .env file")
+
+    for name in ("discover", "langs"):
+        env(sub.add_parser(name))
+
+    ex = sub.add_parser("export")
+    env(ex)
+    ex.add_argument("csv")
+    ex.add_argument("locales", nargs="?", default="ru,de")
+    ex.add_argument("--source", default="en")
+    ex.add_argument("--entity", default="items")
+    ex.add_argument("--missing", action="store_true")
+
+    ba = sub.add_parser("batch")
+    ba.add_argument("csv")
+    ba.add_argument("--locale", required=True)
+    ba.add_argument("--size", type=int, default=50)
+
+    fi = sub.add_parser("fill")
+    fi.add_argument("csv")
+    fi.add_argument("--locale", required=True)
+    fi.add_argument("--from", dest="src", default=None)
+
+    me = sub.add_parser("merge")
+    me.add_argument("csv")
+    me.add_argument("--from", dest="src", required=True)
+    me.add_argument("--overwrite", action="store_true")
+
+    re_ = sub.add_parser("restore")
+    env(re_)
+    re_.add_argument("snapshot")
+    re_.add_argument("--write", action="store_true")
+    re_.add_argument("--pace", type=float, default=DEFAULT_PACE)
+
+    ch = sub.add_parser("check")
+    ch.add_argument("csv")
+    ch.add_argument("--max-len", default="")
+    ch.add_argument("--source", default=None)
+
+    im = sub.add_parser("import")
+    env(im)
+    im.add_argument("csv")
+    im.add_argument("--source", default=None)
+    im.add_argument("--overwrite", action="store_true")
+    im.add_argument("--write", action="store_true")
+    im.add_argument("--dry", action="store_true")
+    im.add_argument("--allow-field-loss", action="store_true")
+    im.add_argument("--pace", type=float, default=DEFAULT_PACE)
+    im.add_argument("--snapshot", default=None)
+    im.add_argument("--no-snapshot", action="store_true")
+    im.add_argument("--on-conflict", default="skip", choices=("skip", "overwrite"))
+    im.add_argument("--no-verify", action="store_true")
+    im.add_argument("--backup", default=None)
+    im.add_argument("--no-backup", action="store_true")
+    im.add_argument("--allow-unverified", action="store_true")
+    return p
 
 
-def _validate_flags(argv):
-    """Reject an unknown flag for EVERY command, not just the ones that parse a
-    positional. A silently ignored `--wirte` reads to the caller as a flag that was
-    honoured, which is the worst possible failure mode for a write guard."""
-    i = 0
-    while i < len(argv):
-        a = argv[i]
-        if a in VALUE_FLAGS:
-            i += 2
-            continue
-        if a.startswith("--") and a not in BARE_FLAGS:
-            sys.exit(f"unknown flag '{a}'. Known: "
-                     f"{', '.join(sorted(VALUE_FLAGS | BARE_FLAGS))}")
-        i += 1
-
-
-def main():
-    argv = sys.argv
-    if len(argv) < 2:
-        sys.exit(__doc__)
-    cmd = argv[1]
-    _validate_flags(argv[2:])
-    if cmd == "discover":
-        discover(load_env(argv)); return
-    if cmd == "langs":
-        langs(load_env(argv)); return
-    if len(argv) < 3:
-        sys.exit(__doc__)
-    target = argv[2]
-    if cmd == "export":
-        env = load_env(argv)
-        raw_locales = [l.strip() for l in (_positional(argv[3:]) or "ru,de").split(",") if l.strip()]
-        source = _flag(argv, "--source", "en").strip()
-        bad = {l: _norm_locale(l) for l in raw_locales + [source]}
-        unknown = [l for l, c in bad.items() if not c]
-        if unknown:
-            sys.exit(f"export: {', '.join(repr(u) for u in unknown)} is not an Xsolla "
-                     f"catalog locale — see references/supported-languages.md.")
-        locales = [bad[l] for l in raw_locales]
-        source = bad[source]
-        if source in locales:
-            sys.exit(f"export: source '{source}' is also a target locale — drop it "
-                     f"from the target list.")
-        entities = [e.strip() for e in (_flag(argv, "--entity", "items")).split(",") if e.strip()]
-        sys.exit(export(env, target, locales, entities, source=source,
-                        only_missing=("--missing" in argv)))
-    elif cmd == "batch":
-        batch(target, _flag(argv, "--locale"), int(_flag(argv, "--size", "50")))
-    elif cmd == "fill":
-        sys.exit(fill(target, _flag(argv, "--locale"), _flag(argv, "--from")))
-    elif cmd == "merge":
-        src = _flag(argv, "--from")
-        if not src:
-            sys.exit("merge: --from PATH required (the partner's CSV to load)")
-        sys.exit(merge(target, src, overwrite=("--overwrite" in argv)))
-    elif cmd == "restore":
-        sys.exit(restore(load_env(argv), target, write=("--write" in argv),
-                         pace=float(_flag(argv, "--pace", str(DEFAULT_PACE)))))
-    elif cmd == "check":
-        sys.exit(check(target, _flag(argv, "--max-len", ""),
-                       source=_flag(argv, "--source")))
-    elif cmd == "import":
-        if "--dry" in argv and "--write" in argv:
+def main(argv=None):
+    args = _build_parser().parse_args(argv)
+    if args.cmd == "discover":
+        discover(_env_from(args)); return
+    if args.cmd == "langs":
+        langs(_env_from(args)); return
+    if args.cmd == "export":
+        raw = [l.strip() for l in args.locales.split(",") if l.strip()]
+        source = (args.source or "en").strip()
+        locales, source = _checked_locales(raw, source)
+        entities = [e.strip() for e in args.entity.split(",") if e.strip()]
+        sys.exit(export(_env_from(args), args.csv, locales, entities, source=source,
+                        only_missing=args.missing))
+    if args.cmd == "batch":
+        batch(args.csv, args.locale, args.size); return
+    if args.cmd == "fill":
+        sys.exit(fill(args.csv, args.locale, args.src))
+    if args.cmd == "merge":
+        sys.exit(merge(args.csv, args.src, overwrite=args.overwrite))
+    if args.cmd == "restore":
+        sys.exit(restore(_env_from(args), args.snapshot, write=args.write, pace=args.pace))
+    if args.cmd == "check":
+        sys.exit(check(args.csv, args.max_len, source=args.source))
+    if args.cmd == "import":
+        if args.dry and args.write:
             sys.exit("import: --dry and --write are contradictory; pick one")
-        mode = _conflict_mode(argv)          # validate flags before touching credentials
-        sys.exit(import_csv(load_env(argv), target,
-                            source=_flag(argv, "--source"),
-                            overwrite=("--overwrite" in argv),
-                            write=("--write" in argv),
-                            allow_field_loss=("--allow-field-loss" in argv),
-                            pace=float(_flag(argv, "--pace", str(DEFAULT_PACE))),
-                            snapshot=("--no-snapshot" not in argv),
-                            snapshot_path=_flag(argv, "--snapshot"),
-                            on_conflict=mode,
-                            verify=("--no-verify" not in argv),
-                            backup=("--no-backup" not in argv),
-                            backup_path=_flag(argv, "--backup"),
-                            allow_unverified=("--allow-unverified" in argv)))
-    else:
-        sys.exit(f"unknown command: {cmd}\n{__doc__}")
+        sys.exit(import_csv(_env_from(args), args.csv,
+                            source=args.source,
+                            overwrite=args.overwrite,
+                            write=args.write,
+                            allow_field_loss=args.allow_field_loss,
+                            pace=args.pace,
+                            snapshot=not args.no_snapshot,
+                            snapshot_path=args.snapshot,
+                            on_conflict=args.on_conflict,
+                            verify=not args.no_verify,
+                            backup=not args.no_backup,
+                            backup_path=args.backup,
+                            allow_unverified=args.allow_unverified))
+    sys.exit(f"unknown command: {args.cmd}")
 
 
 if __name__ == "__main__":
