@@ -337,6 +337,48 @@ class ShopBriefTests(unittest.TestCase):
         self.assertEqual(2, run.call_count)
         sleep.assert_called_once_with(backup_shop.LOGIN_RETRY_DELAY_SECONDS)
 
+    def test_backup_run_json_does_not_log_in_before_commands(self) -> None:
+        succeeded = mock.Mock(returncode=0, stderr="", stdout='{"ok":true}')
+        with (
+            mock.patch.dict(
+                backup_shop.RUN_AUTH, {"logged_in": False, "context": BACKUP_CONTEXT}
+            ),
+            mock.patch.object(backup_shop.subprocess, "run", return_value=succeeded) as run,
+        ):
+            backup_shop.run_json("shopbuilder", "get-structure", "--slug", "shop")
+        run.assert_called_once()
+        self.assertEqual(
+            ["xsolla", "shopbuilder", "get-structure", "--slug", "shop", "--json"],
+            run.call_args.args[0],
+        )
+
+    def test_backup_aborts_when_login_changes_cli_context(self) -> None:
+        unauthenticated = mock.Mock(
+            returncode=1, stderr="authentication required for this command.", stdout=""
+        )
+        login_succeeded = mock.Mock(returncode=0, stderr="", stdout="Login successful")
+        drifted = mock.Mock(
+            returncode=0,
+            stderr="",
+            stdout=json.dumps({"ok": True, "data": {"merchant_id": 999, "project_id": 200}}),
+        )
+        with (
+            mock.patch.dict(
+                backup_shop.RUN_AUTH, {"logged_in": False, "context": BACKUP_CONTEXT}
+            ),
+            mock.patch.object(
+                backup_shop.subprocess,
+                "run",
+                side_effect=[unauthenticated, login_succeeded, drifted],
+            ),
+            mock.patch.object(backup_shop.time, "sleep"),
+        ):
+            with self.assertRaisesRegex(RuntimeError, r"merchant_id 100 -> 999"):
+                backup_shop.run_json("shopbuilder", "get-landing", "--slug", "shop")
+
+
+BACKUP_CONTEXT = {"merchant_id": 100, "project_id": 200, "sandbox": False}
+
 
 
 if __name__ == "__main__":
