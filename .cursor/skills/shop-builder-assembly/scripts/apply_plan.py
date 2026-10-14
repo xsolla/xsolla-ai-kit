@@ -14,7 +14,13 @@ import time
 import uuid
 from pathlib import Path
 
-from render_plan import build_plan, effective_module, structure_data, structure_hash
+from render_plan import (
+    build_plan,
+    effective_module,
+    page_path,
+    structure_data,
+    structure_hash,
+)
 from validate_shop_brief import VERIFIED_BLOCK_MODULES, load_brief, validate
 
 BACKUP_FILE_NAMES = {
@@ -123,7 +129,7 @@ def structure(slug: str) -> dict:
 
 def page_for_path(value: dict, path: str) -> dict | None:
     for page in value["pages"]:
-        if isinstance(page, dict) and page.get("path") == path:
+        if page_path(page) == path:
             return page
     return None
 
