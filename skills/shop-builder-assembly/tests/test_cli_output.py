@@ -88,6 +88,26 @@ class CliOutputDecodingTests(unittest.TestCase):
                 self.assertEqual("utf-8", run.call_args.kwargs["encoding"])
                 self.assertNotIn("errors", run.call_args.kwargs)
 
+    def test_login_output_stays_off_stdout(self) -> None:
+        self.fake_cli(stdout="Login successful! Credentials stored in OS keychain.\n")
+        for name in ("apply_plan", "backup_shop"):
+            with self.subTest(name):
+                driver = (
+                    "import sys, time; sys.path.insert(0, sys.argv[1]); "
+                    f"import {name}; time.sleep = lambda seconds: None; "
+                    f"{name}.refresh_supported_login()"
+                )
+                done = subprocess.run(
+                    [sys.executable, "-c", driver, str(ROOT / "scripts")],
+                    capture_output=True,
+                    text=True,
+                    encoding="utf-8",
+                    check=False,
+                )
+                self.assertEqual(0, done.returncode, done.stderr)
+                self.assertEqual("", done.stdout)
+                self.assertIn("Login successful", done.stderr)
+
     def test_cyrillic_and_accented_error_detail_decodes(self) -> None:
         self.fake_cli(stderr=f"landing {UNICODE_TEXT} was not found", exit_code=40)
         for name, script in SCRIPTS.items():

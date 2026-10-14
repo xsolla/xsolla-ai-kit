@@ -37,9 +37,11 @@ def refresh_supported_login() -> None:
     """Refresh the supported CLI login without handling or copying PA tokens."""
     for attempt in range(2):
         try:
+            # Login messages go to stderr so stdout stays the script's result.
             result = subprocess.run(
                 ["xsolla", "auth", "login"],
                 check=False,
+                stdout=sys.stderr,
                 timeout=LOGIN_TIMEOUT_SECONDS,
             )
         except subprocess.TimeoutExpired:

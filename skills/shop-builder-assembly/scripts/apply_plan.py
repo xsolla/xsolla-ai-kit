@@ -54,9 +54,11 @@ RUN_AUTH: dict = {"logged_in": False, "context": None}
 def refresh_supported_login() -> None:
     for attempt in range(2):
         try:
+            # Login messages go to stderr so stdout stays the JSON report.
             result = subprocess.run(
                 ["xsolla", "auth", "login"],
                 check=False,
+                stdout=sys.stderr,
                 timeout=LOGIN_TIMEOUT_SECONDS,
             )
         except subprocess.TimeoutExpired:
@@ -324,6 +326,7 @@ def reconcile_page(slug: str, landing_id: str, page_plan: dict) -> dict:
             "page_id": page_id,
             "blocks": current_modules,
             "removed_blocks": 0,
+            "hidden_custom_code": [],
         }
     if removals:
         removal_ids = {block["_id"] for block in removals}
