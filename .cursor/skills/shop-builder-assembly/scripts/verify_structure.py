@@ -8,7 +8,7 @@ import json
 import sys
 from pathlib import Path
 
-from render_plan import effective_module, structure_data
+from render_plan import effective_module, page_path, structure_data
 
 
 def load_object(path: Path, label: str) -> dict:
@@ -51,9 +51,9 @@ def verify(plan: dict, structure: object) -> dict:
     if not isinstance(current_pages, list):
         raise ValueError("structure.pages must be a list")
     by_path = {
-        page.get("path"): page
+        page_path(page): page
         for page in current_pages
-        if isinstance(page, dict) and isinstance(page.get("path"), str)
+        if page_path(page) is not None
     }
     if any(
         not isinstance(page, dict) or not isinstance(page.get("path"), str)

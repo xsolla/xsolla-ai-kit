@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import contextlib
 import copy
 import hashlib
 import importlib.util
+import io
 import json
 import subprocess
 import sys
@@ -865,6 +867,241 @@ class ApplyPlanTests(unittest.TestCase):
         result = verify_structure.verify(plan, structure)
         self.assertTrue(result["ok"])
         self.assertEqual(["sb-offer-chain"], result["pages"][0]["blocks"])
+
+
+EXAMPLE_BRIEF = ROOT / "examples" / "mobile-single-page.json"
+
+
+def object_path(path: str) -> dict:
+    return {"pathSegment": path, "type": "static"}
+
+
+class FakeShopBuilderCli:
+    """In-memory `xsolla` stand-in whose get-structure returns object page paths."""
+
+    def __init__(self, brief: dict) -> None:
+        self.project = brief["project"]
+        self.landing: dict | None = None
+        self.calls: list[tuple[str, ...]] = []
+
+    def __call__(self, *args: str) -> object:
+        self.calls.append(args)
+        if args == ("config", "list"):
+            return {
+                "ok": True,
+                "data": {
+                    "merchant_id": self.project["merchant_id"],
+                    "project_id": self.project["project_id"],
+                    "sandbox": self.project["environment"] == "sandbox",
+                },
+            }
+        command = args[1]
+        options = dict(zip(args[2::2], args[3::2]))
+        if command == "list-websites":
+            return {"ok": True, "data": [self.landing] if self.landing else []}
+        if command == "create-website":
+            self.landing = {
+                "_id": "landing-1",
+                "domain": options["--slug"],
+                "merchantId": self.project["merchant_id"],
+                "projectId": self.project["project_id"],
+                "type": None,
+                "published": None,
+                "languages": ["en-US"],
+                "pages": [],
+            }
+            return {"ok": True, "data": copy.deepcopy(self.landing)}
+        if command == "get-structure":
+            return {"ok": True, "data": copy.deepcopy(self.landing)}
+        if command == "set-landing-type":
+            self.landing["type"] = options["--type"]
+            return {"ok": True}
+        if command == "add-page":
+            if not isinstance(options["--path"], str):
+                raise AssertionError("add-page must receive a string path")
+            self.landing["pages"].append(
+                {
+                    "_id": f"page-{len(self.landing['pages']) + 1}",
+                    "name": options["--name"],
+                    "path": object_path(options["--path"]),
+                    "blocks": [
+                        {"_id": "scaffold-header", "module": "header"},
+                        {"_id": "scaffold-footer", "module": "footer"},
+                    ],
+                }
+            )
+            return {"ok": True}
+        if command == "add-language":
+            self.landing["languages"].append(options["--language"])
+            return {"ok": True}
+        raise AssertionError(f"unexpected CLI call: {args}")
+
+
+def reconciled_landing(landing: dict, plan: dict) -> dict:
+    """Return the landing as block reconciliation leaves it, keeping object paths."""
+    final = copy.deepcopy(landing)
+    page_ids = [target["page_id"] for target in plan["navigation"]]
+    for page_plan in plan["pages"]:
+        page = apply_plan.page_for_path(final, page_plan["path"])
+        blocks = []
+        for module in page_plan["blocks"]:
+            block = {"_id": f"{page['_id']}-{module}", "module": module}
+            if module == "header":
+                buttons = {f"nav-{index}": page_id for index, page_id in enumerate(page_ids)}
+                block["values"] = {
+                    "rightComponents": list(buttons),
+                    "components": {
+                        button: {
+                            "type": "button",
+                            "button": {"action": {"action": "page", "pageId": page_id}},
+                        }
+                        for button, page_id in buttons.items()
+                    },
+                }
+            if module == "newStore":
+                block["components"] = [
+                    {
+                        "enable": True,
+                        "section": {
+                            "item": {"group": section["external_id"], "type": section["type"]}
+                        },
+                        "card": {"selectedLayoutType": section["layout"]},
+                    }
+                    for section in plan["catalog_sections"]
+                ]
+            blocks.append(block)
+        page["blocks"] = blocks
+    return final
+
+
+class ObjectPagePathTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.brief = json.loads(EXAMPLE_BRIEF.read_text(encoding="utf-8"))
+
+    def run_apply(self, cli: FakeShopBuilderCli, confirmation_id: str) -> tuple[int, str, str]:
+        argv = ["apply_plan.py", str(EXAMPLE_BRIEF), "--confirmation-id", confirmation_id]
+        stdout, stderr = io.StringIO(), io.StringIO()
+        with (
+            mock.patch.object(sys, "argv", argv),
+            mock.patch.object(apply_plan, "run_preflight"),
+            mock.patch.object(apply_plan, "run_json", side_effect=cli),
+            contextlib.redirect_stdout(stdout),
+            contextlib.redirect_stderr(stderr),
+        ):
+            code = apply_plan.main()
+        return code, stdout.getvalue(), stderr.getvalue()
+
+    def test_page_path_accepts_string_and_object_shapes(self) -> None:
+        self.assertEqual("/", apply_plan.page_path({"path": "/"}))
+        self.assertEqual("/news", apply_plan.page_path({"path": object_path("/news")}))
+        for page in (
+            {"path": {"type": "static"}},
+            {"path": {"pathSegment": 1}},
+            {"path": None},
+            {},
+            "/",
+            None,
+        ):
+            with self.subTest(page=page):
+                self.assertIsNone(apply_plan.page_path(page))
+
+    def test_page_for_path_resolves_mixed_path_shapes(self) -> None:
+        structure = {
+            "pages": [
+                {"_id": "home", "path": "/"},
+                {"_id": "store", "path": object_path("/store")},
+                {"_id": "unreadable", "path": {"type": "static"}},
+            ]
+        }
+        self.assertEqual("home", apply_plan.page_for_path(structure, "/")["_id"])
+        self.assertEqual("store", apply_plan.page_for_path(structure, "/store")["_id"])
+        self.assertIsNone(apply_plan.page_for_path(structure, "/about"))
+
+    def test_plan_binds_object_paths_and_reports_string_extra_pages(self) -> None:
+        structure = {
+            "_id": "landing",
+            "pages": [
+                {"_id": "home", "path": object_path("/"), "blocks": []},
+                {"_id": "legacy", "name": "Legacy", "path": "/legacy", "blocks": []},
+            ],
+        }
+        plan = apply_plan.build_plan(self.brief, structure)
+        self.assertEqual("home", plan["pages"][0]["page_id"])
+        self.assertEqual(
+            [{"page_id": "legacy", "name": "Legacy", "path": "/legacy"}],
+            plan["current_state"]["extra_pages"],
+        )
+
+    def test_plan_rejects_the_same_path_in_both_shapes(self) -> None:
+        structure = {
+            "pages": [
+                {"_id": "one", "path": "/", "blocks": []},
+                {"_id": "two", "path": object_path("/"), "blocks": []},
+            ]
+        }
+        with self.assertRaisesRegex(ValueError, "duplicate path /"):
+            apply_plan.build_plan(self.brief, structure)
+
+    def test_plan_rejects_a_page_without_a_readable_path(self) -> None:
+        structure = {"pages": [{"_id": "one", "path": {"type": "static"}, "blocks": []}]}
+        with self.assertRaisesRegex(ValueError, "object with a path"):
+            apply_plan.build_plan(self.brief, structure)
+
+    def test_new_landing_resolves_object_path_after_add_page(self) -> None:
+        cli = FakeShopBuilderCli(self.brief)
+        code, stdout, stderr = self.run_apply(
+            cli, apply_plan.build_plan(self.brief)["confirmation_id"]
+        )
+        self.assertEqual(0, code, stderr)
+        report = json.loads(stdout)
+        self.assertEqual("bootstrap-complete", report["status"])
+        self.assertEqual(["/"], report["created_pages"])
+        self.assertEqual(object_path("/"), cli.landing["pages"][0]["path"])
+        add_page = next(call for call in cli.calls if call[1] == "add-page")
+        self.assertEqual("/", add_page[add_page.index("--path") + 1])
+
+    def test_rerun_on_object_path_landing_passes_plan_and_verify(self) -> None:
+        cli = FakeShopBuilderCli(self.brief)
+        code, _, stderr = self.run_apply(
+            cli, apply_plan.build_plan(self.brief)["confirmation_id"]
+        )
+        self.assertEqual(0, code, stderr)
+
+        plan = apply_plan.build_plan(self.brief, {"ok": True, "data": cli.landing})
+        self.assertEqual("page-1", plan["pages"][0]["page_id"])
+        self.assertEqual([], plan["current_state"]["extra_pages"])
+
+        final = reconciled_landing(cli.landing, plan)
+        self.assertEqual(object_path("/"), final["pages"][0]["path"])
+        result = verify_structure.verify(plan, {"ok": True, "data": final})
+        self.assertTrue(result["ok"], result["errors"])
+
+    def test_structure_verifier_reports_missing_object_path_page(self) -> None:
+        plan = {
+            "target": {"merchant_id": 100, "project_id": 200, "slug": "shop"},
+            "locales": ["en-US"],
+            "pages": [
+                {"path": "/", "blocks": ["header"]},
+                {"path": "/store", "blocks": ["header"]},
+            ],
+        }
+        structure = {
+            "merchantId": 100,
+            "projectId": 200,
+            "domain": "shop",
+            "type": "store",
+            "published": None,
+            "languages": ["en-US"],
+            "pages": [
+                {"path": object_path("/"), "blocks": [{"_id": "h", "module": "header"}]},
+                {"path": object_path("/about"), "blocks": [{"_id": "a", "module": "header"}]},
+            ],
+        }
+        result = verify_structure.verify(plan, structure)
+        self.assertIn(
+            "page paths differ: expected ['/', '/store'], got ['/', '/about']",
+            result["errors"],
+        )
 
 
 if __name__ == "__main__":
