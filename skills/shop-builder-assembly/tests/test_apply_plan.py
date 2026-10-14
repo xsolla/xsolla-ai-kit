@@ -1210,7 +1210,9 @@ class ObjectPagePathTests(unittest.TestCase):
 
 
 class CustomCodeReportTests(unittest.TestCase):
-    def apply_to_existing_site(self, blocks: list[str]) -> dict:
+    def apply_to_existing_site(
+        self, blocks: list[str], hidden_by_run: list[str] | None = None
+    ) -> dict:
         brief = json.loads(EXAMPLE_BRIEF.read_text(encoding="utf-8"))
         brief["content"]["page_overrides"] = [
             {"name": "Home", "path": "/", "blocks": blocks}
@@ -1229,6 +1231,7 @@ class CustomCodeReportTests(unittest.TestCase):
                 "page_id": page["page_id"],
                 "blocks": page["blocks"],
                 "removed_blocks": 0,
+                "hidden_custom_code": hidden_by_run or [],
             }
 
         stdout, stderr = io.StringIO(), io.StringIO()
@@ -1261,7 +1264,9 @@ class CustomCodeReportTests(unittest.TestCase):
         return json.loads(stdout.getvalue())
 
     def test_final_report_tells_the_user_to_fill_custom_code(self) -> None:
-        report = self.apply_to_existing_site(["header", "html", "footer"])
+        report = self.apply_to_existing_site(
+            ["header", "html", "footer"], hidden_by_run=["new-html"]
+        )
         self.assertEqual("implemented-phases-applied", report["status"])
         self.assertEqual(
             [
@@ -1271,9 +1276,107 @@ class CustomCodeReportTests(unittest.TestCase):
             report["warnings"],
         )
 
+    def test_final_report_has_no_custom_code_line_for_a_block_already_there(self) -> None:
+        report = self.apply_to_existing_site(["header", "html", "footer"], hidden_by_run=[])
+        self.assertEqual([], report["warnings"])
+
     def test_final_report_has_no_custom_code_line_without_the_block(self) -> None:
         report = self.apply_to_existing_site(["header", "footer"])
         self.assertEqual([], report["warnings"])
+
+
+class FakePage:
+    """One landing page whose blocks change with add-block, move-block and update-block."""
+
+    def __init__(self, blocks: list[dict], apply_hidden: bool = True) -> None:
+        self.blocks = blocks
+        self.apply_hidden = apply_hidden
+        self.updates: list[dict] = []
+
+    def structure(self, slug: str) -> dict:
+        return {
+            "pages": [
+                {"_id": "home", "path": object_path("/"), "blocks": copy.deepcopy(self.blocks)}
+            ]
+        }
+
+    def run_json(self, *args: str) -> object:
+        options = dict(zip(args[2::2], args[3::2]))
+        if args[1] == "add-block":
+            module = options["--block"]
+            self.blocks.append({"_id": f"new-{module}", "module": module, "hidden": False})
+        elif args[1] == "move-block":
+            block = self.blocks.pop(int(options["--source"]))
+            self.blocks.insert(int(options["--destination"]), block)
+        elif args[1] == "update-block":
+            payload = json.loads(options["--data"])
+            self.updates.append(payload)
+            for change in payload.values():
+                for block in self.blocks:
+                    if block["_id"] == change["id"] and self.apply_hidden:
+                        for patch in change["patches"]:
+                            block[patch["path"][0]] = patch["value"]
+        else:
+            raise AssertionError(f"unexpected CLI call: {args}")
+        return {"ok": True}
+
+    def reconcile(self, desired: list[str]) -> dict:
+        plan = {"name": "Home", "path": "/", "blocks": desired, "removals": []}
+        with (
+            mock.patch.object(apply_plan, "structure", side_effect=self.structure),
+            mock.patch.object(apply_plan, "run_json", side_effect=self.run_json),
+        ):
+            return apply_plan.reconcile_page("shop", "landing", plan)
+
+
+class CustomCodeHidingTests(unittest.TestCase):
+    def test_reconciliation_hides_the_custom_code_block_it_adds(self) -> None:
+        page = FakePage(
+            [
+                {"_id": "header", "module": "header", "hidden": False},
+                {"_id": "footer", "module": "footer", "hidden": False},
+            ]
+        )
+        result = page.reconcile(["header", "html", "footer"])
+        self.assertEqual(["new-html"], result["hidden_custom_code"])
+        self.assertEqual(["header", "html", "footer"], result["blocks"])
+        self.assertEqual(
+            [
+                {
+                    "hideCustomCode": {
+                        "type": "block",
+                        "id": "new-html",
+                        "patches": [{"op": "replace", "path": ["hidden"], "value": True}],
+                    }
+                }
+            ],
+            page.updates,
+        )
+        self.assertTrue(next(b for b in page.blocks if b["_id"] == "new-html")["hidden"])
+
+    def test_reconciliation_leaves_an_existing_custom_code_block_as_set(self) -> None:
+        page = FakePage(
+            [
+                {"_id": "header", "module": "header", "hidden": False},
+                {"_id": "user-code", "module": "html", "hidden": False},
+                {"_id": "footer", "module": "footer", "hidden": False},
+            ]
+        )
+        result = page.reconcile(["header", "html", "faq", "footer"])
+        self.assertEqual([], result["hidden_custom_code"])
+        self.assertEqual([], page.updates)
+        self.assertFalse(next(b for b in page.blocks if b["_id"] == "user-code")["hidden"])
+
+    def test_reconciliation_stops_when_the_new_custom_code_block_stays_visible(self) -> None:
+        page = FakePage(
+            [
+                {"_id": "header", "module": "header", "hidden": False},
+                {"_id": "footer", "module": "footer", "hidden": False},
+            ],
+            apply_hidden=False,
+        )
+        with self.assertRaisesRegex(RuntimeError, "could not hide the new Custom code block"):
+            page.reconcile(["header", "html", "footer"])
 
 
 if __name__ == "__main__":

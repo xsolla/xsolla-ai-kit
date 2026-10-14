@@ -92,6 +92,21 @@ class ShopBriefTests(unittest.TestCase):
         self.assertIn(warning, render_plan.build_plan(brief)["warnings"])
         self.assertNotIn(warning, render_plan.build_plan(self.brief)["warnings"])
 
+        already_there = {
+            "pages": [
+                {
+                    "_id": "home",
+                    "path": "/",
+                    "blocks": [
+                        {"_id": "header", "module": "header"},
+                        {"_id": "user-code", "module": "html"},
+                        {"_id": "footer", "module": "footer"},
+                    ],
+                }
+            ]
+        }
+        self.assertNotIn(warning, render_plan.build_plan(brief, already_there)["warnings"])
+
     def test_unmapped_subscription_module_is_rejected(self) -> None:
         brief = copy.deepcopy(self.brief)
         brief["content"]["page_overrides"] = [

@@ -15,8 +15,8 @@ import uuid
 from pathlib import Path
 
 from render_plan import (
+    CUSTOM_CODE_WARNING,
     build_plan,
-    custom_code_warnings,
     effective_module,
     page_path,
     structure_data,
@@ -360,6 +360,7 @@ def reconcile_page(slug: str, landing_id: str, page_plan: dict) -> dict:
             f"page disappeared during reconciliation: {page_plan['path']}"
         )
     existing = [effective_module(block) for block in page.get("blocks", [])]
+    known_block_ids = {block.get("_id") for block in page.get("blocks", [])}
     for module in desired:
         if module not in existing:
             run_json(
@@ -373,6 +374,11 @@ def reconcile_page(slug: str, landing_id: str, page_plan: dict) -> dict:
                 module,
             )
             existing.append(module)
+    hidden_custom_code = (
+        hide_added_custom_code(slug, landing_id, page_plan["path"], known_block_ids)
+        if "html" in desired
+        else []
+    )
 
     for destination, module in enumerate(desired):
         page = page_for_path(structure(slug), page_plan["path"])
@@ -402,12 +408,64 @@ def reconcile_page(slug: str, landing_id: str, page_plan: dict) -> dict:
         raise RuntimeError(
             f"block reconciliation failed for {page_plan['path']}: {final_modules}"
         )
+    still_visible = [
+        block.get("_id")
+        for block in final_page.get("blocks", [])
+        if block.get("_id") in hidden_custom_code and block.get("hidden") is not True
+    ]
+    if still_visible:
+        raise RuntimeError(
+            f"could not hide the new Custom code block on {page_plan['path']}: "
+            + ", ".join(still_visible)
+        )
     return {
         "path": page_plan["path"],
         "page_id": page_id,
         "blocks": final_modules,
         "removed_blocks": len(removals),
+        "hidden_custom_code": hidden_custom_code,
     }
+
+
+def hide_added_custom_code(
+    slug: str, landing_id: str, path: str, known_block_ids: set
+) -> list[str]:
+    """Hide each Custom code block this run added; `add-block` creates it visible.
+
+    Blocks that were on the page before this run are left as the user set them.
+    """
+    page = page_for_path(structure(slug), path)
+    if page is None:
+        raise RuntimeError(f"page disappeared during reconciliation: {path}")
+    hidden: list[str] = []
+    for block in page.get("blocks", []):
+        block_id = block.get("_id")
+        if effective_module(block) != "html" or block_id in known_block_ids:
+            continue
+        if not isinstance(block_id, str):
+            raise RuntimeError(f"new Custom code block on {path} has no _id")
+        if block.get("hidden") is not True:
+            run_json(
+                "shopbuilder",
+                "update-block",
+                "--landing-id",
+                landing_id,
+                "--data",
+                json.dumps(
+                    {
+                        "hideCustomCode": {
+                            "type": "block",
+                            "id": block_id,
+                            "patches": [
+                                {"op": "replace", "path": ["hidden"], "value": True}
+                            ],
+                        }
+                    },
+                    separators=(",", ":"),
+                ),
+            )
+        hidden.append(block_id)
+    return hidden
 
 
 def add_missing_pages(slug: str, page_plans: list[dict]) -> list[str]:
@@ -1008,7 +1066,11 @@ def main() -> int:
                     "locales": locales,
                     "completed_phases": plan["implemented_phases"],
                     "pending_phases": plan["unsupported_phases"],
-                    "warnings": custom_code_warnings(plan["pages"]),
+                    "warnings": (
+                        [CUSTOM_CODE_WARNING]
+                        if any(page.get("hidden_custom_code") for page in pages)
+                        else []
+                    ),
                     "published": False,
                 },
                 indent=2,
