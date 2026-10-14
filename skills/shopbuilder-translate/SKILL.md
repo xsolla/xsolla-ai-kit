@@ -37,7 +37,7 @@ scripts/export-backup.sh <domain> l10n/backup/<timestamp>
 scripts/extract.sh en-US ja-JP
 scripts/apply.sh <domain> ja-JP                 # dry run, prints the target line
 # explicit yes on the target and the copy, then: enable the language and write
-scripts/apply.sh <domain> ja-JP --commit --confirm-overwrites
+scripts/apply.sh <domain> ja-JP --commit
 scripts/verify.sh <domain> ja-JP
 ```
 
@@ -47,7 +47,7 @@ The dry run prints `Target: merchant <id>, project <id>, site <slug>, language <
 
 `--commit` prints the same target line, then enables the language with `add-language`, then writes the copy. It runs `add-language` only after the merchant and project check, the `list-websites` check and the pre-write export. If the pre-write export already lists the locale, `add-language` is skipped. A 400 with the message "language is taken" is also success. Any other failure stops the run before any copy is written. If the copy write fails after this run enabled the language, the run prints the `delete-language` command for it. Show it to the user. This skill does not run it.
 
-`--commit` blocks when it would replace an existing translation until `--confirm-overwrites`. `--commit` exports the site again into `l10n/pre-write/` and blocks if the text about to be written changed since extract. A write that returns non-zero fails the run.
+`--commit` blocks when it would replace an existing translation, and prints each existing and new value. Run `--commit` without `--confirm-overwrites` first. If it blocks with that overwrite list, show the list in the chat and wait. Pass `--confirm-overwrites` only after the user says yes to that list. `--commit` exports the site again into `l10n/pre-write/` and blocks if the text about to be written changed since extract. A write that returns non-zero fails the run.
 
 The shop opens in the first language of the site language list. This skill does not reorder that list and does not call `delete-language`. If the partner wants the shop to open in the new language, they reorder the list in Publisher Account.
 

@@ -81,7 +81,6 @@ The model writes `l10n/work/<target>/translated.json`. No machine-translation se
 ```
 scripts/apply.sh <domain> <target-locale>
 scripts/apply.sh <domain> <target-locale> --commit
-scripts/apply.sh <domain> <target-locale> --commit --confirm-overwrites
 ```
 
 Dry run is the default and sends nothing. Before its summary it prints the target line:
@@ -92,7 +91,7 @@ Target: merchant <id>, project <id>, site <slug>, language <locale>
 
 If an id is unset, the line says so. Show the target line in the chat with the dry run and wait for an explicit yes before `--commit`. The yes covers the target and the copy. If the user corrects the target, stop. Ask them to fix the CLI config and `XSOLLA_MERCHANT_ID` / `XSOLLA_PROJECT_ID`, then rerun the dry run.
 
-If any unit already has a different target-locale value, `--commit` alone blocks and prints each pair. `--commit --confirm-overwrites` proceeds only after a human has read that list.
+If any unit already has a different target-locale value, `--commit` blocks and prints each pair. Run `--commit` without `--confirm-overwrites` first. If it blocks with that overwrite list, show the list in the chat and wait. Rerun with `--commit --confirm-overwrites` only after the user says yes to that list.
 
 `--commit` prints the same target line. It checks that `XSOLLA_MERCHANT_ID` and `XSOLLA_PROJECT_ID` are positive integers equal to the CLI's configured merchant and project, then lists that project's websites with `list-websites` (merchant and project ids, no `--all`). If the slug is not in that list, nothing is written. It then runs `export-backup.sh` again into `l10n/pre-write/<timestamp>/`. If the live text for a string about to be written changed since extract, nothing is written. A write that returns non-zero fails the run. `get-structure` is not the check that the domain belongs to the project.
 
