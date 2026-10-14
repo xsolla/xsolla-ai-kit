@@ -42,6 +42,19 @@ def load_verify_structure():
 
 verify_structure = load_verify_structure()
 
+APPROVED_CONTEXT = {"merchant_id": 100, "project_id": 200, "sandbox": False}
+
+
+def fresh_run_auth(logged_in: bool = False) -> dict:
+    return {"logged_in": logged_in, "context": dict(APPROVED_CONTEXT)}
+
+
+def config_result(**overrides: object) -> mock.Mock:
+    config = {"merchant_id": 100, "project_id": 200, **overrides}
+    return mock.Mock(
+        returncode=0, stderr="", stdout=json.dumps({"ok": True, "data": config})
+    )
+
 
 class ApplyPlanTests(unittest.TestCase):
     def test_backup_structure_unwraps_cli_envelope(self) -> None:
@@ -377,77 +390,158 @@ class ApplyPlanTests(unittest.TestCase):
 
     def test_run_json_does_not_retry_ambiguous_operation_failure(self) -> None:
         failed = mock.Mock(returncode=1, stderr="request failed (HTTP 429)", stdout="")
-        login_succeeded = mock.Mock(returncode=0, stderr="", stdout="Login successful")
         with (
-            mock.patch.object(
-                apply_plan.subprocess,
-                "run",
-                side_effect=[login_succeeded, failed],
-            ) as run,
+            mock.patch.dict(apply_plan.RUN_AUTH, fresh_run_auth()),
+            mock.patch.object(apply_plan.subprocess, "run", side_effect=[failed]) as run,
             mock.patch.object(apply_plan.time, "sleep") as sleep,
         ):
             with self.assertRaisesRegex(RuntimeError, "HTTP 429"):
                 apply_plan.run_json("shopbuilder", "update-block")
-        self.assertEqual(2, run.call_count)
-        sleep.assert_called_once_with(apply_plan.LOGIN_SETTLE_SECONDS)
+        run.assert_called_once()
+        sleep.assert_not_called()
 
-    def test_run_json_refreshes_login_before_shopbuilder_command(self) -> None:
-        login_succeeded = mock.Mock(returncode=0, stderr="", stdout="Login successful")
-        operation_succeeded = mock.Mock(
-            returncode=0, stderr="", stdout='{"ok":true}'
-        )
+    def test_run_json_does_not_log_in_when_commands_succeed(self) -> None:
+        succeeded = mock.Mock(returncode=0, stderr="", stdout='{"ok":true}')
         with (
+            mock.patch.dict(apply_plan.RUN_AUTH, fresh_run_auth()),
             mock.patch.object(
-                apply_plan.subprocess,
-                "run",
-                side_effect=[login_succeeded, operation_succeeded],
+                apply_plan.subprocess, "run", side_effect=[succeeded, succeeded]
             ) as run,
             mock.patch.object(apply_plan.time, "sleep") as sleep,
         ):
-            self.assertEqual(
-                {"ok": True}, apply_plan.run_json("shopbuilder", "get-structure")
-            )
+            apply_plan.run_json("shopbuilder", "list-websites")
+            apply_plan.run_json("shopbuilder", "get-structure", "--slug", "shop")
+            self.assertFalse(apply_plan.RUN_AUTH["logged_in"])
         self.assertEqual(
-            ["xsolla", "auth", "login"], run.call_args_list[0].args[0]
+            [
+                ["xsolla", "shopbuilder", "list-websites", "--json"],
+                ["xsolla", "shopbuilder", "get-structure", "--slug", "shop", "--json"],
+            ],
+            [call.args[0] for call in run.call_args_list],
         )
-        sleep.assert_called_once_with(apply_plan.LOGIN_SETTLE_SECONDS)
+        sleep.assert_not_called()
 
-    def test_run_json_refreshes_supported_login_for_missing_cookie(self) -> None:
+    def test_run_json_logs_in_once_and_retries_after_auth_failure(self) -> None:
+        failures = {
+            "missing bootstrap cookie": (
+                1,
+                "auto-bootstrapping publisher session from stored token: publisher "
+                "session bootstrap did not yield a pa-v4-token or ps2[user_session] cookie",
+            ),
+            "no usable token": (1, "authentication required for this command."),
+            "API 401": (10, '{"ok": false, "error": {"code": "http_401"}}'),
+        }
+        login_succeeded = mock.Mock(returncode=0, stderr="", stdout="Login successful")
+        succeeded = mock.Mock(returncode=0, stderr="", stdout='{"ok":true}')
+        for name, (returncode, stderr) in failures.items():
+            failed = mock.Mock(returncode=returncode, stderr=stderr, stdout="")
+            with self.subTest(name):
+                with (
+                    mock.patch.dict(apply_plan.RUN_AUTH, fresh_run_auth()),
+                    mock.patch.object(
+                        apply_plan.subprocess,
+                        "run",
+                        side_effect=[failed, login_succeeded, config_result(), succeeded],
+                    ) as run,
+                    mock.patch.object(apply_plan.time, "sleep") as sleep,
+                ):
+                    self.assertEqual(
+                        {"ok": True}, apply_plan.run_json("shopbuilder", "get-structure")
+                    )
+                    self.assertTrue(apply_plan.RUN_AUTH["logged_in"])
+                self.assertEqual(
+                    [
+                        ["xsolla", "shopbuilder", "get-structure", "--json"],
+                        ["xsolla", "auth", "login"],
+                        ["xsolla", "config", "list", "--json"],
+                        ["xsolla", "shopbuilder", "get-structure", "--json"],
+                    ],
+                    [call.args[0] for call in run.call_args_list],
+                )
+                sleep.assert_called_once_with(apply_plan.LOGIN_SETTLE_SECONDS)
+
+    def test_run_json_never_logs_in_twice_in_one_run(self) -> None:
         missing_cookie = mock.Mock(
             returncode=1,
             stderr="publisher session bootstrap did not yield a pa-v4-token cookie",
             stdout="",
         )
         login_succeeded = mock.Mock(returncode=0, stderr="", stdout="Login successful")
-        operation_succeeded = mock.Mock(
-            returncode=0, stderr="", stdout='{"ok":true}'
-        )
         with (
+            mock.patch.dict(apply_plan.RUN_AUTH, fresh_run_auth()),
             mock.patch.object(
                 apply_plan.subprocess,
                 "run",
-                side_effect=[
-                    login_succeeded,
-                    missing_cookie,
-                    login_succeeded,
-                    operation_succeeded,
-                ],
+                side_effect=[missing_cookie, login_succeeded, config_result(), missing_cookie],
             ) as run,
-            mock.patch.object(apply_plan.time, "sleep") as sleep,
+            mock.patch.object(apply_plan.time, "sleep"),
         ):
-            self.assertEqual(
-                {"ok": True}, apply_plan.run_json("shopbuilder", "get-structure")
-            )
-        self.assertEqual(4, run.call_count)
+            with self.assertRaisesRegex(
+                RuntimeError, "still fails after this run's one `xsolla auth login`"
+            ):
+                apply_plan.run_json("shopbuilder", "get-structure")
         self.assertEqual(
-            ["xsolla", "auth", "login"], run.call_args_list[2].args[0]
+            1,
+            [call.args[0] for call in run.call_args_list].count(["xsolla", "auth", "login"]),
         )
-        self.assertEqual(
-            [
-                mock.call(apply_plan.LOGIN_SETTLE_SECONDS),
-                mock.call(apply_plan.LOGIN_SETTLE_SECONDS),
-            ],
-            sleep.call_args_list,
+
+        with (
+            mock.patch.dict(apply_plan.RUN_AUTH, fresh_run_auth(logged_in=True)),
+            mock.patch.object(
+                apply_plan.subprocess, "run", side_effect=[missing_cookie]
+            ) as run,
+        ):
+            with self.assertRaisesRegex(RuntimeError, "still fails"):
+                apply_plan.run_json("shopbuilder", "list-websites")
+        run.assert_called_once()
+
+    def test_run_json_aborts_when_login_changes_cli_context(self) -> None:
+        missing_cookie = mock.Mock(
+            returncode=1,
+            stderr="publisher session bootstrap did not yield a pa-v4-token cookie",
+            stdout="",
+        )
+        login_succeeded = mock.Mock(returncode=0, stderr="", stdout="Login successful")
+        for drift, message in (
+            ({"project_id": 300}, r"\(project_id 200 -> 300\)"),
+            ({"merchant_id": 101}, r"\(merchant_id 100 -> 101\)"),
+            ({"sandbox": True}, r"\(sandbox False -> True\)"),
+        ):
+            with self.subTest(drift=drift):
+                with (
+                    mock.patch.dict(apply_plan.RUN_AUTH, fresh_run_auth()),
+                    mock.patch.object(
+                        apply_plan.subprocess,
+                        "run",
+                        side_effect=[missing_cookie, login_succeeded, config_result(**drift)],
+                    ) as run,
+                    mock.patch.object(apply_plan.time, "sleep"),
+                ):
+                    with self.assertRaisesRegex(
+                        RuntimeError, "CLI context changed after `xsolla auth login` " + message
+                    ):
+                        apply_plan.run_json("shopbuilder", "update-block")
+                self.assertEqual(3, run.call_count)
+
+    def test_run_json_does_not_log_in_for_exhausted_bootstrap_rate_limit(self) -> None:
+        limited = mock.Mock(
+            returncode=1,
+            stderr="auto-bootstrapping publisher session from stored token: "
+            "publisher session bootstrap failed (HTTP 429)",
+            stdout="",
+        )
+        with (
+            mock.patch.dict(apply_plan.RUN_AUTH, fresh_run_auth()),
+            mock.patch.object(
+                apply_plan.subprocess, "run", side_effect=[limited] * 4
+            ) as run,
+            mock.patch.object(apply_plan.time, "sleep"),
+        ):
+            with self.assertRaisesRegex(RuntimeError, "HTTP 429"):
+                apply_plan.run_json("shopbuilder", "list-websites")
+        self.assertEqual(4, run.call_count)
+        self.assertNotIn(
+            ["xsolla", "auth", "login"], [call.args[0] for call in run.call_args_list]
         )
 
     def test_supported_login_times_out_after_one_retry(self) -> None:
@@ -988,6 +1082,7 @@ class ObjectPagePathTests(unittest.TestCase):
         argv = ["apply_plan.py", str(EXAMPLE_BRIEF), "--confirmation-id", confirmation_id]
         stdout, stderr = io.StringIO(), io.StringIO()
         with (
+            mock.patch.dict(apply_plan.RUN_AUTH, {"logged_in": False, "context": None}),
             mock.patch.object(sys, "argv", argv),
             mock.patch.object(apply_plan, "run_preflight"),
             mock.patch.object(apply_plan, "run_json", side_effect=cli),
@@ -995,6 +1090,7 @@ class ObjectPagePathTests(unittest.TestCase):
             contextlib.redirect_stderr(stderr),
         ):
             code = apply_plan.main()
+            self.recorded_context = apply_plan.RUN_AUTH["context"]
         return code, stdout.getvalue(), stderr.getvalue()
 
     def test_page_path_accepts_string_and_object_shapes(self) -> None:
@@ -1065,6 +1161,15 @@ class ObjectPagePathTests(unittest.TestCase):
         self.assertEqual(object_path("/"), cli.landing["pages"][0]["path"])
         add_page = next(call for call in cli.calls if call[1] == "add-page")
         self.assertEqual("/", add_page[add_page.index("--path") + 1])
+        project = self.brief["project"]
+        self.assertEqual(
+            {
+                "merchant_id": project["merchant_id"],
+                "project_id": project["project_id"],
+                "sandbox": project["environment"] == "sandbox",
+            },
+            self.recorded_context,
+        )
 
     def test_rerun_on_object_path_landing_passes_plan_and_verify(self) -> None:
         cli = FakeShopBuilderCli(self.brief)

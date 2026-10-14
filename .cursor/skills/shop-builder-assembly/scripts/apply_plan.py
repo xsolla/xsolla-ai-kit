@@ -36,6 +36,18 @@ SESSION_BOOTSTRAP_RETRY_DELAYS = (5, 10, 20)
 LOGIN_SETTLE_SECONDS = 2
 LOGIN_TIMEOUT_SECONDS = 45
 LOGIN_RETRY_DELAY_SECONDS = 5
+# `xsolla` exits with 10 when the API answers HTTP 401 or 403.
+CLI_EXIT_AUTH = 10
+AUTH_FAILURE_MARKERS = (
+    "authentication required",
+    "publisher session bootstrap did not yield",
+    "auto-bootstrapping publisher session",
+)
+# A run logs in at most once, and only after the CLI reports an auth failure.
+# `context` is the merchant, project and sandbox setting that main() verified;
+# `xsolla auth login` can write token claims into the CLI config, so it is
+# re-checked after the login.
+RUN_AUTH: dict = {"logged_in": False, "context": None}
 
 
 def refresh_supported_login() -> None:
@@ -59,14 +71,58 @@ def refresh_supported_login() -> None:
     raise RuntimeError("supported Publisher login refresh failed")
 
 
+def auth_failure(returncode: int, detail: str) -> bool:
+    """Return whether a CLI failure is one that a fresh supported login can fix."""
+    if "HTTP 429" in detail:
+        return False
+    return returncode == CLI_EXIT_AUTH or any(
+        marker in detail for marker in AUTH_FAILURE_MARKERS
+    )
+
+
+def cli_context(config: object) -> dict:
+    value = data(config)
+    if not isinstance(value, dict):
+        raise RuntimeError("xsolla config list returned an unexpected shape")
+    return {
+        "merchant_id": value.get("merchant_id"),
+        "project_id": value.get("project_id"),
+        "sandbox": value.get("sandbox") is True,
+    }
+
+
+def login_once(detail: str) -> None:
+    if RUN_AUTH["logged_in"]:
+        raise RuntimeError(
+            "authentication still fails after this run's one `xsolla auth login`: "
+            + detail
+        )
+    approved = RUN_AUTH["context"]
+    if approved is None:
+        raise RuntimeError(
+            "authentication failed before the CLI context was verified: " + detail
+        )
+    RUN_AUTH["logged_in"] = True
+    refresh_supported_login()
+    current = cli_context(run_json("config", "list"))
+    changed = [
+        f"{key} {approved[key]!r} -> {current[key]!r}"
+        for key in approved
+        if current[key] != approved[key]
+    ]
+    if changed:
+        raise RuntimeError(
+            "CLI context changed after `xsolla auth login` ("
+            + ", ".join(changed)
+            + "); check .xsolla.json in the working directory and rerun preflight"
+        )
+
+
 def run_json(*args: str) -> object:
     if any(arg == "--force" or arg.startswith("--force=") for arg in args):
         raise RuntimeError("--force is prohibited in Shop Builder assembly")
     command = ["xsolla", *args, "--json"]
-    if args and args[0] == "shopbuilder":
-        refresh_supported_login()
     rate_limit_attempt = 0
-    refreshed_login = False
     while True:
         result = subprocess.run(command, capture_output=True, text=True, check=False)
         if not result.returncode:
@@ -81,12 +137,8 @@ def run_json(*args: str) -> object:
             time.sleep(SESSION_BOOTSTRAP_RETRY_DELAYS[rate_limit_attempt])
             rate_limit_attempt += 1
             continue
-        missing_bootstrap_cookie = (
-            "publisher session bootstrap did not yield" in detail
-        )
-        if missing_bootstrap_cookie and not refreshed_login:
-            refresh_supported_login()
-            refreshed_login = True
+        if auth_failure(result.returncode, detail):
+            login_once(detail)
             continue
         if "publisher session bootstrap" in detail:
             detail += (
@@ -813,6 +865,7 @@ def main() -> int:
             raise RuntimeError("CLI project_id does not match the shop brief")
         if config.get("sandbox") is True:
             raise RuntimeError("CLI sandbox must be disabled for Shop Builder")
+        RUN_AUTH["context"] = cli_context(config)
 
         slug = brief["site"]["slug"]
         existed = website_exists(run_json("shopbuilder", "list-websites"), slug)

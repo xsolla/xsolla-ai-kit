@@ -42,17 +42,23 @@ from committed evidence.
   three-page layouts, their internal navigation, requested locale, catalog sections,
   and unpublished status. The main demonstration shop was independently exported and
   verified after assembly as well.
-- The backup and apply scripts refresh authentication only through `xsolla auth login`,
-  bound login attempts, retry Publisher-session bootstrap rate limits, and avoid
-  redundant writes when pages, navigation, locales, or catalog links already match.
+- The backup and apply scripts run `xsolla auth login` only after the CLI reports an
+  authentication or Publisher-session bootstrap failure, at most once per run, and
+  re-check the CLI merchant, project, and sandbox setting after that login. They retry
+  Publisher-session bootstrap rate limits and avoid redundant writes when pages,
+  navigation, locales, or catalog links already match.
 
 ## CLI gaps found
 
 1. Cookie-auth commands bootstrap a new Publisher session for every CLI process. A
    valid `xsolla auth login` token can stop yielding a cookie after one or more
-   commands, and repeated supported logins eventually caused HTTP 429. The CLI needs
-   a secure cached Shop Builder session or another non-manual multi-command flow.
-   Still open.
+   commands. `xsolla auth login` opens a browser tab every time it runs, even with a
+   valid session, so logging in before every command opened dozens of tabs per run and
+   eventually caused HTTP 429; the scripts now log in only after such a failure, once
+   per run. A login can also write merchant and project claims from the token into
+   `.xsolla.json` in the working directory, so the scripts stop if the CLI context
+   changes after a login. The CLI needs a secure cached Shop Builder session or
+   another non-manual multi-command flow. Still open.
 2. `verify-website --slug ...` returned HTTP 400 because the generated request omitted
    required `draftPagesIds`. Still open.
 3. `enable-preview` and `preview-link` returned `admin_privileges_requred` for a
