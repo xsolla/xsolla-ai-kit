@@ -171,15 +171,20 @@ Only after explicit confirmation:
 # Replace in place if the key is already there, append if not. Use if/else, not a
 # `grep && sed || echo` chain: when grep matches but sed fails, the `||` still fires
 # and you get the key twice.
-set_key() {
-  if grep -q "^$1=" .env 2>/dev/null; then
-    sed -i.bak "s|^$1=.*|$1=$2|" .env && rm -f .env.bak
+build_path=shopbuilder   # or headless
+if grep -q '^XSOLLA_BUILD_PATH=' .env 2>/dev/null; then
+  sed -i.bak "s|^XSOLLA_BUILD_PATH=.*|XSOLLA_BUILD_PATH=$build_path|" .env && rm -f .env.bak
+else
+  echo "XSOLLA_BUILD_PATH=$build_path" >> .env
+fi
+if [ "$build_path" = shopbuilder ]; then
+  site_kind=portal   # shop or portal
+  if grep -q '^XSOLLA_SITE_KIND=' .env; then
+    sed -i.bak "s|^XSOLLA_SITE_KIND=.*|XSOLLA_SITE_KIND=$site_kind|" .env && rm -f .env.bak
   else
-    echo "$1=$2" >> .env
+    echo "XSOLLA_SITE_KIND=$site_kind" >> .env
   fi
-}
-set_key XSOLLA_BUILD_PATH shopbuilder   # or headless
-set_key XSOLLA_SITE_KIND portal         # Shop Builder only: shop or portal
+fi
 grep -q '^\.env' .gitignore 2>/dev/null || echo '.env' >> .gitignore
 ```
 
