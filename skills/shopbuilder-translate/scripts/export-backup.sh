@@ -2,8 +2,8 @@
 # export-backup.sh <domain> <output-dir>
 #
 # Read-only export of the two files extract.sh reads: structure.json and
-# localization.json. Does not change the site. The approved-test-project
-# allowlist is checked by apply.sh before a write, not here.
+# localization.json. Does not change the site. apply.sh checks the target
+# against the CLI's configured merchant/project before a write, not here.
 set -euo pipefail
 
 DOMAIN="${1:?usage: export-backup.sh <domain> <output-dir>}"
@@ -13,7 +13,7 @@ XS="${XSOLLA_CLI:-xsolla}"
 mkdir -p "$OUT"
 # Confirmed with `xsolla shopbuilder get-structure --help`: --merchant-id and
 # --project-id are flags of this command. Passing them scopes the read to the
-# allowlisted project, so a domain from another project does not export.
+# configured project, so a domain from another project does not export.
 # get-localization --help has neither flag. That command stays --slug only.
 "$XS" shopbuilder get-structure --slug "$DOMAIN" \
   --merchant-id "${XSOLLA_MERCHANT_ID:?XSOLLA_MERCHANT_ID is required}" \

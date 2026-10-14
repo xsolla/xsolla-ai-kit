@@ -35,15 +35,17 @@ After the storefront exists. Silent failures and the script list: [references/st
 scripts/preflight.sh
 scripts/export-backup.sh <domain> l10n/backup/<timestamp>
 scripts/extract.sh en-US ja-JP
-scripts/apply.sh <domain> ja-JP                 # dry run
-# explicit yes, then: enable the language and write
+scripts/apply.sh <domain> ja-JP                 # dry run, prints the target line
+# explicit yes on the target and the copy, then: enable the language and write
 scripts/apply.sh <domain> ja-JP --commit --confirm-overwrites
 scripts/verify.sh <domain> ja-JP
 ```
 
-`export-backup.sh` reads the live site with `get-structure` and `get-localization` and writes those two files. It does not change the site. Before any write, the project must be on the approved-test-project allowlist (`XSOLLA_APPROVED_TEST_PROJECTS`). A project that is not on the list is not written. The slug must also appear in that project's `list-websites` result. `get-structure` is not that check.
+The dry run prints `Target: merchant <id>, project <id>, site <slug>, language <locale>`. Show that line in the chat with the dry run and ask for a yes on it. The yes covers the target and the copy. If the user corrects the target, stop. Do not run `--commit`. Ask them to fix the CLI config and `XSOLLA_MERCHANT_ID` / `XSOLLA_PROJECT_ID`, then rerun the dry run and show the new line.
 
-`--commit` enables the language with `add-language`, then writes the copy. It runs `add-language` only after the allowlist, the `list-websites` check and the pre-write export. If the pre-write export already lists the locale, `add-language` is skipped. A 400 with the message "language is taken" is also success. Any other failure stops the run before any copy is written. If the copy write fails after this run enabled the language, the run prints the `delete-language` command for it. Show it to the user. This skill does not run it.
+`export-backup.sh` reads the live site with `get-structure` and `get-localization` and writes those two files. It does not change the site. `preflight.sh` stops when the CLI's sandbox mode is on. Before any write, `XSOLLA_MERCHANT_ID` and `XSOLLA_PROJECT_ID` must be positive integers equal to the CLI's configured merchant and project (`xsolla config list --json`). The slug must also appear in that project's `list-websites` result. `get-structure` is not that check.
+
+`--commit` prints the same target line, then enables the language with `add-language`, then writes the copy. It runs `add-language` only after the merchant and project check, the `list-websites` check and the pre-write export. If the pre-write export already lists the locale, `add-language` is skipped. A 400 with the message "language is taken" is also success. Any other failure stops the run before any copy is written. If the copy write fails after this run enabled the language, the run prints the `delete-language` command for it. Show it to the user. This skill does not run it.
 
 `--commit` blocks when it would replace an existing translation until `--confirm-overwrites`. `--commit` exports the site again into `l10n/pre-write/` and blocks if the text about to be written changed since extract. A write that returns non-zero fails the run.
 

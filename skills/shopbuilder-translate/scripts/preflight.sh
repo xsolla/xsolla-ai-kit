@@ -1,15 +1,13 @@
 #!/usr/bin/env bash
 # preflight.sh — verify the environment before any Shop Builder translation. Fails loudly.
 # Catalog and LiveOps text are out of scope. This check is the storefront only.
-# apply.sh checks the approved-test-project allowlist before the first write.
-# There is no production-project denylist.
+# apply.sh checks the target against the CLI's configured merchant/project before the first write.
 set -euo pipefail
 
-RED=$'\033[31m'; GRN=$'\033[32m'; YEL=$'\033[33m'; RST=$'\033[0m'
+RED=$'\033[31m'; GRN=$'\033[32m'; RST=$'\033[0m'
 fail=0
 ok()   { printf '%s  ok  %s %s\n' "$GRN" "$RST" "$1"; }
 bad()  { printf '%s FAIL %s %s\n' "$RED" "$RST" "$1"; fail=1; }
-warn() { printf '%s warn %s %s\n' "$YEL" "$RST" "$1"; }
 
 echo "== xsolla CLI =="
 XS="${XSOLLA_CLI:-$(command -v xsolla 2>/dev/null || true)}"
@@ -36,15 +34,6 @@ else
 fi
 [ -n "${XSOLLA_PROJECT_ID:-}" ]  && ok "XSOLLA_PROJECT_ID set"  || bad "XSOLLA_PROJECT_ID unset"
 [ -n "${XSOLLA_MERCHANT_ID:-}" ] && ok "XSOLLA_MERCHANT_ID set" || bad "XSOLLA_MERCHANT_ID unset"
-
-echo "== approved test project =="
-echo "  writes require the approved-test-project allowlist"
-echo "  apply.sh checks the allowlist, then reads the site, before the first write"
-if [ -n "${XSOLLA_APPROVED_TEST_PROJECTS:-}" ] && [ -f "${XSOLLA_APPROVED_TEST_PROJECTS}" ]; then
-  ok "XSOLLA_APPROVED_TEST_PROJECTS=$XSOLLA_APPROVED_TEST_PROJECTS"
-else
-  warn "XSOLLA_APPROVED_TEST_PROJECTS is unset or not a file — apply.sh --commit will refuse to write"
-fi
 
 echo "== CLI sandbox =="
 # Shop Builder has no sandbox. Same rule as game-web-portal: refuse only when

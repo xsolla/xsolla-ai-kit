@@ -2,9 +2,11 @@
 # A stand-in for the xsolla CLI, so verify.sh can be exercised with no network and no store.
 # Serves canned responses from $FAKE_STORE, in the SAME envelope the real CLI uses
 # ({"ok":true,"data":…}) — the envelope is itself a trap worth testing against.
+# FAKE_LOG: append one line per call, so a test can see which calls ran and in what order.
 set -euo pipefail
 STORE="${FAKE_STORE:?FAKE_STORE must point at a fixture store dir}"
 GROUP="${1:-}"; CMD="${2:-}"; shift 2 || true
+[ -z "${FAKE_LOG:-}" ] || printf 'fake-xsolla call: %s %s\n' "$GROUP" "$CMD" >> "$FAKE_LOG"
 
 arg() { # arg <flag> — value of a --flag from the remaining args
   local want="$1"; shift || true
@@ -25,7 +27,7 @@ case "$GROUP $CMD" in
       printf '{"ok":true,"data":{"merchant_id":%s,"project_id":%s}}' "$m" "$p" ;;
   "shopbuilder list-websites")
       # Real command takes --merchant-id and --project-id. Do not pass --all:
-      # that would list sites outside the allowlisted project.
+      # that would list sites outside the configured project.
       for a in "$@"; do
         case "$a" in --all) echo "list-websites must not be called with --all" >&2; exit 1 ;; esac
       done

@@ -68,32 +68,46 @@ chk "no call carries --sandbox at all"       "! grep -rq -- '--sandbox' $PD/"
 chk "asset URL never written"                "! grep -rq 'og-image' $PD/"
 chk "no catalog payload"                     "! ls $PD/catalog.* >/dev/null 2>&1"
 
-echo "== apply: a missing allowlist blocks the write =="
+echo "== apply: the dry run shows the target and writes nothing =="
 cp "$HERE/fixtures/translated.de-DE.json" l10n/work/de-DE/translated.json
 export XSOLLA_CLI="$HERE/fixtures/fake-xsolla.sh"
 export FAKE_STORE="$HERE/fixtures/baseline"
-set +e
-env -u XSOLLA_APPROVED_TEST_PROJECTS XSOLLA_MERCHANT_ID=1 XSOLLA_PROJECT_ID=2 \
-  bash "$HERE/apply.sh" voidwall-45e0 de-DE --commit > noallow.out 2>&1; nrc=$?
-set -e
-chk "commit without the allowlist is BLOCKED" "[ $nrc -ne 0 ]"
-chk "missing allowlist does not claim success" "! grep -q 'Copy was written' noallow.out"
-export XSOLLA_APPROVED_TEST_PROJECTS="$HERE/fixtures/approved-test-projects.json"
+WRITES='^fake-xsolla call: shopbuilder (add-language|delete-language|update-many-localization)$'
+FAKE_LOG="$TMP/dry.log" XSOLLA_MERCHANT_ID=1 XSOLLA_PROJECT_ID=2 \
+  bash "$HERE/apply.sh" voidwall-45e0 de-DE > target-dry.out 2>&1
+chk "dry run prints the target line" \
+  "grep -qx 'Target: merchant 1, project 2, site voidwall-45e0, language de-DE' target-dry.out"
+chk "target line comes before the dry-run summary" \
+  "awk '/^Target: /{t=NR} /^DRY RUN/{d=NR} END{exit !(t && d>t)}' target-dry.out"
+chk "dry run makes no write call" "! grep -qE '$WRITES' $TMP/dry.log 2>/dev/null"
+chk "dry run makes no CLI call at all" "[ ! -s $TMP/dry.log ]"
+env -u XSOLLA_PROJECT_ID XSOLLA_MERCHANT_ID=1 \
+  bash "$HERE/apply.sh" voidwall-45e0 de-DE > target-unset.out 2>&1
+chk "target line says when an id is unset" \
+  "grep -qx 'Target: merchant 1, project (XSOLLA_PROJECT_ID is unset), site voidwall-45e0, language de-DE' target-unset.out"
 
-echo "== apply: the domain and the CLI project must match the allowlist =="
+echo "== apply: --commit needs no allowlist and shows the target first =="
+# A clean environment: no allowlist variable of any name reaches the run.
+env -i PATH="$PATH" HOME="$HOME" XSOLLA_CLI="$XSOLLA_CLI" FAKE_STORE="$FAKE_STORE" \
+  FAKE_LOG="$TMP/commit.log" XSOLLA_MERCHANT_ID=1 XSOLLA_PROJECT_ID=2 \
+  bash "$HERE/apply.sh" voidwall-45e0 de-DE --commit > commit.out 2>&1 || true
+chk "--commit writes with no allowlist set (clean environment)" \
+  "grep -q 'Copy was written' commit.out && grep -qx 'fake-xsolla call: shopbuilder update-many-localization' $TMP/commit.log"
+# One file for the run's output and the fake CLI's call log, unbuffered, so line order is call order.
+PYTHONUNBUFFERED=1 FAKE_LOG="$PWD/order.out" XSOLLA_MERCHANT_ID=1 XSOLLA_PROJECT_ID=2 \
+  bash "$HERE/apply.sh" voidwall-45e0 de-DE --commit >> order.out 2>&1 || true
+chk "--commit prints the target line before its first write call" \
+  "awk '/^Target: merchant 1, project 2, site voidwall-45e0, language de-DE\$/{if(!t)t=NR} /$WRITES/{if(!w)w=NR} END{exit !(t && w>t)}' order.out"
+rm -rf l10n/work/de-DE/payloads
+
+echo "== apply: the CLI project and the domain must match the target =="
 set +e
-FAKE_CONFIG_PROJECT=99 XSOLLA_MERCHANT_ID=1 XSOLLA_PROJECT_ID=2 \
+FAKE_LOG="$TMP/cfg.log" FAKE_CONFIG_PROJECT=99 XSOLLA_MERCHANT_ID=1 XSOLLA_PROJECT_ID=2 \
   bash "$HERE/apply.sh" voidwall-45e0 de-DE --commit > cfg.out 2>&1; crc=$?
 set -e
 chk "CLI pointed at another project is BLOCKED" "[ $crc -ne 0 ]"
 chk "CLI mismatch names the configured project" "grep -q 'configured merchant/project' cfg.out"
-jq 'del(.projects[0].approved_by)' "$HERE/fixtures/approved-test-projects.json" > "$TMP/no-approval.json"
-set +e
-XSOLLA_APPROVED_TEST_PROJECTS="$TMP/no-approval.json" XSOLLA_MERCHANT_ID=1 XSOLLA_PROJECT_ID=2 \
-  bash "$HERE/apply.sh" voidwall-45e0 de-DE --commit > approval.out 2>&1; arc=$?
-set -e
-chk "allowlist entry without approved_by is BLOCKED" "[ $arc -ne 0 ]"
-chk "missing approval field is named" "grep -q 'approved_by' approval.out"
+chk "CLI mismatch makes no write call" "! grep -qE '$WRITES' $TMP/cfg.log"
 set +e
 XSOLLA_MERCHANT_ID=1 XSOLLA_PROJECT_ID=2 \
   bash "$HERE/apply.sh" other-shop de-DE --commit > domain.out 2>&1; domrc=$?
@@ -102,12 +116,13 @@ chk "a domain on another site is BLOCKED" "[ $domrc -ne 0 ]"
 chk "domain check names both slugs" "grep -q other-shop domain.out && grep -q voidwall-45e0 domain.out"
 chk "domain check uses list-websites" "grep -q list-websites domain.out"
 set +e
-FAKE_SITES='{"ok":true,"data":[{"domain":"other-site"}]}' \
+FAKE_SITES='{"ok":true,"data":[{"domain":"other-site"}]}' FAKE_LOG="$TMP/sites.log" \
   XSOLLA_MERCHANT_ID=1 XSOLLA_PROJECT_ID=2 \
   bash "$HERE/apply.sh" voidwall-45e0 de-DE --commit > sites.out 2>&1; siterc=$?
 set -e
 chk "a slug missing from list-websites is BLOCKED" "[ $siterc -ne 0 ]"
 chk "missing slug does not claim success" "! grep -q 'Copy was written' sites.out"
+chk "missing slug makes no write call" "! grep -qE '$WRITES' $TMP/sites.log"
 set +e
 FAKE_OWNED_PROJECT=99 XSOLLA_MERCHANT_ID=1 XSOLLA_PROJECT_ID=2 \
   bash "$HERE/apply.sh" voidwall-45e0 de-DE --commit > owned.out 2>&1; ownrc=$?
@@ -166,7 +181,7 @@ set -e
 chk "live edit after extract is BLOCKED" "[ $drc -ne 0 ]"
 chk "live edit names the string" "grep -q 'block:blk_hero:values.title' drift.out"
 chk "live edit does not claim success" "! grep -q 'Copy was written' drift.out"
-unset XSOLLA_CLI FAKE_STORE XSOLLA_APPROVED_TEST_PROJECTS
+unset XSOLLA_CLI FAKE_STORE
 
 echo "== add-language: only behind the --commit gate =="
 cp "$HERE/fixtures/translated.de-DE.json" l10n/work/de-DE/translated.json
@@ -174,14 +189,14 @@ echo '["en-US"]' > "$TMP/langs-enable.json"
 export XSOLLA_CLI="$HERE/fixtures/fake-xsolla.sh"
 export FAKE_STORE="$HERE/fixtures/baseline"
 set +e
-env -u XSOLLA_APPROVED_TEST_PROJECTS -u XSOLLA_PROJECT_ID XSOLLA_MERCHANT_ID=1 \
-  FAKE_LANG_FILE="$TMP/langs-enable.json" \
-  bash "$HERE/apply.sh" voidwall-45e0 de-DE --commit > enable-noallow.out 2>&1; narc=$?
+env -u XSOLLA_PROJECT_ID XSOLLA_MERCHANT_ID=1 \
+  FAKE_LANG_FILE="$TMP/langs-enable.json" FAKE_LOG="$TMP/noproject.log" \
+  bash "$HERE/apply.sh" voidwall-45e0 de-DE --commit > enable-noproject.out 2>&1; narc=$?
 set -e
-chk "--commit refuses without the allowlist and project id" "[ $narc -ne 0 ]"
-chk "refused run never called add-language" "jq -e '.==[\"en-US\"]' $TMP/langs-enable.json"
-chk "refused run does not claim the language" "! grep -q 'enabled de-DE' enable-noallow.out"
-export XSOLLA_APPROVED_TEST_PROJECTS="$HERE/fixtures/approved-test-projects.json"
+chk "--commit refuses without the project id" "[ $narc -ne 0 ]"
+chk "refused run never called add-language" \
+  "jq -e '.==[\"en-US\"]' $TMP/langs-enable.json && ! grep -q add-language $TMP/noproject.log 2>/dev/null"
+chk "refused run does not claim the language" "! grep -q 'enabled de-DE' enable-noproject.out"
 FAKE_LANG_FILE="$TMP/langs-enable.json" XSOLLA_MERCHANT_ID=1 XSOLLA_PROJECT_ID=2 \
   bash "$HERE/apply.sh" voidwall-45e0 de-DE --commit > enable.out 2>&1
 chk "add-language enables a new locale" "grep -q 'enabled de-DE' enable.out && jq -e 'index(\"de-DE\")!=null' $TMP/langs-enable.json"
@@ -205,7 +220,7 @@ set -e
 chk "any other add-language failure still fails" "[ $lrc -ne 0 ]"
 chk "a failed add-language writes no copy" \
   "[ ! -f l10n/work/de-DE/payloads/localization.response.json ] && ! grep -q 'Copy was written' reject.out"
-unset XSOLLA_CLI FAKE_STORE XSOLLA_APPROVED_TEST_PROJECTS
+unset XSOLLA_CLI FAKE_STORE
 cp "$HERE/fixtures/translated.de-DE.json" l10n/work/de-DE/translated.json
 
 echo "== verify: reads the STORE back, not the file =="
