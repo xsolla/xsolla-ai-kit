@@ -178,18 +178,20 @@ Only after explicit confirmation:
 # Replace in place if the key is already there, append if not. Use if/else, not a
 # `grep && sed || echo` chain: when grep matches but sed fails, the `||` still fires
 # and you get the key twice.
-set_key() {
-  if grep -q "^$1=" .env 2>/dev/null; then
-    sed -i.bak "s|^$1=.*|$1=$2|" .env && rm -f .env.bak
-  else
-    echo "$1=$2" >> .env
-  fi
-}
 build_path=shopbuilder   # or headless
-set_key XSOLLA_BUILD_PATH "$build_path"
+if grep -q '^XSOLLA_BUILD_PATH=' .env 2>/dev/null; then
+  sed -i.bak "s|^XSOLLA_BUILD_PATH=.*|XSOLLA_BUILD_PATH=$build_path|" .env && rm -f .env.bak
+else
+  echo "XSOLLA_BUILD_PATH=$build_path" >> .env
+fi
 grep -q '^\.env' .gitignore 2>/dev/null || echo '.env' >> .gitignore
 if [ "$build_path" = shopbuilder ]; then
-  set_key XSOLLA_SITE_KIND portal   # shop or portal
+  site_kind=portal   # shop or portal
+  if grep -q '^XSOLLA_SITE_KIND=' .env; then
+    sed -i.bak "s|^XSOLLA_SITE_KIND=.*|XSOLLA_SITE_KIND=$site_kind|" .env && rm -f .env.bak
+  else
+    echo "XSOLLA_SITE_KIND=$site_kind" >> .env
+  fi
   mkdir -p .xsolla
   grep -qxF '.xsolla/' .gitignore 2>/dev/null || echo '.xsolla/' >> .gitignore
 fi
