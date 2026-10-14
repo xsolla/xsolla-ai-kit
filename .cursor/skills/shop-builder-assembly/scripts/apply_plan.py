@@ -122,10 +122,18 @@ def run_json(*args: str) -> object:
     command = ["xsolla", *args, "--json"]
     rate_limit_attempt = 0
     while True:
-        result = subprocess.run(command, capture_output=True, text=True, check=False)
+        # The CLI writes UTF-8; without an explicit encoding Windows decodes with
+        # the ANSI code page and loses the output.
+        result = subprocess.run(
+            command, capture_output=True, text=True, encoding="utf-8", check=False
+        )
         if not result.returncode:
             break
-        detail = result.stderr.strip() or result.stdout.strip()
+        detail = (
+            (result.stderr or "").strip()
+            or (result.stdout or "").strip()
+            or f"exit code {result.returncode}"
+        )
         retryable_bootstrap_limit = (
             "publisher session bootstrap" in detail and "HTTP 429" in detail
         )
@@ -144,10 +152,14 @@ def run_json(*args: str) -> object:
                 "and rerun—never copy a browser PA token"
             )
         raise RuntimeError(f"{' '.join(args)} failed: {detail}")
+    stdout = result.stdout or ""
+    stderr = (result.stderr or "").strip() or "no stderr output"
+    if not stdout.strip():
+        raise RuntimeError(f"{' '.join(args)} returned no output: {stderr}")
     try:
-        return json.loads(result.stdout)
+        return json.loads(stdout)
     except json.JSONDecodeError as exc:
-        raise RuntimeError(f"{' '.join(args)} returned invalid JSON") from exc
+        raise RuntimeError(f"{' '.join(args)} returned invalid JSON: {stderr}") from exc
 
 
 def data(value: object) -> object:
@@ -231,8 +243,12 @@ def backup_structure(path: Path) -> object:
 
 
 def run_preflight(brief_path: Path, approved_test_projects: Path | None) -> None:
+    # `-X utf8` makes the child write UTF-8 to the pipe; on Windows it would
+    # otherwise write the ANSI code page.
     command = [
         sys.executable,
+        "-X",
+        "utf8",
         str(Path(__file__).with_name("preflight.py")),
         str(brief_path),
     ]
@@ -242,11 +258,14 @@ def run_preflight(brief_path: Path, approved_test_projects: Path | None) -> None
         command,
         capture_output=True,
         text=True,
+        encoding="utf-8",
         check=False,
     )
     if result.returncode:
         raise RuntimeError(
-            result.stderr.strip() or result.stdout.strip() or "preflight failed"
+            (result.stderr or "").strip()
+            or (result.stdout or "").strip()
+            or "preflight failed"
         )
 
 
