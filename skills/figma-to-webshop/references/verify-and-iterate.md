@@ -18,7 +18,7 @@ re-read the document to confirm, don't trust the echo.
   This endpoint can **403** even when every other shopbuilder command works, because it
   authenticates differently. If it does, don't conclude the site is broken — check
   whether it also 403s on a pre-existing site, which tells you it's the session, not the
-  build.
+  build. Then skip the screenshot and tell the user — never ask for a session cookie.
 - Otherwise the user opens Publisher Account → Storefronts → Websites → the site card →
   **OPEN SITE BUILDER**. Publishing to a live domain also happens there, not from the CLI.
 - After structure or catalog changes, re-run `enable-preview` and hard-refresh.
@@ -70,7 +70,8 @@ small text look serif.
 | Section background image missing | `background.color` is opaque and paints over `img` |
 | Body copy in a serif | localized text is a bare string, not HTML |
 | Text edit does nothing | block text lives in the slug's localization store, not the block |
-| Localized string comes out empty | value must be `{"translation": "<html>"}`, not a bare string |
+| Localized string comes out empty | value must be `{"description": "<existing>", "translation": "<html>"}`, not a bare string |
+| String's `description` blank after an edit | the write omitted `description`; send the existing one from `get-localization` |
 | FAQ row still visible | `enable: false` doesn't hide it — `op: "remove"` the component |
 | Nav link goes nowhere | `targetId` points at a deleted block |
 | Header right side empty | `user-info` renders nothing without a session — not a bug |
@@ -79,13 +80,10 @@ small text look serif.
 
 ## Don't guess undocumented enums
 
-The backend does not validate every field. `card.layouts.<type>.image.format` accepted a
-deliberate `"zzz-invalid-sentinel"` and stored it. So a successful write proves nothing
-about whether a value is real, and an invalid one will confuse the renderer. Read valid
-options off the GUI, or change a field you do know.
-
-If you do probe, probe on the least important section, revert immediately, and never
-leave a sentinel in the document.
+The backend does not validate every field — `card.layouts.<type>.image.format` stores
+whatever it is sent. So a successful write proves nothing about whether a value is real,
+and an invalid one will confuse the renderer. Read valid values from the GUI or from an
+existing block that already uses the field. Never write a test value to find out.
 
 ## Iterating well
 
@@ -95,4 +93,5 @@ leave a sentinel in the document.
 3. When a fix is your second attempt at the same symptom, say so.
 4. Keep a running list of gaps that are native limitations rather than bugs — badge
    circles, card internal order, per-section headings — so they aren't re-litigated each
-   round. If the user wants one badly enough, that section becomes a custom block.
+   round. They belong in the handover under Known limitations (SKILL.md), not in another
+   round of patches.

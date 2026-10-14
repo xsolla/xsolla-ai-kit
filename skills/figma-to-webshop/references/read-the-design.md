@@ -24,10 +24,11 @@ you are going to write back to Figma; for read-only extraction you don't need it
 | `get_metadata` | The frame/layer tree. This is what you turn into the section inventory. |
 | `get_design_context` | Per-node layout, type and color detail. The token sheet comes from here. |
 | `get_variable_defs` | Design-system variables — the cleanest source of the palette when the file uses them. |
-| `download_assets` | Export the art (logos, product renders, key art) as PNG/SVG. |
+| `download_assets` | Export the art (logos, product renders, key art) as PNG/SVG. **Remote Figma MCP server only** — the local desktop server doesn't have it. |
 
 If the MCP server isn't connected, say so plainly and ask for either a screenshot plus
-the hex values, or an export. Don't guess a palette from a JPEG.
+the hex values, or an export. Don't guess a palette from a JPEG. On the local server,
+ask the partner to export the art from Figma instead.
 
 ## From an exported HTML / React comp
 
@@ -55,8 +56,8 @@ be a few kilobytes of markup.
 
 Get the real source files with Figma's `download_assets` — it returns the actual uploaded
 PNGs/JPEGs and the vector layers as SVG — rather than cropping them out of a screenshot.
-It caps at 20 of each per node, so walk the section nodes rather than asking for the page
-root. Take every value (`#0a1330`, `0 4px 0 #3F1585`, `letter-spacing:.14em`) from
+Each call takes at most 20 nodes and returns at most 20 source images, so batch by
+section and make several calls for an art-heavy page. Take every value (`#0a1330`, `0 4px 0 #3F1585`, `letter-spacing:.14em`) from
 `get_design_context`, not from sampling pixels.
 
 A flattened slice is legitimate in exactly one case: art and type that are genuinely
@@ -108,6 +109,5 @@ xsolla catalog list-catalog-currency-packages --project-id <p>
 Currency packages and bundles do **not** appear in `list-catalog-items-by-group` — an
 empty result there does not mean the group is empty. Check the type-specific list too.
 
-Build anything missing with **catalog-admin** (needs Store Basic auth — probe for it as
-SKILL.md Step 0 describes rather than assuming an unset `XSOLLA_API_KEY` means you lack
-it).
+Build anything missing with **`catalog-design`**, then come back — the brief may only
+reference groups that already exist in the project.

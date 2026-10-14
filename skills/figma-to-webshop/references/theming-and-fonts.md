@@ -12,9 +12,8 @@ nothing on screen**: the server does not recompile `calculatedTheme` outside the
 so the site keeps rendering the stock palette (hot pink `rgba(255, 0, 91, 1)` buttons,
 near-black `rgba(21, 21, 31, 1)` cards).
 
-`calculatedTheme` **is** directly patchable, and that is what works. (The `shopbuilder`
-skill's note that patching it is ignored is wrong — verified against a live landing.)
-Patch both `input` and `calculatedTheme` so the GUI and the renderer agree.
+`calculatedTheme` **is** directly patchable, and that is what works — verified against a
+live landing, despite looking like a derived value. Patch both `input` and `calculatedTheme` so the GUI and the renderer agree.
 
 Expect on the order of a hundred targeted patches. Generate them from a palette dict in a
 script rather than writing them by hand.
@@ -86,6 +85,12 @@ tabs, labels) — each `{default: {__type: "font-name", name: "<family>"}}`. The
 just a string: if nothing resolves it, the browser falls back, and body copy lands on a
 serif.
 
+**Upload only fonts the partner may serve on the web**: a font with a webfont licence the
+partner holds, or one under the SIL Open Font License (which covers Google Fonts). Many
+fonts in design files are licensed for desktop use only — embedding the file in the comp
+doesn't grant webfont rights. If the licence is unknown, ask; until it's confirmed, set
+the slot to the closest OFL face and list the substitution at handover.
+
 **A name only resolves if a font asset with that exact `fontFamily` is uploaded to the
 landing — and `fontFamily` is derived from the uploaded file's name.** So name the file
 after the family you want:
@@ -103,9 +108,6 @@ a display face and acceptable for body text.
 string renders unstyled and drops to the browser serif, which looks exactly like a
 failed webfont. Wrap body copy in `<p>`/`<h2>`; control labels don't need it.
 
-If a section must be typographically exact, put it in a custom block that loads its own
-webfonts — that removes the whole question.
-
 ## Section backgrounds
 
 A block's `background` has `color`, `gradient`, `img`, `position`, `size`. **An opaque
@@ -119,4 +121,4 @@ defaults use `rgba(0,0,0,0.0)` for exactly this reason — keep it transparent w
 
 `size: cover` + `position: center` is the combination known to render. Because
 `leadGameSales` has no image slot, comp art for a hero has to be composited into that
-background image — or the section rebuilt as a custom block, which is usually better.
+background image.
