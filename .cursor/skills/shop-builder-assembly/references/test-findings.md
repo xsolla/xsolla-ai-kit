@@ -27,6 +27,10 @@ from committed evidence.
   seven default blocks. Publisher Account reported every write saved. Custom code was
   left empty, Offer chain stayed in its safe no-chain state, and the site was never
   published.
+- `add-block --block html` through the CLI creates the Custom code block empty but
+  visible (`hidden: false`), unlike the hidden default in UI-created exports.
+  `apply_plan.py` hides each Custom code block it adds with a `["hidden"]` block patch
+  and leaves a Custom code block that was already on the page as the user set it.
 - The post-write export proves Offer chain and Social quests use the `federated`
   transport with effective identities `sb-offer-chain` and `social-quests`. The
   sanitizer now extracts their internal field/type contracts without retaining IDs,
@@ -42,17 +46,23 @@ from committed evidence.
   three-page layouts, their internal navigation, requested locale, catalog sections,
   and unpublished status. The main demonstration shop was independently exported and
   verified after assembly as well.
-- The backup and apply scripts refresh authentication only through `xsolla auth login`,
-  bound login attempts, retry Publisher-session bootstrap rate limits, and avoid
-  redundant writes when pages, navigation, locales, or catalog links already match.
+- The backup and apply scripts run `xsolla auth login` only after the CLI reports an
+  authentication or Publisher-session bootstrap failure, at most once per run, and
+  re-check the CLI merchant, project, and sandbox setting after that login. They retry
+  Publisher-session bootstrap rate limits and avoid redundant writes when pages,
+  navigation, locales, or catalog links already match.
 
 ## CLI gaps found
 
 1. Cookie-auth commands bootstrap a new Publisher session for every CLI process. A
    valid `xsolla auth login` token can stop yielding a cookie after one or more
-   commands, and repeated supported logins eventually caused HTTP 429. The CLI needs
-   a secure cached Shop Builder session or another non-manual multi-command flow.
-   Still open.
+   commands. `xsolla auth login` opens a browser tab every time it runs, even with a
+   valid session, so logging in before every command opened dozens of tabs per run and
+   eventually caused HTTP 429; the scripts now log in only after such a failure, once
+   per run. A login can also write merchant and project claims from the token into
+   `.xsolla.json` in the working directory, so the scripts stop if the CLI context
+   changes after a login. The CLI needs a secure cached Shop Builder session or
+   another non-manual multi-command flow. Still open.
 2. `verify-website --slug ...` returned HTTP 400 because the generated request omitted
    required `draftPagesIds`. Still open.
 3. `enable-preview` and `preview-link` returned `admin_privileges_requred` for a

@@ -79,6 +79,34 @@ class ShopBriefTests(unittest.TestCase):
         ]
         self.assertEqual([], validator.validate(brief))
 
+    def test_custom_code_block_is_flagged_in_plan_warnings(self) -> None:
+        brief = copy.deepcopy(self.brief)
+        brief["content"]["page_overrides"] = [
+            {"name": "Home", "path": "/", "blocks": ["header", "html", "footer"]}
+        ]
+        self.assertEqual([], validator.validate(brief))
+        warning = (
+            "The Custom code block is added empty and hidden; paste your code and "
+            "make the block visible in the Site Builder editor."
+        )
+        self.assertIn(warning, render_plan.build_plan(brief)["warnings"])
+        self.assertNotIn(warning, render_plan.build_plan(self.brief)["warnings"])
+
+        already_there = {
+            "pages": [
+                {
+                    "_id": "home",
+                    "path": "/",
+                    "blocks": [
+                        {"_id": "header", "module": "header"},
+                        {"_id": "user-code", "module": "html"},
+                        {"_id": "footer", "module": "footer"},
+                    ],
+                }
+            ]
+        }
+        self.assertNotIn(warning, render_plan.build_plan(brief, already_there)["warnings"])
+
     def test_unmapped_subscription_module_is_rejected(self) -> None:
         brief = copy.deepcopy(self.brief)
         brief["content"]["page_overrides"] = [
@@ -336,6 +364,81 @@ class ShopBriefTests(unittest.TestCase):
                 backup_shop.refresh_supported_login()
         self.assertEqual(2, run.call_count)
         sleep.assert_called_once_with(backup_shop.LOGIN_RETRY_DELAY_SECONDS)
+
+    def test_backup_run_json_does_not_log_in_before_commands(self) -> None:
+        succeeded = mock.Mock(returncode=0, stderr="", stdout='{"ok":true}')
+        with (
+            mock.patch.dict(
+                backup_shop.RUN_AUTH, {"logged_in": False, "context": BACKUP_CONTEXT}
+            ),
+            mock.patch.object(backup_shop.subprocess, "run", return_value=succeeded) as run,
+        ):
+            backup_shop.run_json("shopbuilder", "get-structure", "--slug", "shop")
+        run.assert_called_once()
+        self.assertEqual(
+            ["xsolla", "shopbuilder", "get-structure", "--slug", "shop", "--json"],
+            run.call_args.args[0],
+        )
+
+    def test_backup_aborts_when_login_changes_cli_context(self) -> None:
+        unauthenticated = mock.Mock(
+            returncode=1, stderr="authentication required for this command.", stdout=""
+        )
+        login_succeeded = mock.Mock(returncode=0, stderr="", stdout="Login successful")
+        drifted = mock.Mock(
+            returncode=0,
+            stderr="",
+            stdout=json.dumps({"ok": True, "data": {"merchant_id": 999, "project_id": 200}}),
+        )
+        with (
+            mock.patch.dict(
+                backup_shop.RUN_AUTH, {"logged_in": False, "context": BACKUP_CONTEXT}
+            ),
+            mock.patch.object(
+                backup_shop.subprocess,
+                "run",
+                side_effect=[unauthenticated, login_succeeded, drifted],
+            ),
+            mock.patch.object(backup_shop.time, "sleep"),
+        ):
+            with self.assertRaisesRegex(RuntimeError, r"merchant_id 100 -> 999"):
+                backup_shop.run_json("shopbuilder", "get-landing", "--slug", "shop")
+
+    def test_backup_says_a_rerun_is_safe_when_it_ends_after_its_login(self) -> None:
+        unauthenticated = mock.Mock(
+            returncode=1, stderr="authentication required for this command.", stdout=""
+        )
+        login_succeeded = mock.Mock(returncode=0, stderr="", stdout="")
+        config = mock.Mock(
+            returncode=0,
+            stderr="",
+            stdout=json.dumps({"ok": True, "data": {"merchant_id": 100, "project_id": 200}}),
+        )
+        drifted = mock.Mock(
+            returncode=0,
+            stderr="",
+            stdout=json.dumps({"ok": True, "data": {"merchant_id": 100, "project_id": 300}}),
+        )
+        endings = {
+            "second auth failure": [unauthenticated, login_succeeded, config, unauthenticated],
+            "context drift": [unauthenticated, login_succeeded, drifted],
+        }
+        for ending, results in endings.items():
+            with self.subTest(ending):
+                with (
+                    mock.patch.dict(
+                        backup_shop.RUN_AUTH, {"logged_in": False, "context": BACKUP_CONTEXT}
+                    ),
+                    mock.patch.object(backup_shop.subprocess, "run", side_effect=results),
+                    mock.patch.object(backup_shop.time, "sleep"),
+                ):
+                    with self.assertRaisesRegex(
+                        RuntimeError, "made no change, so it is safe to rerun"
+                    ):
+                        backup_shop.run_json("shopbuilder", "get-landing", "--slug", "shop")
+
+
+BACKUP_CONTEXT = {"merchant_id": 100, "project_id": 200, "sandbox": False}
 
 
 

@@ -22,12 +22,14 @@ project overrides after preflight.
 | Verify | `get-structure`, `get-localization`, `verify-website` | Slug | Plan comparison and readiness result |
 | Preview | `enable-preview`, `preview-link` | Slug | Human-reviewable preview only |
 
-Before each Shop Builder command, `apply_plan.py` refreshes the supported
-Publisher login through `xsolla auth login`. If a read reports that session bootstrap
-produced no cookie before the operation was issued, it performs one bounded refresh
-and retries that read. It never reads a browser cookie, never accepts a manually copied
-PA token, and does not retry ambiguous API operation failures. Session-bootstrap HTTP
-429 responses use bounded backoff.
+`apply_plan.py` and `backup_shop.py` do not log in before commands; the CLI refreshes
+an expired token on its own. When a command fails with an authentication error or a
+Publisher-session bootstrap failure, the script runs `xsolla auth login` once per run,
+re-reads `xsolla config list --json`, stops if the merchant, project, or sandbox
+setting changed, and retries the command. A second authentication failure ends the
+run. The scripts never read a browser cookie, never accept a manually copied PA token,
+and do not retry ambiguous API operation failures. Session-bootstrap HTTP 429
+responses use bounded backoff.
 
 ## ID dependencies
 

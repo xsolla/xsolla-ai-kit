@@ -14,16 +14,30 @@ from validate_shop_brief import load_brief, validate
 
 
 def run_json(*args: str) -> object:
+    # The CLI writes UTF-8; without an explicit encoding Windows decodes with the
+    # ANSI code page and loses the output.
     result = subprocess.run(
-        ["xsolla", *args, "--json"], capture_output=True, text=True, check=False
+        ["xsolla", *args, "--json"],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        check=False,
     )
     if result.returncode:
-        detail = result.stderr.strip() or result.stdout.strip()
+        detail = (
+            (result.stderr or "").strip()
+            or (result.stdout or "").strip()
+            or f"exit code {result.returncode}"
+        )
         raise RuntimeError(f"{' '.join(args)} failed: {detail}")
+    stdout = result.stdout or ""
+    stderr = (result.stderr or "").strip() or "no stderr output"
+    if not stdout.strip():
+        raise RuntimeError(f"{' '.join(args)} returned no output: {stderr}")
     try:
-        return json.loads(result.stdout)
+        return json.loads(stdout)
     except json.JSONDecodeError as exc:
-        raise RuntimeError(f"{' '.join(args)} returned invalid JSON") from exc
+        raise RuntimeError(f"{' '.join(args)} returned invalid JSON: {stderr}") from exc
 
 
 def data(value: object) -> object:
