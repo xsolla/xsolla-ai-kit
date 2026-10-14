@@ -18,11 +18,17 @@ def positive_int(value: str) -> int:
 
 
 def cli_config() -> dict:
+    # The CLI writes UTF-8; without an explicit encoding Windows decodes with the
+    # ANSI code page and loses the output.
     result = subprocess.run(
-        ["xsolla", "config", "list", "--json"], capture_output=True, text=True, check=False
+        ["xsolla", "config", "list", "--json"],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        check=False,
     )
     try:
-        value = json.loads(result.stdout)
+        value = json.loads(result.stdout or "")
     except json.JSONDecodeError:
         raise RuntimeError(
             "no Xsolla CLI project context: run `xsolla config init` for the test project"

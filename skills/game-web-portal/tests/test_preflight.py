@@ -90,6 +90,19 @@ class CliConfigTest(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "xsolla config init"):
                 preflight.cli_config()
 
+    def test_cli_output_is_read_as_strict_utf8(self):
+        done = mock.Mock(stdout=json.dumps({"ok": True, "data": CONFIG}))
+        with mock.patch.object(preflight.subprocess, "run", return_value=done) as run:
+            preflight.cli_config()
+        self.assertEqual(run.call_args.kwargs["encoding"], "utf-8")
+        self.assertNotIn("errors", run.call_args.kwargs)
+
+    def test_missing_stdout_is_a_runtime_error(self):
+        done = mock.Mock(stdout=None)
+        with mock.patch.object(preflight.subprocess, "run", return_value=done):
+            with self.assertRaisesRegex(RuntimeError, "xsolla config init"):
+                preflight.cli_config()
+
 
 class MainTest(unittest.TestCase):
     def run_main(self, *argv: str) -> tuple[int, str, str]:
