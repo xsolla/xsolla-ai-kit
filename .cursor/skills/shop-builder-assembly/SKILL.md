@@ -77,12 +77,15 @@ After confirmation, apply the plan in this dependency order:
 
 1. **Theme** — set site and page theme source fields; page theme overrides site theme.
 2. **Pages** — create all page paths before linking navigation.
-3. **Navigation** — resolve page IDs and add internal links only after pages exist.
-4. **Blocks** — add/move/update blocks page by page; resolve IDs after each structural
+3. **Site layout** — after page/template creation, add `common-layout` only if
+   `get-structure` has no layout; adding it earlier suppresses some template
+   headers and footers. Verify its ID appears in both `blocks` and `layouts`.
+4. **Navigation** — resolve page IDs and add internal links only after pages exist.
+5. **Blocks** — add/move/update blocks page by page; resolve IDs after each structural
    change and use targeted patches rather than replacing `values` or `components`.
-5. **Copy and assets** — upload local assets, then patch returned CDN URLs; write
+6. **Copy and assets** — upload local assets, then patch returned CDN URLs; write
    localized HTML through localization commands, never through block value patches.
-6. **Catalog links** — configure `newStore` sections only after catalog groups and
+7. **Catalog links** — configure `newStore` sections only after catalog groups and
    SKUs have been verified in the same project. Localize a section title before
    enabling its `L:` ID.
 
