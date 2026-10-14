@@ -97,7 +97,8 @@ def cli_context(config: object) -> dict:
 def login_once(detail: str) -> None:
     if RUN_AUTH["logged_in"]:
         raise RuntimeError(
-            "authentication still fails after this run's one `xsolla auth login`: "
+            "authentication still fails after this run's one `xsolla auth login`. "
+            "The failed command made no change, so it is safe to rerun. CLI error: "
             + detail
         )
     approved = RUN_AUTH["context"]
@@ -117,7 +118,9 @@ def login_once(detail: str) -> None:
         raise RuntimeError(
             "CLI context changed after `xsolla auth login` ("
             + ", ".join(changed)
-            + "); check .xsolla.json in the working directory and rerun preflight"
+            + "). The command was not retried and made no change, so it is safe to "
+            "rerun: check .xsolla.json in the working directory, then run preflight "
+            "again"
         )
 
 

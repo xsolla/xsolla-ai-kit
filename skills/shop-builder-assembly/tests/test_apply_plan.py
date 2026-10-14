@@ -518,6 +518,34 @@ class ApplyPlanTests(unittest.TestCase):
                         apply_plan.run_json("shopbuilder", "update-block")
                 self.assertEqual(3, run.call_count)
 
+    def test_run_json_says_a_rerun_is_safe_when_a_run_ends_after_its_login(self) -> None:
+        missing_cookie = mock.Mock(
+            returncode=1,
+            stderr="publisher session bootstrap did not yield a pa-v4-token cookie",
+            stdout="",
+        )
+        login_succeeded = mock.Mock(returncode=0, stderr="", stdout="")
+        endings = {
+            "second auth failure": [
+                missing_cookie,
+                login_succeeded,
+                config_result(),
+                missing_cookie,
+            ],
+            "context drift": [missing_cookie, login_succeeded, config_result(project_id=300)],
+        }
+        for ending, results in endings.items():
+            with self.subTest(ending):
+                with (
+                    mock.patch.dict(apply_plan.RUN_AUTH, fresh_run_auth()),
+                    mock.patch.object(apply_plan.subprocess, "run", side_effect=results),
+                    mock.patch.object(apply_plan.time, "sleep"),
+                ):
+                    with self.assertRaisesRegex(
+                        RuntimeError, "made no change, so it is safe to rerun"
+                    ):
+                        apply_plan.run_json("shopbuilder", "update-block")
+
     def test_run_json_does_not_log_in_for_exhausted_bootstrap_rate_limit(self) -> None:
         limited = mock.Mock(
             returncode=1,
