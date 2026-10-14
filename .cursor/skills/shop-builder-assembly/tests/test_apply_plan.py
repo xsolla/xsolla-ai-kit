@@ -265,6 +265,7 @@ class ApplyPlanTests(unittest.TestCase):
         structure.assert_called_once_with("shop")
         run_json.assert_not_called()
         self.assertEqual(["header", "footer"], result["blocks"])
+        self.assertEqual([], result["hidden_custom_code"])
 
     def test_reconciliation_batches_confirmed_removals_in_descending_order(self) -> None:
         current = {
