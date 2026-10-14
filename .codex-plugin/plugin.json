@@ -26,7 +26,7 @@
   "interface": {
     "displayName": "Xsolla AI Toolkit",
     "shortDescription": "Guided Xsolla workflows from zero to a live game shop",
-    "longDescription": "Bundles every Xsolla workflow skill. shop-setup is the entry point and shop-plan decides the build path. Headless path: merchant-setup, catalog-design, login-setup, login-styling, headless-checkout-integration, webhooks-impl, production; these call Xsolla REST APIs directly. Shop Builder path, in preview: description-to-shop turns a game description into a shop brief, and shop-builder-assembly builds an unpublished Shop Builder site from it through the Xsolla CLI in an allowlisted test project.",
+    "longDescription": "Bundles every Xsolla workflow skill. shop-setup is the entry point and shop-plan decides the build path. Headless path: merchant-setup, catalog-design, login-setup, login-styling, headless-checkout-integration, webhooks-impl, production; these call Xsolla REST APIs directly. Shop Builder path, in preview: description-to-shop turns a game description into a shop brief, shop-builder-assembly builds an unpublished Shop Builder site from it through the Xsolla CLI in an allowlisted test project, game-web-portal builds an unpublished PC game web portal on the partner's portal site, and shopbuilder-translate translates a site's page copy.",
     "developerName": "Xsolla",
     "category": "Productivity",
     "websiteURL": "https://xsolla.com"

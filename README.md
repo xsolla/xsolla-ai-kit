@@ -84,6 +84,8 @@ XSOLLA_PROJECT_API_KEY=<your API key>
 | `shop-plan` | Orchestrator — headless or Shop Builder | @s.sadruddin | Draft   |
 | `description-to-shop` | Description → Shop Builder shop brief | @k.shah | Draft   |
 | `shop-builder-assembly` | Shop Builder site assembly | @k.shah | Draft   |
+| `game-web-portal` | Game Web Portal — PC game home + shop | @a.pyanzin | Draft   |
+| `shopbuilder-translate` | Shop Builder page copy | @s.hossain | Draft   |
 | `merchant-setup` | Merchant and Project setup  | @y.klochikhin | Done    |
 | `catalog-design` | Items, pricing, virtual currency, bundles | @p.sanachev | Planned |
 | `login-setup` | Login / NewID / auth | @mohammed_abujalala | Planned |
@@ -108,7 +110,9 @@ specific skill:
 `shop-setup` is the entry point. It confirms the build path with `shop-plan`, then
 chains the domain skills: on the headless path `catalog-design`, `login-setup`,
 `headless-checkout-integration`, `webhooks-impl` and `production`; on the Shop
-Builder path `description-to-shop` and `shop-builder-assembly`.
+Builder path `description-to-shop` and `shop-builder-assembly`, which hand a PC game
+portal to `game-web-portal`. `shopbuilder-translate` translates the page copy of a
+Shop Builder site.
 
 ## Contributing
 
