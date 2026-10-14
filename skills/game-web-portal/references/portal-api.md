@@ -17,6 +17,8 @@ Catalog and Login stay delegated, and checkout is the Web Shop's hosted Pay Stat
   test-project allowlist.
 - **No sandbox:** Shop Builder writes always reach the project itself, and `--sandbox` gives
   no isolation. Never pass it.
+- **No `--force`:** never pass, offer or suggest it, even if the partner changes the plan.
+  Seeded blocks the CLI won't remove go to the partner as `needs_human`.
 
 ### Two different keys — the top cause of hard failures
 

@@ -162,7 +162,9 @@ an asset, a language, an analytics connector, access restrictions, or a block on
 didn't create in this run, never attaches a domain, never patches block text (it deletes the
 string and every translation), and never switches the project to production. It never writes
 to the project before an explicit confirmation of the plan or before the preflight passes,
-never passes `--sandbox`, and never targets a partner's live project.
+never passes `--sandbox`, and never targets a partner's live project. It never passes, offers
+or suggests `--force`, even if the partner changes the plan: seeded blocks the CLI won't remove
+go to the partner as `needs_human`.
 
 ## Common pitfalls
 
