@@ -60,10 +60,42 @@ A quoted value (`XSOLLA_BUILD_PATH="headless"`) is `INVALID`, not `DECIDED`. Tha
 halting to ask costs one turn, whereas accepting loose spellings means every consumer has to agree
 on the same set of them, and they will not.
 
+## The site kind (Shop Builder only)
+
+A Shop Builder site is either a **shop** or a **Game Web Portal** — a game home around the store.
+The kind is a second key, recorded with the path:
+
+| | |
+|---|---|
+| **Key** | `XSOLLA_SITE_KIND` |
+| **Location** | `.env`, next to `XSOLLA_BUILD_PATH` |
+| **Values** | exactly `shop` or `portal`, with the same spelling rules as the path |
+| **Written by** | `shop-plan`, at the same confirmation as the path, and only when the path is `shopbuilder` |
+| **Read by** | `shop-plan`, to report a recorded decision; `description-to-shop`, `shop-builder-assembly` and `game-web-portal`; `shop-setup` routes on the path alone |
+
+| State | What it means | The consumer must |
+|---|---|---|
+| Path is `headless` | The site kind doesn't apply | Ignore the key |
+| Path is `shopbuilder`, key absent | A store, recorded before the site kind existed | Treat it as `shop` |
+| Value is `shop` or `portal` | A developer confirmed this | Build a shop, or hand off to `game-web-portal` |
+| Key present, value is anything else | `.env` was hand-edited or corrupted | **Halt and tell the developer.** Never silently re-ask |
+
+An empty value (`XSOLLA_SITE_KIND=`) counts as absent, as it does for the path. Check it only
+after the path check returned `DECIDED:shopbuilder`:
+
+```bash
+kind=$(grep -E '^XSOLLA_SITE_KIND=' .env 2>/dev/null | tail -n 1 | cut -d= -f2-)
+case "$kind" in
+  ""|shop) echo "KIND:shop" ;;
+  portal)  echo "KIND:portal" ;;
+  *)       echo "INVALID_KIND:$kind" ;;
+esac
+```
+
 ## Rules for anyone writing to `.env`
 
-- **Only `shop-plan` writes `XSOLLA_BUILD_PATH`.** Two writers means two truths, and nothing
-  downstream can then tell which one the developer actually agreed to.
+- **Only `shop-plan` writes `XSOLLA_BUILD_PATH` and `XSOLLA_SITE_KIND`.** Two writers means two
+  truths, and nothing downstream can then tell which one the developer actually agreed to.
 - **Scope your deletes to your own keys.** A skill that clears `^XSOLLA_` wholesale before
   writing its own values will erase this one. `merchant-setup` had exactly this bug: it ran
   `sed '/^XSOLLA_/d'` before writing credentials, silently wiping the recorded path.

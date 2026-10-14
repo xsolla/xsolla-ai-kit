@@ -1,15 +1,15 @@
 # Shop Builder assembly skill
 
-Assembles an unpublished Shop Builder site in a sandbox or dedicated test project
+Assembles an unpublished Shop Builder site in a dedicated test project
 from a normalized JSON shop brief.
 
 ## Prerequisites
 
 - Xsolla CLI with `shopbuilder` commands
 - `xsolla auth login` completed for a Publisher account
-- Sandbox IDs or an acknowledged dedicated test project
+- An acknowledged dedicated test project with CLI sandbox mode disabled
 - Existing catalog group IDs for any `newStore` sections
-- For a non-sandbox test project, a separate local approval allowlist containing the
+- A separate local approval allowlist containing the
   exact merchant/project identity and the mentor or lead's approval reference
 
 ## Happy path
@@ -63,8 +63,8 @@ catalog. Federated wrappers use their effective `values.blockId` module.
   PR review; implementation testing may start earlier.
 - Test project IDs are intentionally not stored in committed examples.
 - A `test` brief is insufficient on its own: preflight and apply also require a
-  separate, uncommitted allowlist record for the exact merchant/project IDs. Sandbox
-  briefs do not require this file.
+  separate, uncommitted allowlist record for the exact merchant/project IDs.
+- Sandbox briefs are rejected, and the scripts never pass `--force` to the CLI.
 - The CLI does not currently expose an authoritative list of standard block modules.
 - Multi-command Shop Builder authentication, readiness verification, and CLI preview
   have confirmed defects captured in `references/test-findings.md`.

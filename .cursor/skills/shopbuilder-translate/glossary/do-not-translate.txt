@@ -1,0 +1,17 @@
+# One term per line. Matched case-insensitively, copied through verbatim.
+# Seed this from the catalog before the first translation run — retrofitting terminology
+# costs far more than seeding it.
+
+# Platform
+Xsolla
+Pay Station
+Shop Builder
+
+# Brand / product — replace with the real ones
+# <Game Title>
+# <Studio Name>
+
+# In-game proper nouns (factions, characters, places, premium currency names)
+# Ashfall
+# Ember
+# Warden

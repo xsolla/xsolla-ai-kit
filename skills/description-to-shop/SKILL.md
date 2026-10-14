@@ -19,6 +19,10 @@ metadata:
 Convert a short game description into a valid `shop-builder-assembly` brief, then hand
 it over. Never call Shop Builder write commands here.
 
+A Game Web Portal is not built from a brief. First read `XSOLLA_SITE_KIND` with the
+[build-path contract's check](../shop-plan/references/build-path-contract.md#the-site-kind-shop-builder-only):
+for `portal`, hand the request to `game-web-portal` and stop here; an invalid value halts.
+
 ## 1. Extract the description
 
 Read [references/intake-schema.md](references/intake-schema.md). Classify every required

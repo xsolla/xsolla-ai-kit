@@ -1,0 +1,180 @@
+{
+ "meta": {
+  "generated": "2026-09-01T17:39:05.389976+00:00",
+  "baseline": "l10n/backup/fixture",
+  "source_locale": "en-US",
+  "target_locale": "de-DE",
+  "landing_id": "landing_mongo_id",
+  "domain": "voidwall-45e0",
+  "counts": {
+   "total": 8,
+   "block": 8,
+   "common_scope": 1,
+   "legal_flagged": 1,
+   "assets_skipped": 1,
+   "existing_target_present": 0,
+   "existing_may_be_stale": true
+  },
+  "images_not_translatable": [
+   "https://cdn.x/card.png",
+   "https://cdn.x/hero.png"
+  ],
+  "notes": []
+ },
+ "units": [
+  {
+   "id": "block:blk_hero:values.title",
+   "surface": "block",
+   "lid": "L:t1",
+   "scope": "page1",
+   "page_id": "page1",
+   "block_id": "blk_hero",
+   "block_type": "lead",
+   "container": "values",
+   "field": "title",
+   "source": "<h1>Hold the Line</h1>",
+   "existing_target": null,
+   "kind": "marketing",
+   "tags": [
+    "h1"
+   ],
+   "budget": 17,
+   "source_len": 13,
+   "target": "<h1>Haltet die Stellung</h1>"
+  },
+  {
+   "id": "block:blk_hero:values.subtitle",
+   "surface": "block",
+   "lid": "L:t2",
+   "scope": "page1",
+   "page_id": "page1",
+   "block_id": "blk_hero",
+   "block_type": "lead",
+   "container": "values",
+   "field": "subtitle",
+   "source": "<p>Gear up before the Ashfall reaches the gate.</p>",
+   "existing_target": null,
+   "kind": "marketing",
+   "tags": [
+    "p"
+   ],
+   "budget": null,
+   "source_len": 44,
+   "target": "<p>Rüstet euch, bevor der Aschefall das Tor erreicht.</p>"
+  },
+  {
+   "id": "block:blk_store:components.0.section.title",
+   "surface": "block",
+   "lid": "L:t3",
+   "scope": "page1",
+   "page_id": "page1",
+   "block_id": "blk_store",
+   "block_type": "newStore",
+   "container": "components",
+   "field": "title",
+   "source": "Cosmetics",
+   "existing_target": null,
+   "kind": "marketing",
+   "tags": [],
+   "budget": 12,
+   "source_len": 9,
+   "target": "Kosmetik"
+  },
+  {
+   "id": "block:blk_faq:components.0.question",
+   "surface": "block",
+   "lid": "L:t4",
+   "scope": "page1",
+   "page_id": "page1",
+   "block_id": "blk_faq",
+   "block_type": "faq",
+   "container": "components",
+   "field": "question",
+   "source": "<p>Is this pay-to-win?</p>",
+   "existing_target": null,
+   "kind": "ui",
+   "tags": [
+    "p"
+   ],
+   "budget": 25,
+   "source_len": 19,
+   "target": "<p>Ist das Pay-to-Win?</p>"
+  },
+  {
+   "id": "block:blk_faq:components.0.answer",
+   "surface": "block",
+   "lid": "L:t5",
+   "scope": "page1",
+   "page_id": "page1",
+   "block_id": "blk_faq",
+   "block_type": "faq",
+   "container": "components",
+   "field": "answer",
+   "source": "<p>No. Every item in this shop is cosmetic only.</p>",
+   "existing_target": null,
+   "kind": "ui",
+   "tags": [
+    "p"
+   ],
+   "budget": null,
+   "source_len": 45,
+   "target": "<p>Nein. Jeder Gegenstand in diesem Shop ist rein kosmetisch.</p>"
+  },
+  {
+   "id": "block:blk_foot:values.legalText",
+   "surface": "block",
+   "lid": "L:t6",
+   "scope": "page1",
+   "page_id": "page1",
+   "block_id": "blk_foot",
+   "block_type": "lead",
+   "container": "values",
+   "field": "legalText",
+   "source": "<p>All sales final. Refunds per our refund policy and applicable tax law.</p>",
+   "existing_target": null,
+   "kind": "legal",
+   "tags": [
+    "p"
+   ],
+   "budget": null,
+   "source_len": 70
+  },
+  {
+   "id": "block:blk_seo:values.ogImage",
+   "surface": "block",
+   "lid": "L:t7",
+   "scope": "page1",
+   "page_id": "page1",
+   "block_id": "blk_seo",
+   "block_type": "seo",
+   "container": "values",
+   "field": "ogImage",
+   "source": "https://cdn.x/og-image.png",
+   "existing_target": null,
+   "kind": "asset",
+   "tags": [],
+   "budget": 34,
+   "source_len": 26
+  },
+  {
+   "id": "block:common:L:c1",
+   "surface": "block",
+   "lid": "L:c1",
+   "scope": "common",
+   "page_id": null,
+   "block_id": null,
+   "block_type": "",
+   "container": "common",
+   "field": "",
+   "source": "<p>Need help? support@voidwall.example</p>",
+   "existing_target": null,
+   "kind": "ui",
+   "tags": [
+    "p"
+   ],
+   "budget": 46,
+   "source_len": 35,
+   "target": "<p>Brauchst du Hilfe? support@voidwall.example</p>"
+  }
+ ]
+}
