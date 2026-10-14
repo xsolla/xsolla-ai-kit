@@ -27,6 +27,10 @@ from committed evidence.
   seven default blocks. Publisher Account reported every write saved. Custom code was
   left empty, Offer chain stayed in its safe no-chain state, and the site was never
   published.
+- `add-block --block html` through the CLI creates the Custom code block empty but
+  visible (`hidden: false`), unlike the hidden default in UI-created exports.
+  `apply_plan.py` hides each Custom code block it adds with a `["hidden"]` block patch
+  and leaves a Custom code block that was already on the page as the user set it.
 - The post-write export proves Offer chain and Social quests use the `federated`
   transport with effective identities `sb-offer-chain` and `social-quests`. The
   sanitizer now extracts their internal field/type contracts without retaining IDs,

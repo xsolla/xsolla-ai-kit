@@ -155,9 +155,15 @@ def page_path(page: object) -> str | None:
 
 
 def custom_code_warnings(pages: list[dict]) -> list[str]:
-    """The skill never writes custom HTML, CSS, or JS, so the user must add it."""
-    if any("html" in page.get("blocks", []) for page in pages):
-        return [CUSTOM_CODE_WARNING]
+    """Warn when the plan adds a Custom code block.
+
+    The skill never writes custom HTML, CSS, or JS, so the user must add it. A block
+    already on the page is left as the user set it, so it gets no warning.
+    """
+    for page in pages:
+        current = {block.get("module") for block in page.get("current_blocks", [])}
+        if "html" in page.get("blocks", []) and "html" not in current:
+            return [CUSTOM_CODE_WARNING]
     return []
 
 
