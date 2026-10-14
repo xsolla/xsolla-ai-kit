@@ -62,6 +62,10 @@ PRESET_PAGES = {
         },
     ],
 }
+CUSTOM_CODE_WARNING = (
+    "The Custom code block is added empty and hidden; paste your code and make the "
+    "block visible in the Site Builder editor."
+)
 
 
 def choose_preset(brief: dict) -> str:
@@ -148,6 +152,13 @@ def page_path(page: object) -> str | None:
     if isinstance(path, dict) and isinstance(path.get("pathSegment"), str):
         return path["pathSegment"]
     return None
+
+
+def custom_code_warnings(pages: list[dict]) -> list[str]:
+    """The skill never writes custom HTML, CSS, or JS, so the user must add it."""
+    if any("html" in page.get("blocks", []) for page in pages):
+        return [CUSTOM_CODE_WARNING]
+    return []
 
 
 def selected_pages(brief: dict, preset: str) -> list[dict]:
@@ -348,6 +359,7 @@ def build_plan(brief: dict, current_structure: object | None = None) -> dict:
         warnings.append(
             "No event data supplied; omit event-specific copy and scarcity claims."
         )
+    warnings.extend(custom_code_warnings(pages))
     plan = {
         "version": 1,
         "target": {

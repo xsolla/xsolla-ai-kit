@@ -16,6 +16,7 @@ from pathlib import Path
 
 from render_plan import (
     build_plan,
+    custom_code_warnings,
     effective_module,
     page_path,
     structure_data,
@@ -1007,6 +1008,7 @@ def main() -> int:
                     "locales": locales,
                     "completed_phases": plan["implemented_phases"],
                     "pending_phases": plan["unsupported_phases"],
+                    "warnings": custom_code_warnings(plan["pages"]),
                     "published": False,
                 },
                 indent=2,

@@ -1209,5 +1209,72 @@ class ObjectPagePathTests(unittest.TestCase):
         )
 
 
+class CustomCodeReportTests(unittest.TestCase):
+    def apply_to_existing_site(self, blocks: list[str]) -> dict:
+        brief = json.loads(EXAMPLE_BRIEF.read_text(encoding="utf-8"))
+        brief["content"]["page_overrides"] = [
+            {"name": "Home", "path": "/", "blocks": blocks}
+        ]
+        slug = brief["site"]["slug"]
+        cli = FakeShopBuilderCli(brief)
+        cli("shopbuilder", "create-website", "--name", "Shop", "--slug", slug, "--type", "topup")
+        cli("shopbuilder", "set-landing-type", "--slug", slug, "--type", "store")
+        cli("shopbuilder", "add-page", "--slug", slug, "--name", "Home", "--path", "/")
+        saved = copy.deepcopy(cli.landing)
+        confirmation_id = apply_plan.build_plan(brief, saved)["confirmation_id"]
+
+        def reconciled(slug: str, landing_id: str, page: dict) -> dict:
+            return {
+                "path": page["path"],
+                "page_id": page["page_id"],
+                "blocks": page["blocks"],
+                "removed_blocks": 0,
+            }
+
+        stdout, stderr = io.StringIO(), io.StringIO()
+        with tempfile.TemporaryDirectory() as directory:
+            brief_path = Path(directory) / "brief.json"
+            brief_path.write_text(json.dumps(brief), encoding="utf-8")
+            argv = [
+                "apply_plan.py",
+                str(brief_path),
+                "--confirmation-id",
+                confirmation_id,
+                "--backup-dir",
+                directory,
+            ]
+            with (
+                mock.patch.dict(apply_plan.RUN_AUTH, {"logged_in": False, "context": None}),
+                mock.patch.object(sys, "argv", argv),
+                mock.patch.object(apply_plan, "run_preflight"),
+                mock.patch.object(apply_plan, "run_json", side_effect=cli),
+                mock.patch.object(apply_plan, "verified_backup", return_value=True),
+                mock.patch.object(apply_plan, "backup_structure", return_value=saved),
+                mock.patch.object(apply_plan, "reconcile_page", side_effect=reconciled),
+                mock.patch.object(apply_plan, "apply_navigation", return_value=[]),
+                mock.patch.object(apply_plan, "wire_catalog_sections", return_value=[]),
+                contextlib.redirect_stdout(stdout),
+                contextlib.redirect_stderr(stderr),
+            ):
+                code = apply_plan.main()
+        self.assertEqual(0, code, stderr.getvalue())
+        return json.loads(stdout.getvalue())
+
+    def test_final_report_tells_the_user_to_fill_custom_code(self) -> None:
+        report = self.apply_to_existing_site(["header", "html", "footer"])
+        self.assertEqual("implemented-phases-applied", report["status"])
+        self.assertEqual(
+            [
+                "The Custom code block is added empty and hidden; paste your code and "
+                "make the block visible in the Site Builder editor."
+            ],
+            report["warnings"],
+        )
+
+    def test_final_report_has_no_custom_code_line_without_the_block(self) -> None:
+        report = self.apply_to_existing_site(["header", "footer"])
+        self.assertEqual([], report["warnings"])
+
+
 if __name__ == "__main__":
     unittest.main()
