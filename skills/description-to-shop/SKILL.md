@@ -19,18 +19,25 @@ metadata:
 Convert a short game description into a valid `shop-builder-assembly` brief, then hand
 it over. Never call Shop Builder write commands here.
 
-A Game Web Portal is not built from a brief. First read `XSOLLA_SITE_KIND` with the
-[build-path contract's check](../shop-plan/references/build-path-contract.md#the-site-kind-shop-builder-only):
-for `portal`, hand the request to `game-web-portal` and stop here; an invalid value halts.
+## 0. Reuse the confirmed onboarding intake
+
+Before asking anything, read [references/onboarding-intake.md](references/onboarding-intake.md)
+and run this skill's `scripts/read_onboarding.py --project-root <publisher-project-root>`.
+Use the publisher's working project, not the installed plugin directory. The helper reads
+`.env` routing keys and `.xsolla/onboarding.json` only; it makes no writes or API calls.
+On an error, stop and report it rather than restarting the interview. For `portal`, hand
+off to `game-web-portal` and stop here. A missing ledger on the shop path permits normal
+intake from the conversation. A loaded ledger supplies already-confirmed answers.
 
 ## 1. Extract the description
 
 Read [references/intake-schema.md](references/intake-schema.md). Classify every required
-fact as stated, safely inferred, or missing. Infer presentation choices such as the
+fact from the ledger and conversation as stated, safely inferred, missing, or conflicting.
+Never ask the publisher to repeat a usable recorded answer. Infer presentation choices such as the
 likely preset; never invent prices, catalog groups, dates, game facts, studio names, or
 translated copy.
 
-Ask for all missing required facts in one batch. Use read-only discovery for the active
+Ask for missing required facts and unresolved conflicts in one batch. Use read-only discovery for the active
 CLI project and its catalog groups. If the catalog is absent, or a named group does not
 exist, stop and point at the catalog skill rather than creating entities.
 
@@ -45,7 +52,8 @@ version-1 JSON object:
   supported type.
 - `content` — approved copy and publisher page overrides.
 - `sources` — add `{"kind":"description", ...}` and keep the provenance of any publisher
-  answer used to fill a gap.
+  answer used to fill a gap. Attribute reused intake to `.xsolla/onboarding.json` and
+  its keys with `kind: publisher_answers`; retain provenance for corrections and inferences.
 - Never include API keys, tokens, session cookies, passwords, or browser storage.
 
 Validate with the assembly skill's `scripts/validate_shop_brief.py` and fix input errors

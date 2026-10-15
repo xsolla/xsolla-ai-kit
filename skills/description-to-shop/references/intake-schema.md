@@ -6,15 +6,17 @@ held before the first write; target 100%).
 
 ## How intake works
 
-After reading the description, every field is in one of three states:
+Read the [onboarding intake](onboarding-intake.md) before asking questions. Combine its
+confirmed answers with the conversation; every field is in one of four states:
 
 | State | Meaning | Action |
 |---|---|---|
-| **Stated** | Explicit in the description | Record. Never re-ask. |
+| **Stated** | Explicit in the description, a publisher answer, or confirmed onboarding intake | Record its source. Never re-ask. |
 | **Inferred** | Derivable with confidence ("mobile gacha RPG" → `mobile`) | Record with provenance; confirm in the plan, not in a turn. |
 | **Missing** | Neither | Ask. |
+| **Conflicting** | Recorded answer disagrees with the request or discovery, without an explicit correction | Ask only which value is intended. |
 
-Only Missing required fields generate questions, and they go in **one batch**, grouped by
+Only Missing required fields and unresolved conflicts generate questions, in **one batch**, grouped by
 section. Optional fields are never asked; they take defaults and the plan says so.
 Confirming inferences in bulk at the plan is what keeps turns-to-approval low.
 
@@ -126,7 +128,7 @@ Part of completeness. Absent → hard stop before any write.
 
 Before handing the brief to `shop-builder-assembly`, all must hold:
 
-1. Every ✅ field is Stated or Inferred — none Missing.
+1. Every ✅ field is Stated or Inferred — none Missing or Conflicting.
 2. Every inferred field is surfaced with its provenance.
 3. `auth_ok` true, `project_id` non-zero.
 4. The normalized brief passes the shared assembly validator.
