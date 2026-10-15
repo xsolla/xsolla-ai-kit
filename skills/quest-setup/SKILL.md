@@ -13,8 +13,10 @@ description: >-
   my quest", "make a quest that pays a token", "trigger my quest", "send a quest
   event", "why didn't my quest complete", "list my quests", "activate a quest",
   "quest platform API". Also adds an optional quest section inside a headless
-  Web Shop when asked. Use for
-  "show quests in my web shop" or "add a quest module to my shop".
+  Web Shop when asked, and the Quests block in a Shop Builder site (sandbox
+  only, never published). Use for "show quests in my web shop", "add a quest
+  module to my shop", "add the Quests block to my Shop Builder site" or "show
+  quests in Site Builder".
 metadata:
   owner: r.aliyev
   domain: quests
@@ -84,9 +86,10 @@ Use this skill when the developer wants to manage Xsolla Quest Platform quests:
 - Submit a single quest event to make a quest run
 - Check whether an event actually caused a quest to execute
 - Add or update an optional quest section inside a headless Web Shop catalog
+- Add the Quests block to an unpublished Shop Builder site in a sandbox project
 
-Out of scope: on-chain finality, wallet balances, Backpack display, Site
-Builder and custom-blocks quest UI. A completed reward action is not proof of
+Out of scope: on-chain finality, wallet balances, Backpack display, and
+publishing a Shop Builder site. A completed reward action is not proof of
 delivery.
 
 ## Prerequisites
@@ -116,6 +119,7 @@ neither answers, ask the developer.
 | Event gate, payload, event stops | [`events.md`](references/events.md) |
 | Execution read-back, read scope | [`verification.md`](references/verification.md) |
 | Optional headless Web Shop module, only when explicitly requested | [`web-shop-module.md`](references/web-shop-module.md) |
+| Quests block in a Shop Builder site, only when explicitly requested | [`shop-builder-quests-block.md`](references/shop-builder-quests-block.md) |
 
 ## Conversation contract (summary)
 
@@ -175,6 +179,12 @@ and [Safety stops for proposals and actions](references/quest-document.md#safety
 8. **Optional Web Shop module.** Only when explicitly requested, follow
    [`web-shop-module.md`](references/web-shop-module.md). Quest publication
    approval never authorizes shop source edits.
+9. **Optional Shop Builder Quests block.** Only when explicitly requested for a
+   Shop Builder site (not a headless shop), follow
+   [`shop-builder-quests-block.md`](references/shop-builder-quests-block.md):
+   make the chosen quests public, then add the block through the
+   `shop-builder-assembly` safety gate (`xsolla shopbuilder` only, sandbox,
+   confirmed plan, never publish). Quest approval never authorizes site writes.
 
 ## Safety stops (summary)
 
