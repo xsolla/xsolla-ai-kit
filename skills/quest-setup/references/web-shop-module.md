@@ -1,8 +1,9 @@
 # Headless Web Shop quest module
 
 Optional in-catalog quest section for the **headless** storefront from
-`shop-setup`. Not Site Builder / custom-blocks. Never a top-level nav tab,
-router entry, or new shop route.
+`shop-setup`. For a Shop Builder site use
+[`shop-builder-quests-block.md`](shop-builder-quests-block.md) instead. Never a
+top-level nav tab, router entry, or new shop route.
 
 Triggers: "show quests in my web shop", "add quest module to shop", "quest
 module", "catalog quests section".
@@ -21,7 +22,8 @@ contract. Give a brief progress update only when the work takes long enough to
 need one, then make the edits and run the shop's available checks.
 
 Out of scope: user progress / completion UI, fabricating sample quests,
-changing AdTech APIs, Site Builder blocks.
+changing AdTech APIs. Shop Builder sites are handled by
+[`shop-builder-quests-block.md`](shop-builder-quests-block.md), not here.
 
 ## Identity (source of truth)
 
