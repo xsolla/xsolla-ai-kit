@@ -24,7 +24,8 @@ metadata:
 
 ## Status
 
-This skill targets **production** only. Resolve Quest Platform scope and the
+Quest endpoints use the production publisher lane; Shop Builder writes go only
+against a sandbox or dedicated test site. Resolve Quest Platform scope and the
 Web3 catalog from the configured integration (see
 [auth and environment](references/auth-and-environment.md)); never fall back to
 another service target, credential source or catalog. Event submission and
@@ -94,7 +95,9 @@ delivery.
 
 ## Prerequisites
 
-The configured production publisher credential is the only lane. It works only
+The configured production publisher credential is the only lane for quest
+endpoints (Shop Builder site writes are separate, see
+[`shop-builder-quests-block.md`](references/shop-builder-quests-block.md)). It works only
 on the project-scoped routes in
 [`qp-api-contract.md`](references/qp-api-contract.md). Credential, scope and
 onboarding: [Prerequisites and lane](references/auth-and-environment.md#prerequisites-and-lane).
