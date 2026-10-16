@@ -8,7 +8,7 @@ This file is read automatically by most AI coding agents (Cursor, Codex CLI, Git
 
 `xsolla/xsolla-ai-kit` is the Xsolla agent skills toolkit — a collection of `SKILL.md` files (agentskills.io format) that teach AI coding agents how to execute Xsolla-specific workflows end-to-end, without requiring the Xsolla CLI as a dependency.
 
-Skills call **Xsolla REST APIs directly**. The CLI (`xsolla/xsolla-cli`) is an optional shortcut once it ships to production.
+Skills reach Xsolla through the **Xsolla CLI** (`xsolla`, 1.9.4 or later: `brew install xsolla/xsolla-cli/xsolla`). The CLI signs the developer in through the browser and keeps tokens and API keys in the OS keychain, so an agent never asks anyone to paste a key or token. REST calls appear only in code the developer ships (storefront, checkout, webhook handler) and where the CLI has no command yet. Each such gap is named in the skill that hits it.
 
 ---
 
@@ -19,7 +19,7 @@ Skills call **Xsolla REST APIs directly**. The CLI (`xsolla/xsolla-cli`) is an o
 | `shop-plan`                     | **Decides the build path** — headless or Shop Builder (shop or portal), before any build |
 | `shop-setup`                    | **Entry point** for "build me a shop" — checks the build path, chains the right skills   |
 | `shop-builder-assembly`         | Assembles a Shop Builder site from a shop brief — reached via shop-setup, not directly   |
-| `merchant-setup`                | Creates and configures an Xsolla account + get API key                                   |
+| `merchant-setup`                | Installs and signs in to the Xsolla CLI, picks merchant + project, stores the API key    |
 | `catalog-design`                | Configures the catalog and the client flow: client catalog, purchase, order confirmation |
 | `login-setup`                   | Integrates Xsolla Login / NewID authentication                                           |
 | `login-styling`                 | Applies a custom visual style / theme / brand to the Login UI (pairs with `login-setup`) |
@@ -74,12 +74,25 @@ Set up a Game Web Portal for my PC game — a game home with news, rewards and a
 
 ## Environment variables
 
+Credentials are not environment variables. `merchant-setup` runs `xsolla auth login`, which
+puts the token and the Store API key in the OS keychain and the merchant and project IDs in
+`.xsolla.json`. Check the state with:
+
 ```bash
-XSOLLA_MERCHANT_ID=<your merchant ID>
-XSOLLA_PROJECT_ID=<your project ID>
-XSOLLA_PROJECT_API_KEY=<your API key>
+xsolla auth status --json && xsolla config list --json
 ```
-Setup by `merchant-setup` skill.
+
+Code the developer ships cannot use the keychain, so `merchant-setup` also writes its runtime
+config to `.env` (mode 600, git-ignored):
+
+```bash
+XSOLLA_MERCHANT_ID=<from .xsolla.json>
+XSOLLA_PROJECT_ID=<from .xsolla.json>
+XSOLLA_PROJECT_API_KEY=<minted by `xsolla publisher create-api-key`, written straight to .env>  # only when the app's backend needs it
+```
+
+Never put `XSOLLA_API_KEY` or `XSOLLA_TOKEN` in `.env` or the shell. They override the
+keychain, and a stale value causes 401s.
 
 ```bash
 XSOLLA_BUILD_PATH=headless|shopbuilder

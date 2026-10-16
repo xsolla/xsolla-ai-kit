@@ -13,6 +13,17 @@ No installation required for most agents. Open this repo in your tool and skills
 | Augment        | Reads `AGENTS.md` at root                                  | Auto on repo open                                                                         |
 | Amp            | Reads `AGENTS.md` at root                                  | Auto on repo open                                                                         |
 
-## Long-term: `xsolla install`
+## Through the Xsolla CLI
 
-Once `xsolla/xsolla-cli` ships to production, `xsolla install xsolla-ai-kit` will sync skills into the developer's current project automatically. Skills in this repo are the source of truth.
+The CLI ships with a built-in `ai-kit` skill source that points at `skills/` in this repo,
+so a developer can install the kit without cloning it:
+
+```bash
+xsolla skills install --source ai-kit            # into the current project
+xsolla skills install --source ai-kit --global   # for every project
+```
+
+Remote installs are pinned to a commit SHA. Skills in this repo are the source of truth, so
+keep them under `skills/<name>/` or the CLI won't find them. The CLI installs each skill on
+its own, so a skill must not depend on files in another skill's directory to run its
+preflight.

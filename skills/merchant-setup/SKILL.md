@@ -1,6 +1,6 @@
 ---
 name: merchant-setup
-description: Guide for setting up a new Xsolla merchant account and obtaining API credentials. Use this skill whenever a user needs to create an Xsolla Publisher Account, get API keys, understand the difference between merchant-level and project-level API keys, set up sandbox mode for testing, or asks how to start integrating with Xsolla Pay Station. Also trigger when a user says they want to accept payments via Xsolla, start an Xsolla integration, or test Xsolla payments. Claude Code cannot create the account on behalf of the user — this skill provides the exact steps the user must complete manually before integration can begin.
+description: Sets up the Xsolla CLI as the agent's way into Xsolla — install it, sign in, pick the merchant and project, and get the API key into the keychain without the user ever copying a key from Publisher Account. Use this skill whenever a user needs to create an Xsolla Publisher Account, sign in to Xsolla, install or authenticate the Xsolla CLI (`xsolla auth login`), get or rotate an API key, choose or create a project, set up sandbox mode for testing, or start any Xsolla integration (Pay Station, Store, catalog, Login, webhooks, Shop Builder). Also trigger when another skill's preflight fails (CLI missing, not logged in, no project, 401/403 from a CLI command), or when the user says they want to accept payments via Xsolla or test Xsolla payments.
 metadata:
   owner: y-klochikhin
   domain: orchestrator
@@ -8,178 +8,186 @@ metadata:
 
 # Merchant Setup
 
-AI Agent **cannot** create an Xsolla account automatically. The user must complete the registration steps manually.
+Every other skill reaches Xsolla through the **Xsolla CLI** (`xsolla`). This skill gets it
+installed and signed in, with a merchant and a project selected. It also stores a Store API
+key in the OS keychain.
 
-## Step 0: Check for Existing Credentials
+Never ask the user to copy an API key or token out of Publisher Account and paste it into
+the chat or into `.env`. The CLI mints and stores keys itself.
 
-**Before anything else**, check for a `.env` file in the project root:
+## Step 0: Preflight
+
+Run these three checks. They are read-only and safe to repeat.
 
 ```bash
-# Check if .env exists and contains Xsolla variables
-cat .env 2>/dev/null | grep -E "XSOLLA_MERCHANT_ID|XSOLLA_PROJECT_ID|XSOLLA_PROJECT_API_KEY"
+xsolla --version                  # installed? which version?
+xsolla auth status --json         # signed in, token not expired?
+xsolla config list --json         # merchant_id / project_id / sandbox
 ```
 
-**If all three variables are present and non-empty** — credentials are already configured. Report them to the user (show names and values, except mask the API key as `****`) and proceed directly with the integration. Skip all steps below.
+| Result | Go to |
+|---|---|
+| `command not found` | Step 1 |
+| `authenticated: false` or `expired: true` | Step 2 |
+| `merchant_id` or `project_id` is `0` or missing | Step 3 |
+| All present | Step 3's project confirmation, then Steps 4–6 |
 
+Ignore `xsolla publisher status`: it can say "not configured" when the config is fine.
+
+## Step 1: Install the CLI
+
+The minimum is **1.9.4**. A `dev` build is acceptable. Ask before installing, because this
+changes the user's machine:
+
+```bash
+brew install xsolla/xsolla-cli/xsolla      # macOS / Linux with Homebrew
+brew update && brew upgrade xsolla         # when below 1.9.4
 ```
-✅ Found in .env:
-   XSOLLA_MERCHANT_ID=887981
-   XSOLLA_PROJECT_ID=308077
-   XSOLLA_PROJECT_API_KEY=****  (set)
+
+Without Homebrew, point the user to the signed release archives for their OS. Do not pipe
+a remote script into a shell.
+
+## Step 2: Sign in
+
+**The user already has a Publisher Account.** Run `xsolla auth login`. It opens a browser
+for OAuth2 + PKCE. The user completes the sign-in there, and the CLI never sees a password.
+Tokens go to the OS keychain and refresh automatically.
+
+- If login fails with *audience required*, retry with
+  `--audience https://api.xsolla.com`.
+
+**The user has no account yet.** The user runs `xsolla publisher signup` themselves, in
+their own terminal (`! xsolla publisher signup` in Claude Code). It asks for a password and
+an emailed 6-digit code, and the agent must never type or see either one.
+
+- Signup creates the merchant, tries to create a project, and saves both IDs to
+  `.xsolla.json`.
+- Then run `xsolla auth login`.
+- Signup prints an API key. Tell the user they don't need to save it, because Step 4
+  mints the key the agent uses.
+- An individual account is the fastest way to evaluate Xsolla in sandbox. Company
+  details are needed later, for the licensing agreement.
+
+## Step 3: Select the merchant and project
+
+- **`merchant_id` is still 0 after login.** Ask the user for it. Every Publisher Account
+  URL contains it: `publisher.xsolla.com/{merchant_id}/projects/{project_id}/...`.
+- **No `project_id`.** Let the user choose one from
+  `xsolla publisher list-projects --json` (`data[].id`, `data[].name`).
+
+- **No projects exist.** Confirm a name with the user, then:
+
+  ```bash
+  xsolla publisher create-project --name "<Game name>" --url "<game site>"
+  ```
+
+  It saves the new `project_id` to the active config; pin it below. If the user gives a short descriptor, add
+  `--descriptor <≤12 letters/digits>`. If creation is refused, send the user to
+  Publisher Account → **Projects → Create project**, then return to the list step.
+- **A project is already set.** Confirm it before building on it, because the IDs may come
+  from `~/.xsolla.json` and belong to an earlier game. Show its name from
+  `publisher list-projects --json` and ask: *"Use project `<name>` (`<id>`) for this
+  game?"* If the user says no, use the list step above.
+- **Pin the confirmed project to this game.** The CLI reads `./.xsolla.json` before
+  `~/.xsolla.json`, so a local file keeps another game's `config set` from switching this
+  one. The file holds no secrets. Run this in the game's root:
+
+  ```bash
+  [ -f .xsolla.json ] || xsolla config init
+  xsolla config set merchant-id <id> && xsolla config set project-id <id>
+  xsolla config set sandbox true     # while building; see "Sandbox and going live"
+  ```
+
+## Step 4: Store API key (agent side)
+
+Catalog, payments and other Basic-auth commands need a Store API key. They read it from the
+keychain. Recent CLI builds create one automatically during `xsolla auth login` when a
+project is set. Probe for it; this is a read-only call:
+
+```bash
+xsolla catalog admin-list-currency --json >/dev/null; echo "exit=$?"
 ```
 
-**If the file is missing or any variable is absent** — walk the user through the steps below, then write the credentials to `.env` at the end ([Step 5](#step-5-write-credentials-to-env)).
-
----
-
-## Step 1: Create a Publisher Account
-
-Direct the user to: **https://publisher.xsolla.com/signup**
-
-### Individual vs. Company account
-
-| | Individual | Company |
+| Exit | Meaning | Action |
 |---|---|---|
-| **When to use** | Just testing, evaluating Xsolla, quick sandbox setup | Committed to going live, need a contract |
-| **Registration** | Simple — email, Google, or social login | Requires company details for the licensing agreement |
-| **Contract** | Still needed for live payments, but can skip for sandbox | Submit from the Agreements tab once ready |
-
-For pure exploration and sandbox testing, an individual account is the fastest path. The user can always add company details later when submitting the licensing agreement.
-
-> Publisher Account uses two-factor authentication. Confirmation code is sent to the registered email.
-
----
-
-## Step 2: Extract IDs from a Publisher Account URL
-
-The user doesn't need to hunt for IDs — they're embedded in every Publisher Account URL. Parse them directly if the user shares a link.
-
-URL pattern:
-```
-https://publisher.xsolla.com/{merchant_id}/projects/{project_id}/...
-```
-
-Examples:
-- `https://publisher.xsolla.com/887981/settings/api_key` → **merchant_id = 887981**
-- `https://publisher.xsolla.com/887981/projects/308077/edit/api_key` → **merchant_id = 887981**, **project_id = 308077**
-
-If the user doesn't share a URL, tell them:
-- **Merchant ID**: visible in the URL on any Publisher Account page, or under `Company settings → Company`
-- **Project ID**: visible in the sidebar next to the project name, or in the URL when inside a project
-
----
-
-## Step 3: Generate a Project-Level API Key
-
-> ⚠️ **Critical**: The API key is shown **only once** at creation time. It is never sent by email. The user must copy and save it immediately — it cannot be recovered.
-
-For standard integration, the **project-level key** is sufficient.
-
-- Location: `Project settings → API key`
-- Direct URL: `https://publisher.xsolla.com/{merchant_id}/projects/{project_id}/edit/api_key`
-- Scope: this project only
-- Auth format: `Authorization: Basic Base64({project_id}:{api_key})`
-
-To generate:
-1. Open the URL above (with the real IDs)
-2. Click **Create**
-3. Copy and store the value immediately
-
-### Merchant-level API key (optional)
-
-Only needed for Xsolla CLI or API calls where the endpoint URL has **no `project_id`** path parameter.
-
-- Location: `Company settings → API keys` → `https://publisher.xsolla.com/{merchant_id}/settings/api_key`
-- Auth format: `Authorization: Basic Base64({merchant_id}:{api_key})`
-
-**Rule of thumb**: if the API endpoint URL contains `{project_id}`, use the project-level key. If it doesn't, use the merchant-level key.
-
----
-
-## Step 4: Sandbox Mode — No Contract Needed
-
-> ℹ️ Development can start **immediately** after account creation — no signed contract required.
-
-A project-level API key is all that's needed to run a full sandbox integration: create tokens, test the payment UI, configure the catalog.
-
-When going live, the only change needed is switching the mode from `sandbox` to production in the integration. Everything else stays the same.
-
-What requires a **signed licensing agreement** (submit from the **Agreements** tab in Publisher Account):
-- Accepting real payments from end users
-- Completing the Tax Interview (W-8 for non-US / W-9 for US)
-
-Contract review typically takes a few business days — submit it well before the planned launch date.
-Full go-live checklist (utils probe, flip sandbox flags, deploy, live payment tests): **`production`**.
-
----
-
-## Quick Reference
-
-| Resource | URL |
-|----------|-----|
-| Sign up | https://publisher.xsolla.com/signup |
-| Publisher Account | https://publisher.xsolla.com |
-| API Reference | https://developers.xsolla.com/api |
-| Getting started guide | https://developers.xsolla.com/get-started/work-in-pa/create-first-project/ |
-| FAQ — API keys | https://developers.xsolla.com/dev-resources/faq/general/#faq_project_settings |
-
----
-
-## Step 5: Write Credentials to .env
-
-Once all credentials are confirmed, write them to `.env` in the project root. Use the `XSOLLA_*` variable names — other skills depend on these exact names.
-
-**If `.env` already exists**, append or update only the Xsolla variables without touching existing content:
+| `0` | The key works | Done |
+| `10` | No key, or a rejected key | Run the command below, then probe again |
+| other | Not a key problem | See [Troubleshooting](#troubleshooting) |
 
 ```bash
-# Remove only this skill's own three keys. Deleting every ^XSOLLA_ line also erases
-# keys other skills record there, such as XSOLLA_BUILD_PATH from shop-plan.
-sed -i.bak -E '/^XSOLLA_(MERCHANT_ID|PROJECT_ID|PROJECT_API_KEY)=/d' .env && rm .env.bak
-cat >> .env << EOF
-
-# Xsolla credentials
-XSOLLA_MERCHANT_ID={merchant_id}
-XSOLLA_PROJECT_ID={project_id}
-XSOLLA_PROJECT_API_KEY={api_key}
-EOF
+xsolla publisher create-api-key --title "xsolla-cli (agent)" >/dev/null
 ```
 
-**If `.env` does not exist**, create it:
+`create-api-key` saves every key it creates to the keychain, and the newest one replaces
+the previous one there. Stdout goes to `/dev/null`, so the key never appears in the
+transcript. Keys expire after 365 days by default; set the lifetime with `--days 1-3650`.
+
+## Step 5: Runtime config in `.env` (the developer's app)
+
+Code the developer ships cannot use the CLI or the keychain. Their backend reads its own
+`.env`. Write the non-secret IDs from config:
 
 ```bash
-cat > .env << EOF
-# Xsolla credentials
-XSOLLA_MERCHANT_ID={merchant_id}
-XSOLLA_PROJECT_ID={project_id}
-XSOLLA_PROJECT_API_KEY={api_key}
-EOF
+touch .env && chmod 600 .env   # the CLI ignores a group/world-readable .env, with a warning
+grep -qxF '.env' .gitignore 2>/dev/null || echo ".env" >> .gitignore
+ids=$(xsolla config list --json | python3 -c 'import json,sys; d=json.load(sys.stdin)["data"]; print("XSOLLA_MERCHANT_ID=%s\nXSOLLA_PROJECT_ID=%s" % (d["merchant_id"], d["project_id"]))') \
+  && sed -i.bak -E '/^XSOLLA_(MERCHANT_ID|PROJECT_ID)=/d' .env && rm .env.bak \
+  && printf '%s\n' "$ids" >> .env
 ```
 
-After writing, confirm to the user:
-```
-✅ Written to .env:
-   XSOLLA_MERCHANT_ID={merchant_id}
-   XSOLLA_PROJECT_ID={project_id}
-   XSOLLA_PROJECT_API_KEY=****
-```
+Do not mint a **backend API key** up front. Mint it only when the app's server code needs
+one, for payment tokens or server-side Store admin calls, or when a later skill asks for
+`XSOLLA_PROJECT_API_KEY` at the point it uses it. The agent's own CLI calls never need it.
 
-> ⚠️ Remind the user to add `.env` to `.gitignore` if it isn't there already — the API key must not be committed to version control.
+The key goes straight into `.env`; never print it or echo it back. The old line is removed
+only after the new key arrives:
 
 ```bash
-grep -q "^\.env" .gitignore 2>/dev/null || echo ".env" >> .gitignore
+key=$(xsolla publisher create-api-key --title "backend: $(basename "$PWD")" --json \
+  | python3 -c 'import json,sys; d=json.load(sys.stdin); print((d.get("data") or d)["key"])') \
+  && [ -n "$key" ] \
+  && sed -i.bak -E '/^XSOLLA_PROJECT_API_KEY=/d' .env && rm .env.bak \
+  && printf 'XSOLLA_PROJECT_API_KEY=%s\n' "$key" >> .env
+unset key
 ```
 
----
+Each run creates a new key, and that key also becomes the CLI's keychain key. To rotate,
+run it again. Then revoke only **older** keys: `xsolla publisher list-api-keys --json`, then
+`xsolla publisher revoke-api-key --key-id <id> --force`. Without `--force` it waits for a
+y/N prompt. Never write `XSOLLA_API_KEY` or `XSOLLA_TOKEN` anywhere: they override the keychain.
 
-## Checklist
+Never delete lines from `.env` other than the ones this skill owns. Other skills keep keys
+there, such as `XSOLLA_BUILD_PATH` from `shop-plan`.
 
-- [ ] `.env` checked for existing credentials (Step 0)
-- [ ] Publisher Account created (individual or company)
-- [ ] Merchant ID known
-- [ ] Project ID known
-- [ ] Project-level API key generated and saved securely
-- [ ] Credentials written to `.env`
-- [ ] `.env` added to `.gitignore`
-- [ ] *(Optional)* Merchant-level API key saved — only needed for CLI or cross-project API calls
+## Step 6: Report
 
-Once credentials are in `.env`, proceed with the integration.
+```
+✅ Xsolla CLI <version> — signed in as <login> (<context>)
+   merchant_id=<id>  project_id=<id> ("<project name>")  sandbox=true   (./.xsolla.json)
+   Store API key: in keychain ✓
+   .env: XSOLLA_MERCHANT_ID, XSOLLA_PROJECT_ID[, XSOLLA_PROJECT_API_KEY=****]
+```
+
+`<login>` and `<context>` come from the active entry in `xsolla auth list-account --json`.
+`auth status` doesn't include them.
+
+## Sandbox and going live
+
+You can build without a signed contract. Sandbox covers catalog setup, payment tokens, the
+payment UI and webhooks. Live payments and the tax interview (W-8/W-9) need the
+**licensing agreement**. Submit it from **Agreements** in Publisher Account; review takes a
+few business days. No CLI command signs the agreement or switches the project live.
+**`production`** covers the full go-live checklist.
+
+## Troubleshooting
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| Exit `10` (401/403) after a working login | `XSOLLA_API_KEY` or `XSOLLA_TOKEN` is set in the env | `unset XSOLLA_API_KEY XSOLLA_TOKEN`, then probe again |
+| Exit `10` on a webshop or cart command | It needs a player JWT, not a publisher login | See the bundled CLI skill `auth-accounts` (`--auth-context xsolla-id`) |
+| 403 *roles for user… merchant* | The project belongs to another merchant | Run `publisher list-projects` and pick one from that list |
+| `merchant_id not set` | The token carried no merchant | Step 3 |
+| CI or a headless box with no browser | OAuth needs a browser | Set `XSOLLA_API_KEY` from the CI secret store and `merchant_id` in config. This is the one exception to "no env keys". |
+
+Exit codes: `0` ok · `1` usage · `10` auth · `20` network · `30` validation · `40` not found
+· `50` conflict · `70` 5xx · `75` transient (retry). `--json` gives `{"ok":…,"data"|"error":…}`.
