@@ -4,7 +4,7 @@
 shop-setup (orchestrator)
     ├── merchant-setup                   → Merchant and Project setup
     ├── login-setup                      → Xsolla Login API
-    ├── catalog-design                   → IGS API: /merchant/v2/projects/{id}/items/*
+    ├── catalog-design                   → `xsolla catalog` (admin); Catalog API in shipped client code
     ├── headless-checkout-integration    → Payments via Headless Checkout
     ├── webhooks-impl                    → Webhook configuration + handler code generation
     └── production                       → Sandbox → live (contract, flags, deploy, live tests)

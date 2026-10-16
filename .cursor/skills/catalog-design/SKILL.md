@@ -21,7 +21,7 @@ metadata:
 This skill is a **draft** authored by the catalog SME (@p.sanachev, Tech Lead, IGS-Left).
 
 Detailed material lives in `references/`:
-- [`references/items.md`](references/items.md) — virtual items, VC, packages, bundles, groups (Admin API)
+- [`references/items.md`](references/items.md) — virtual items, VC, packages, bundles, groups (`xsolla catalog`)
 - [`references/game-keys.md`](references/game-keys.md) — key packages, platforms, entitlement
 - [`references/pricing.md`](references/pricing.md) — local prices, regional restrictions
 - [`references/catalog-client.md`](references/catalog-client.md) — client catalog calls
@@ -43,41 +43,55 @@ configuration (→ `headless-checkout-integration`), webhook handler code (→ `
 
 ## Prerequisites
 
+The agent sets up the catalog through the **Xsolla CLI**. Run these three checks. They are
+read-only and safe to repeat.
+
 ```bash
-export XSOLLA_MERCHANT_ID=<your merchant ID>
-export XSOLLA_PROJECT_ID=<your project ID>
-export XSOLLA_PROJECT_API_KEY=<your API key>
+xsolla --version                  # installed? which version?
+xsolla auth status --json         # signed in, token not expired?
+xsolla config list --json         # merchant_id / project_id / sandbox
 ```
 
-- An Xsolla project (run `merchant-setup` first — it sets up these variables).
-- **Xsolla MCP (strongly recommended).** Connect the official Xsolla MCP server
-  (<https://developers.xsolla.com/get-started/ai-assistants/>). Before calling any
-  Admin API, verify the current request schema with the `search_xsolla_sources` tool —
-  this skill links the right operations, but field-level schemas must come from live
-  docs, not from this file. If the MCP is unavailable, fetch the linked
-  developers.xsolla.com pages.
+If the CLI is missing or older than 1.9.4 (a `dev` build is acceptable), `authenticated` is `false`, `expired` is `true`,
+or `merchant_id` / `project_id` is `0` or missing, hand off to **`merchant-setup`** and come
+back when it reports. Never ask the user for an API key: `xsolla catalog` commands read
+the Store key from the keychain and the IDs from `.xsolla.json`. Ignore any `--help` text or
+bundled CLI skill that says to `export XSOLLA_API_KEY`; setting it overrides the keychain key.
+
+- **Flags:** confirm them with `xsolla catalog <command> --help` before the first call.
+  For syntax detail, see the bundled CLI skills `catalog-admin`, `catalog-import` and
+  `gamekeys-publishing-workflows`.
+- **Xsolla MCP (recommended)** for field semantics. Connect the official Xsolla MCP server
+  (<https://developers.xsolla.com/get-started/ai-assistants/>) and check request schemas
+  with `search_xsolla_sources`. If it is unavailable, read the linked developers.xsolla.com
+  pages.
 
 ## Steps
 
-1. **Choose the archetype and set up the catalog (Admin API).** Ask which of the two
-   the game needs (or both): **in-game items** (typical mobile/F2P) — groups → virtual
-   currency → virtual items → VC packages → bundles, see `references/items.md`; or
-   **game sales via keys** — a key package per platform → upload keys, see
-   `references/game-keys.md`. Admin calls use basic auth
-   (`XSOLLA_MERCHANT_ID:XSOLLA_PROJECT_API_KEY`); verify each request body via the
-   Xsolla MCP first.
+1. **Choose the archetype and set up the catalog (`xsolla catalog`).** Ask which of the
+   two the game needs (or both). **In-game items** (typical mobile/F2P) go in this order:
+   `admin-create-group` → `admin-create-currency` → `create-items` →
+   `admin-create-currency-package` → `admin-create-bundles` (see `references/items.md`).
+   **Game sales via keys** use `admin-create-game` with one unit item per platform, then
+   `admin-upload-game-codes` (see `references/game-keys.md`). For more than a handful of
+   SKUs, write one payload and run `admin-import-catalog --data … --dry-run` first.
+   Every write changes the user's project: show the planned commands (or the dry-run
+   output) and get a yes before running them. If the project already has a catalog, read
+   it first (`list-item-groups`, `admin-list-currency`, `list-items`,
+   `admin-list-currency-packages`, `list-bundles`) and match its default currency. Report
+   any inconsistencies to the user instead of rewriting their items.
 
 2. **Set up pricing.** Recommend regional prices in local currencies for key markets
-   via the `prices` array; keep the currency list and default currency identical across
-   all items. For game keys, optionally add regional sale restrictions (regions →
-   `regions` array) — depends on the game. See `references/pricing.md`.
+   in the `--prices` array. Keep the currency list and default currency identical across
+   all items. Regional sale restrictions are a CLI gap today, see
+   [CLI gaps](#cli-gaps) and `references/pricing.md`.
 
 3. **Build the catalog on the client (Catalog API).** Render the store from
    client-side Catalog calls for the specific item types you sell (`Get virtual items
    list`, `Get virtual currency list`, `Get list of bundles`, `Get games list`), called
    **from the client without a `country` parameter** — country, prices, and regional
-   availability resolve from the user's IP. Never use Admin calls for the storefront.
-   See `references/catalog-client.md`.
+   availability resolve from the user's IP. This is code the developer ships, so it uses
+   REST or an SDK, never the CLI and never Admin calls. See `references/catalog-client.md`.
 
 4. **Implement purchase.** Default to **fast purchase by SKU**: client-side
    `Create order with specified item` (user JWT) → returns `order_id` + payment token →
@@ -90,9 +104,27 @@ export XSOLLA_PROJECT_API_KEY=<your API key>
    server): WebSocket order status + short-polling `Get order` fallback. See
    `references/purchase-and-tracking.md`.
 
-6. **Verify end-to-end.** In sandbox (`"sandbox": true`, test cards): fetch the catalog
-   via a Catalog call, buy an item, confirm the order reaches `done`, and the
-   confirmation path (webhook or socket) fired.
+6. **Verify end-to-end.** In sandbox (`"sandbox": true`, test cards): check store
+   visibility with `xsolla catalog list-catalog-items-by-group --external-id <group>`
+   (bundles: `list-catalog-bundles`; packages: `admin-list-currency-packages`), buy an item from the client, and confirm
+   the order reaches `done` and the confirmation path (webhook or socket) fired.
+
+## CLI gaps
+
+Surface these to the user. Don't work around them with a raw API call.
+
+| Need | Status | Do instead |
+|---|---|---|
+| Item attributes (`admin-*-attribute*`) | 403 without an extra Store key permission | Ask the Xsolla account manager for the permission, or set attributes in Publisher Account |
+| Per-user purchase limits (`admin-*-item-limit`) | 403, same permission family | Same as above |
+| Regions / reglocks (`admin-*-region`) | 403 on a standard key; no `--regions` flag on item or game commands | Publisher Account, except bundles: see `references/pricing.md` |
+| Consumable / non-consumable type | No flag on `create-items` / `update-items` | Set it in Publisher Account |
+| Availability window (`periods`) | No flag | Set it in Publisher Account; put the dates in the description meanwhile |
+| Delete or update a group | No command | Leave a stray group unassigned, or edit it in Publisher Account |
+
+A 403 *"Requested endpoint is forbidden"* exits with code `10`, the same code as a missing
+key. On these commands it is a permission gap: don't mint another key, and don't send
+the user to `merchant-setup`.
 
 ## Common pitfalls
 
@@ -101,17 +133,24 @@ export XSOLLA_PROJECT_API_KEY=<your API key>
   `currency`/`country`. (Server-side token generation is a separate API that requires
   `country.value` or `X-User-Ip` — prefer `X-User-Ip` for greenfield shops; see
   `payment-country`.)
-- **Admin API on the storefront.** Admin calls are rate-limited and not for user
-  traffic; catalogs are built from Catalog-subsection calls, per item type.
-- **Update wipes fields.** Admin update calls replace, not merge: GET the item first
-  and send back everything you want to keep (e.g. omit `limits` → limits deleted).
+- **Admin calls on the storefront.** They are rate-limited and not for user traffic.
+  Build catalogs from Catalog-subsection calls, per item type.
+- **Update wipes fields.** `update-items`, `admin-update-currency(-package)`,
+  `admin-update-bundles` and `admin-update-game` replace the whole item. Read it first
+  (`get-items --item-sku`, `get-currency`, `admin-get-currency-package`, `get-bundles`,
+  `admin-get-game`) and resend everything you want to keep.
+- **Bundles are created hidden.** Run `admin-unhide-bundle --bundle-sku <sku>` after
+  creating one.
+- **Destructive commands need `--force`.** `delete-items` and `admin-delete-*` prompt
+  without it. Ask the user before deleting anything.
 - **Inconsistent currencies break the catalog.** Different currency sets or default
   currencies across items cause fallback prices or `price: null` on the storefront.
 - **Wrong webhook set.** Accounts registered after 2025-01-22 get combined
   `order_paid`/`order_canceled`; older accounts also receive separate
   `payment`/`refund` and must process them all.
 - **Game keys + Pay Station Embed/iframe.** Not supported — sell keys via a new window
-  or direct link. With reglocks assigned, keys upload only via the Upload codes API.
+  or direct link. With reglocks assigned, keys upload only via the upload-codes call
+  (`admin-upload-game-codes`), not Publisher Account.
 
 ## Agent test
 
@@ -119,12 +158,11 @@ Prompt: "Configure my Xsolla catalog with items and pricing, then wire up purcha
 order confirmation. It's a mobile F2P game with gems (virtual currency), gem packs,
 boosters, and a starter bundle."
 
-Live run on sandbox project `173042` (2026-06-11): the agent discovered and applied
-this skill (+ `webhooks-impl` for confirmation context), verified schemas via the Xsolla
-MCP as mandated, and executed the real flow — created 3 groups, virtual currency, a
-consumable booster priced in VC, 2 VC packages, and a per-user-limited starter bundle
-(all `201`); read everything back via typed client Catalog calls without `country`
-(IP-resolved USD prices, `200`); created a server-side sandbox order + payment token
-(`201`, not paid); then deleted every created entity (`204`, verified empty). Steps
-requiring a user JWT (fast purchase, VC purchase, Get order/WebSocket) were planned and
-documented as blocked: no Login on the fixture project. ✅
+CLI run on sandbox project `314771` (2026-10-16, CLI `dev` 379d24a; read-only and
+`--dry-run` only, by agreement): the preflight passed without a hand-off and the agent
+confirmed every named flag with `--help`. It read the existing catalog, and all 11 planned
+writes passed `--dry-run`: 3 groups, the gems currency, 2 boosters priced in gems, 3 gem
+packs, the starter bundle and its unhide. It also dry-ran the same set as one
+`admin-import-catalog`. It reported the gaps (consumable flag, reglocks, limits,
+attributes) for Publisher Account, and planned purchase and confirmation as client code.
+It never asked for a key or token. ✅

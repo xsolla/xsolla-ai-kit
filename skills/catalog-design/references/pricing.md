@@ -1,6 +1,7 @@
 # Pricing: local prices and regional restrictions
 
-Verified via the official Xsolla MCP on 2026-06-11.
+Verified via the official Xsolla MCP on 2026-06-11. CLI commands checked against CLI 1.9.4
+(`dev` 379d24a) on 2026-10-16.
 Main doc: [Local prices](https://developers.xsolla.com/items-catalog/catalog-features/pricing-policy/).
 
 ## Recommendation
@@ -14,14 +15,13 @@ The user's country is determined **by IP address** — do not pass `country` exp
 
 ## How to set prices
 
-Pass a `prices` array in the admin create/update calls of **any** item type
-(virtual items, virtual currency, VC packages, bundles, game key packages):
+Pass a `--prices` array to the `xsolla catalog` create/update commands that sell for real
+money: `create-items` / `update-items`, `admin-create-currency-package`, `admin-create-bundles`
+and, for game keys, each entry of `--unit-items` in `admin-create-game`:
 
-```json
-"prices": [
-  { "amount": 10.0, "currency": "USD", "is_enabled": true, "is_default": true },
-  { "amount": 20.5, "currency": "CZK", "country_iso": "CZ", "is_enabled": true, "is_default": false }
-]
+```bash
+--prices '[{"amount":10.0,"currency":"USD","is_enabled":true,"is_default":true},
+           {"amount":20.5,"currency":"CZK","country_iso":"CZ","is_enabled":true,"is_default":false}]'
 ```
 
 - Exactly one default price, and the default must **not** have `country_iso`.
@@ -31,9 +31,11 @@ Pass a `prices` array in the admin create/update calls of **any** item type
   `422 "String value found, but a number is required"` and accepts numbers (verified on
   sandbox, 2026-06-11). Send **numbers** for every item type; if a 422 mentions value
   types, re-check the schema via the Xsolla MCP and try the other representation.
-- Bulk upload: CSV import in Publisher Account (columns `SKU,Country,Currency,Amount,IsDefault`
-  + `Platform` for game keys) or [Import items via JSON file](https://developers.xsolla.com/api/catalog/connector-admin/import-items-from-external-file/).
-- Virtual currency prices go in `vc_prices` instead.
+- Bulk upload: `xsolla catalog admin-import-catalog --data … --dry-run`, then without
+  `--dry-run` (see [items.md](items.md)). CSV import in Publisher Account also works
+  (columns `SKU,Country,Currency,Amount,IsDefault` + `Platform` for game keys).
+- Prices in virtual currency go in `--vc-prices` instead.
+- Updates replace the whole item, so resend every price you want to keep.
 
 ## Catalog consistency rules (critical)
 
@@ -52,21 +54,34 @@ Optional; mainly for **game keys** — prevents buying a key in a cheap region a
 activating it in an expensive one. Whether to use it depends on the game.
 Source: [Regional sale restrictions](https://developers.xsolla.com/items-catalog/catalog-features/regional-restrictions/).
 
-1. Create regions via [Create region](https://developers.xsolla.com/api/catalog/common-regions/admin-create-region/):
-   ```json
-   { "name": { "en-US": "North America" }, "countries": ["US", "CA"] }
-   ```
-   The call returns a region `id`.
-2. Pass `"regions": [{ "id": 123 }]` in the admin create/update calls
+How it works:
+
+1. A region is a named list of countries
+   ([Create region](https://developers.xsolla.com/api/catalog/common-regions/admin-create-region/)):
+   `{ "name": { "en-US": "North America" }, "countries": ["US", "CA"] }`. The call returns
+   a region `id`.
+2. Items reference it as `"regions": [{ "id": 123 }]` in their create/update body
    ([game keys](https://developers.xsolla.com/api/catalog/game-keys-admin/admin-create-game/),
    [virtual items & currency](https://developers.xsolla.com/api/catalog/virtual-items-currency-admin/admin-create-virtual-item/)).
+
+**CLI gap.** `xsolla catalog admin-create-region` and `admin-list-regions` exist but return
+403 *"Requested endpoint is forbidden"* (exit `10`) on a standard Store key. No item or game
+command has a `--regions` flag. Until both change:
+
+- **Items, currency, game keys:** create the regions and assign them in Publisher Account.
+  Check the result with `xsolla catalog admin-get-game --game-sku <sku> --json` (or
+  `get-items`) and look at `regions`. Afterwards, an `update-*` call from the CLI drops
+  `regions`, so make later edits to those items in Publisher Account as well.
+- **Bundles:** reglocks are API-only, and there is no CLI path. Tell the user this is
+  blocked. Don't work around it with a raw call that needs a pasted key.
 
 If an item has regions and the user's country is in none of them, the item is hidden from
 the catalog in that country.
 
 Caveats:
 - Once regions are assigned to a game, keys can be uploaded **only via the
-  [Upload codes](https://developers.xsolla.com/api/catalog/game-keys-admin/admin-upload-codes-by-sku/) API call**, not Publisher Account.
+  [Upload codes](https://developers.xsolla.com/api/catalog/game-keys-admin/admin-upload-codes-by-sku/) API call**
+  (`xsolla catalog admin-upload-game-codes`), not Publisher Account.
 - Regional restrictions for bundles are configurable only via API.
 - Items with reglocks also affect promotions: a promo code/coupon containing a
   region-restricted bonus item can't be redeemed outside that region.

@@ -1,7 +1,9 @@
 # Game keys: selling a game (or DLC) via keys
 
 Admin setup and selling flow for the **game keys archetype** (selling a game/DLC for
-external platforms or DRM-free). Endpoints verified via the official Xsolla MCP on 2026-06-11.
+external platforms or DRM-free). Admin steps use `xsolla catalog`, checked against CLI
+1.9.4 (`dev` 379d24a) on 2026-10-16. Endpoints verified via the official Xsolla MCP on
+2026-06-11.
 
 Key properties of this archetype: purchased keys are delivered to the user **by email**,
 so user authentication and webhooks are **optional**. They become required only for
@@ -10,28 +12,39 @@ transaction info. Source: [Sell game keys](https://developers.xsolla.com/sell-ga
 
 ## Platform-specific SKUs
 
-A game key package groups keys per platform. The full sellable SKU is
-`<package_sku>_<platform_suffix>` (e.g. `mygame_steam`). Docs recommend always selling
-platform-specific packages to avoid activation issues.
+A game key package groups keys per platform. Each platform is a **unit item** with its
+own sellable SKU, conventionally `<package_sku>_<platform_suffix>` (e.g. `mygame_steam`).
+Docs recommend always selling platform-specific packages to avoid activation issues.
 
 Supported suffixes: `_steam`, `_playstation`, `_xbox`, `_uplay`, `_origin`, `_drmfree`,
 `_gog`, `_epicgames`, `_nintendo_eshop`, `_discord_game_store`, `_oculus`, `_viveport`,
-`_stadia`, `_my_game`.
-To get the exact sellable SKU, call [Get games list](https://developers.xsolla.com/api/catalog/game-keys-catalog/get-games-list/)
-and read `items.unit_items.sku`.
+`_stadia`, `_my_game`. `xsolla catalog list-drm-platforms --json` returns the platform
+SKUs the project accepts. To get the exact sellable SKU, run
+`xsolla catalog admin-get-game --game-sku <sku> --json` and read `unit_items[].sku`
+(client code uses [Get games list](https://developers.xsolla.com/api/catalog/game-keys-catalog/get-games-list/)).
 
-## API calls (admin)
+## Commands (admin)
 
-| Task | API call |
-|------|----------|
-| Create game key package | [Create game](https://developers.xsolla.com/api/catalog/game-keys-admin/admin-create-game/) |
-| Update package | [Update game by SKU](https://developers.xsolla.com/api/catalog/game-keys-admin/admin-update-game-by-sku/), [by ID](https://developers.xsolla.com/api/catalog/game-keys-admin/admin-update-game-by-id/) |
-| Upload keys | [Upload codes](https://developers.xsolla.com/api/catalog/game-keys-admin/admin-upload-codes-by-sku/) — each key must be unique; duplicates are skipped |
-| Limit display time | Pass `periods` (ISO 8601) in create/update calls |
+| Task | Command |
+|------|---------|
+| List platforms | `list-drm-platforms` |
+| Create game key package | `admin-create-game --sku <sku> --name '{…}' --description '{…}' --unit-items '[{"sku":"<sku>_steam","drm_sku":"steam","name":{…},"is_enabled":true,"prices":[…]}]'` |
+| Get / list / update package | `admin-get-game --game-sku <sku>`, `admin-list-games`, `admin-update-game --game-sku <sku>` (full replace: get it first) |
+| Upload keys | `admin-upload-game-codes --game-sku <sku> --drm <platform> --codes '["KEY-1","KEY-2"]'` — each key must be unique; duplicates are skipped |
+| Check keys | `admin-list-game-codes --game-sku <sku> --all`, `admin-get-game-upload-session --upload-id <id>` |
+| Delete package | `admin-delete-game --game-sku <sku> --force` (ask first) |
+| Limit display time | No `periods` flag (CLI gap): set it in Publisher Account |
+
+Run a write with `--dry-run` first to check the request body, then show it to the user
+before the real call. Keys are the merchant's stock: upload them only when the user hands
+you the list, and never print them back in full. The bundled CLI skill
+`gamekeys-publishing-workflows` covers the `xsolla gamekeys` variants that take numeric
+item and DRM IDs.
 
 Keys must stay stocked: when a package runs out of keys, users can't buy it (and bundles
-containing it pause). Pre-orders: enable the pre-orders option to sell before release;
-keys are delivered on the release date.
+containing it pause). Pre-orders: enable the pre-orders option to sell before release
+(`admin-toggle-preorder`, limits via `admin-*-preorder-limit`); keys are delivered on
+the release date.
 
 ## Selling options
 
@@ -51,9 +64,18 @@ new window or the direct link. Source: [Set up item purchase](https://developers
 For distributing DRM-free games with ownership tracking (list of owned games, pre-orders,
 manual activation):
 
-- [Get user's games](https://developers.xsolla.com/api/catalog/game-keys-entitlement/get-user-games/)
-- [Grant entitlement](https://developers.xsolla.com/api/catalog/game-keys-entitlement/grant-entitlement-admin/) (admin; e.g. support manually redeems a key)
-- [Revoke entitlement](https://developers.xsolla.com/api/catalog/game-keys-entitlement/revoke-entitlement-admin/) (deactivates the key)
+- [Get user's games](https://developers.xsolla.com/api/catalog/game-keys-entitlement/get-user-games/) —
+  a player-side call in the developer's client code
+- Grant entitlement (e.g. support manually redeems a key) —
+  `xsolla catalog admin-grant-entitlement --sku <sku> --user '<user payload>'`
+  ([API reference](https://developers.xsolla.com/api/catalog/game-keys-entitlement/grant-entitlement-admin/))
+- Revoke entitlement (deactivates the key) —
+  `xsolla catalog admin-revoke-entitlement --sku <sku> --user '<user payload>' --force`
+  ([API reference](https://developers.xsolla.com/api/catalog/game-keys-entitlement/revoke-entitlement-admin/))
+
+Both change a real player's ownership: run them only on the user's explicit request.
+If the developer's own support tool grants entitlements, that tool calls the API from its
+backend, because shipped code can't depend on the CLI.
 
 Requires the Game Keys module with the **DRM free** option and authentication (Login or
 Pay Station access token). Source: [Entitlement system](https://developers.xsolla.com/sell-games/how-to/entitlement-system/).
