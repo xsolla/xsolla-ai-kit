@@ -18,12 +18,19 @@ This is the Xsolla guide for writing agent skills for `xsolla/xsolla-ai-kit`.
    to invoke. Keep it under **1,536 characters**: Claude Code truncates the skill listing
    at that point, so trailing trigger keywords are silently dropped. Key use case first.
 5. **No raw `curl` commands** — describe intent + Xsolla API endpoint, not raw HTTP
-6. **PR must include agent test** — exact prompt you used + one-line result
-7. **Update both registries** — add a row to `skills/README.md` and an entry plus a
+6. **The agent uses the Xsolla CLI, never pasted credentials** — anything the agent does
+   against Xsolla goes through an `xsolla` command. Use REST only in code the developer
+   ships, or for an operation the CLI lacks; name that gap and get the token from
+   `xsolla auth get-token`. Never tell the user to copy a key or token into the chat or
+   `.env`. Prerequisites run the CLI preflight (`xsolla --version`,
+   `xsolla auth status --json`, `xsolla config list --json`) and point to `merchant-setup`
+   on failure.
+7. **PR must include agent test** — exact prompt you used + one-line result
+8. **Update both registries** — add a row to `skills/README.md` and an entry plus a
    trigger line to `AGENTS.md`, or agents can't discover the skill
-8. **Commit the generated files** — `.cursor/skills/**` and `CLAUDE.md` are derived from
+9. **Commit the generated files** — `.cursor/skills/**` and `CLAUDE.md` are derived from
    `skills/**` and `AGENTS.md`; CI fails on drift
-9. **Cross-references must be real** — if you write "→ `shop-setup`" for something, check
+10. **Cross-references must be real** — if you write "→ `shop-setup`" for something, check
    that `shop-setup` actually covers it. A pointer to guidance that doesn't exist
    dead-ends the agent at the exact moment it needs help.
 

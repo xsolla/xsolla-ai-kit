@@ -6,7 +6,7 @@ Install the kit in your AI coding tool and your agent can integrate Xsolla's API
 
 On the Shop Builder path, in preview, the agent turns your game description into a validated shop brief and builds an unpublished Shop Builder site from it through the Xsolla CLI, in a dedicated test project you approve. You review the site and publish it yourself in Publisher Account.
 
-To use it today, install the Xsolla CLI 1.9.4 or later: `brew install xsolla/xsolla-cli/xsolla`.
+Every skill works through the Xsolla CLI 1.9.4 or later: `brew install xsolla/xsolla-cli/xsolla`. You sign in once in your browser with `xsolla auth login`. The CLI keeps your token and API key in the OS keychain, so you never paste a key into your agent.
 
 ## What's inside
 
@@ -68,12 +68,11 @@ git clone https://github.com/xsolla/xsolla-ai-kit
 cp -r xsolla-ai-kit/AGENTS.md xsolla-ai-kit/skills your-game-project/
 ```
 
-Then set environment variables or run the `merchant-setup` skill:
+Then sign in to the Xsolla CLI, or ask your agent to run the `merchant-setup` skill, which
+does this for you and also picks the project:
 
 ```bash
-XSOLLA_MERCHANT_ID=<your merchant ID>
-XSOLLA_PROJECT_ID=<your project ID>
-XSOLLA_PROJECT_API_KEY=<your API key>
+xsolla auth login
 ```
 
 ## Skill inventory
