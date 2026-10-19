@@ -133,7 +133,7 @@ project, catalog groups, and on the storefront step the merchant, project, site 
 landing `_id` it worked on, with every page the agent created. `game-web-portal` records each
 page — its path and seeded blocks — with
 [`scripts/seeded_blocks.py record`](../../game-web-portal/scripts/seeded_blocks.py) right after
-it creates it, and updates the entry after each removal.
+it creates it, and updates the entry after hiding its seeded blocks.
 
 ## Resume
 
@@ -149,12 +149,14 @@ On every start of a storefront skill that follows this contract, before any writ
 4. **A step with no entry, but Xsolla state that shows it** (credentials in `.env`, a Login
    project, an existing site at the domain): discover it, record the step if its evidence
    verifies, then continue as in 3.
-5. **A seeded block is removed** only on a page the agent created and recorded, only when the
-   storefront step's merchant, project and landing equal the preflight-confirmed target, and
-   only when `seeded_blocks.py check`, on reads taken right before the removal, reports it
-   `untouched`. A `changed` block stays and is listed for the partner as `needs_human`; a
-   `gone` one needs nothing. A page at a planned path with no record is never trimmed: it is
-   reported, with its blocks, as `needs_human`.
+5. **A seeded block is hidden, never deleted,** only on a page the agent created and
+   recorded, only when the storefront step's merchant, project and landing equal the
+   preflight-confirmed target, and only when `seeded_blocks.py check`, on reads taken right
+   before hiding, reports it `untouched`. A `changed` block stays as it is and is listed for
+   the partner as `needs_human`; a `gone` one needs nothing. Hiding changes the block, so a
+   recorded seeded block that reads `hidden: true` reads as `changed` and counts as done. The
+   partner deletes the hidden blocks in the builder (`needs_human`). A page at a planned path
+   with no record is never trimmed: it is reported, with its blocks, as `needs_human`.
 
 ### No duplicates
 
@@ -177,7 +179,7 @@ The storefront skills that follow this contract never:
 - switch a project, token, or SDK to production;
 - run the Shop Builder readiness check (`verify-website`) or enable or generate a preview;
 - save or apply a site version;
-- delete a block other than a recorded seeded block that rule 5 allows;
+- delete a block, or hide a block other than a recorded seeded block that rule 5 allows;
 - write to the project before the developer explicitly confirmed the plan for that write;
 - target a project that is not on the approved test-project allowlist.
 

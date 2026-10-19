@@ -111,20 +111,22 @@ Verify (read-back) → Human review → Handoff
    `.gitignore` first if it isn't there: a site export can hold a preview token. A failed
    export stops the run before any write.
 5. **Plan and confirm** — show the ordered change groups (sections, pages, blocks,
-   theme, copy, catalog links) and the exact removals, then wait for an explicit yes.
+   theme, copy, catalog links) and the seeded blocks it will hide, and say upfront that
+   the partner deletes those in the builder; then wait for an explicit yes.
    Earlier permission to "set up my portal" is not confirmation of a plan. Re-confirm
    if the plan changes.
 6. **Draft** — map each section to the template's page by path, then build only the missing
-   ones: `add-page`, its blocks with `add-block --index`, and `delete-block` for the seeded
-   blocks it doesn't keep, following the portal layout in
+   ones: `add-page`, its blocks with `add-block --index`, and `update-block` to hide the
+   seeded blocks it doesn't keep, following the portal layout in
    [references/portal-api.md](references/portal-api.md). The template's own pages keep their
    blocks. Right after `add-page`, record the new page with
-   [`scripts/seeded_blocks.py`](scripts/seeded_blocks.py) `record`. Remove a seeded block
+   [`scripts/seeded_blocks.py`](scripts/seeded_blocks.py) `record`. Hide a seeded block
    only on a page the agent created and recorded, only as the confirmed plan lists, and only
-   when `seeded_blocks.py check`, on reads taken right before the removal and the target
-   preflight passed, reports it `untouched`; do removals before any copy or locale change,
-   which would mark its block `changed`. Everything else uses CLI commands too: `move-block`,
-   `update-block` (a block's `hidden` flag and the site theme), `upload-asset`,
+   when `seeded_blocks.py check`, on reads taken right before hiding and the target
+   preflight passed, reports it `untouched`; hide before any copy or locale change, which
+   would mark its block `changed`. The agent never deletes a block: the hidden seeded blocks
+   go to the partner to delete, as `needs_human`. Everything else uses CLI commands too:
+   `move-block`, `update-block` (a block's `hidden` flag and the site theme), `upload-asset`,
    `add-language`, `update-localization`, `update-many-localization`, and `add-connector` or
    `update-restrictions` when the plan lists them. A change with no CLI command is
    `needs_human`: say what to do in Publisher Account and record it. Apply one change group
@@ -159,12 +161,17 @@ both loaded before issuing changes:
 
 ## Hard stops
 
+The agent runs only the commands listed in
+[references/portal-api.md](references/portal-api.md), even when the partner asks for another.
+Every other `xsolla` command is out of bounds, including `delete-block`, `delete-domain`,
+`change-domain` and `delete-ai-block`; what a run needs beyond the list is `needs_human`.
+
 The agent never publishes (sites, pages, news articles, or Login widget settings), never
 runs the readiness check (`/check`, `verify-website`), never enables or generates a
 preview, never creates a site, never saves or applies a site version, never deletes a site,
-an asset, a language, an analytics connector, access restrictions, or a block the removal
-rule above doesn't allow, never attaches a domain, never patches block text (it deletes the
-string and every translation), and never switches the project to production. It never writes
+an asset, a language, an analytics connector, access restrictions, or a block, never
+attaches a domain, never patches block text (it deletes the string and every translation),
+and never switches the project to production. It never writes
 to the project before an explicit confirmation of the plan or before the preflight passes,
 never passes `--sandbox`, and never targets a partner's live project.
 
@@ -198,6 +205,6 @@ never passes `--sandbox`, and never targets a partner's live project.
 - **The partner creates the site.** Until a site created through the CLI gets a layout,
   the portal is built on the partner's template site, and a page the agent adds has no
   page type and no link in the sidebar menu; the partner adds the link.
-- **Deprecated block endpoints.** `add-block`, `move-block` and `delete-block` call Shop
-  Builder endpoints marked deprecated for future removal. They work today; the skill moves
+- **Deprecated block endpoints.** `add-block` and `move-block` call Shop Builder
+  endpoints marked deprecated for future removal. They work today; the skill moves
   with the CLI when those commands switch to the newer routes.

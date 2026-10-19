@@ -95,7 +95,7 @@ def ledger_entry(ledger: dict, page_id: str, target: dict) -> dict:
 
 
 def check(structure: dict, localization: dict, entry: dict) -> dict:
-    """Split recorded seeded blocks into untouched (removable), changed, and gone."""
+    """Split recorded seeded blocks into untouched (safe to hide), changed, and gone."""
     page_id = entry["page_id"]
     page = find_page(structure, page_id)
     current = {b["_id"]: b for b in (page or {}).get("blocks", [])}

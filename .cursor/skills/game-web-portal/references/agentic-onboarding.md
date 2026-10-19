@@ -125,7 +125,8 @@ Never recreate discovered existing entities.
 
 ### 5. Plan and confirm
 
-- Show the ordered change groups and the exact removals; wait for an explicit yes.
+- Show the ordered change groups and the seeded blocks it will hide, which the partner then
+  deletes in the builder; wait for an explicit yes.
 
 ### 6. One change group
 
