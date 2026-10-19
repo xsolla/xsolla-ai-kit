@@ -16,14 +16,14 @@ worked examples.
 | Type | Use for | Notes |
 |------|---------|-------|
 | Virtual item | Weapons, skins, boosters — any in-game good | Consumable, non-consumable, or time-limited. Universal type: docs recommend it to unify purchasing logic and avoid catalog redundancy |
-| Virtual currency | In-game money | Cannot be free |
+| Virtual currency | In-game money | Has no price of its own and never shows in the store: `admin-create-currency` has no `--prices` or `--is-show-in-store` flag. Players get it through VC packages and bundles |
 | Virtual currency package | Predefined VC amounts sold for real money | |
 | Bundle | Several items/currency/keys sold as one SKU | Starter packs, editions |
-| Group | Logical catalog sections | Create first; items reference groups |
+| Group | Storefront sections | Optional: ungrouped items, packages and bundles still sell. The CLI can't delete a group, so create one only when the store needs sections |
 
 ## Commands
 
-Create in this order: groups → virtual currency → virtual items → VC packages → bundles.
+Create in this order: groups (optional) → virtual currency → virtual items → VC packages → bundles.
 
 | Task | Command |
 |------|---------|
@@ -56,10 +56,11 @@ the per-type commands.
 - `--name`, `--description` — required localization JSON keyed by language code (`en`,
   `de`, … or `en-US`). Responses always return two-letter codes. Bundle descriptions are
   capped at 255 characters per locale.
-- `--groups '["<external_id>"]'` — puts the item in a group, which is what makes it
-  visible in the store. Pair it with `--is-enabled`, plus `--is-show-in-store` on
-  `create-items` and `admin-create-currency-package` (bundles and currencies have no such
-  flag; bundles use `admin-unhide-bundle`).
+- `--groups '["<external_id>"]'` — puts the item in a storefront section. It does not
+  decide whether the item sells. Visibility comes from `--is-enabled`, plus
+  `--is-show-in-store` on `create-items` and `admin-create-currency-package`. Bundles
+  have no such flag and use `admin-unhide-bundle`. Virtual currency has neither, so it
+  is never listed on its own.
 - `--content` (VC package) — exactly **one** position:
   `'[{"sku":"<vc_sku>","quantity":<amount granted>}]'`. Bundles take several positions.
 - Pricing: `--prices` for real currency (see [pricing.md](pricing.md)), `--vc-prices`

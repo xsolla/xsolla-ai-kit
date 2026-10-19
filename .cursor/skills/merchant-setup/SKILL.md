@@ -51,7 +51,10 @@ a remote script into a shell.
 
 **The user already has a Publisher Account.** Run `xsolla auth login`. It opens a browser
 for OAuth2 + PKCE. The user completes the sign-in there, and the CLI never sees a password.
-Tokens go to the OS keychain and refresh automatically.
+Tokens go to the OS keychain. The sign-in lasts about a day and does not renew itself:
+when `auth status` shows `expired: true`, the user runs `xsolla auth login` again. The
+Store API key keeps working while the sign-in is expired, so catalog and payment commands
+still run. `publisher` commands do not.
 
 - If login fails with *audience required*, retry with
   `--audience https://api.xsolla.com`.
@@ -93,7 +96,7 @@ an emailed 6-digit code, and the agent must never type or see either one.
   one. The file holds no secrets. Run this in the game's root:
 
   ```bash
-  [ -f .xsolla.json ] || xsolla config init
+  [ -f .xsolla.json ] || xsolla config init </dev/null   # skips its ID prompts
   xsolla config set merchant-id <id> && xsolla config set project-id <id>
   xsolla config set sandbox true     # while building; see "Sandbox and going live"
   ```
@@ -186,8 +189,11 @@ few business days. No CLI command signs the agreement or switches the project li
 | Exit `10` (401/403) after a working login | `XSOLLA_API_KEY` or `XSOLLA_TOKEN` is set in the env | `unset XSOLLA_API_KEY XSOLLA_TOKEN`, then probe again |
 | Exit `10` on a webshop or cart command | It needs a player JWT, not a publisher login | See the bundled CLI skill `auth-accounts` (`--auth-context xsolla-id`) |
 | 403 *roles for user… merchant* | The project belongs to another merchant | Run `publisher list-projects` and pick one from that list |
+| Exit `1`, stderr `HTTP 401`, empty stdout on a `publisher` command | Sign-in expired. These commands don't use exit `10` or the JSON error. | Step 2 |
 | `merchant_id not set` | The token carried no merchant | Step 3 |
 | CI or a headless box with no browser | OAuth needs a browser | Set `XSOLLA_API_KEY` from the CI secret store and `merchant_id` in config. This is the one exception to "no env keys". |
 
 Exit codes: `0` ok · `1` usage · `10` auth · `20` network · `30` validation · `40` not found
-· `50` conflict · `70` 5xx · `75` transient (retry). `--json` gives `{"ok":…,"data"|"error":…}`.
+· `50` conflict · `70` 5xx · `75` transient (retry). With `--json`, success prints
+`{"ok":true,"data":…}` on stdout. A failure leaves stdout empty and prints
+`{"ok":false,"error":…}` on **stderr**, so read stderr (or use `2>&1`) before parsing.

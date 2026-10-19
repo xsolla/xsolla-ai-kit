@@ -48,13 +48,14 @@ read-only and safe to repeat.
 
 ```bash
 xsolla --version                  # installed? which version?
-xsolla auth status --json         # signed in, token not expired?
 xsolla config list --json         # merchant_id / project_id / sandbox
+xsolla catalog admin-list-currency --json >/dev/null; echo "exit=$?"   # Store key works?
 ```
 
-If the CLI is missing or older than 1.9.4 (a `dev` build is acceptable), `authenticated` is `false`, `expired` is `true`,
-or `merchant_id` / `project_id` is `0` or missing, hand off to **`merchant-setup`** and come
-back when it reports. Never ask the user for an API key: `xsolla catalog` commands read
+If the CLI is missing or older than 1.9.4 (a `dev` build is acceptable), `merchant_id` /
+`project_id` is `0` or missing, or the key check doesn't print `exit=0`, hand off to
+**`merchant-setup`** and come back when it reports. Catalog commands authenticate with
+the Store key, not the sign-in, so an expired `xsolla auth login` doesn't block this skill. Never ask the user for an API key: `xsolla catalog` commands read
 the Store key from the keychain and the IDs from `.xsolla.json`. Ignore any `--help` text or
 bundled CLI skill that says to `export XSOLLA_API_KEY`; setting it overrides the keychain key.
 
@@ -70,7 +71,8 @@ bundled CLI skill that says to `export XSOLLA_API_KEY`; setting it overrides the
 
 1. **Choose the archetype and set up the catalog (`xsolla catalog`).** Ask which of the
    two the game needs (or both). **In-game items** (typical mobile/F2P) go in this order:
-   `admin-create-group` → `admin-create-currency` → `create-items` →
+   `admin-create-group` (optional: items sell without a group, and the CLI can't delete
+   one) → `admin-create-currency` → `create-items` →
    `admin-create-currency-package` → `admin-create-bundles` (see `references/items.md`).
    **Game sales via keys** use `admin-create-game` with one unit item per platform, then
    `admin-upload-game-codes` (see `references/game-keys.md`). For more than a handful of
@@ -104,10 +106,14 @@ bundled CLI skill that says to `export XSOLLA_API_KEY`; setting it overrides the
    server): WebSocket order status + short-polling `Get order` fallback. See
    `references/purchase-and-tracking.md`.
 
-6. **Verify end-to-end.** In sandbox (`"sandbox": true`, test cards): check store
-   visibility with `xsolla catalog list-catalog-items-by-group --external-id <group>`
-   (bundles: `list-catalog-bundles`; packages: `admin-list-currency-packages`), buy an item from the client, and confirm
-   the order reaches `done` and the confirmation path (webhook or socket) fired.
+6. **Verify end-to-end.** In sandbox (`"sandbox": true`, test cards), check the
+   storefront: `xsolla catalog list-catalog-items`, `list-catalog-currency-packages` and
+   `list-catalog-bundles` (`--all --json`; by section: `list-catalog-items-by-group
+   --external-id <group>`). Each SKU should show `can_be_bought: true`. The currency
+   itself is never listed; check the packages that sell it. The storefront is cached
+   for about a minute after a create, update or delete, so re-check before calling a
+   change missing or still live. Then buy an item from the client, and confirm the order
+   reaches `done` and the confirmation path (webhook or socket) fired.
 
 ## CLI gaps
 
@@ -158,11 +164,10 @@ Prompt: "Configure my Xsolla catalog with items and pricing, then wire up purcha
 order confirmation. It's a mobile F2P game with gems (virtual currency), gem packs,
 boosters, and a starter bundle."
 
-CLI run on sandbox project `314771` (2026-10-16, CLI `dev` 379d24a; read-only and
-`--dry-run` only, by agreement): the preflight passed without a hand-off and the agent
-confirmed every named flag with `--help`. It read the existing catalog, and all 11 planned
-writes passed `--dry-run`: 3 groups, the gems currency, 2 boosters priced in gems, 3 gem
-packs, the starter bundle and its unhide. It also dry-ran the same set as one
-`admin-import-catalog`. It reported the gaps (consumable flag, reglocks, limits,
-attributes) for Publisher Account, and planned purchase and confirmation as client code.
-It never asked for a key or token. ✅
+Live CLI run on sandbox project `314771` (2026-10-19, CLI `dev` 379d24a), after
+`merchant-setup` and with no `XSOLLA_*` env vars. The agent created a gems currency, a
+booster priced in 50 gems, a 100-gem pack (USD 0.99) and a starter bundle (USD 4.99,
+then unhidden), all with `clitest-` SKUs and no groups. Every write was dry-run first,
+and every real call returned 201 (unhide: 204). The storefront listed the booster, pack
+and bundle with `can_be_bought: true`. Then the agent deleted all four (204 each), and the
+admin catalog matched its before-snapshot. It never asked for a key or token. ✅
