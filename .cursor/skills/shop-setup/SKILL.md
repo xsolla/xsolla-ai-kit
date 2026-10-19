@@ -77,8 +77,6 @@ frontend; Xsolla provides backend services and SDKs.
 > elsewhere — the natural fit when AI is already building the entire storefront.
 > Pay Station redirect is a valid fallback but not the default choice here.
 
----
-
 ## System Interaction (logical, not code)
 
 ```
@@ -101,24 +99,20 @@ Partner's site
 4. Checkout: Store API creates payment token → Headless Checkout SDK (or Pay Station) handles payment
 5. Payment confirmed → **Xsolla sends webhook to partner's backend** → partner grants item in game
 
----
-
 ## Integration Phases
 
 The agent builds bottom-up: data first, then identity, then payment.
 
-### Phase 0 — Prerequisites (Publisher Account, no frontend)
+### Phase 0 — Prerequisites (Xsolla CLI, no frontend)
 
 **Goal:** Store project with catalog exists before any UI.
 
-- Create Store project → get `projectId`
-- Create catalog entities: virtual items, virtual currency, bundles, game keys, groups, prices, limits
-- Link Login project to Store project
-- Record: `merchantId`, `projectId`, `loginProjectId`, `cartId`
+- `merchant-setup` → CLI signed in, `merchant_id` / `project_id` in `.xsolla.json`, Store key
+  in the keychain. Never ask the user to copy a key or token from Publisher Account.
+- `catalog-design` → items, currency, bundles, game keys, groups, prices (`xsolla catalog`)
+- Link the Login project to the Store project (`login-setup`); record `loginProjectId`
 
 **Nothing to build on the frontend yet. Without this, all API calls return empty or errors.**
-
----
 
 ### Phase 1 — Catalog (Store API, read-only)
 
@@ -130,8 +124,6 @@ The agent builds bottom-up: data first, then identity, then payment.
 
 **Validate:** catalog loads without JWT; locale changes item names; no errors.
 
----
-
 ### Phase 2 — Cart (Store API)
 
 **Goal:** player accumulates items before checkout.
@@ -141,8 +133,6 @@ The agent builds bottom-up: data first, then identity, then payment.
 - Operations: get, add/update/remove item, clear, fill (bulk)
 
 **Validate:** add item → reload page → cart persists; clear works.
-
----
 
 ### Phase 3 — Login (player identity)
 
@@ -161,8 +151,6 @@ The agent builds bottom-up: data first, then identity, then payment.
 
 **Validate:** login → cart preserved; logout → guest mode; re-login → account cart restored.
 
----
-
 ### Phase 4 — Personal Store features (requires JWT)
 
 **Goal:** account-level commerce mechanics.
@@ -175,8 +163,6 @@ Implement after Phase 3, only what the product needs:
 - Reward chains, free items
 
 All requests: Store API + `Bearer JWT`.
-
----
 
 ### Phase 5 — Payment (Headless Checkout SDK or Pay Station)
 
@@ -195,6 +181,10 @@ The token is always obtained via a backend HTTP call — **never generated on th
 Methods 1 and 2 both return `{ token, order_id }` and include full Store order lifecycle (SKU validation, promo redemption, inventory reservation). Method 3 returns `{ token }` only — no Store order, no SKU validation.
 
 **Default for this integration: Method 1** (browser calls Store API, no backend setup required).
+
+These are code the developer ships. The agent's own token comes from the CLI:
+`xsolla webshop admin-create-payment-token` (Method 2, keychain key). It has no sandbox mode,
+so it is for `production`'s contract check only; test sandbox payments through the shop's code.
 
 #### Step 2 — Open payment UI
 
@@ -228,8 +218,6 @@ detects locale on its own and lets the player change language in the hosted UI.
 > Japanese IP note (Xsolla rule): a Japanese client IP forces Japanese in the
 > payment UI regardless of `settings.language`.
 
----
-
 ### Phase 6 — Webhook (partner's backend, fulfillment)
 
 **Goal:** grant purchased item to the player in the game.
@@ -246,8 +234,6 @@ After a successful payment — whether through Headless Checkout SDK or Pay Stat
 
 **Validate:** trigger a test payment → webhook received → item granted in game system.
 
----
-
 ### Phase 7 — Production / go-live → `production`
 
 **Goal:** accept real money; leave sandbox.
@@ -261,8 +247,6 @@ After a successful payment — whether through Headless Checkout SDK or Pay Stat
 
 **Validate:** developer sign-off on the `production` checklist (utils OK without
 `00020004`, live card + goods granted, wallets smoked, failed path works).
-
----
 
 ## Decision Points for the Agent
 
@@ -300,7 +284,7 @@ Does the partner have a backend server for checkout?
 **What to build next (if starting from scratch):**
 
 ```
-Phase 0 done? → no: set up catalog in Publisher Account first
+Phase 0 done? → no: run merchant-setup, then catalog-design
 Phase 1 done? → no: implement catalog read
 Phase 2 done? → no: implement guest cart
 Phase 3 done? → no: integrate Login
@@ -310,11 +294,9 @@ Phase 6 done? → no: implement webhook handler on partner backend
 Phase 7 done? → no: go live — `production` (contract, flip sandbox, deploy, live test)
 ```
 
----
-
 ## Anti-Patterns
 
-1. **Don't skip Phase 0** — no catalog in PA = empty store regardless of frontend quality.
+1. **Don't skip Phase 0** — no catalog = empty store regardless of frontend quality.
 2. **Don't require login to browse** — catalog and guest cart work without JWT.
 3. **Don't open Pay Station / Headless Checkout before cart is validated** — phases must go in order.
 4. **Don't generate payment token on the frontend** — only receive it via HTTP call and pass to SDK/widget.

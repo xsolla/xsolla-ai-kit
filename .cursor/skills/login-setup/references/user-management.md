@@ -190,5 +190,9 @@ Subscribe to user-lifecycle events (registered, signed in, banned, MFA, …):
 | Add webhook for event | [Add webhook for event](https://developers.xsolla.com/api/login/operation/add-webhook-for-event) |
 | Delete webhook for event | [Delete webhook for event](https://developers.xsolla.com/api/login/operation/delete-webhook-for-event) |
 
+The agent-side equivalents are `xsolla login add-webhook` / `list-webhook` /
+`delete-webhook`. They need a Login server JWT that the user sets in their own shell; see
+[`cli-workflows.md`](cli-workflows.md) §4.
+
 Verification rules (raw body + secret + signature) follow the same family as Pay Station
 / Store webhooks — see the `webhooks-impl` skill for the handler shape.

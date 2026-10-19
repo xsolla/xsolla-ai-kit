@@ -47,7 +47,9 @@ npm install
 npm run dev          # Vite dev server
 ```
 
-A sandbox payment token is still required to drive a live payment — see `initialization.md` (Method 3).
+A sandbox payment token is still required to drive a live payment. It comes from the developer's dev token route
+(`initialization.md` → Step 2), which reads the backend key from `.env`; the CLI can't mint one for the agent (see
+`initialization.md` → CLI gaps). Never paste a token or an API key into the demo's source.
 
 ---
 
@@ -131,4 +133,4 @@ When a pattern in another reference points at an example, the demo usually has a
 - [ ] Demo linked to the agent — Claude Code: user ran `/add-dir <abs-path>` (or `@` import / `--add-dir` for durable);
       Cursor: workspace folder added
 - [ ] Continued with the user's original request once the link is confirmed
-- [ ] Sandbox token available for live payments (see `initialization.md`)
+- [ ] Sandbox token available from the dev token route for live payments (see `initialization.md` → Step 2)

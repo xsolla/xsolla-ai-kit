@@ -102,7 +102,9 @@ version comment (validated on upload). Global params:
 
 ## Consolidated endpoint reference
 
-All Login-API calls use the Publisher Account token. Base URLs: Login API
+Every call below takes `Authorization: Bearer <token>`, with the token read from
+`xsolla auth get-token` inside the command that sends the request (see the parent
+`SKILL.md` Prerequisites). No `xsolla` command covers these endpoints yet. Base URLs: Login API
 `https://login.xsolla.com/api` · Merchant API `https://api.xsolla.com` · CDN
 `https://cdn.xsolla.net`.
 

@@ -1,7 +1,8 @@
 # Testing Xsolla webhooks
 
-Two ways to validate a webhook handler. Prefer **fixtures** for everyday agent
-work; use a **tunnel** when you need a live delivery from Xsolla.
+Three ways to validate a webhook handler. Use **`xsolla webhook trigger`** for everyday
+agent work, the app's **test suite** for events the CLI has no payload for, and a
+**tunnel** when you need a live delivery from Xsolla.
 
 Fixtures live in [`fixtures/`](../fixtures/) next to this skill
 (`user_validation`, `order_paid`, `payment` — JSON + matching `.raw.txt`).
@@ -26,50 +27,119 @@ twice if both `payment` and `order_paid` arrive (separate mode). Full shapes:
 
 ---
 
-## Method 1 — Fixture replay (agent-driven, no public URL)
+## Method 1 — `xsolla webhook trigger` (agent-driven, no public URL)
 
 Use this to implement and smoke-test the handler without Publisher Account or a
-tunnel.
+tunnel. `xsolla webhook trigger <event> --to <url>` POSTs a built-in payload, signed the
+way Xsolla signs deliveries (`Authorization: Signature <sha1(body + secret)>`). It reads
+the secret from `XSOLLA_WEBHOOK_SECRET` in its environment, or from `--secret`.
 
-1. **Use fixtures while writing the handler.** Open
+- **Events:** `xsolla webhook trigger --list` prints `payment`, `refund` and
+  `user_validation`. They are separate-mode shapes with fixed values (user id `1234567`,
+  transaction id `87654321`), so two runs of the same event are a replay.
+- **Target:** point `--to` only at the local handler. `trigger` accepts any URL; never
+  fire it at a deployed or production host.
+- **Result:** a line like `→ payment  <url>  → 204 No Content` on stderr, plus the
+  handler's response body. Exit `0` for a status below 400, and exit `1` for a status of
+  400 or above, a refused connection or an unknown event. With `--json`, read
+  `data.status` and `data.accepted`; `ok` is `true` even when the handler rejected it.
+
+1. **Map fields with the fixtures while writing the handler.** Open
    `fixtures/order_paid.json` / `payment.json` / `user_validation.json` and map
    fields (`user.external_id` vs `user.id`, `items[]`, `billing.transaction.id`,
-   …) into your grant / validate logic. Prefer `.raw.txt` for signature tests —
-   it is the exact body Xsolla signed.
+   …) into your grant / validate logic.
 
-2. **POST a fixture at the shop webhook path** (whatever the app exposes, e.g.
-   `/webhooks/xsolla` or `/xsolla/webhooks`). Sign with the same algorithm as
-   production — see [`signature-verification.md`](signature-verification.md):
+2. **Run the handler with a throwaway test secret, and trigger with the same one.** The
+   agent never needs the real secret for this:
 
-```bash
-# From the repo that owns the webhook server; secret from .env (merchant-setup).
-source .env   # needs XSOLLA_WEBHOOK_SECRET
+   ```bash
+   TEST_SECRET="test-$(date +%s)"
+   # Start the app with XSOLLA_WEBHOOK_SECRET="$TEST_SECRET" in its environment, then:
+   URL=http://localhost:4000/webhooks/xsolla     # the path the app actually mounts
+   XSOLLA_WEBHOOK_SECRET="$TEST_SECRET" xsolla webhook trigger user_validation --to "$URL"
+   XSOLLA_WEBHOOK_SECRET="$TEST_SECRET" xsolla webhook trigger payment --to "$URL"
+   XSOLLA_WEBHOOK_SECRET="$TEST_SECRET" xsolla webhook trigger payment --to "$URL"   # replay
+   XSOLLA_WEBHOOK_SECRET="$TEST_SECRET" xsolla webhook trigger refund --to "$URL"
+   XSOLLA_WEBHOOK_SECRET=wrong-secret  xsolla webhook trigger payment --to "$URL"   # bad signature
+   ```
 
-BODY_FILE=path/to/xsolla-ai-kit/skills/webhooks-impl/fixtures/order_paid.raw.txt
-BODY=$(cat "$BODY_FILE")
-SIG=$(printf '%s' "${BODY}${XSOLLA_WEBHOOK_SECRET}" | shasum -a 1 | awk '{print $1}')
+   Node `dotenv` and `python-dotenv` don't override a variable that is already set, so
+   the handler uses the test secret even when `.env` holds the real one. If the app's
+   loader does override, use step 3.
 
-curl -sS -D- -o /tmp/wh-body.txt \
-  -X POST "http://localhost:4000/webhooks/xsolla" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Signature ${SIG}" \
-  --data-binary @"$BODY_FILE"
+3. **Handler already running with the real secret from `.env`.** The CLI doesn't read
+   `XSOLLA_WEBHOOK_SECRET` from a project `.env` (it loads only the ID variables from
+   there), so pass it into one command's environment without printing it:
 
-# Expect 2xx. Replay the same body → still 2xx, no second grant.
-# Tamper one byte of the body (or wrong secret) → 400 INVALID_SIGNATURE.
-```
+   ```bash
+   ( export XSOLLA_WEBHOOK_SECRET="$(sed -n 's/^XSOLLA_WEBHOOK_SECRET=//p' .env)"
+     xsolla webhook trigger payment --to http://localhost:4000/webhooks/xsolla )
+   ```
 
-3. **Minimum agent checklist**
-   - Valid signature → `2xx` for `user_validation` / `order_paid` / `payment`
-   - Bad signature → `400` + `INVALID_SIGNATURE` (not `200`)
-   - Replay same `order_paid` → idempotent (no double grant)
+   This expects an unquoted value in `.env`. Don't pass the value with `--secret`: it
+   shows up in the process list and the transcript.
+
+4. **No handler yet, or check what `trigger` sends.** `xsolla webhook listen` is a
+   stand-in endpoint that verifies the signature and logs each delivery
+   (`sig=valid` / `sig=INVALID`, plus the body) to stderr. `--output json` also
+   streams one JSON record per delivery to stdout. Run it in the background with the
+   secret in its environment, and stop it when done:
+
+   ```bash
+   XSOLLA_WEBHOOK_SECRET="$TEST_SECRET" xsolla webhook listen --port 4000 --path /webhooks/xsolla
+   ```
+
+   It binds localhost by default; keep it that way (no `--addr :<port>`). It replies
+   `204`, or `401` to a bad signature. That is not the handler contract: your handler
+   answers `400 INVALID_SIGNATURE`. `--respond`, `--latency` and `--fail-every` change
+   its reply to test a sender, not your handler.
+
+5. **Minimum agent checklist**
+   - Right secret → `2xx` for `user_validation` (when the user exists) / `payment`
+   - `user_validation` for unknown user `1234567` → `400 INVALID_USER`
+   - Wrong secret → `400` + `INVALID_SIGNATURE` (not `200`); `trigger` exits `1`
+   - Replay the same `payment` → `2xx`, no second record or grant
    - Separate-mode caution: handling `payment` must **not** grant if you already
      grant on `order_paid`
+   - `order_paid` / `order_canceled` → Method 1b
 
-Fixtures are **sandbox captures**. Project/merchant ids inside them are
-examples; signature verification only needs the raw bytes + **your** current
-`XSOLLA_WEBHOOK_SECRET`. If the secret changed since capture, re-sign with the
-formula above (fixtures still exercise routing and fulfillment).
+### Method 1b — test-suite replay (`order_paid`, `order_canceled`, custom payloads)
+
+`trigger` has no `order_paid` / `order_canceled` fixture and no flag for a custom body
+(a CLI gap). Replay the skill's `.raw.txt` fixtures from the app's own test suite, signed
+with a test secret. Node (Jest + supertest) example; port it to the app's stack:
+
+```js
+// test/xsolla-webhooks.test.js
+process.env.XSOLLA_WEBHOOK_SECRET = 'test-secret';   // throwaway; set before the app loads
+const fs = require('fs');
+const crypto = require('crypto');
+const request = require('supertest');
+const app = require('../app');                         // the Express app, exported without listen()
+
+// Copied from this skill's fixtures/ — the exact bytes Xsolla signed.
+const body = fs.readFileSync(`${__dirname}/fixtures/order_paid.raw.txt`, 'utf8');
+const sign = (secret) => crypto.createHash('sha1').update(body + secret).digest('hex');
+const post = (sig) => request(app).post('/webhooks/xsolla')
+  .set('Content-Type', 'application/json')
+  .set('Authorization', `Signature ${sig}`)
+  .send(body);                                         // a string goes out byte-for-byte
+
+test('order_paid grants once; a replay is a no-op', async () => {
+  expect((await post(sign('test-secret'))).status).toBeLessThan(300);
+  expect((await post(sign('test-secret'))).status).toBeLessThan(300);
+  // Assert exactly one grant for billing.transaction.id in your datastore.
+});
+
+test('a bad signature is rejected', async () => {
+  const res = await post(sign('wrong-secret'));
+  expect(res.status).toBe(400);
+  expect(JSON.stringify(res.body)).toContain('INVALID_SIGNATURE');
+});
+```
+
+Fixtures are **sandbox captures**. Project/merchant ids inside them are examples;
+signature verification only needs the raw bytes and the secret the handler runs with.
 
 ---
 
@@ -77,6 +147,9 @@ formula above (fixtures still exercise routing and fulfillment).
 
 Xsolla will only POST to a **public HTTPS** URL. For local backends, expose the
 webhook port with a quick tunnel (e.g. `cloudflared tunnel --protocol http2 --url http://localhost:4000`), then register that URL in Publisher Account.
+
+`xsolla webhook listen` / `trigger` are offline only: nothing forwards Xsolla's real
+deliveries to localhost, and no CLI command sets the webhook URL (CLI gaps).
 
 **Ask the developer** to set the webhook **URL** in PA (secret + “webhooks on”
 must already be done — see `SKILL.md` Prerequisites). Build the settings link from
@@ -118,6 +191,7 @@ time, or use a named/stable tunnel for longer sessions.
 
 | Goal | Method |
 |------|--------|
-| Implement handler, signature, routing, idempotency | **Fixtures** |
+| Implement handler, signature, routing, idempotency | **`xsolla webhook trigger`** |
+| `order_paid` / `order_canceled` / subscription / custom payloads | **Test-suite replay** (Method 1b) |
 | Confirm Xsolla can reach the URL + real purchase chain | **Tunnel** (+ human for PA) |
-| Regress after a handler change | Fixtures first; tunnel if delivery/geo/proxy is in doubt |
+| Regress after a handler change | `trigger` + test suite first; tunnel if delivery/geo/proxy is in doubt |

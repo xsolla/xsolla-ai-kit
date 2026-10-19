@@ -42,7 +42,9 @@ OAuth 2.0 reference: [Connecting OAuth 2.0](https://developers.xsolla.com/authen
 
 ## Login Widget initialization
 
-Minimal Widget config (copy the values from Publisher Account, see [`setup-pa.md`](setup-pa.md)):
+Minimal Widget config. Take the two IDs from the app's `.env` (`XSOLLA_LOGIN_PROJECT_ID`,
+`XSOLLA_LOGIN_OAUTH_CLIENT_ID`, written in the parent `SKILL.md` step 3) through the app's
+build-time config. The Widget never needs a secret:
 
 ```js
 import { Widget } from '@xsolla/login-sdk';

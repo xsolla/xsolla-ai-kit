@@ -25,8 +25,8 @@ running in **sandbox**. This is a big integration, so it is built **one payment 
 time** (see Phases) until every method works. This file is a **map and a sequence** — the actual
 how-to lives in `references/`; load only the reference the current phase needs.
 
-**Frontend only.** It does **not** cover the production token backend (server-to-server) nor
-webhook fulfillment — see `webhooks-impl` for granting items after `order_paid`.
+**Frontend first.** Its only server code is a sandbox-only dev token route. It does **not** cover the production
+token backend nor webhook fulfillment — see `webhooks-impl` for granting items after `order_paid`.
 
 ## When to use
 
@@ -37,16 +37,23 @@ Pay / Apple Pay wallet buttons, or wiring **payment country** into the method li
 
 ## Prerequisites
 
-Run **`merchant-setup`** first. The developer must have:
+The agent reaches Xsolla through the **Xsolla CLI**. Run these three checks. They are
+read-only and safe to repeat.
 
 ```bash
-XSOLLA_MERCHANT_ID=<your merchant ID>
-XSOLLA_PROJECT_ID=<your project ID>
-XSOLLA_PROJECT_API_KEY=<your API key>   # server-side / agent-side only — NEVER ship to the browser
+xsolla --version                  # installed? which version?
+xsolla config list --json         # merchant_id / project_id / sandbox
+xsolla catalog admin-list-currency --json >/dev/null; echo "exit=$?"   # Store key works?
 ```
 
-If credentials are missing, stop and complete `merchant-setup` first. The **only** secret that
-ever reaches the browser is the short-lived **payment token** — never the API key.
+If the CLI is missing or older than 1.9.4 (a `dev` build is acceptable), `merchant_id` /
+`project_id` is `0` or missing, or the key check doesn't print `exit=0`, hand off to
+**`merchant-setup`** and come back when it reports. Never ask the user for an API key or token.
+
+The developer's **backend** mints payment tokens at runtime, so its `.env` needs
+`XSOLLA_MERCHANT_ID`, `XSOLLA_PROJECT_ID` and `XSOLLA_PROJECT_API_KEY`: `merchant-setup` Step 5
+writes them, minting the key straight into `.env`. Sandbox tokens come from a dev route on that
+backend, never the CLI (`initialization` → Step 2, CLI gaps). Only the **payment token** reaches the browser.
 
 ## The one mental model: `form.init()` + one `onNextAction` dispatcher
 
@@ -70,8 +77,8 @@ One dispatcher, keyed on `nextAction.type`, handles everything. Where each actio
 
 Do **not** attempt everything at once. Finish and **test** each phase in sandbox before the next.
 
-**Phase 1 — Credit card, end to end.** Install + `init({ sandbox: true })`, mint a sandbox token
-(no backend), build the card form from `form.fields`, handle the `onNextAction` chain, show the
+**Phase 1 — Credit card, end to end.** Install + `init({ sandbox: true })`, add the sandbox dev token
+route on the developer's backend (reads `.env`), build the card form from `form.fields`, handle the `onNextAction` chain, show the
 status, and drive a real sandbox payment including 3DS + the return page.
 → `initialization`, `credit-card-form`, `redirect-flow` (3DS-via-redirect), `payment-status`.
 **Done when** the three sandbox test cards pass (see `credit-card-form` → Testing).
@@ -155,7 +162,7 @@ Load only what the current phase needs.
   complete** example and **fastest to access** once installed (local file reads, no doc fetches), but requires cloning
   the repo locally and linking it to the agent
 - [`references/initialization.md`](references/initialization.md) — install SDK, `init({ sandbox: true })` +
-  `setToken()`, getting a sandbox payment token with **no backend**
+  `setToken()`, the sandbox-only dev token route (backend key from `.env`); CLI gaps
 - [`references/payment-methods-list.md`](references/payment-methods-list.md) — `psdk-payment-methods` vs custom API,
   `selectionChange`, handoff to `form.init()`; **layout patterns (list / accordion / tabs), method
   icons, wallet-button placement, back navigation**
@@ -186,6 +193,7 @@ Load only what the current phase needs.
 Prompt: "Integrate Xsolla Headless Checkout into my web app and let me pay with a credit card in
 sandbox." Expected: the agent follows **Phase 1** — reads `SKILL.md`, pulls `initialization`,
 `credit-card-form`, `redirect-flow`, and `payment-status` as each step needs them; installs
-`@xsolla/pay-station-sdk`; initializes with `sandbox: true`; mints a sandbox token; builds the
-card form from `form.fields`; handles the full `onNextAction` chain; and **passes the three
-sandbox test cards** (incl. the 3DS return page) on a real run. ✅
+`@xsolla/pay-station-sdk`; initializes with `sandbox: true`; gets a sandbox token from the dev token route
+(never asking for a key or printing the token); builds the card form from `form.fields`; handles
+the full `onNextAction` chain; and **passes the three sandbox test cards** (incl. the 3DS return
+page) on a real run. ✅

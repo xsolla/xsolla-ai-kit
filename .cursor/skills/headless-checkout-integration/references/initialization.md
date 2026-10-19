@@ -1,7 +1,7 @@
 # Headless Checkout Initialization (Sandbox)
 
 Guide for an AI agent helping a partner integrate Headless Checkout. Goal: install SDK, obtain a sandbox payment token
-without touching the partner's backend, and show the first working UI.
+from a small dev-only token route on the partner's backend, and show the first working UI.
 
 > **Sandbox only.** Always pass `sandbox: true` in `headlessCheckout.init()`. Production token flow and go-live are
 > covered by separate skills.
@@ -10,12 +10,18 @@ without touching the partner's backend, and show the first working UI.
 
 ## Prerequisites
 
-Load **`merchant-setup`** skill first. Partner must have:
+The CLI preflight in `SKILL.md` → Prerequisites passes (CLI installed, `merchant_id` /
+`project_id` set, Store key probe prints `exit=0`). If not, hand off to **`merchant-setup`**.
 
-- Publisher Account with a project
-- `XSOLLA_MERCHANT_ID`, `XSOLLA_PROJECT_ID`, `XSOLLA_PROJECT_API_KEY` in `.env`
+Step 2's dev token route needs the backend key in `.env`. Check without printing it:
 
-If credentials are missing — stop and complete merchant setup before continuing.
+```bash
+grep -c '^XSOLLA_PROJECT_API_KEY=' .env 2>/dev/null   # 1 = present
+```
+
+`0` or no `.env` → run `merchant-setup` Step 5. It writes `XSOLLA_MERCHANT_ID` and
+`XSOLLA_PROJECT_ID`, and mints `XSOLLA_PROJECT_API_KEY` straight into `.env`. The developer's
+production token backend needs the same key later. Never ask the user to paste a key.
 
 ---
 
@@ -73,24 +79,16 @@ linking it to the agent. See `demo-install.md`.
 
 ---
 
-## Step 2: Get a Sandbox Payment Token (No Backend)
+## Step 2: Get a Sandbox Payment Token (dev token route)
 
-Payment token is **never generated in browser JavaScript**. For initial dev the partner does **not** implement a backend
-endpoint yet. The agent generates a token on demand and passes it to the page.
+Payment token is **never generated in browser JavaScript**, and the agent does not mint it with the CLI either (see
+[CLI gaps](#cli-gaps)). The developer's **backend** mints it: add one small, sandbox-only server route that reads
+`.env` and calls the Merchant API token endpoint with `settings.mode: "sandbox"`. The page fetches the token from that
+route at startup, so the API key never leaves the server and the token never passes through the agent's transcript.
+A sandbox token creates no order and charges nothing.
 
-### Token TTL
-
-Default lifetime is **24 hours**. When the token expires, SDK calls fail — generate a new one and reload the page.
-Remind the user to refresh periodically during dev.
-
-### How to deliver the token to the page
-
-Pick one (hardcoded constant is valid for dev only):
-
-1. **URL query param** — `https://localhost:3000/checkout?token=PAYMENT_TOKEN`
-2. **Hardcoded constant** — `const accessToken = '...'` in init code (replace when expired)
-
-> Never commit real API keys or tokens to git.
+This route is a dev stand-in, not the production token backend. It hardcodes a test user and `mode: "sandbox"`; the
+real endpoint (authenticated user, Store Method 1/2) comes later — see `shop-setup` and `production`.
 
 ### Which token method to use
 
@@ -98,38 +96,71 @@ Methods explained in `shop-setup` skill.
 
 | Situation                            | Method                                      | Details                                    |
 |--------------------------------------|---------------------------------------------|--------------------------------------------|
-| **Default — no Store, no backend**   | **Method 3** — Merchant API                 | Simplest: amount + description, no catalog |
-| Partner already has Store API + cart | Method 1 — `POST .../payment/cart/{cartId}` | See `shop-setup` skill                     |
-| Partner has backend ready            | Method 2 — admin S2S                        | Production path — skip for now             |
+| **Default — no Store, early dev**    | **Method 3** — Merchant API, from the dev route below | Simplest: amount + description, no catalog |
+| Partner already has Store API + cart | Method 1 — `POST .../payment/cart/{cartId}` | Client code; see `shop-setup` skill        |
+| Partner has backend ready            | Method 2 — admin S2S, with `"sandbox": true` in the body | Backend code (REST) — skip for now  |
 
-**Method 3 — generate via curl (agent runs this):**
+### Method 3 — the dev token route (developer's backend code)
 
-```bash
-source .env
+Code the developer ships, so it uses REST, not the CLI. Express shown; put the same handler in whatever server the
+project has (Next API route, Vite `configureServer` middleware, PHP, …) — anything server-side that can read `.env`.
 
-curl -s -X POST \
-  -u "${XSOLLA_PROJECT_ID}:${XSOLLA_PROJECT_API_KEY}" \
-  "https://api.xsolla.com/merchant/v2/merchants/${XSOLLA_MERCHANT_ID}/token" \
-  -H 'Content-Type: application/json' \
-  -d "{
-    \"user\": {
-      \"id\": { \"value\": \"dev_user_001\" },
-      \"email\": { \"value\": \"test@example.com\" }
+```js
+// POST /api/payment-token — SANDBOX ONLY. Reads XSOLLA_* from .env (merchant-setup Step 5).
+app.post('/api/payment-token', async (req, res) => {
+  if (process.env.NODE_ENV === 'production') return res.sendStatus(404);
+  const { XSOLLA_MERCHANT_ID: mid, XSOLLA_PROJECT_ID: pid, XSOLLA_PROJECT_API_KEY: key } = process.env;
+  const r = await fetch(`https://api.xsolla.com/merchant/v2/merchants/${mid}/token`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: 'Basic ' + Buffer.from(`${pid}:${key}`).toString('base64'),
     },
-    \"settings\": {
-      \"project_id\": ${XSOLLA_PROJECT_ID},
-      \"currency\": \"USD\",
-      \"language\": \"en\",
-      \"mode\": \"sandbox\"
-    },
-    \"purchase\": {
-      \"checkout\": { \"amount\": 1.99, \"currency\": \"USD\" },
-      \"description\": { \"value\": \"Dev sandbox test\" }
-    }
-  }"
+    body: JSON.stringify({
+      user: { id: { value: 'dev_user_001' }, email: { value: 'test@example.com' } },
+      settings: { project_id: Number(pid), currency: 'USD', language: 'en', mode: 'sandbox' },
+      purchase: { checkout: { amount: 1.99, currency: 'USD' }, description: { value: 'Dev sandbox test' } },
+    }),
+  });
+  if (!r.ok) return res.status(502).json({ error: `token request failed: HTTP ${r.status}` });
+  const { token } = await r.json();
+  res.json({ token });
+});
 ```
 
-Response: `{ "token": "..." }`. Extract `token` and pass it to the page.
+- Load `.env` into the server process (`node --env-file=.env`, `dotenv`, or the framework's own loader).
+- Never log the key or the token on the server, and never return the key to the client.
+- `401` from Xsolla → the key in `.env` is missing, rejected or revoked: run `merchant-setup` Step 5 (it mints a new
+  one into `.env`). Never ask the user to paste one.
+- Saved methods (Phase 6): keep the same `user.id` across tokens, or saved methods won't show up.
+- Payment country (Phase 7): to test another country, add `country: { value: 'JP', allow_modify: true }` to `user`.
+
+**Agent check.** Start the dev server, then send `POST /api/payment-token` from a short script and print only the HTTP
+status and the token's **length**, never the value. `200` with a non-empty `token` = route works.
+
+### Token TTL
+
+Default lifetime is **24 hours**. Because the page fetches a fresh token on each load, a reload is enough. A token
+pasted into a URL by hand still expires — an expired token looks like an SDK bug.
+
+### How to deliver the token to the page
+
+1. **Fetch from the dev route (default)** — the page calls `POST /api/payment-token` before `setToken()` (Step 3).
+2. **URL query param** — `?token=…` is what the return page receives after a redirect (`credit-card-form`,
+   `redirect-flow`); Step 3 reads it first, then falls back to the route.
+
+> Never commit API keys or tokens to git, and never hardcode a token in a tracked source file.
+
+### CLI gaps
+
+The agent can't mint a sandbox payment token through the CLI today. Don't work around these with a raw API call from
+the agent, and don't run either command without `--dry-run`.
+
+| Need | Status | Do instead |
+|---|---|---|
+| Sandbox token via `xsolla payments create-token` | Refuses to run without an exported `XSOLLA_API_KEY` (exit `1`, *"Missing required credentials … XSOLLA_API_KEY"*); it never reads the keychain key, and the contract forbids that env var | Mint through the developer's dev token route above |
+| Sandbox token via `xsolla webshop admin-create-payment-token` | Works with the keychain key but has no sandbox: `--sandbox` *"has no effect"*, and no flag sets the body's `sandbox` field. Every token is **live** and creates an unpaid order on the live project | Never run it for testing. The backend's own Method 2 call sends `"sandbox": true` |
+| Apple Pay instant-flow certificate check | No command | See `apple-pay` §6 |
 
 More on token methods: `shop-setup`
 skill, [How to get payment token](https://developers.xsolla.com/payment-ui-and-flow/payment-ui/how-to-get-payment-token/index.md), [Xsolla docs index](https://developers.xsolla.com/llms.txt).
@@ -144,12 +175,17 @@ on checkout pages (not needed for methods-only first step).
 ```typescript
 import {headlessCheckout} from '@xsolla/pay-station-sdk';
 
-// Read token from URL or constant
-const params = new URLSearchParams(window.location.search);
-const accessToken = params.get('token') ?? 'PASTE_TOKEN_HERE';
+// Token from the URL (return page) or from the dev token route (Step 2)
+async function getToken() {
+    const fromUrl = new URLSearchParams(window.location.search).get('token');
+    if (fromUrl) return fromUrl;
+    const r = await fetch('/api/payment-token', { method: 'POST' });
+    return r.ok ? (await r.json()).token : null;
+}
 
 async function bootstrap() {
-    if (!accessToken) throw new Error('No token. Add ?token= to URL or paste token in code.');
+    const accessToken = await getToken();
+    if (!accessToken) throw new Error('No token. Is the dev token route (Step 2) running?');
 
     await headlessCheckout.init({
         sandbox: true,       // required for dev
@@ -172,7 +208,7 @@ bootstrap();
 <psdk-payment-methods country="US"></psdk-payment-methods>
 ```
 
-Run dev server, open page with `?token=...`. **Success = payment methods list renders without errors.**
+Run the dev server (with the token route) and open the page. **Success = payment methods list renders without errors.**
 
 ---
 
@@ -189,7 +225,10 @@ Run dev server, open page with `?token=...`. **Success = payment methods list re
 ## Anti-Patterns (Dev Phase)
 
 1. **Do not** put API keys in frontend code — only the payment token goes to the browser.
-2. **Do not** implement backend token endpoint yet — that is the production skill.
+   Don't ask the user for a key either, and don't `export XSOLLA_API_KEY` (it overrides the CLI's keychain key).
+2. **Do not** build the production token endpoint yet — the Step 2 route is sandbox-only; the real one comes later.
+   **Do not** mint test tokens with `xsolla payments create-token` or `xsolla webshop admin-create-payment-token`
+   (see CLI gaps: the first needs an env key, the second mints live tokens).
 3. **Do not** set `sandbox: false` during initial setup.
 4. **Do not** skip token refresh — expired token looks like an SDK bug.
 5. **Do not** use Method 1 (cart) without a real Store catalog and cart — use Method 3 instead.
@@ -202,11 +241,11 @@ Run dev server, open page with `?token=...`. **Success = payment methods list re
 
 ## Checklist
 
-- [ ] Credentials in `.env` (merchant-setup done)
+- [ ] CLI preflight passes, and `XSOLLA_PROJECT_API_KEY` is in `.env` (`merchant-setup` Step 5); no key pasted
 - [ ] `@xsolla/pay-station-sdk` installed via npm (even with no bundler)
 - [ ] SDK actually loads on the page — `import` resolves, or `window.PayStationSdk` is defined (gate before any code)
-- [ ] Sandbox token generated (Method 3 curl or API Try it)
-- [ ] Token passed via `?token=` or hardcoded constant
+- [ ] Dev token route (`POST /api/payment-token`, `mode: sandbox`) returns 200 + a token (checked by length, never printed)
+- [ ] Page fetches the token from the route (or `?token=` on the return page)
 - [ ] `headlessCheckout.init({ sandbox: true })` + `setToken()` called
 - [ ] `psdk-payment-methods` renders on page
-- [ ] User reminded: token expires in ~24h, refresh when needed
+- [ ] User reminded: token expires in ~24h; a reload fetches a fresh one

@@ -3,9 +3,11 @@
 Everything that must be configured **before** any client/server code can authenticate
 users. Lives at: **Publisher Account → Players → Login**.
 
-All identifiers below are surfaced through the Login project page and the OAuth 2.0
-client list — copy them into the agent's environment as the variables documented in the
-parent `SKILL.md` Prerequisites.
+The agent can list and create the Login project itself
+([`cli-workflows.md`](cli-workflows.md) §1). Everything else on this page has no API or
+CLI command, so the user sets it in Publisher Account and the agent checks the result
+with `xsolla login list-project` ([`cli-workflows.md`](cli-workflows.md) §2). Never ask the
+user to paste a client secret, server JWT or provider App Secret into the chat.
 
 ## 1. Pick the Login project type
 
@@ -125,19 +127,21 @@ Custom email and SMS templates (full localization, branding): see the API sectio
 
 Login emits its own webhooks (separate from Pay Station / Store webhooks): user
 registered, user signed in, user banned, MFA challenged, etc. Configure URL + secret under
-**Communication providers → Webhooks**, or via the API (`Get/Add/Delete webhook for
-event`). Verification format and reliability rules are the same family as the
+**Communication providers → Webhooks**, or with `xsolla login add-webhook`, which needs a
+Login server JWT the user sets in their own shell ([`cli-workflows.md`](cli-workflows.md)
+§4). Verification format and reliability rules are the same family as the
 `webhooks-impl` skill — re-use it.
 
 ## 9. Identifiers checklist
 
-After the steps above, the agent should record:
+After the steps above, the agent records the two non-secret IDs in the CLI config and
+writes them to the app's `.env` (parent `SKILL.md` step 3):
 
-```bash
-XSOLLA_LOGIN_PROJECT_ID=<UUID, copied from Login project page>
-XSOLLA_LOGIN_OAUTH_CLIENT_ID=<numeric>
-XSOLLA_LOGIN_OAUTH_CLIENT_SECRET=<only for confidential/server clients>
-```
+| Identifier | Where it lives |
+|---|---|
+| Login project ID (UUID) | `xsolla config set login-project-id <uuid>` → `.env` `XSOLLA_LOGIN_PROJECT_ID` |
+| OAuth 2.0 client ID (numeric) | `xsolla config set oauth-client-id <id>` → `.env` `XSOLLA_LOGIN_OAUTH_CLIENT_ID` |
+| OAuth 2.0 client secret (confidential / server clients) | The user puts it in the backend's secret store or `.env` themselves. It never passes through the chat. |
 
-`XSOLLA_LOGIN_PROJECT_ID` is the same value as the JWT `xsolla_login_project_id` claim
+The Login project ID is the same value as the JWT `xsolla_login_project_id` claim
 and the `projectId` parameter in every Login API call. Both must agree.

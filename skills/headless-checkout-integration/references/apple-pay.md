@@ -285,15 +285,15 @@ it exists; don't block go-live on it.
 
 **Step 1 — check whether the project already has it.** Some stores are built on a
 project where Apple Pay certificates are already configured; then instant just needs the
-client options. Mint a Pay Station access token for the project and ask the certificate
-checker:
+client options. Ask the certificate checker. No CLI command covers it (see `initialization` →
+CLI gaps), so send this one request:
 
-```bash
-curl --request POST \
-  --url 'https://secure.xsolla.com/paystation2/api/instant_pay_flow_checker/apple_pay?access_token=<PAY_STATION_TOKEN>' \
-  --header 'Content-Type: application/json' \
-  --data '{ "certificate_domain": "your-store-domain.com" }'
-```
+| Part | Value |
+|---|---|
+| Method | `POST`, `Content-Type: application/json` |
+| URL | `https://<host>/paystation2/api/instant_pay_flow_checker/apple_pay` — `secure.xsolla.com` for a live token, `sandbox-secure.xsolla.com` for a sandbox one |
+| Query | `access_token=<payment token for this project>` |
+| Body | `{ "certificate_domain": "your-store-domain.com" }` |
 
 ```json
 { "isCertificatesExist": true }
@@ -301,9 +301,10 @@ curl --request POST \
 
 `true` → certificates exist; enable instant with the client options in Step 2. `false`
 (the usual case for a new project/domain) → issue certificates first, Step 3.
-`<PAY_STATION_TOKEN>` is minted for that specific project (same as the order's payment
-token — see `initialization`); use the host matching its environment (`secure` for
-production, `sandbox-secure` for sandbox).
+The access token is a payment token minted for that specific project (same as the order's
+payment token). Get it from the developer's token endpoint (sandbox: the dev route in
+`initialization` → Step 2) and pass it straight into the request; never print it or ask the
+user for one. Don't mint it with the CLI (`initialization` → CLI gaps).
 
 **Step 2 — client options (only once certificates exist).** Add to `init()`:
 

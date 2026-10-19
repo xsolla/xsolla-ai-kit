@@ -23,8 +23,6 @@ card or wallet payments.
 
 **Docs:** [Legal aspects (Licensing Agreement)](https://developers.xsolla.com/get-started/work-in-pa/legal-aspects/index.md)
 
----
-
 ## When to use
 
 - Sandbox checkout + webhooks already work
@@ -32,56 +30,80 @@ card or wallet payments.
 - Token or Pay Station returns **Merchant contract not signed** /
   `0002-0004` / `support_code` `00020004`
 
----
-
 ## Step 1 — Prove the contract gap (agent)
 
-Mint a **production** payment token (omit `sandbox` / set `sandbox: false` —
-same Method 1/2/3 as `shop-setup`, but not sandbox mode). Then hit Pay Station
-utils with that token:
+The agent checks through the **Xsolla CLI**. These checks are read-only and safe to repeat.
+
+```bash
+xsolla --version                  # installed? which version?
+xsolla config list --json         # merchant_id / project_id
+xsolla auth status --json         # signed in, token not expired? (agreement check)
+xsolla catalog admin-list-currency --json >/dev/null; echo "exit=$?"   # Store key works?
+```
+
+If the CLI is missing or older than 1.9.4 (a `dev` build is acceptable), an ID is `0` or
+missing, `auth status` shows `authenticated: false` or `expired: true`, or the key check
+doesn't print `exit=0`, hand off to **`merchant-setup`** and come back when it reports. The
+sign-in lasts about a day and doesn't renew itself. Never ask the user for an API key or token.
+
+**1a. Read the agreement status.** This is read-only and uses the sign-in:
+
+```bash
+xsolla shopbuilder list-agreements --json
+```
+
+Find the entry with `"agreement_type": "payment"`. `"status": "unsigned"` means the contract
+is missing: go to Step 2. Any other status: continue to 1b to prove it.
+
+**1b. Mint a production token and call utils.** The token creates an unpaid order on the
+live project, so ask first. Use the cheapest SKU from `xsolla catalog list-catalog-items
+--all --json`. `--sandbox=false` overrides the `sandbox` config; the command has no
+sandbox mode, so every token it mints is live. Never print the token:
+
+```bash
+err=$(mktemp)
+out=$(xsolla webshop admin-create-payment-token --sandbox=false --json \
+  --user '{"id":{"value":"go-live-check"},"country":{"value":"US"}}' \
+  --purchase '{"items":[{"sku":"<cheapest SKU>","quantity":1}]}' 2>"$err")
+token=$(printf '%s' "$out" | python3 -c 'import json,sys; print(json.load(sys.stdin)["data"]["token"])' 2>/dev/null)
+[ -n "$token" ] && echo "token minted" || cat "$err"; rm -f "$err"   # failure JSON is on stderr
+```
+
+A failure that names `00020004` / `0002-0004` is the same contract gap. Otherwise pass the
+token to Pay Station utils. No CLI command covers it (see [CLI gaps](#cli-gaps)): it is one
+REST call that takes the token as a query parameter and no API key. Then `unset token out`.
 
 ```text
 GET https://secure.xsolla.com/paystation2/api/utils?access_token={TOKEN}
 ```
 
-If the licensing agreement is missing, expect an error like:
+If the licensing agreement is missing, utils returns `support_code` `00020004` (also shown
+as **0002-0004** / *Merchant contract not signed*):
 
 ```json
-{
-  "errors": [
-    {
-      "message": "We're experiencing a technical issue…",
-      "support_code": "00020004"
-    }
-  ]
-}
+{"errors": [{"message": "We're experiencing a technical issue…", "support_code": "00020004"}]}
 ```
-
-(Also reported as **0002-0004** / *Merchant contract not signed*.)
 
 If utils succeeds without that error, the merchant can issue production tokens —
 continue to config flip + deploy.
-
----
 
 ## Step 2 — Sign the licensing agreement (human)
 
 **Ask the developer** to complete Agreements in Publisher Account:
 
 ```text
-https://publisher.xsolla.com/{XSOLLA_MERCHANT_ID}/agreement
+https://publisher.xsolla.com/{merchant_id}/agreement
 ```
 
-(`XSOLLA_MERCHANT_ID` from `.env` — see `merchant-setup`.)
+(`merchant_id` from `xsolla config list --json`.)
 
 Follow the PA flow (**Complete application form**, company/individual details).
 Xsolla reviews (often a few business days). After approval, status becomes
 **Signed**. Then complete the **Tax interview** (W-8 / W-9) under
 Agreements & taxes — required for live payouts/reporting.
 
-Re-run Step 1 (production token → utils). The contract error must be gone.
-
----
+Re-run Step 1: the `payment` agreement must no longer be `unsigned`, and the production
+token must pass utils without the contract error.
 
 ## Step 3 — Flip the shop to production mode (agent + human)
 
@@ -99,9 +121,8 @@ Typical changes:
 | Webhook URL in PA | tunnel or staging | **stable public HTTPS** listener (`webhooks-impl`) |
 
 Update `.env` (and hosting secrets). Redeploy. Confirm a production token still
-passes utils (Step 1).
-
----
+passes utils (Step 1). The CLI's own `sandbox` config affects only the agent's commands,
+not the shipped shop.
 
 ## Step 4 — Deploy publicly (human)
 
@@ -112,8 +133,6 @@ internet over **HTTPS**. Localhost / ephemeral tunnels are not a go-live setup.
 - Register the production webhook URL in PA (`webhooks-impl` Prerequisites /
   `testing.md`)
 - Confirm CORS / `CLIENT_ORIGIN` / return URLs match the live domain
-
----
 
 ## Step 5 — Live testing (human only — tell the developer)
 
@@ -131,7 +150,7 @@ Same UX as `headless-checkout-integration` (Phase 1 card form), but with a
 2. A transaction appears under Finance in PA:
 
    ```text
-   https://publisher.xsolla.com/{XSOLLA_MERCHANT_ID}/finance
+   https://publisher.xsolla.com/{merchant_id}/finance
    ```
 
 3. The buyer receives the good via the shop’s fulfillment path (`webhooks-impl`
@@ -139,11 +158,7 @@ Same UX as `headless-checkout-integration` (Phase 1 card form), but with a
 
 ### Wallets / APMs (minimum)
 
-Also complete (or attempt) live:
-
-- **PayPal**
-- **Google Pay**
-- **Apple Pay**
+Also complete (or attempt) live: **PayPal**, **Google Pay**, **Apple Pay**.
 
 (domain / merchant setup for wallets may already be done in sandbox phases —
 see `google-pay` / `apple-pay` references.)
@@ -161,14 +176,22 @@ Start a method that leaves the page (e.g. **PayPal**), then **cancel** on the
 provider side. The shop should land on a **failed** / canceled terminal status
 (not success, not hung “processing”).
 
----
+## CLI gaps
+
+Surface these to the user. Don't work around them with another key or a pasted token.
+
+| Need | Status | Do instead |
+|------|--------|------------|
+| Pay Station utils check | No command | The REST `GET` in Step 1b: token as a query parameter, no API key |
+| Merchant API token (`payments create-token`) | Reads only an exported `XSOLLA_API_KEY`, not the keychain | `webshop admin-create-payment-token` (Step 1b) |
+| Sign the agreement, tax interview, switch live | No command | Publisher Account (Step 2) |
 
 ## Agent boundaries
 
 | Agent can | Agent cannot |
 |-----------|----------------|
 | Flip env/flags, remove sandbox from token paths, keep a toggle | Sign the licensing agreement or tax forms |
-| Call utils and interpret `00020004` | Charge real cards or finish wallet sheets |
+| Read agreement status, mint a check token, call utils, interpret `00020004` | Charge real cards or finish wallet sheets |
 | Hand the developer the PA links + checklist above | Claim “production verified” without their sign-off |
 
 **Done when** the developer confirms: production token works, live card (min

@@ -3,11 +3,11 @@
 ```
 shop-setup (orchestrator)
     ├── merchant-setup                   → Merchant and Project setup
-    ├── login-setup                      → Xsolla Login API
+    ├── login-setup                      → `xsolla login` (project, test users); Login API in shipped code
     ├── catalog-design                   → `xsolla catalog` (admin); Catalog API in shipped client code
-    ├── headless-checkout-integration    → Payments via Headless Checkout
-    ├── webhooks-impl                    → Webhook configuration + handler code generation
-    └── production                       → Sandbox → live (contract, flags, deploy, live tests)
+    ├── headless-checkout-integration    → Headless Checkout SDK + the developer's token endpoint
+    ├── webhooks-impl                    → Handler code generation; `xsolla webhook` for local tests
+    └── production                       → Sandbox → live (`shopbuilder list-agreements`, flags, deploy, live tests)
 ```
 
 ## How skills reach Xsolla

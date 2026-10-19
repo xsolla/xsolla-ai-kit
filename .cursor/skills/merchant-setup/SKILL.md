@@ -53,7 +53,7 @@ a remote script into a shell.
 for OAuth2 + PKCE. The user completes the sign-in there, and the CLI never sees a password.
 Tokens go to the OS keychain. The sign-in lasts about a day and does not renew itself:
 when `auth status` shows `expired: true`, the user runs `xsolla auth login` again. The
-Store API key keeps working while the sign-in is expired, so catalog and payment commands
+Store API key keeps working while the sign-in is expired, so catalog and webshop admin commands
 still run. `publisher` commands do not.
 
 - If login fails with *audience required*, retry with
@@ -103,8 +103,8 @@ an emailed 6-digit code, and the agent must never type or see either one.
 
 ## Step 4: Store API key (agent side)
 
-Catalog, payments and other Basic-auth commands need a Store API key. They read it from the
-keychain. Recent CLI builds create one automatically during `xsolla auth login` when a
+Catalog, webshop admin and other Basic-auth commands need a Store API key. They read it from
+the keychain. (`payments create-token` is the exception: it reads only an exported key.) Recent CLI builds create one automatically during `xsolla auth login` when a
 project is set. Probe for it; this is a read-only call:
 
 ```bash

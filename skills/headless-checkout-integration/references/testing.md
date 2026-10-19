@@ -5,6 +5,14 @@ Method-specific recipes live in their references (card matrix + card driving →
 `credit-card-form`; PayPal sandbox login → `payment-methods`). This doc is the
 **cross-cutting gotchas that cost the most time** — read it before writing a driver.
 
+## 0. Token: from the dev token route, never from the CLI
+
+The page fetches its sandbox token from the developer's dev route (`initialization` → Step 2), so a fresh page load
+is a fresh token. The driver just opens the page; it never handles the token, and the token never appears in the
+transcript or a tracked file. Don't mint test tokens with `xsolla payments create-token` (needs an env key) or
+`xsolla webshop admin-create-payment-token` (**live** tokens that create live orders) — see `initialization` → CLI
+gaps. An expired token (24h) looks like an SDK bug; reload first.
+
 ## 1. Secure fields: `fill()` vs real keystrokes — opposite per field
 
 Card inputs are cross-origin secure iframes. *How* you type matters, and it **differs by

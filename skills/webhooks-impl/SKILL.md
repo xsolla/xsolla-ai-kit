@@ -25,7 +25,7 @@ Detailed material lives in `references/`:
 - [`references/events-and-payloads.md`](references/events-and-payloads.md) — delivery modes, event types, payload JSON, refund codes
 - [`references/signature-verification.md`](references/signature-verification.md) — SHA-1 algorithm + Node/PHP examples
 - [`references/handler-and-reliability.md`](references/handler-and-reliability.md) — responses, idempotency, retries, IP allowlist, **fulfillment (ask how goods are granted)**, full handler
-- [`references/testing.md`](references/testing.md) — fixture replay vs live tunnel; when `payment` vs `order_paid` arrives
+- [`references/testing.md`](references/testing.md) — `xsolla webhook trigger` / `listen`, test-suite fixture replay, live tunnel; when `payment` vs `order_paid` arrives
 - [`fixtures/`](fixtures/) — sample `user_validation` / `order_paid` / `payment` bodies (+ `.raw.txt`)
 
 ## When to use
@@ -41,44 +41,46 @@ Xsolla catalog + Pay Station, without Site Builder). Trigger conditions:
 - Making webhook processing idempotent or handling retries correctly
 - Reviewing an existing webhook handler before go-live
 
-This skill covers **handler implementation** and how to test it. Enabling
-webhooks + creating the secret in Publisher Account is a **manual** step in
-**Prerequisites** below (not done by `merchant-setup`). Setting the live URL is
-covered in `references/testing.md`.
+This skill covers **handler implementation** and how to test it. The agent tests
+the handler locally with the **Xsolla CLI** (`xsolla webhook`). Enabling webhooks,
+creating the secret and setting the URL happen in Publisher Account (a CLI gap).
 
 ## Prerequisites
 
+The agent tests webhooks through the **Xsolla CLI**. Run these two checks. They are
+read-only and safe to repeat.
+
 ```bash
-export XSOLLA_WEBHOOK_SECRET=<project webhook secret key>  # server-side only, never client-side
-export XSOLLA_ENV=sandbox                                  # default; "production" for prod
+xsolla --version                  # installed? which version?
+xsolla config list --json         # merchant_id / project_id / sandbox
 ```
 
-### Publisher Account — enable webhooks + secret (human)
+If the CLI is missing or older than 1.9.4 (a `dev` build is acceptable), or
+`merchant_id` / `project_id` is `0` or missing, hand off to **`merchant-setup`** and come
+back when it reports. `xsolla webhook` runs offline, so an expired `xsolla auth login`
+doesn't block this skill. The IDs come from `.xsolla.json`, and the developer's backend
+reads them from the `.env` that `merchant-setup` writes.
 
-The agent cannot create the secret in PA. **Ask the developer** to:
+### Publisher Account — enable webhooks + secret (human, CLI gap)
 
-1. Open project webhooks (ids from `.env` per `merchant-setup`):
+No CLI command creates the webhook secret, enables webhooks or sets the URL. **Ask the
+developer** to:
 
-   ```text
-   https://publisher.xsolla.com/{XSOLLA_MERCHANT_ID}/projects/{XSOLLA_PROJECT_ID}/edit/webhooks
-   ```
+1. Open project webhooks (IDs from `.env`):
+   `https://publisher.xsolla.com/{XSOLLA_MERCHANT_ID}/projects/{XSOLLA_PROJECT_ID}/edit/webhooks`
+2. **Generate the webhook secret key** (the project secret that signs notifications).
+3. **Enable webhooks** for the project (Store notifications, as shown in PA).
+4. Add the secret to the backend `.env` themselves, in their own editor:
+   `XSOLLA_WEBHOOK_SECRET=<the key from PA>`. It is server-side only; never ship it to
+   the client or commit it.
+5. Later, set the **HTTPS listener URL** (tunnel or deployed host) under the same
+   settings (`.../edit/webhooks/store`). See `references/testing.md`.
 
-2. **Create / generate the webhook secret key** (project secret used to sign
-   notifications).
-3. **Enable webhooks** for the project (Store / required notifications as shown in PA).
-4. Put the secret in the backend `.env` (never the browser / never commit real values):
-
-   ```bash
-   XSOLLA_WEBHOOK_SECRET=<the key from PA>
-   ```
-
-5. Later set the **listener URL** (HTTPS) — local tunnel or deployed host — under the
-   same webhooks settings (store path often
-   `.../edit/webhooks/store`). See `references/testing.md`.
-
-Without the secret in `.env`, signature verification always fails. Without
-webhooks enabled + a reachable HTTPS URL, Xsolla never delivers live events
-(fixtures still work for local replay).
+Never ask for the secret in chat, and never print it. To check it is there, run
+`grep -q '^XSOLLA_WEBHOOK_SECRET=.' .env && echo set || echo missing`. Without it,
+signature verification always fails. Without webhooks enabled and a reachable HTTPS
+URL, Xsolla never delivers live events. Local tests with `xsolla webhook trigger` still
+work.
 
 Also needed:
 
@@ -123,9 +125,27 @@ Also needed:
    blocks the rest of the flow.
 
 6. **Harden and test.** Allowlist Xsolla's source IPs (still verify the signature).
-   Prefer **fixture replay** for signature / routing / idempotency; use a **public
-   tunnel** + sandbox purchase (developer sets the URL in PA) for live delivery.
-   See `references/testing.md`.
+   Test locally with `xsolla webhook trigger <event> --to <local handler URL>`
+   (events: `xsolla webhook trigger --list`). It signs the payload the way Xsolla does,
+   with `XSOLLA_WEBHOOK_SECRET` from the environment. Start the handler with a
+   throwaway test secret and pass the same one to `trigger`. Check that the right
+   secret gets `2xx`, a wrong one gets `400 INVALID_SIGNATURE`, and a replay doesn't
+   re-grant. `order_paid` / `order_canceled` have no `trigger` fixture yet: replay
+   `fixtures/` from the app's test suite. For live delivery, use a **public tunnel** and
+   a sandbox purchase (the developer sets the URL in PA). See `references/testing.md`.
+
+## CLI gaps
+
+Surface these to the user. Don't work around them with a raw API call.
+
+| Need | Status | Do instead |
+|---|---|---|
+| Webhook secret, enabling webhooks, webhook URL | No command; Publisher Account only | The developer sets them in PA (see Prerequisites) |
+| `order_paid` / `order_canceled` test payloads | `trigger --list` has only `payment`, `refund`, `user_validation` | Replay `fixtures/` from the app's test suite (`references/testing.md`) |
+| Custom payload (own SKU, user, transaction id) | `trigger` has no body or file flag | Same as above |
+| Subscription event payloads | No `trigger` fixture | Test-suite replay of a payload from `events-and-payloads.md`, or a sandbox subscription |
+| Live Xsolla deliveries to a local handler | `listen` / `trigger` are offline only; nothing forwards Xsolla's deliveries | Public HTTPS tunnel + URL in PA |
+| Secret from the project `.env` | The CLI ignores `XSOLLA_WEBHOOK_SECRET` in a project `.env` | Pass it in the environment for one command (`references/testing.md`) |
 
 ## Common pitfalls
 
@@ -143,6 +163,11 @@ Also needed:
 - **Granting without asking how** — inventing a demo inventory while the game
   already has a real entitlement path. Always ask how the buyer receives goods
   and map the webhook user id to that system.
+- **Triggering without the secret** — `xsolla webhook trigger` signs with an empty
+  secret and doesn't warn. The handler then rejects it, which looks like a handler bug.
+  Pass the same secret the handler runs with.
+- **Copying `xsolla webhook listen`'s responses** — it answers a bad signature with
+  `401`. Your handler must answer `400 INVALID_SIGNATURE`.
 
 ## Agent test
 
@@ -157,3 +182,10 @@ scaffolded a raw-body Express endpoint, and smoke-tested with fixture POSTs:
 idempotent `order_paid` granting (replay returned `2xx` with no re-grant); no
 double-grant in separate mode (`payment` recorded only); `5xx` reserved for
 transient errors. ✅
+
+CLI check (2026-10-19, CLI `dev` 379d24a, localhost only, throwaway secret): `xsolla
+webhook listen --port 4291 --path /webhooks/xsolla` received `trigger` deliveries of
+`payment`, `refund` and `user_validation` with `sig=valid` (`204`, trigger exit `0`). A
+wrong or missing secret gave `sig=INVALID` (`401`, trigger exit `1`). The CLI ignored the
+secret in a mode-600 project `.env`; the one-command environment recipe in `testing.md`
+worked. ✅

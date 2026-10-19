@@ -104,9 +104,9 @@ here; silently re-asking throws it away. Show the value and ask which they meant
 Full rules, including what every other skill must do with this key:
 [`references/build-path-contract.md`](references/build-path-contract.md).
 
-**Credentials are not a decision.** A project with `XSOLLA_PROJECT_ID` / `XSOLLA_PROJECT_API_KEY`
-in `.env` but no recorded path has an Xsolla project, not a chosen storefront — every path builds on
-the same account and catalog. Ask the six criteria as normal. Say what you can see, so the
+**Credentials are not a decision.** A sign-in from `merchant-setup` (`xsolla auth login`, IDs in
+`.xsolla.json`) with no recorded path means an Xsolla project, not a chosen storefront — every path
+builds on the same account and catalog. Ask the six criteria as normal. Say what you can see, so the
 developer knows the account work isn't being redone:
 
 ```
