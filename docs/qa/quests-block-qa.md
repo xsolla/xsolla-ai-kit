@@ -13,8 +13,8 @@ release and must not be merged. Nothing here publishes a Shop Builder site.
 | QA branch | `codex/quests-qa-2026-10-20` (the tip of this branch; `git rev-parse HEAD` after checkout) |
 | `main` tip merged in | `ab59c65727a56577dd5ffbac1381d8293fb35f6c` |
 | Quest stack head (#56, `QP-2936-webshop-quest-module`, includes #38 to #56) | `5f0af8e63f9d3c0e9f0e8fe6ef4f4dd1af842826` |
-| D2b: `quest-setup` Quests block operations, PR #88, branch `codex/QP-3127-quests-block-ops` | `2dc25da9a0670a6695e51f9ecc6a0966b6229f66` |
-| D2a: `shop-builder-assembly` Quests block, PR #87, branch `codex/sba-quests-block` | `c338a7d075ae2a54db163a9920c7ce4a096d1f4d` |
+| D2b: `quest-setup` Quests block operations, PR #88, branch `codex/QP-3127-quests-block-ops` | `98c14d62b55736b53d5eee5493aba230c2e41e64` |
+| D2a: `shop-builder-assembly` Quests block, PR #87, branch `codex/sba-quests-block` | `e05fe565a987acd5ca0b1510885969c552aa333d` |
 | Quests block unstable version | `0.1.0-qp-3126.2` (sb-custom-blocks tag `quest-platform/quests-block@0.1.0-qp-3126.2`, commit `a26ed1105c`, MR `monetization-integration/sb-custom-blocks!1960`) |
 | Quest Platform backend `<SHA_BE>` | `7cfcc00ca9574a3b41bd62a7d26d72a8c7ff1272`, branch `codex/qp-me-browser-fixes` (adtech MR !6371) |
 | Backend stage tags | `stage-adtech-qp-server-qp-me-fixes-v1`, `stage-qp-gqw-qp-me-fixes-v1` |
@@ -23,6 +23,9 @@ release and must not be merged. Nothing here publishes a Shop Builder site.
 The block is an unstable build. Merchants cannot use it until a stable release exists. In this
 QA it is loaded in Site Builder Dev Mode only. If the stage backend no longer runs the tags
 above, record that in your results, because B2 to B13 depend on the `/api/v2/me/...` routes.
+
+The D2a gate now accepts only `environment: test`, and a brief needs
+`project.test_project_acknowledged: true`. A brief without both is stopped before any write.
 
 ## 2. Prerequisites
 
