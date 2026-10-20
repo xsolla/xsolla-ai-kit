@@ -154,8 +154,8 @@ Notes:
 
 Operations go in the brief's `block_operations` list. A list may hold several,
 run in order. The brief needs `version`, `project` (`environment: test`,
-`test_project_acknowledged: true`, `merchant_id`, `project_id`), `site.slug` and `block_operations`; it does not
-need `game`, `catalog` or `content`. Use these placeholders and fill real
+`test_project_acknowledged: true`, `merchant_id`, `project_id`), `site.slug`
+and `block_operations`; it does not need `game`, `catalog` or `content`. Use these placeholders and fill real
 values from the conversation and the backup, never from memory:
 
 ```json

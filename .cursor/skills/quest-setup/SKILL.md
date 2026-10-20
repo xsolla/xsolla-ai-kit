@@ -189,10 +189,9 @@ Full text: [writes and credentials](references/auth-and-environment.md#safety-st
 - Each event needs its own payload and yes; never resend after a timeout or
   `FAILED` reward action.
 - Never point `send_http_webhook` at a private service or an unapproved host.
-  Read executions only by the developer's own quest id after confirming
-  ownership, never an internal key.
-- Branch errors on HTTP status per
-  [Errors](references/auth-and-environment.md#errors). `ID 0` is a valid ID, never treat it as absent.
+  Read executions only by the developer's own quest id after confirming ownership, never an internal key.
+- Branch errors on HTTP status per [Errors](references/auth-and-environment.md#errors);
+  `ID 0` is a valid ID, never treat it as absent.
 
 ## Agent test
 
