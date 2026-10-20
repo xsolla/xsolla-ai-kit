@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import importlib.util
+import json
+import sys
 import unittest
 from pathlib import Path
 
@@ -18,6 +20,9 @@ def load_extractor():
 
 
 extractor = load_extractor()
+
+sys.path.insert(0, str(ROOT / "scripts"))
+import validate_shop_brief  # noqa: E402
 
 
 class BlockContractTests(unittest.TestCase):
@@ -112,6 +117,22 @@ class BlockContractTests(unittest.TestCase):
 
     def test_rendered_contracts_end_with_newline(self) -> None:
         self.assertEqual('{\n  "version": 2\n}\n', extractor.render_contracts({"version": 2}))
+
+    def test_quests_block_contract_is_exported(self) -> None:
+        path = ROOT / "references" / "exported-block-contracts-topup.json"
+        contracts = json.loads(path.read_text(encoding="utf-8"))
+        quests = {m["module"]: m for m in contracts["modules"]}[
+            "_quest-platform_quests-block"
+        ]
+        self.assertEqual(["federated"], quests["transport_modules"])
+        self.assertLessEqual(
+            {"questIds", "maxQuests", "overrides", "layout", "editorPreview", "translations"},
+            set(quests["block_value_types"]),
+        )
+        self.assertIn("_quest-platform_quests-block", validate_shop_brief.OPS_BLOCK_MODULES)
+        self.assertNotIn(
+            "_quest-platform_quests-block", validate_shop_brief.VERIFIED_BLOCK_MODULES
+        )
 
 
 if __name__ == "__main__":

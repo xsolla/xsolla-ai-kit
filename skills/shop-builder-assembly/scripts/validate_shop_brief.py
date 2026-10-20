@@ -36,6 +36,11 @@ VERIFIED_BLOCK_MODULES = {
     "footer",
     "newStore",
 }
+# Operations-only blocks: exported contracts exist, but they are outside the reviewed
+# presets, so the reconcile flow must never see them (keep out of VERIFIED_BLOCK_MODULES).
+OPS_BLOCK_MODULES = {
+    "_quest-platform_quests-block",
+}
 SECRET_KEY_SUFFIXES = (
     "apikey",
     "password",
