@@ -120,8 +120,12 @@ op. Preflight, the allowlist and the backup stay mandatory.
 `values` keys are short; the plan maps them to `["values","internalBlockValues",...]`
 and lists in `create_parents` any parent object (for example `layout`) that must be
 created first, because a leaf patch into a missing parent is silently ignored. Apply
-currently runs update, reset, move, duplicate, hide, show and delete; `add` and heading
-translations are planned and confirmed but apply refuses them until their executors land.
+runs every operation above after a backup and a structure-hash check. `add` uses the
+`federated_patch` route (an empty `federated` wrapper, then one `update-block` that
+retargets it from the CDN defaults), heading translations go through
+`update-many-localization`, and `delete` uses `delete-block --force` only for blocks
+named in the confirmed plan removals while they are still on their page. Known gap: a
+deleted block's id stays in the landing `blocks[]` (see `cli-operations.md`).
 
 ## Handoff contract for other skills
 
