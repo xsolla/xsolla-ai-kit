@@ -114,6 +114,8 @@ class FakeSite:
         self.calls: list[tuple[str, ...]] = []
         self.counter = 0
         self.noop_patches = 0
+        self.fail_update = False
+        self.double_add = False
 
     # --- reads -----------------------------------------------------------------
     def structure_value(self) -> dict:
@@ -180,6 +182,9 @@ class FakeSite:
         }
         self.blocks.insert(int(options.get("--index", 0)), block)
         self.landing_blocks.append(block["_id"])
+        if self.double_add:  # an auth-retried add-block that had already applied
+            self.double_add = False
+            self.cmd_add_block(options)
         return {"ok": True}
 
     def cmd_move_block(self, options: dict) -> object:
@@ -209,6 +214,8 @@ class FakeSite:
         return {"ok": True}
 
     def cmd_update_block(self, options: dict) -> object:
+        if self.fail_update:
+            raise RuntimeError("update-block failed: boom")
         payload = json.loads(options["--data"])
         applied = []
         for change in payload.values():
@@ -574,6 +581,56 @@ class BlockAddTests(BlockOpsApplyBase):
             [block["_id"] for block in before["pages"][0]["blocks"]],
             [block["_id"] for block in after["pages"][0]["blocks"]],
         )
+
+
+class AddFailureRecoveryTests(BlockOpsApplyBase):
+    def new_ids(self) -> list[str]:
+        return [i for i in self.page_ids() if i.startswith("new-")]
+
+    def test_failed_retarget_reports_the_bare_wrapper_and_points_to_the_editor(self) -> None:
+        plan = self.plan_for([BlockAddTests.ADD])
+        self.site.fail_update = True
+        with self.assertRaises(RuntimeError) as caught:
+            apply_plan.apply_block_operations(SLUG, LANDING, plan, {})
+        message = str(caught.exception)
+        (leftover,) = self.new_ids()
+        self.assertIn(leftover, message)
+        self.assertIn("editor", message)
+        self.assertNotIn("delete op", message)
+        self.assertEqual("", self.site.find(leftover)["values"]["blockId"])
+
+    def test_two_wrappers_are_both_reported(self) -> None:
+        plan = self.plan_for([BlockAddTests.ADD])
+        self.site.double_add = True
+        refs: dict = {}
+        with self.assertRaises(RuntimeError) as caught:
+            apply_plan.apply_block_operations(SLUG, LANDING, plan, refs)
+        ids = self.new_ids()
+        self.assertEqual(2, len(ids))
+        for block_id in ids:
+            self.assertIn(block_id, str(caught.exception))
+
+    def test_unexpected_errors_in_a_run_are_wrapped_with_created_ids(self) -> None:
+        plan = self.plan_for([BlockAddTests.ADD])
+        with mock.patch.object(apply_plan, "patch_block", side_effect=KeyError("x")):
+            with self.assertRaises(RuntimeError) as caught:
+                apply_plan.run_block_operations(SLUG, LANDING, plan)
+        message = str(caught.exception)
+        self.assertIn("do not rerun", message)
+        (leftover,) = self.new_ids()
+        self.assertIn(leftover, message)
+
+    def test_partial_failure_after_login_does_not_say_safe_to_rerun(self) -> None:
+        plan = self.plan_for([{"op": "hide", "block_id": "q1"}])
+        failure = RuntimeError(
+            "authentication still fails after this run's one `xsolla auth login`. "
+            "The failed command made no change, so it is safe to rerun."
+        )
+        with mock.patch.object(apply_plan, "apply_block_operations", side_effect=failure):
+            with self.assertRaises(RuntimeError) as caught:
+                apply_plan.run_block_operations(SLUG, LANDING, plan)
+        self.assertIn("do not rerun", str(caught.exception))
+        self.assertNotIn("safe to rerun", str(caught.exception))
 
 
 if __name__ == "__main__":

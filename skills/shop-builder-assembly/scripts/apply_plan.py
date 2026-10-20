@@ -615,10 +615,10 @@ def add_quests_block(item: dict, ctx: ApplyContext) -> dict:
     # The CLI drops `--index 0`, and the API then places the block first.
     if item["index"] > 0:
         command += ["--index", str(item["index"])]
-    run_json(*command)
-    block_id = new_block_on_page(ctx, page_id, before)["_id"]
-    ctx.refs[item["block_ref"]] = block_id
     try:
+        run_json(*command)
+        block_id = new_block_on_page(ctx, page_id, before)["_id"]
+        ctx.refs[item["block_ref"]] = block_id
         patch_block(
             ctx.landing_id,
             block_id,
@@ -650,10 +650,22 @@ def add_quests_block(item: dict, ctx: ApplyContext) -> dict:
         values = current_block(ctx, block_id)[2].get("values") or {}
         if values.get("blockId") != QUESTS_MODULE or values.get("version") != version:
             raise RuntimeError("the new block was not retargeted to the Quests module")
-    except RuntimeError as exc:
+    except Exception as exc:
+        # Report every block this add left on the page, not only the one we resolved:
+        # an auth-retried add-block that already applied can leave two wrappers. The
+        # skill's delete rules stay narrow (confirmed Quests blocks only), so a bare
+        # wrapper is removed in the editor.
+        try:
+            leftover = sorted(block_ids_on_page(ctx, page_id) - before)
+        except Exception:  # noqa: BLE001 - the original error matters more
+            leftover = []
+        if leftover:
+            ctx.refs.setdefault(item["block_ref"], leftover[0])
         raise RuntimeError(
-            f"{exc}. The new block {block_id} is on page {page_id}; remove it with a "
-            "confirmed delete op before retrying"
+            f"{exc}. New block(s) left on page {page_id}: "
+            f"{', '.join(leftover) or 'unknown, re-read the page'}. Remove any bare "
+            "federated wrapper (empty blockId) in the Site Builder editor before "
+            "retrying"
         ) from exc
     return {"block_id": block_id}
 
@@ -834,6 +846,37 @@ def apply_block_operation(item: dict, ctx: ApplyContext) -> dict:
     else:
         raise RuntimeError(f"unknown block operation {kind}")
     return {"type": kind, "op_index": item["op_index"], **done}
+
+
+def run_block_operations(
+    slug: str, landing_id: str, plan: dict, refs: dict | None = None
+) -> tuple[list[dict], dict]:
+    """Apply, then verify. Any failure becomes a partial-apply RuntimeError."""
+    refs = refs if refs is not None else {}
+    try:
+        applied = apply_block_operations(slug, landing_id, plan, refs)
+        after = structure(slug)
+        problems = verify_block_operations(
+            plan,
+            after,
+            data(run_json("shopbuilder", "get-localization", "--slug", slug)),
+            refs,
+        )
+        if problems:
+            raise RuntimeError("verification failed: " + "; ".join(problems))
+    except Exception as exc:  # noqa: BLE001 - every failure may follow a write
+        # login_once says a rerun is safe because the failed command wrote nothing; in a
+        # multi-step run earlier steps may have, so do not repeat that advice here.
+        cause = str(exc).replace(
+            "made no change, so it is safe to rerun",
+            "made no change itself, but earlier steps of this run may have written",
+        )
+        raise RuntimeError(
+            "block operations may be partly applied, so do not rerun this plan: "
+            "back up again, inspect the site and re-render. Created blocks: "
+            f"{refs or 'none'}. Cause: {cause}"
+        ) from exc
+    return applied, after
 
 
 def apply_block_operations(
@@ -1402,23 +1445,7 @@ def main() -> int:
                 if not isinstance(landing_id, str):
                     raise RuntimeError("landing has no _id")
                 refs: dict = {}
-                try:
-                    applied = apply_block_operations(slug, landing_id, plan, refs)
-                    after = structure(slug)
-                    problems = verify_block_operations(
-                        plan,
-                        after,
-                        data(run_json("shopbuilder", "get-localization", "--slug", slug)),
-                        refs,
-                    )
-                    if problems:
-                        raise RuntimeError("verification failed: " + "; ".join(problems))
-                except RuntimeError as exc:
-                    raise RuntimeError(
-                        "block operations may be partly applied, so do not rerun this "
-                        "plan: back up again, inspect the site and re-render. Created "
-                        f"blocks: {refs or 'none'}. Cause: {exc}"
-                    ) from exc
+                applied, after = run_block_operations(slug, landing_id, plan, refs)
                 warnings = [
                     f"deleted block {block_id} is still listed in the landing blocks[]; "
                     "the CLI cannot clear it"
