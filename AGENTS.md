@@ -25,6 +25,7 @@ On the headless path, skills call **Xsolla REST APIs directly**. The Shop Builde
 | `login-styling`                 | Applies a custom visual style / theme / brand to the Login UI (pairs with `login-setup`) |
 | `headless-checkout-integration` | Payments via Headless Checkout                                                           |
 | `webhooks-impl`                 | Generates webhook handler code for order/payment events                                  |
+| `quest-setup`                   | Creates and manages Quest Platform quests, events, rewards and optional Web Shop quest sections and Shop Builder Quests block operations |
 | `production`                    | Sandbox → live: contract, flip flags, deploy, developer live-payment checklist           |
 | `description-to-shop`           | Prose → shop brief for shop-builder-assembly — reached via shop-setup, not directly      |
 
@@ -58,6 +59,15 @@ Go live / leave sandbox
 Build me a shop from this description — I have no design or spec
 → triggers: shop-setup, which routes to description-to-shop once the path is Shop Builder;
   description-to-shop then delegates the build to shop-builder-assembly
+
+Create a quest that rewards players
+→ triggers: quest-setup
+
+Show quests in my Web Shop
+→ triggers: quest-setup
+
+Add a quest module to my shop
+→ triggers: quest-setup
 ```
 
 ---
@@ -80,6 +90,10 @@ before it builds anything. One path per shop — `shop-plan` is the only skill t
 Adding a skill that behaves differently per path? Implement against
 [the build-path contract](skills/shop-plan/references/build-path-contract.md) — it covers the
 allowed values and the three states a reader must handle (absent, decided, invalid).
+
+Each API's authentication format is specific to that API; Quest Platform
+publisher Basic authentication is documented in
+`skills/quest-setup/references/qp-api-contract.md`.
 
 ---
 
