@@ -101,7 +101,8 @@ cannot be combined with `content.page_overrides`. Required: `version`, `project`
 `game`, `site.name`, `catalog`, `content` and `sources` are not needed. Render with
 `--structure` from the verified backup; apply runs only the planned block items (no
 page, navigation, locale or catalog phases) and removes only blocks named by a `delete`
-op. Preflight, the allowlist and the backup stay mandatory.
+op. Operations write only to an allowlisted `environment: test` project (`sandbox` is
+rejected). Preflight, the allowlist and the backup stay mandatory.
 
 ```json
 "block_operations": [

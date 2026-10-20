@@ -136,8 +136,25 @@ class BlockOpsTests(unittest.TestCase):
         plan = render_plan.build_plan(ops_brief([add_op()]), structure)
         self.assertEqual([], plan["removals"])
         self.assertEqual("block_add", plan["block_operations"][0]["type"])
-        for page in plan["pages"]:
-            self.assertEqual([], page["removals"])
+
+    def test_delete_removals_name_exactly_the_deleted_block(self) -> None:
+        structure = make_structure()
+        structure["pages"][0]["blocks"].insert(3, quests_block("q2"))
+        plan = render_plan.build_plan(
+            ops_brief([{"op": "delete", "block_id": "q2"}]), structure
+        )
+        self.assertEqual(
+            [{"block_id": "q2", "page_id": "page-1", "reason": "explicit delete op"}],
+            plan["removals"],
+        )
+
+    def test_ops_mode_requires_a_test_environment(self) -> None:
+        brief = ops_brief([add_op()])
+        brief["project"]["environment"] = "sandbox"
+        errors = validate_shop_brief.validate(brief)
+        self.assertTrue(any("environment" in e and "test" in e for e in errors), errors)
+        brief["project"]["environment"] = "test"
+        self.assertEqual([], validate_shop_brief.validate(brief))
 
     def test_ops_mode_skips_site_wide_phases(self) -> None:
         plan = render_plan.build_plan(ops_brief([add_op()]), make_structure(False))
