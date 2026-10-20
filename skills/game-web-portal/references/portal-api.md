@@ -14,7 +14,8 @@ Catalog and Login stay delegated, and checkout is the Web Shop's hosted Pay Stat
 - Write: `xsolla shopbuilder` `add-page`, `add-block`, `move-block`, `update-block`,
   `upload-asset`, `add-language`, `update-localization`, `update-many-localization`,
   `add-connector`, `update-restrictions`.
-- `--help` on any listed command, to check its flags.
+- `--help` on any listed command, to check its flags, and `xsolla --help` (help on the CLI
+  itself).
 
 Every other command is out of bounds, even when the partner asks for it: among them
 `delete-block`, `delete-domain`, `change-domain`, `delete-ai-block`, `delete-website`,

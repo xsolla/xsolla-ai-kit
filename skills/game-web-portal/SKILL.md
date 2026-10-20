@@ -162,7 +162,8 @@ both loaded before issuing changes:
 ## Hard stops
 
 The agent runs only the commands listed in
-[references/portal-api.md](references/portal-api.md), even when the partner asks for another.
+[references/portal-api.md](references/portal-api.md), and `--help` on them or on the CLI itself
+(`xsolla --help`), even when the partner asks for another.
 Every other `xsolla` command is out of bounds, including `delete-block`, `delete-domain`,
 `change-domain` and `delete-ai-block`; what a run needs beyond the list is `needs_human`.
 
