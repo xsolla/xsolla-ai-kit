@@ -102,6 +102,35 @@ specific skill:
 skills (`catalog-design`, `login-setup`, `headless-checkout-integration`,
 `webhooks-impl`, `production`).
 
+## Happy path
+
+From an empty game folder to a sellable sandbox catalog. Signing in through the browser is the
+only credential step; no one copies a key out of Publisher Account.
+
+1. **Install the CLI** (1.9.4 or later): `brew install xsolla/xsolla-cli/xsolla`.
+2. **"Set up Xsolla for my game."** `merchant-setup` runs `xsolla auth login` in your
+   browser, confirms which project to use, pins it in the game's `.xsolla.json`, and writes
+   the project IDs to `.env`. The Store API key stays in your OS keychain.
+3. **"Configure my catalog: gems, a gem pack, a booster and a starter bundle."**
+   `catalog-design` backs up the existing catalog, shows the planned `xsolla catalog`
+   commands, and runs them once you say yes. It then checks the items are buyable on the
+   storefront.
+4. **Carry on with the rest of the shop**, or say "build me a shop" and let `shop-setup` chain
+   them: `login-setup` → `headless-checkout-integration` → `webhooks-impl` → `production`.
+
+## Known limitations
+
+- **The sign-in expires after about a day.** Run `xsolla auth login` again when a skill says so.
+  Catalog commands keep working meanwhile.
+- **Some setup is still done in Publisher Account:** OAuth clients and social logins, the webhook
+  URL and secret, signing the licensing agreement, and going live. The skills tell you when.
+- **No sandbox payment token from the CLI.** Sandbox payments are tested through your own
+  backend's token endpoint, which `headless-checkout-integration` scaffolds.
+- **CI and machines without a browser** can't run `xsolla auth login`; set `XSOLLA_API_KEY`
+  from your CI secret store instead.
+
+The full list, with the workaround each skill uses, is in [docs/cli-gaps.md](docs/cli-gaps.md).
+
 ## Contributing
 
 See [CONTRIBUTING-skills.md](CONTRIBUTING-skills.md) for the full guide on writing a skill.

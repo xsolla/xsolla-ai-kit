@@ -78,10 +78,11 @@ bundled CLI skill that says to `export XSOLLA_API_KEY`; setting it overrides the
    `admin-upload-game-codes` (see `references/game-keys.md`). For more than a handful of
    SKUs, write one payload and run `admin-import-catalog --data … --dry-run` first.
    Every write changes the user's project: show the planned commands (or the dry-run
-   output) and get a yes before running them. If the project already has a catalog, read
-   it first (`list-item-groups`, `admin-list-currency`, `list-items`,
-   `admin-list-currency-packages`, `list-bundles`) and match its default currency. Report
-   any inconsistencies to the user instead of rewriting their items.
+   output) and get a yes before running them. **Before the first write, back up the
+   catalog:** run this skill's `scripts/backup_catalog.py` from the game folder (read-only; writes
+   `xsolla-backups/catalog-<project>-<time>.json`). Match the existing default currency and
+   report inconsistencies instead of rewriting the user's items. After the writes, or after
+   a cleanup, `backup_catalog.py --compare <backup>` lists every SKU added or removed since.
 
 2. **Set up pricing.** Recommend regional prices in local currencies for key markets
    in the `--prices` array. Keep the currency list and default currency identical across
