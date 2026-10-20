@@ -75,7 +75,8 @@ Ask before proposing, in one short message, only what you cannot read yourself:
   The block shows at most 24.
 - **How many** to show on the page (`maxQuests`, 1 to 24, default 6).
 - **Heading text** and **languages** to localize it into (default heading is
-  "Quests" in `en-US`).
+  "Quests" in `en-US`). Locale keys are full codes such as `en-US` or `de-DE`;
+  a bare `de` is rejected.
 - **Look**: only the layout settings the publisher wants changed; everything
   else keeps its default.
 - **Images and texts** per card, only when the quest's own name, description or
@@ -121,7 +122,7 @@ parent object (for example `layout`) first.
 
 | Brief key | Allowed values | Default | What it does |
 |---|---|---|---|
-| `questIds` | list of quest ids, at most 24 | empty | Which quests show, in display order. Changing the order is a `questIds` update. |
+| `questIds` | list of unique quest ids, at most 24 | empty | Which quests show, in display order. Changing the order is a `questIds` update. |
 | `maxQuests` | whole number 1 to 24 | `6` | How many cards show at most (the limit). |
 | `layout.showHeading` | `true` or `false` | `true` | Heading above the cards |
 | `layout.showDescription` | `true` or `false` | `true` | Description on each card |
@@ -153,14 +154,15 @@ Notes:
 
 Operations go in the brief's `block_operations` list. A list may hold several,
 run in order. The brief needs `version`, `project` (`environment: test`,
-`merchant_id`, `project_id`), `site.slug` and `block_operations`; it does not
-need `game`, `catalog` or `content`. Use these placeholders and fill real
+`test_project_acknowledged: true`, `merchant_id`, `project_id`), `site.slug`
+and `block_operations`; it does not need `game`, `catalog` or `content`. Use these placeholders and fill real
 values from the conversation and the backup, never from memory:
 
 ```json
 {
   "version": 1,
-  "project": {"environment": "test", "merchant_id": 1, "project_id": 2},
+  "project": {"environment": "test", "test_project_acknowledged": true,
+              "merchant_id": 1, "project_id": 2},
   "site": {"slug": "<site-slug>"},
   "block_operations": [ ...operations below... ]
 }
@@ -227,6 +229,9 @@ Delete (own yes, Hard rule 6):
 Rules that apply to every operation:
 
 - Keys not in the settings table are rejected by the gate. Never invent one.
+- Collect every missing input in one question, not one at a time. If the gate
+  rejects the brief, relay its full error list in one reply, then fix the brief
+  and render again.
 - `index` is a position on the page, counted from 0. `reorder` of cards is an
   `update` of `questIds`; `move` repositions the whole block.
 - The gate only touches the blocks listed. Every other block must read back
