@@ -22,6 +22,7 @@ from render_plan import (
     structure_data,
     structure_hash,
 )
+from block_ops import find_block
 from validate_shop_brief import VERIFIED_BLOCK_MODULES, load_brief, validate
 
 BACKUP_FILE_NAMES = {
@@ -431,6 +432,163 @@ def reconcile_page(slug: str, landing_id: str, page_plan: dict) -> dict:
         "removed_blocks": len(removals),
         "hidden_custom_code": hidden_custom_code,
     }
+
+
+# Ops-mode items the executor can run today. block_add (federated_patch needs the CDN
+# default-data.json) and block_localization are planned and confirmed but not applied
+# here yet; apply refuses the whole plan before changing anything.
+OPS_APPLY_SUPPORTED = {
+    "block_values",
+    "block_reset",
+    "block_move",
+    "block_duplicate",
+    "block_visibility",
+    "block_delete",
+}
+
+
+def block_patch_payload(block_id: str, patches: list[dict]) -> str:
+    clean = [
+        {key: value for key, value in patch.items() if key in ("op", "path", "value")}
+        for patch in patches
+    ]
+    payload = {"blockOps": {"type": "block", "id": block_id, "patches": clean}}
+    return json.dumps(payload, sort_keys=True, separators=(",", ":"))
+
+
+def apply_block_operations(slug: str, landing_id: str, plan: dict) -> list[dict]:
+    """Run only the confirmed block operation items; touch nothing else."""
+    items = plan["block_operations"]
+    unsupported = sorted(
+        {item["type"] for item in items if item["type"] not in OPS_APPLY_SUPPORTED}
+    )
+    if unsupported:
+        raise RuntimeError(
+            "plan contains block operations apply cannot run yet: " + ", ".join(unsupported)
+        )
+    results = []
+    for item in items:
+        kind = item["type"]
+        block_id = item["block_id"]
+        page_id = item["page_id"]
+        if kind == "block_values":
+            if item["create_parents"]:
+                run_json(
+                    "shopbuilder",
+                    "update-block",
+                    "--landing-id",
+                    landing_id,
+                    "--data",
+                    block_patch_payload(block_id, item["create_parents"]),
+                )
+            run_json(
+                "shopbuilder",
+                "update-block",
+                "--landing-id",
+                landing_id,
+                "--data",
+                block_patch_payload(block_id, item["patches"]),
+            )
+        elif kind == "block_reset":
+            patches = [patch for patch in item["patches"] if patch.get("present")]
+            if patches:
+                run_json(
+                    "shopbuilder",
+                    "update-block",
+                    "--landing-id",
+                    landing_id,
+                    "--data",
+                    block_patch_payload(block_id, patches),
+                )
+        elif kind == "block_visibility":
+            run_json(
+                "shopbuilder",
+                "update-block",
+                "--landing-id",
+                landing_id,
+                "--data",
+                block_patch_payload(
+                    block_id,
+                    [{"op": "replace", "path": ["hidden"], "value": item["hidden"]}],
+                ),
+            )
+        elif kind == "block_move":
+            current = structure(slug)
+            found = find_block(current, block_id)
+            if found is None:
+                raise RuntimeError(f"block {block_id} is no longer on the site")
+            if found[1] != item["index"]:
+                run_json(
+                    "shopbuilder",
+                    "move-block",
+                    "--landing-id",
+                    landing_id,
+                    "--page-id",
+                    page_id,
+                    "--source",
+                    str(found[1]),
+                    "--destination",
+                    str(item["index"]),
+                )
+        elif kind == "block_duplicate":
+            before = {
+                block.get("_id")
+                for block in page_for_id(structure(slug), page_id).get("blocks", [])
+            }
+            run_json(
+                "shopbuilder",
+                "duplicate-block",
+                "--landing-id",
+                landing_id,
+                "--page-id",
+                page_id,
+                "--blockid",
+                block_id,
+            )
+            page = page_for_id(structure(slug), page_id)
+            copies = [
+                (index, block)
+                for index, block in enumerate(page.get("blocks", []))
+                if block.get("_id") not in before
+            ]
+            if len(copies) != 1:
+                raise RuntimeError(f"could not identify the duplicate of {block_id}")
+            position = copies[0][0]
+            if position != item["index"]:
+                run_json(
+                    "shopbuilder",
+                    "move-block",
+                    "--landing-id",
+                    landing_id,
+                    "--page-id",
+                    page_id,
+                    "--source",
+                    str(position),
+                    "--destination",
+                    str(item["index"]),
+                )
+        else:
+            # Explicit delete op, listed in plan["removals"] and confirmed.
+            run_json(
+                "shopbuilder",
+                "delete-block",
+                "--landing-id",
+                landing_id,
+                "--page-id",
+                page_id,
+                "--blockid",
+                block_id,
+                "--force",
+            )
+        results.append({"type": kind, "op_index": item["op_index"], "block_id": block_id})
+    return results
+
+
+def page_for_id(value: dict, page_id: str) -> dict:
+    for page in value["pages"]:
+        if page.get("_id") == page_id:
+            return page
+    raise RuntimeError(f"page {page_id} is no longer on the site")
 
 
 def hide_added_custom_code(
@@ -950,7 +1108,10 @@ def main() -> int:
         RUN_AUTH["context"] = cli_context(config)
 
         slug = brief["site"]["slug"]
+        ops_mode = "block_operations" in brief
         existed = website_exists(run_json("shopbuilder", "list-websites"), slug)
+        if ops_mode and not existed:
+            raise RuntimeError("block operations need an existing site")
         if existed:
             if args.backup_dir is None:
                 raise RuntimeError("--backup-dir is required for an existing target")
@@ -972,6 +1133,27 @@ def main() -> int:
                 raise RuntimeError(
                     "target structure changed after backup; back up, re-render, and reconfirm"
                 )
+            if ops_mode:
+                landing_id = current.get("_id")
+                if not isinstance(landing_id, str):
+                    raise RuntimeError("landing has no _id")
+                applied = apply_block_operations(slug, landing_id, plan)
+                print(
+                    json.dumps(
+                        {
+                            "operation_succeeded": True,
+                            "assembly_complete": True,
+                            "status": "block-operations-applied",
+                            "confirmation_id": plan["confirmation_id"],
+                            "slug": slug,
+                            "landing_id": landing_id,
+                            "operations": applied,
+                            "published": False,
+                        },
+                        indent=2,
+                    )
+                )
+                return 0
             extra_pages = plan["current_state"]["extra_pages"]
             if extra_pages:
                 paths = ", ".join(page["path"] for page in extra_pages)

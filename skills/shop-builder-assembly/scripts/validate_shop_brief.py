@@ -9,6 +9,8 @@ import re
 import sys
 from pathlib import Path
 
+from block_ops import OPS_BLOCK_MODULES, validate_block_operations
+
 PRESETS = {"auto", "mobile-single-page", "pc-multi-page", "live-service-events"}
 PLATFORMS = {"mobile", "pc", "console", "web"}
 LIFECYCLES = {"launch", "evergreen", "live-service"}
@@ -36,11 +38,10 @@ VERIFIED_BLOCK_MODULES = {
     "footer",
     "newStore",
 }
-# Operations-only blocks: exported contracts exist, but they are outside the reviewed
-# presets, so the reconcile flow must never see them (keep out of VERIFIED_BLOCK_MODULES).
-OPS_BLOCK_MODULES = {
-    "_quest-platform_quests-block",
-}
+# OPS_BLOCK_MODULES (Quests) lives in block_ops and is imported above. Those modules
+# have exported contracts but are outside the reviewed presets, so they stay out of
+# VERIFIED_BLOCK_MODULES: the reconcile flow and page_overrides reject them, and only
+# block_operations accepts them.
 SECRET_KEY_SUFFIXES = (
     "apikey",
     "password",
@@ -92,6 +93,8 @@ def validate(brief: dict) -> list[str]:
                 find_secrets(child, f"{path}[{index}]")
 
     find_secrets(brief)
+    if "block_operations" in brief:
+        return errors + validate_ops_mode(brief)
     project, game, site, catalog = (
         obj("project"),
         obj("game"),
@@ -238,6 +241,33 @@ def validate(brief: dict) -> list[str]:
                 errors.append(f"sources[{index}].kind is required")
 
     return errors
+
+
+def validate_ops_mode(brief: dict) -> list[str]:
+    """Validate a block-operations brief; site-wide fields are not required."""
+    errors: list[str] = []
+    project = brief.get("project")
+    site = brief.get("site")
+    if not isinstance(project, dict):
+        errors.append("project must be an object")
+        project = {}
+    if not isinstance(site, dict):
+        errors.append("site must be an object")
+        site = {}
+    for field in ("merchant_id", "project_id"):
+        value = project.get(field)
+        if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+            errors.append(f"project.{field} must be a positive integer")
+    environment = project.get("environment")
+    if not isinstance(environment, str) or environment not in {"sandbox", "test"}:
+        errors.append("project.environment must be sandbox or test")
+    if environment == "test" and project.get("test_project_acknowledged") is not True:
+        errors.append(
+            "project.test_project_acknowledged must be true for a dedicated test project"
+        )
+    if not isinstance(site.get("slug"), str) or not SLUG_RE.fullmatch(site["slug"]):
+        errors.append("site.slug must be lowercase kebab-case")
+    return errors + validate_block_operations(brief)
 
 
 def main() -> int:

@@ -64,8 +64,9 @@ chain, and Social quests as `federated` wrappers whose effective identities are 
 
 Observed on an approved unpublished `topup` test site (2026-10-20), added through the
 CLI rather than the palette. It is not in the official inventory and not in
-`VERIFIED_BLOCK_MODULES`; scripts list it in `OPS_BLOCK_MODULES` so the reconcile flow
-never sees it.
+`VERIFIED_BLOCK_MODULES`. `scripts/block_ops.py` lists it in `OPS_BLOCK_MODULES`, which
+only `block_operations` briefs accept; `content.page_overrides` and the reconcile flow
+still reject it because they check `VERIFIED_BLOCK_MODULES`.
 
 - Wrapper: `federated`, `values.blockId` `_quest-platform_quests-block`
   (CDN-verified), `useAsNativeBlock: false`. The npm name `@quest-platform/quests-block`
