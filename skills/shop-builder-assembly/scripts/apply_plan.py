@@ -852,7 +852,11 @@ def apply_block_operations(
             "plan contains block operations apply cannot run: " + ", ".join(unsupported)
         )
     expected = plan.get("current_state", {}).get("structure_sha256")
-    if expected is not None and structure_hash(structure(slug)) != expected:
+    if not isinstance(expected, str):
+        raise RuntimeError(
+            "plan has no current_state.structure_sha256; re-render it from a backup"
+        )
+    if structure_hash(structure(slug)) != expected:
         raise RuntimeError(
             "target structure changed after backup; back up, re-render, and reconfirm"
         )

@@ -83,9 +83,15 @@ landing block list, and `delete-block` then fails with
 
 Verification (`verify_structure.py --plan <plan> --structure <after> --localization
 <after-localization>`, and automatically at the end of an apply) reads every planned
-leaf back, checks the final block order of each touched page, checks that a delete
-cleared both the page and the landing block list, and compares every block the plan
-does not target with its digest from the backup.
+leaf back, checks the final block order of each touched page, checks that a deleted
+block is off its page, and compares every block the plan does not target with its
+digest from the backup. It only warns about a deleted id that is still listed in the
+landing's top-level `blocks[]`.
+
+Known gap: `delete-block --force` removes the block (`get-block` then answers
+`block_not_found`) but leaves its id dangling in the landing `blocks[]`. The CLI cannot
+clear it, so the apply report carries a warning. Track it as a CLI/API gap; do not
+patch `blocks[]` by hand.
 
 ## Known gaps to track
 

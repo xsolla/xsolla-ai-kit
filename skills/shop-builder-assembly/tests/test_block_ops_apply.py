@@ -473,6 +473,13 @@ class BlockOpsApplyTests(BlockOpsApplyBase):
             apply_plan.apply_block_operations(SLUG, LANDING, plan, {})
         self.assertEqual([], self.site.write_calls())
 
+    def test_apply_requires_the_plan_structure_fingerprint(self) -> None:
+        plan = self.plan_for([{"op": "hide", "block_id": "q1"}])
+        del plan["current_state"]["structure_sha256"]
+        with self.assertRaisesRegex(RuntimeError, "structure_sha256"):
+            apply_plan.apply_block_operations(SLUG, LANDING, plan, {})
+        self.assertEqual([], self.site.write_calls())
+
     def test_apply_ignores_volatile_component_ids(self) -> None:
         plan = self.plan_for([{"op": "hide", "block_id": "q1"}])
         self.site.structure_value()  # a second read renumbers component ids

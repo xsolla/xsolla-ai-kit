@@ -109,7 +109,7 @@ Same gate as a build: preflight, backup, plan, `confirmation_id`, then
 `scripts/apply_plan.py`, which verifies on exit. It touches only the listed blocks.
 Deleting a block needs a `delete` op in the confirmed plan and runs
 `delete-block --force` while the block is on its page. Never add `--force` anywhere
-else.
+else. Known gap: a deleted block's id stays in the landing `blocks[]` (warning only).
 
 ## Stop conditions
 
