@@ -55,7 +55,7 @@ the secret from `XSOLLA_WEBHOOK_SECRET` in its environment, or from `--secret`.
    ```bash
    TEST_SECRET="test-$(date +%s)"
    # Start the app with XSOLLA_WEBHOOK_SECRET="$TEST_SECRET" in its environment, then:
-   URL=http://localhost:4000/webhooks/xsolla     # the path the app actually mounts
+   URL=http://localhost:4000/xsolla/webhooks     # the path the app actually mounts
    XSOLLA_WEBHOOK_SECRET="$TEST_SECRET" xsolla webhook trigger user_validation --to "$URL"
    XSOLLA_WEBHOOK_SECRET="$TEST_SECRET" xsolla webhook trigger payment --to "$URL"
    XSOLLA_WEBHOOK_SECRET="$TEST_SECRET" xsolla webhook trigger payment --to "$URL"   # replay
@@ -73,7 +73,7 @@ the secret from `XSOLLA_WEBHOOK_SECRET` in its environment, or from `--secret`.
 
    ```bash
    ( export XSOLLA_WEBHOOK_SECRET="$(sed -n 's/^XSOLLA_WEBHOOK_SECRET=//p' .env)"
-     xsolla webhook trigger payment --to http://localhost:4000/webhooks/xsolla )
+     xsolla webhook trigger payment --to http://localhost:4000/xsolla/webhooks )
    ```
 
    This expects an unquoted value in `.env`. Don't pass the value with `--secret`: it
@@ -86,7 +86,7 @@ the secret from `XSOLLA_WEBHOOK_SECRET` in its environment, or from `--secret`.
    secret in its environment, and stop it when done:
 
    ```bash
-   XSOLLA_WEBHOOK_SECRET="$TEST_SECRET" xsolla webhook listen --port 4000 --path /webhooks/xsolla
+   XSOLLA_WEBHOOK_SECRET="$TEST_SECRET" xsolla webhook listen --port 4000 --path /xsolla/webhooks
    ```
 
    It binds localhost by default; keep it that way (no `--addr :<port>`). It replies
@@ -120,7 +120,7 @@ const app = require('../app');                         // the Express app, expor
 // Copied from this skill's fixtures/ — the exact bytes Xsolla signed.
 const body = fs.readFileSync(`${__dirname}/fixtures/order_paid.raw.txt`, 'utf8');
 const sign = (secret) => crypto.createHash('sha1').update(body + secret).digest('hex');
-const post = (sig) => request(app).post('/webhooks/xsolla')
+const post = (sig) => request(app).post('/xsolla/webhooks')
   .set('Content-Type', 'application/json')
   .set('Authorization', `Signature ${sig}`)
   .send(body);                                         // a string goes out byte-for-byte
@@ -168,7 +168,7 @@ https://publisher.xsolla.com/887981/projects/308077/edit/webhooks/store
 Webhook URL to paste (replace with the live tunnel host):
 
 ```text
-https://<tunnel-host>/webhooks/xsolla
+https://<tunnel-host>/xsolla/webhooks
 ```
 
 (Use the path your app actually mounts.)

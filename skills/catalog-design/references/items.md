@@ -36,7 +36,7 @@ Create in this order: groups (optional) → virtual currency → virtual items �
 | Create / update / list / delete VC package | `admin-create-currency-package`, `admin-update-currency-package --package-sku <sku>`, `admin-list-currency-packages`, `admin-delete-currency-package` |
 | Create / update / delete bundle | `admin-create-bundles`, `admin-update-bundles --bundle-sku <sku>`, `admin-delete-bundles`, `get-bundles` |
 | Show / hide bundle | `admin-unhide-bundle --bundle-sku <sku>`, `admin-hide-bundle` |
-| Bulk create or update | `admin-import-catalog --data "$(jq -c . catalog.json)" --dry-run`, then without `--dry-run`; poll `admin-get-import-status --import-id <id>` |
+| Bulk create or update | `admin-import-catalog --data "$(jq -c . catalog.json)" --dry-run`, then without `--dry-run`. It returns no import ID, and `admin-get-import-status` answers 403 on a standard key, so confirm with `scripts/backup_catalog.py --compare <backup>` |
 | Delete or update a group | No command (CLI gap) |
 
 Add `--json` to every call and read `ok` / `error.code`. Every `admin-delete-*` and

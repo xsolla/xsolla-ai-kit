@@ -52,13 +52,13 @@ sign-in lasts about a day and doesn't renew itself. Never ask the user for an AP
 xsolla shopbuilder list-agreements --json
 ```
 
-Find the entry with `"agreement_type": "payment"`. `"status": "unsigned"` means the contract
-is missing: go to Step 2. Any other status: continue to 1b to prove it.
+Find the entry with `"agreement_type": "payment"` (ignore the others, such as `product`).
+`"status": "unsigned"` means the contract is missing: go to Step 2. Any other status: continue to 1b to prove it.
 
 **1b. Mint a production token and call utils.** The token creates an unpaid order on the
 live project, so ask first. Use the cheapest SKU from `xsolla catalog list-catalog-items
---all --json`. `--sandbox=false` overrides the `sandbox` config; the command has no
-sandbox mode, so every token it mints is live. Never print the token:
+--all --json`. The command has no sandbox mode: every token it mints is live, whatever
+the CLI's `sandbox` config says (`--sandbox=false` just silences its warning). Never print the token:
 
 ```bash
 err=$(mktemp)

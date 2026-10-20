@@ -46,6 +46,7 @@ Pin the chosen UUID to this game. Run it in the game's root, where `merchant-set
 `./.xsolla.json`:
 
 ```bash
+[ -f .xsolla.json ] || echo "run merchant-setup Step 3 first: no ./.xsolla.json here"
 xsolla config set login-project-id <uuid>
 xsolla config get login-project-id --json     # data.value; "" means unset
 ```

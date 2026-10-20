@@ -96,9 +96,10 @@ an emailed 6-digit code, and the agent must never type or see either one.
   one. The file holds no secrets. Run this in the game's root:
 
   ```bash
-  [ -f .xsolla.json ] || xsolla config init </dev/null   # skips its ID prompts
-  xsolla config set merchant-id <id> && xsolla config set project-id <id>
-  xsolla config set sandbox true     # while building; see "Sandbox and going live"
+  new=0; [ -f .xsolla.json ] || { xsolla config init </dev/null >/dev/null 2>&1 && new=1; }
+  xsolla config set merchant-id <id> && xsolla config set project-id <id> \
+    && xsolla config set sandbox true \
+    || { [ "$new" = 1 ] && rm -f .xsolla.json; echo "pin failed: still using ~/.xsolla.json"; }
   ```
 
 ## Step 4: Store API key (agent side)
@@ -171,8 +172,7 @@ there, such as `XSOLLA_BUILD_PATH` from `shop-plan`.
    .env: XSOLLA_MERCHANT_ID, XSOLLA_PROJECT_ID[, XSOLLA_PROJECT_API_KEY=****]
 ```
 
-`<login>` and `<context>` come from the active entry in `xsolla auth list-account --json`.
-`auth status` doesn't include them.
+`<login>` and `<context>`: the active entry in `xsolla auth list-account --json`.
 
 ## Sandbox and going live
 

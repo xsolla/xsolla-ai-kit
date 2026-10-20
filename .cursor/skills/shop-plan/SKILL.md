@@ -178,6 +178,7 @@ Only after explicit confirmation:
 # Replace in place if the key is already there, append if not. Use if/else, not a
 # `grep && sed || echo` chain: when grep matches but sed fails, the `||` still fires
 # and you get the key twice.
+touch .env && chmod 600 .env   # the xsolla CLI ignores a group/world-readable .env
 build_path=shopbuilder   # or headless
 if grep -q '^XSOLLA_BUILD_PATH=' .env 2>/dev/null; then
   sed -i.bak "s|^XSOLLA_BUILD_PATH=.*|XSOLLA_BUILD_PATH=$build_path|" .env && rm -f .env.bak

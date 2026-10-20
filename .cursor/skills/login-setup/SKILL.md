@@ -86,7 +86,9 @@ itself, and a set `XSOLLA_TOKEN` overrides it.
    If none fits, confirm the name and type (**master** for most games, **shadow** for a
    cross-platform platform project), dry-run, then run `login create-project`. It changes
    the user's account, so get a yes first. Pin the chosen UUID with
-   `xsolla config set login-project-id <uuid>` in the game's root. Don't run
+   `xsolla config set login-project-id <uuid>` in the game's root, only once
+   `./.xsolla.json` exists there (`merchant-setup` Step 3); without it, `config set` writes
+   the global `~/.xsolla.json`. Don't run
    `xsolla login setup`: it is an interactive wizard. Commands:
    [`references/cli-workflows.md`](references/cli-workflows.md) §1.
 
@@ -112,6 +114,7 @@ itself, and a set `XSOLLA_TOKEN` overrides it.
    ```bash
    lp=$(xsolla config get login-project-id --json | python3 -c 'import json,sys; print(json.load(sys.stdin)["data"]["value"])')
    oc=$(xsolla config get oauth-client-id --json | python3 -c 'import json,sys; print(json.load(sys.stdin)["data"]["value"])')
+   touch .env && chmod 600 .env
    [ -n "$lp" ] && [ -n "$oc" ] \
      && sed -i.bak -E '/^XSOLLA_LOGIN_(PROJECT_ID|OAUTH_CLIENT_ID)=/d' .env && rm .env.bak \
      && printf 'XSOLLA_LOGIN_PROJECT_ID=%s\nXSOLLA_LOGIN_OAUTH_CLIENT_ID=%s\n' "$lp" "$oc" >> .env

@@ -184,7 +184,7 @@ double-grant in separate mode (`payment` recorded only); `5xx` reserved for
 transient errors. ✅
 
 CLI check (2026-10-19, CLI `dev` 379d24a, localhost only, throwaway secret): `xsolla
-webhook listen --port 4291 --path /webhooks/xsolla` received `trigger` deliveries of
+webhook listen --port 4291 --path /xsolla/webhooks` received `trigger` deliveries of
 `payment`, `refund` and `user_validation` with `sig=valid` (`204`, trigger exit `0`). A
 wrong or missing secret gave `sig=INVALID` (`401`, trigger exit `1`). The CLI ignored the
 secret in a mode-600 project `.env`; the one-command environment recipe in `testing.md`
