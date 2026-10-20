@@ -5,7 +5,7 @@ this change and once after. Scored on what the agent did and what each skill mad
 not on the agent's prose.
 
 **20 runs: 10 on the base, 10 on this branch.** Run 2026-10-20. The base is `origin/main` at
-`ab59c65`; the branch is `feat/cli-integration` at `a37d4a3`, before the fixes listed at the end.
+`ab59c65`; the branch is `feat/cli-integration` at `a37d4a3`, before the fixes listed at the end (later rebuilt on `integration/sb-ai-3` as `b14dd24`, same skill content).
 Agents were `claude-opus-5-5` on CLI `dev` 379d24a, against sandbox project 314771. Each run got
 a fresh empty game directory. The protocol, written before any run, is in
 [PROTOCOL.md](PROTOCOL.md), and one JSON line per run is in [runs.jsonl](runs.jsonl).

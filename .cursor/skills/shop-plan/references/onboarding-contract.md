@@ -69,7 +69,7 @@ already hold what it created.
 |---|---|---|---|
 | `intake` | `shop-plan` | Every required intake value is in the ledger | The ledger |
 | `plan` | `shop-plan` | `XSOLLA_BUILD_PATH` is `shopbuilder` and `XSOLLA_SITE_KIND` is valid | The build-path contract's checks |
-| `merchant` | `merchant-setup` | `XSOLLA_MERCHANT_ID`, `XSOLLA_PROJECT_ID`, `XSOLLA_PROJECT_API_KEY` are in `.env` and the project answers an authenticated read | The same read |
+| `merchant` | `merchant-setup` | The CLI is signed in, `merchant_id` / `project_id` are set in `.xsolla.json` and match `XSOLLA_MERCHANT_ID` / `XSOLLA_PROJECT_ID` in `.env`, and the Store-key read (`xsolla catalog admin-list-currency`) exits `0`. No API key in `.env` is required | The same read |
 | `catalog` | `catalog-design` | Every catalog group the site uses reads back from the project | Read each group |
 | `login` | `login-setup` | `XSOLLA_LOGIN_PROJECT_ID` is set and the Login project reads back | Read the Login project |
 | `storefront` | the storefront skill | Its read-back matches the confirmed plan | The same read-back |
