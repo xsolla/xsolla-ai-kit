@@ -262,6 +262,12 @@ Web3 payout is ready. Confirm each required operation against the contract for
 its selected service target before using it. Never switch targets as a
 fallback.
 
+The Shop Builder Quests block shows signed-in player progress through the
+player-facing `/api/v2/me/...` routes. These are live on stage only for now. That
+is a runtime fact about the block, not a route this skill calls: the skill never
+sends requests to them, and must not promise signed-in progress on a production
+site (see [`shop-builder-quests-block.md`](shop-builder-quests-block.md)).
+
 ## Prerequisites and lane
 
 Detail behind the skill entry point. To see which settings exist, list only the
