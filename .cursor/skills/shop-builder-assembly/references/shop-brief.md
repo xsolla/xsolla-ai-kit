@@ -93,6 +93,36 @@ Paths must be unique root-relative kebab-case paths. Blocks must be module names
 already verified on the dedicated test project; unverified modules are rejected
 before planning or writes.
 
+## Operation mode (`block_operations`, Quests block only)
+
+A brief with `block_operations` edits individual Quests blocks on an existing site and
+cannot be combined with `content.page_overrides`. Required: `version`, `project`
+(`environment`, `merchant_id`, `project_id`), `site.slug` and `block_operations`.
+`game`, `site.name`, `catalog`, `content` and `sources` are not needed. Render with
+`--structure` from the verified backup; apply runs only the planned block items (no
+page, navigation, locale or catalog phases) and removes only blocks named by a `delete`
+op. Preflight, the allowlist and the backup stay mandatory.
+
+```json
+"block_operations": [
+  {"op": "add", "module": "_quest-platform_quests-block", "page": "/", "index": 2,
+   "values": {"questIds": ["..."], "maxQuests": 6, "layout.cardAlign": "center"},
+   "translations": {"en-US": {"heading": "Quests"}}},
+  {"op": "update", "block_id": "<id>", "values": {"overrides.<questId>.title": "..."}},
+  {"op": "reset", "block_id": "<id>", "paths": ["overrides.<questId>.imageUrl"]},
+  {"op": "move", "block_id": "<id>", "index": 0},
+  {"op": "duplicate", "block_id": "<id>", "index": 3},
+  {"op": "hide", "block_id": "<id>"}, {"op": "show", "block_id": "<id>"},
+  {"op": "delete", "block_id": "<id>"}
+]
+```
+
+`values` keys are short; the plan maps them to `["values","internalBlockValues",...]`
+and lists in `create_parents` any parent object (for example `layout`) that must be
+created first, because a leaf patch into a missing parent is silently ignored. Apply
+currently runs update, reset, move, duplicate, hide, show and delete; `add` and heading
+translations are planned and confirmed but apply refuses them until their executors land.
+
 ## Handoff contract for other skills
 
 - Description skills populate `game`, approved `content`, and relevant `sources`.

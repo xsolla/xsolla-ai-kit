@@ -20,6 +20,13 @@ QUESTS_MODULE = "_quest-platform_quests-block"
 OPS_BLOCK_MODULES = frozenset({QUESTS_MODULE})
 # add-block --block federated, then one update-block retargeting the wrapper.
 QUESTS_ADD_STRATEGY = "federated_patch"
+# Package version the add strategy retargets to. 0.1.0-qp-3126.2 is the first published
+# build whose default-data.json carries `layout` and `editorPreview`; its CDN files
+# (default-data.json, mf-manifest.json, remoteEntry.js) return 200 anonymously.
+QUESTS_VERSION = "0.1.0-qp-3126.2"
+QUESTS_CDN_ROOT = "https://cdn.xsolla.net/site-builder-modules/"
+# Editor layer label that UI-added federated blocks carry (top-level `devName`).
+QUESTS_DEV_NAME = "Quests"
 BLOCK_VALUES_ROOT = ("values", "internalBlockValues")
 
 LAYOUT_ENUMS = {
@@ -121,6 +128,43 @@ def required_parents(keys: list[str]) -> list[tuple[str, ...]]:
             if parent not in parents:
                 parents.append(parent)
     return sorted(parents, key=lambda parent: (len(parent), parent))
+
+
+def quests_host(version: str = QUESTS_VERSION) -> str:
+    """CDN folder the federated wrapper's ``values.host`` points at."""
+    return f"{QUESTS_CDN_ROOT}{QUESTS_MODULE}/{version}/"
+
+
+def has_object(root: object, segments: tuple[str, ...]) -> bool:
+    """Whether ``segments`` leads to an object inside ``root``."""
+    return _has_path(root, segments)
+
+
+def has_leaf(root: object, segments: tuple[str, ...]) -> bool:
+    """Whether ``segments`` leads to any value (object or leaf) inside ``root``."""
+    return _path_present(root, segments)
+
+
+def block_fingerprints(structure: dict) -> tuple[dict[str, str], dict[str, list[str]]]:
+    """Return (digest per page block id, block id order per page id).
+
+    Digests ignore only the component ``_id`` values Shop Builder regenerates on every
+    read, so an untouched block hashes the same before and after the run.
+    """
+    from render_plan import canonical_hash, stable_structure
+
+    digests: dict[str, str] = {}
+    order: dict[str, list[str]] = {}
+    for page in structure.get("pages") or []:
+        if not isinstance(page, dict) or not isinstance(page.get("_id"), str):
+            continue
+        ids = []
+        for block in page.get("blocks") or []:
+            if isinstance(block, dict) and isinstance(block.get("_id"), str):
+                ids.append(block["_id"])
+                digests[block["_id"]] = canonical_hash(stable_structure(block))
+        order[page["_id"]] = ids
+    return digests, order
 
 
 def _has_path(root: object, segments: tuple[str, ...]) -> bool:
@@ -406,6 +450,7 @@ def plan_block_operations(brief: dict, structure: dict) -> list[dict]:
                     "block_ref": ref,
                     "module": operation["module"],
                     "strategy": QUESTS_ADD_STRATEGY,
+                    "version": QUESTS_VERSION,
                     "page": operation["page"],
                     "page_id": page.get("_id"),
                     "index": position,

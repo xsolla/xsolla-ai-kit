@@ -10,6 +10,7 @@ import json
 import sys
 from pathlib import Path
 
+from block_ops import block_fingerprints, plan_block_operations, removals as ops_removals
 from validate_shop_brief import load_brief, validate
 
 PRESET_PAGES = {
@@ -350,7 +351,60 @@ def bind_current_state(
     }
 
 
+def build_ops_plan(brief: dict, current_structure: object | None) -> dict:
+    """Plan block operations only: no page, navigation, locale or catalog phases."""
+    if current_structure is None:
+        raise ValueError(
+            "block operations need the backup structure (--structure) to resolve "
+            "pages and block IDs"
+        )
+    current = structure_data(current_structure)
+    items = plan_block_operations(brief, current)
+    block_digests, block_order = block_fingerprints(current)
+    plan = {
+        "version": 1,
+        "mode": "block_operations",
+        "target": {
+            "merchant_id": brief["project"]["merchant_id"],
+            "project_id": brief["project"]["project_id"],
+            "environment": brief["project"]["environment"],
+            "test_project_acknowledged": brief["project"].get(
+                "test_project_acknowledged", False
+            ),
+            "slug": brief["site"]["slug"],
+        },
+        "requires_confirmation": True,
+        "publication": "forbidden",
+        "order": ["backup", "block_operations", "verify"],
+        "pages": [],
+        "navigation": [],
+        "locales": [],
+        "catalog_sections": [],
+        "block_operations": items,
+        "removals": ops_removals(items),
+        "omissions": [],
+        "current_state": {
+            "status": "captured",
+            "application_mode": "block-operations",
+            "landing_id": current.get("_id"),
+            # Volatile component IDs are ignored so apply can compare a fresh read.
+            "structure_sha256": structure_hash(current),
+            "block_sha256": block_digests,
+            "block_order": block_order,
+            "extra_pages": [],
+        },
+        "brief_sha256": canonical_hash(brief),
+        "implemented_phases": ["block_operations"],
+        "unsupported_phases": [],
+        "warnings": [],
+    }
+    plan["confirmation_id"] = "sha256:" + canonical_hash(plan)[:12]
+    return plan
+
+
 def build_plan(brief: dict, current_structure: object | None = None) -> dict:
+    if "block_operations" in brief:
+        return build_ops_plan(brief, current_structure)
     preset = choose_preset(brief)
     catalog_groups = catalog_sections(brief, preset)
     pages, omissions = omit_unwritable_blocks(selected_pages(brief, preset), brief)

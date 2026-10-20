@@ -56,6 +56,37 @@ responses use bounded backoff.
   are unavailable, keep each section title disabled rather than reusing a misleading
   template title.
 
+## Block operations (Quests block, `block_operations` briefs)
+
+`apply_plan.py` runs a confirmed operations plan item by item. Every step re-reads
+`get-structure` for ids and indices; the plan's positions are never trusted. Before the
+first write it compares the live structure with the backup (volatile component IDs
+ignored) and stops if they differ.
+
+| Op | Commands | Notes |
+|---|---|---|
+| `add` | `add-block --block federated [--index N]`, then `get-structure` for the new id, one `update-block`, one `update-block` for `devName`, optional `move-block` | Template names for the Quests block fail with HTTP 500, so the wrapper is created bare and retargeted. The retarget replaces `values.host`, `blockId`, `version`, `useAsNativeBlock:false`, `internalBlockValues` and `resources.localizedValues` from the CDN `default-data.json` of the pinned version; the server mints the default `L:` texts. `--index 0` is dropped by the CLI and the block lands first, so index 0 omits the flag. The CDN file is read before the wrapper is created. |
+| `update` values | `update-block` with leaf `replace` patches under `["values","internalBlockValues", ...]` | A missing parent object (`layout`, `overrides.<questId>`) is created with `add` of `{}` first, only when it is absent now: a leaf patch under a missing parent answers 200 and is ignored, and an `add` over an existing object would wipe it. Whole `values` are never patched. |
+| `reset` | `update-block` with leaf `remove` patches | Skips leaves already absent. |
+| `update` heading | `update-many-localization --slug <slug> --data '{"locale":"en-US","perScopeValues":{"<pageId>":{"L:<id>":{"translation":"..."}}}}'` | The `L:` id is `values.resources.localizedValues[<translations.heading>].texts.id`; the scope is the namespace of `get-localization` that holds it. The value key must be `translation`. Any other key writes an empty string. |
+| `move` | `move-block --source <live index> --destination <index>` | The source index is looked up from the block id. |
+| `duplicate` | `duplicate-block --blockid <id> [--index N]` | The copy gets its own `L:` texts. The copy id is found by re-reading the page. |
+| `hide` / `show` | `update-block`, `replace ["hidden"]` | Same helper (`set_block_hidden`) as the Custom code hiding. |
+| `delete` | `delete-block --landing-id --page-id --blockid <id> --force` | See below. |
+
+`delete` is the one place the skill passes `--force`. The user approved this exception
+on 2026-10-20 for blocks that the confirmed plan lists under `removals`, only while the
+block is still on its page, and only for Quests blocks. A page-scoped `removeBlocks`
+patch must not run first: it detaches the block from the page but leaves it in the
+landing block list, and `delete-block` then fails with
+`http_404 block_is_not_presented_on_page`.
+
+Verification (`verify_structure.py --plan <plan> --structure <after> --localization
+<after-localization>`, and automatically at the end of an apply) reads every planned
+leaf back, checks the final block order of each touched page, checks that a delete
+cleared both the page and the landing block list, and compares every block the plan
+does not target with its digest from the backup.
+
 ## Known gaps to track
 
 The official Blocks page is the authoritative product inventory, but the CLI does not

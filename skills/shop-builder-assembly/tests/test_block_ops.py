@@ -298,37 +298,19 @@ class BlockOpsTests(unittest.TestCase):
         )
 
 
-    def test_apply_runs_only_block_items_and_refuses_unsupported(self) -> None:
+    def test_apply_refuses_an_unknown_item_type_before_any_write(self) -> None:
         spec = importlib.util.spec_from_file_location(
             "apply_plan_ops", ROOT / "scripts" / "apply_plan.py"
         )
         apply_plan = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(apply_plan)
-        structure = make_structure()
         plan = render_plan.build_plan(
-            ops_brief(
-                [
-                    {
-                        "op": "update",
-                        "block_id": "q1",
-                        "values": {"layout.cardAlign": "end"},
-                    },
-                    {"op": "hide", "block_id": "q1"},
-                ]
-            ),
-            structure,
+            ops_brief([{"op": "hide", "block_id": "q1"}]), make_structure()
         )
+        plan["block_operations"][0]["type"] = "block_teleport"
         with mock.patch.object(apply_plan, "run_json") as run_json:
-            apply_plan.apply_block_operations("qa-quests-spike", "landing-1", plan)
-        commands = [call.args[:2] for call in run_json.call_args_list]
-        self.assertEqual([("shopbuilder", "update-block")] * 3, commands)
-        first = json.loads(run_json.call_args_list[0].args[-1])
-        self.assertEqual("add", first["blockOps"]["patches"][0]["op"])
-        self.assertEqual({}, first["blockOps"]["patches"][0]["value"])
-        unsupported = render_plan.build_plan(ops_brief([add_op()]), make_structure(False))
-        with mock.patch.object(apply_plan, "run_json") as run_json:
-            with self.assertRaisesRegex(RuntimeError, "block_add"):
-                apply_plan.apply_block_operations("s", "landing-1", unsupported)
+            with self.assertRaisesRegex(RuntimeError, "block_teleport"):
+                apply_plan.apply_block_operations("s", "landing-1", plan)
         run_json.assert_not_called()
 
 

@@ -100,6 +100,17 @@ If the CLI lacks an operation, stop it, record the gap, and file a CLI/API ticke
   hidden: they paste their code and make the block visible in the Site Builder editor.
   Never write HTML, CSS, or JavaScript into it.
 
+## Block operations (Quests block)
+
+A brief with `block_operations` edits single Quests blocks on an existing site
+(`add`, `update`, `reset`, `move`, `duplicate`, `hide`, `show`, `delete`); see the
+[shop brief](references/shop-brief.md) and [CLI operations](references/cli-operations.md).
+Same gate as a build: preflight, backup, plan, `confirmation_id`, then
+`scripts/apply_plan.py`, which verifies on exit. It touches only the listed blocks.
+Deleting a block needs a `delete` op in the confirmed plan and runs
+`delete-block --force` while the block is on its page. Never add `--force` anywhere
+else.
+
 ## Stop conditions
 
 Stop before writes when project identity is ambiguous, backup fails, confirmation is

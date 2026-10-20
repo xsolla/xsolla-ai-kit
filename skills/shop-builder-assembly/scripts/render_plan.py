@@ -10,7 +10,7 @@ import json
 import sys
 from pathlib import Path
 
-from block_ops import plan_block_operations, removals as ops_removals
+from block_ops import block_fingerprints, plan_block_operations, removals as ops_removals
 from validate_shop_brief import load_brief, validate
 
 PRESET_PAGES = {
@@ -360,6 +360,7 @@ def build_ops_plan(brief: dict, current_structure: object | None) -> dict:
         )
     current = structure_data(current_structure)
     items = plan_block_operations(brief, current)
+    block_digests, block_order = block_fingerprints(current)
     plan = {
         "version": 1,
         "mode": "block_operations",
@@ -386,7 +387,10 @@ def build_ops_plan(brief: dict, current_structure: object | None) -> dict:
             "status": "captured",
             "application_mode": "block-operations",
             "landing_id": current.get("_id"),
-            "structure_sha256": canonical_hash(current),
+            # Volatile component IDs are ignored so apply can compare a fresh read.
+            "structure_sha256": structure_hash(current),
+            "block_sha256": block_digests,
+            "block_order": block_order,
             "extra_pages": [],
         },
         "brief_sha256": canonical_hash(brief),
