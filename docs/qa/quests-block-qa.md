@@ -14,7 +14,7 @@ release and must not be merged. Nothing here publishes a Shop Builder site.
 | `main` tip merged in | `ab59c65727a56577dd5ffbac1381d8293fb35f6c` |
 | Quest stack head (#56, `QP-2936-webshop-quest-module`, includes #38 to #56) | `5f0af8e63f9d3c0e9f0e8fe6ef4f4dd1af842826` |
 | D2b: `quest-setup` Quests block operations, PR #88, branch `codex/QP-3127-quests-block-ops` | `98c14d62b55736b53d5eee5493aba230c2e41e64` |
-| D2a: `shop-builder-assembly` Quests block, PR #87, branch `codex/sba-quests-block` | `e05fe565a987acd5ca0b1510885969c552aa333d` |
+| D2a: `shop-builder-assembly` Quests block, PR #87, branch `codex/sba-quests-block` | `5c3d8a557432a2768981f75570c4de2bf1b290cc` |
 | Quests block unstable version | `0.1.0-qp-3126.2` (sb-custom-blocks tag `quest-platform/quests-block@0.1.0-qp-3126.2`, commit `a26ed1105c`, MR `monetization-integration/sb-custom-blocks!1960`) |
 | Quest Platform backend `<SHA_BE>` | `7cfcc00ca9574a3b41bd62a7d26d72a8c7ff1272`, branch `codex/qp-me-browser-fixes` (adtech MR !6371) |
 | Backend stage tags | `stage-adtech-qp-server-qp-me-fixes-v1`, `stage-qp-gqw-qp-me-fixes-v1` |
@@ -136,7 +136,7 @@ Run them in a fresh session, in order, in your own clone. Replace the bracketed 
 | S1 | `What can quest-setup do?` | The answer includes the Shop Builder Quests block operations (create, edit settings, reset media, reorder, limit, move, duplicate, hide and show, delete). |
 | S2 | `Add a quests block to my shop.` | The request routes to `quest-setup`, and the skill asks for the missing inputs (site, quests) instead of acting. |
 | S3 | `Add a Quests block to the home page of <site> at position 2, showing quests <q1>, <q2> and <q3>, with the heading "Quests".` | The skill runs preflight, backup and a plan, shows a `confirmation_id`, waits for your yes, applies, reads back, and the block renders in the Site Builder editor. |
-| S4 | `On the Quests block of <site>, change: limit to 2, card alignment to center, image fit to cover, button style to outline, hide the description, change the block background and the card background, set a custom title and description on <q1>, and set the heading to "My quests" in en-US.` Repeat once per setting group of B16 to B24 if you prefer smaller steps. | Read-back matches each value and the editor shows it. |
+| S4 | `On the Quests block of <site>, change: limit to 2, card alignment to center, image fit to cover, button style to secondary, hide the description, change the block background and the card background, set a custom title and description on <q1>, and set the heading to "My quests" in en-US.` Repeat once per setting group of B16 to B24 if you prefer smaller steps. | Read-back matches each value and the editor shows it. |
 | S5 | `Reset the image override of quest <q1> on the Quests block of <site> back to the native image.` (Set an image override first, through S4.) | The override is removed, the native media shows again. |
 | S6 | `On the Quests block of <site>, reorder the quests to <q3>, <q1>, <q2> and limit the block to 2 quests.` | New order and limit read back and show in the editor. |
 | S7 | `Move the Quests block of <site> to the top of the home page.` | The block moves to index 0 and nothing else changes. If the skill says it is unsupported, it must do nothing, and that passes. |
