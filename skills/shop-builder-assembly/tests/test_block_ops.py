@@ -16,6 +16,8 @@ import render_plan  # noqa: E402
 import validate_shop_brief  # noqa: E402
 
 QUESTS = "_quest-platform_quests-block"
+QUEST_A = "11111111-1111-4111-8111-111111111111"
+QUEST_B = "22222222-2222-4222-8222-222222222222"
 
 
 def quests_block(block_id: str = "q1", internal: dict | None = None) -> dict:
@@ -73,7 +75,7 @@ def add_op(**overrides: object) -> dict:
         "module": QUESTS,
         "page": "/",
         "index": 2,
-        "values": {"questIds": ["a", "b"], "maxQuests": 6, "layout.cardAlign": "center"},
+        "values": {"questIds": [QUEST_A, QUEST_B], "maxQuests": 6, "layout.cardAlign": "center"},
     }
     op.update(overrides)
     return op
@@ -96,30 +98,42 @@ class BlockOpsTests(unittest.TestCase):
         self.assertEqual(2, sum("not a patchable leaf" in e for e in errors), errors)
 
     def test_limits_questids_and_maxquests(self) -> None:
-        too_many = [f"q{i}" for i in range(25)]
+        too_many = [f"{i:08x}-1111-4111-8111-111111111111" for i in range(25)]
         self.assertTrue(self.errors(add_op(values={"questIds": too_many})))
-        self.assertTrue(self.errors(add_op(values={"questIds": ["a", "a"]})))
+        self.assertTrue(self.errors(add_op(values={"questIds": [QUEST_A, QUEST_A]})))
         for bad in (0, 25, 1.5, True, "6"):
             self.assertTrue(self.errors(add_op(values={"maxQuests": bad})), bad)
         for good in (1, 24):
             self.assertEqual([], self.errors(add_op(values={"maxQuests": good})))
+
         self.assertEqual(
-            [], self.errors(add_op(values={"questIds": [f"q{i}" for i in range(24)]}))
+            [], self.errors(add_op(values={"questIds": [f"{i:08x}-1111-4111-8111-111111111111" for i in range(24)]}))
         )
-        self.assertTrue(self.errors(add_op(values={"overrides.a.title": "x" * 121})))
+        self.assertTrue(self.errors(add_op(values={f"overrides.{QUEST_A}.title": "x" * 121})))
         self.assertTrue(
-            self.errors(add_op(values={"overrides.a.description": "x" * 401}))
+            self.errors(add_op(values={f"overrides.{QUEST_A}.description": "x" * 401}))
         )
         self.assertTrue(self.errors(add_op(values={"layout.cardAlign": "left"})))
 
+    def test_rejects_quest_ids_that_are_not_uuids(self) -> None:
+        for bad in ("does-not-exist", "q1", QUEST_A.replace("-", ""), QUEST_A + "0"):
+            errors = self.errors(add_op(values={"questIds": [QUEST_A, bad]}))
+            self.assertTrue(any("questIds" in e and "UUID" in e for e in errors), (bad, errors))
+            errors = self.errors(add_op(values={f"overrides.{bad}.title": "Hi"}))
+            self.assertTrue(any("UUID" in e for e in errors), (bad, errors))
+            reset = {"op": "reset", "block_id": "q1", "paths": [f"overrides.{bad}"]}
+            errors = self.errors(reset)
+            self.assertTrue(any("UUID" in e for e in errors), (bad, errors))
+        self.assertEqual([], self.errors(add_op(values={"questIds": [QUEST_A.upper()]})))
+
     def test_rejects_http_image(self) -> None:
         self.assertTrue(
-            self.errors(add_op(values={"overrides.a.imageUrl": "http://x.test/a.png"}))
+            self.errors(add_op(values={f"overrides.{QUEST_A}.imageUrl": "http://x.test/a.png"}))
         )
         self.assertEqual(
             [],
             self.errors(
-                add_op(values={"overrides.a.imageUrl": "https://x.test/a.png"})
+                add_op(values={f"overrides.{QUEST_A}.imageUrl": "https://x.test/a.png"})
             ),
         )
 
@@ -227,7 +241,7 @@ class BlockOpsTests(unittest.TestCase):
                         "values": {
                             "maxQuests": 3,
                             "layout.cardAlign": "end",
-                            "overrides.a.title": "Hi",
+                            f"overrides.{QUEST_A}.title": "Hi",
                         },
                     }
                 ]
@@ -239,7 +253,7 @@ class BlockOpsTests(unittest.TestCase):
         self.assertEqual(
             [
                 ["values", "internalBlockValues", "layout"],
-                ["values", "internalBlockValues", "overrides", "a"],
+                ["values", "internalBlockValues", "overrides", QUEST_A],
             ],
             [parent["path"] for parent in item["create_parents"]],
         )
@@ -254,7 +268,7 @@ class BlockOpsTests(unittest.TestCase):
             1,
             quests_block(
                 "q2",
-                {"questIds": [], "layout": {"cardAlign": "start"}, "overrides": {"a": {}}},
+                {"questIds": [], "layout": {"cardAlign": "start"}, "overrides": {QUEST_A: {}}},
             ),
         )
         plan = render_plan.build_plan(
@@ -263,7 +277,7 @@ class BlockOpsTests(unittest.TestCase):
                     {
                         "op": "update",
                         "block_id": "q2",
-                        "values": {"layout.cardAlign": "end", "overrides.a.title": "Hi"},
+                        "values": {"layout.cardAlign": "end", f"overrides.{QUEST_A}.title": "Hi"},
                     }
                 ]
             ),
@@ -276,7 +290,7 @@ class BlockOpsTests(unittest.TestCase):
             ops_brief(
                 [
                     add_op(translations={"en-US": {"heading": "Quests"}}),
-                    {"op": "reset", "block_id": "q1", "paths": ["overrides.a.imageUrl"]},
+                    {"op": "reset", "block_id": "q1", "paths": [f"overrides.{QUEST_A}.imageUrl"]},
                     {"op": "move", "block_id": "q1", "index": 0},
                     {"op": "duplicate", "block_id": "q1", "index": 3},
                     {"op": "hide", "block_id": "q1"},
