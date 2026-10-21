@@ -10,6 +10,7 @@ patch whose parent object is missing.
 
 from __future__ import annotations
 
+import re
 from urllib.parse import urlparse
 
 # Contract recorded in references/exported-block-contracts.md ("Quests block").
@@ -54,6 +55,8 @@ QUESTS_PATCHABLE_LEAVES = frozenset(
     | {f"overrides.<questId>.{name}" for name in OVERRIDE_FIELDS}
 )
 QUESTS_MAX_IDS = 24
+# Quest Platform quest ids are UUIDs; a format check stops typos before any write.
+QUEST_ID_RE = re.compile(r"[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}")
 TITLE_MAX = 120
 DESCRIPTION_MAX = 400
 TRANSLATION_KEYS = {"heading"}
@@ -208,6 +211,10 @@ def plan_value_patches(
     return create_parents, patches
 
 
+def is_quest_id(value: object) -> bool:
+    return isinstance(value, str) and QUEST_ID_RE.fullmatch(value) is not None
+
+
 def _validate_leaf_value(key: str, value: object) -> str | None:
     segments = split_key(key)
     if segments is None:
@@ -223,6 +230,9 @@ def _validate_leaf_value(key: str, value: object) -> str | None:
                 f"questIds must be a list of at most {QUESTS_MAX_IDS} unique "
                 "non-empty strings"
             )
+        bad = [item for item in value if not is_quest_id(item)]
+        if bad:
+            return f"questIds entries must be quest UUIDs, got: {', '.join(map(repr, bad))}"
     elif segments == ("maxQuests",):
         if not _is_int(value) or not 1 <= value <= QUESTS_MAX_IDS:
             return f"maxQuests must be an integer from 1 to {QUESTS_MAX_IDS}"
@@ -237,6 +247,8 @@ def _validate_leaf_value(key: str, value: object) -> str | None:
         elif not isinstance(value, str) or value not in LAYOUT_ENUMS[name]:
             return f"{key} must use: " + ", ".join(sorted(LAYOUT_ENUMS[name]))
     else:
+        if not is_quest_id(segments[1]):
+            return f"{key}: the quest id {segments[1]!r} is not a quest UUID"
         field = segments[2]
         if field == "title":
             if not isinstance(value, str) or len(value) > TITLE_MAX:
@@ -385,10 +397,16 @@ def validate_block_operations(brief: dict, structure: dict | None = None) -> lis
                 errors.append(f"{prefix}.paths must be a non-empty list")
             else:
                 for path in paths:
-                    if _reset_path(path) is None:
+                    segments = _reset_path(path)
+                    if segments is None:
                         errors.append(
                             f"{prefix}.paths entry {path!r} is not a patchable leaf "
                             "or overrides.<questId>"
+                        )
+                    elif segments[0] == "overrides" and not is_quest_id(segments[1]):
+                        errors.append(
+                            f"{prefix}.paths entry {path!r}: the quest id "
+                            f"{segments[1]!r} is not a quest UUID"
                         )
         if "block_id" in operation:
             block_id = operation["block_id"]

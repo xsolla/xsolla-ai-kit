@@ -81,6 +81,8 @@ still reject it because they check `VERIFIED_BLOCK_MODULES`.
   `layout.{showHeading,showDescription,showImage,cardAlign,imageFit,buttonStyle,blockBackground,cardBackground}`
   and `editorPreview`. The heading is the `L:` text at `translations.heading`; change
   it with localization commands.
+- Quest ids (in `questIds`, in `overrides.<questId>` keys and in reset paths) must be
+  Quest Platform quest UUIDs. Preflight rejects any other string before a plan is made.
 - A leaf patch into a missing parent (for example `layout`) returns 200 and is
   silently ignored, so create the parent object first.
 - A page `removeBlocks` patch leaves the block orphaned in the landing; a real delete

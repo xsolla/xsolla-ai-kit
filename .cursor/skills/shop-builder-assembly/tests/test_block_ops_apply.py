@@ -33,6 +33,7 @@ SLUG = "qa-quests-spike"
 LANDING = "landing-1"
 PAGE = "page-1"
 HEADING_TEXT_ID = "L:00000000-0000-0000-0000-000000000001"
+QUEST_A = "11111111-1111-4111-8111-111111111111"
 
 CDN_DEFAULTS = {
     "defaultData": {
@@ -321,7 +322,7 @@ class BlockOpsApplyTests(BlockOpsApplyBase):
                 "values": {
                     "maxQuests": 4,
                     "layout.cardAlign": "end",
-                    "overrides.a.title": "Daily quest",
+                    f"overrides.{QUEST_A}.title": "Daily quest",
                 },
             }
         ]
@@ -343,7 +344,7 @@ class BlockOpsApplyTests(BlockOpsApplyBase):
         internal = self.site.find("q1")["values"]["internalBlockValues"]
         self.assertEqual(4, internal["maxQuests"])
         self.assertEqual("end", internal["layout"]["cardAlign"])
-        self.assertEqual("Daily quest", internal["overrides"]["a"]["title"])
+        self.assertEqual("Daily quest", internal["overrides"][QUEST_A]["title"])
         self.assertEqual(0, self.site.noop_patches)
         self.assertEqual([], self.verify(plan, refs))
 
@@ -495,21 +496,21 @@ class BlockOpsApplyTests(BlockOpsApplyBase):
 
     def test_reset_removes_only_present_leaves(self) -> None:
         self.site.find("q1")["values"]["internalBlockValues"]["overrides"] = {
-            "a": {"title": "T", "imageUrl": "https://example.com/a.png"}
+            QUEST_A: {"title": "T", "imageUrl": "https://example.com/a.png"}
         }
         plan = self.plan_for(
             [
                 {
                     "op": "reset",
                     "block_id": "q1",
-                    "paths": ["overrides.a.imageUrl", "overrides.a.description"],
+                    "paths": [f"overrides.{QUEST_A}.imageUrl", f"overrides.{QUEST_A}.description"],
                 }
             ]
         )
         refs: dict = {}
         apply_plan.apply_block_operations(SLUG, LANDING, plan, refs)
         overrides = self.site.find("q1")["values"]["internalBlockValues"]["overrides"]
-        self.assertEqual({"a": {"title": "T"}}, overrides)
+        self.assertEqual({QUEST_A: {"title": "T"}}, overrides)
         self.assertEqual(0, self.site.noop_patches)
         self.assertEqual([], self.verify(plan, refs))
 
