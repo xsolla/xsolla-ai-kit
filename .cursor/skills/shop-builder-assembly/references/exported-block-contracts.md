@@ -53,11 +53,44 @@ package version without retaining host URLs or block IDs.
 | Social media widgets | `embed` | native | field absent | background, enable, template, and title |
 | Custom code | `html` | native | 2 | CSS, enable, HTML, and JavaScript strings; the observed default is empty and hidden |
 | Social quests | `social-quests` | `federated` | package `5.0.0` | quest enable/order flags, URLs, translations, success/error modal fields, and media/dimension fields |
+| Quests | `_quest-platform_quests-block` | `federated` | package `0.1.0-qp-3126.2` | `questIds`, `maxQuests`, `overrides`, `layout`, `editorPreview`, and `translations` (heading is `translations.heading`); every field sits under `values.internalBlockValues.*` |
 
 The same export also proves that this Web Portal template uses `lead`, while the
 earlier store landing uses `leadGameSales`. It stores Offerwall, Daily rewards, Offer
 chain, and Social quests as `federated` wrappers whose effective identities are in
 `values.blockId`. Do not patch the wrapper wholesale.
+
+## Quests block (operations only)
+
+Observed on an approved unpublished `topup` test site (2026-10-20), added through the
+CLI rather than the palette. It is not in the official inventory and not in
+`VERIFIED_BLOCK_MODULES`. `scripts/block_ops.py` lists it in `OPS_BLOCK_MODULES`, which
+only `block_operations` briefs accept; `content.page_overrides` and the reconcile flow
+still reject it because they check `VERIFIED_BLOCK_MODULES`.
+
+- Wrapper: `federated`, `values.blockId` `_quest-platform_quests-block`
+  (CDN-verified), `useAsNativeBlock: false`. The npm name `@quest-platform/quests-block`
+  is stored with `@` and `/` replaced by `_`.
+- Add strategy: `federated_patch`. `add-block --block federated` creates an empty
+  wrapper at index 0 (omit `--index`), then one `update-block` sets `host`, `blockId`,
+  `version`, `useAsNativeBlock` and `internalBlockValues` from the CDN
+  `default-data.json`; the server mints the default `L:` texts. Adding by template
+  name returns HTTP 500, so there is no palette template.
+- Patchable leaves, all under `["values","internalBlockValues", ...]`: `questIds`,
+  `maxQuests`, `overrides.<questId>.{title,description,imageUrl,imageRef}`,
+  `layout.{showHeading,showDescription,showImage,cardAlign,imageFit,buttonStyle,blockBackground,cardBackground}`
+  and `editorPreview`. The heading is the `L:` text at `translations.heading`; change
+  it with localization commands.
+- Quest ids (in `questIds`, in `overrides.<questId>` keys and in reset paths) must be
+  Quest Platform quest UUIDs. Preflight rejects any other string before a plan is made.
+- A leaf patch into a missing parent (for example `layout`) returns 200 and is
+  silently ignored, so create the parent object first.
+- A page `removeBlocks` patch leaves the block orphaned in the landing; a real delete
+  needs `delete-block --force` while the block is still on the page, for blocks named
+  in the confirmed plan only.
+- Provenance: the live block was created from the `0.1.0-qp-3126.1` payload and
+  retargeted to `0.1.0-qp-3126.2`, so it carried no `editorPreview`. That field's type
+  comes from the `0.1.0-qp-3126.2` CDN `default-data.json`.
 
 ## Remaining contract gap
 

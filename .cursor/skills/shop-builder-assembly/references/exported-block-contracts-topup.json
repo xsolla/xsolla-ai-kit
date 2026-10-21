@@ -4,6 +4,39 @@
   "landing_type": "topup",
   "modules": [
     {
+      "module": "_quest-platform_quests-block",
+      "observed_instances": 1,
+      "block_versions": [],
+      "block_version_missing": true,
+      "block_value_types": {
+        "editorPreview": [
+          "string"
+        ],
+        "layout": [
+          "object"
+        ],
+        "maxQuests": [
+          "number"
+        ],
+        "overrides": [
+          "object"
+        ],
+        "questIds": [
+          "array"
+        ],
+        "translations": [
+          "object"
+        ]
+      },
+      "component_item_fields": [],
+      "transport_modules": [
+        "federated"
+      ],
+      "package_versions": [
+        "0.1.0-qp-3126.2"
+      ]
+    },
+    {
       "module": "bento-grid",
       "observed_instances": 4,
       "block_versions": [],
