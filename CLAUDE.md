@@ -18,6 +18,7 @@ On the headless path, skills call **Xsolla REST APIs directly**. The Shop Builde
 |---------------------------------|------------------------------------------------------------------------------------------|
 | `shop-plan`                     | **Decides the build path** — headless or Shop Builder (shop or portal), before any build |
 | `shop-setup`                    | **Entry point** for "build me a shop" — checks the build path, chains the right skills   |
+| `localization`                  | Translates catalog + LiveOps content (items, bundles, promotions, chains) via one CSV    |
 | `shop-builder-assembly`         | Assembles a Shop Builder site from a shop brief — reached via shop-setup, not directly   |
 | `merchant-setup`                | Creates and configures an Xsolla account + get API key                                   |
 | `catalog-design`                | Configures the catalog and the client flow: client catalog, purchase, order confirmation |
@@ -53,6 +54,10 @@ Configure my Xsolla catalog with items and pricing
 
 Integrate payments into my game
 → triggers: headless-checkout-integration
+
+Translate my catalog / localize item names / translate promotions / add a language
+→ triggers: localization
+   (catalog + LiveOps content — payment UI language is shop-setup, Login is login-styling)
 
 Go live / leave sandbox
 → triggers: production

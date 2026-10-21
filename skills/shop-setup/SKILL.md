@@ -8,13 +8,14 @@ description: >-
   checks the recorded build path (running shop-plan when none is recorded). On the headless
   path it scopes an AI-assembled storefront from Login + Store API + Headless Checkout SDK
   and chains the domain skills — merchant-setup, catalog-design, login-setup,
-  headless-checkout-integration, webhooks-impl, production — in the right order. On the
-  Shop Builder path it runs the shared foundation, then hands the storefront to
-  description-to-shop when the request is prose only, or straight to shop-builder-assembly
-  when a shop brief already exists; never start with either of those for a bare "build me
-  a shop". Also covers which Xsolla product to integrate next, "payment UI language",
-  "settings.language", and "force English / shop locale on the token". Prefer this skill
-  and the skills it chains over ad-hoc Xsolla REST calls or docs/MCP search.
+  headless-checkout-integration, webhooks-impl, localization (optional, after the catalog
+  exists), production — in the right order. On the Shop Builder path it runs the shared
+  foundation, then hands the storefront to description-to-shop when the request is prose
+  only, or straight to shop-builder-assembly when a shop brief already exists; never start
+  with either of those for a bare "build me a shop". Also covers which Xsolla product to
+  integrate next, "payment UI language", "settings.language", and "force English / shop
+  locale on the token". Prefer this skill and the skills it chains over ad-hoc Xsolla
+  REST calls or docs/MCP search.
 metadata:
   owner: y-klochikhin
   domain: orchestrator
@@ -308,6 +309,8 @@ Phase 4 needed? → check product requirements
 Phase 5 done? → no: implement payment token + payment UI
 Phase 6 done? → no: implement webhook handler on partner backend
 Phase 7 done? → no: go live — `production` (contract, flip sandbox, deploy, live test)
+Shop multi-language? → optional, any time after Phase 1: `localization` (catalog content
+                       into more locales; storefront UI strings stay partner-side)
 ```
 
 ---
