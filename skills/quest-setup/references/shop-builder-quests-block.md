@@ -35,8 +35,10 @@ block shows", "hide the quests block", "remove the Quests block".
    that Quest Platform project and the test site belong to different
    environments, or the mapping between them is unclear, stop and ask the
    publisher to explicitly confirm that making these quests public and showing
-   them on a test site is intended. Never create quests just for a test site,
-   and never proceed on assumption.
+   them on a test site is intended. If a quest the publisher wants is missing,
+   offer to create it through the normal quest create flow in `SKILL.md`, and
+   create it only after the publisher says yes to that exact proposal. Never
+   proceed on assumption.
 4. **Never publish.** Do not apply a saved version, attach a domain or enable
    live payments. The merchant previews in Publisher Account and publishes.
 5. Quest edits keep every stop in `SKILL.md` (proposal first, one approval, no
