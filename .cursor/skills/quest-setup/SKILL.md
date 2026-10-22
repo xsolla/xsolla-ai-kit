@@ -12,10 +12,10 @@ description: >-
   why a quest did not fire. Examples: "create a quest", "add a Web3 reward to
   my quest", "make a quest that pays a token", "trigger my quest", "send a quest
   event", "why didn't my quest complete", "list my quests", "activate a quest",
-  "quest platform API". Also adds an optional quest section inside a headless
-  Web Shop when asked, and manages the Quests block in a Shop Builder test site
-  (create, edit settings, reset media, reorder, limit, move, duplicate,
-  hide or show, delete; never published). Use for "show quests in my web
+  "quest platform API". Also adds a quest section to a headless Web Shop, and
+  adds and manages a Quests block on a Shop Builder site (create, edit settings,
+  reset media, reorder, limit, move, duplicate, hide or show, delete; the skill
+  never publishes the site). Use for "show quests in my web
   shop", "add a quest module to my shop", "add the Quests block to my Shop
   Builder site", "change the quests in my block" or "remove the Quests block".
 metadata:
@@ -74,10 +74,10 @@ Use this skill when the developer wants to manage Xsolla Quest Platform quests:
 - Create and publish a quest after one approval; add triggers, conditions or
   reward actions; list, view or edit quests
 - Submit a single quest event, and check that it made the quest execute
-- Add or update an optional quest section inside a headless Web Shop catalog
-- Manage the Quests block on an unpublished Shop Builder test site: create,
-  edit settings, reset media, reorder, limit, move, duplicate, hide or show,
-  delete
+- Add or update a Quests section in a headless Web Shop
+- Add a Quests block to a Shop Builder site and manage it: edit settings, reset
+  media, reorder, limit, move, duplicate, hide or show, delete (the skill never
+  publishes the site)
 
 Out of scope: on-chain finality, wallet balances, Backpack display, publishing a
 Shop Builder site. A completed reward action is not proof of delivery.
@@ -112,8 +112,8 @@ neither answers, ask the developer.
 | Production Web3 reward bodies, named items | [`rewards.md`](references/rewards.md) |
 | Event gate, payload, event stops | [`events.md`](references/events.md) |
 | Execution read-back, read scope | [`verification.md`](references/verification.md) |
-| Optional headless Web Shop module, only when explicitly requested | [`web-shop-module.md`](references/web-shop-module.md) |
-| Quests block operations in a Shop Builder site, only when explicitly requested | [`shop-builder-quests-block.md`](references/shop-builder-quests-block.md) |
+| Headless Web Shop Quests section | [`web-shop-module.md`](references/web-shop-module.md) |
+| Shop Builder Quests block operations | [`shop-builder-quests-block.md`](references/shop-builder-quests-block.md) |
 
 ## Conversation contract (summary)
 
@@ -166,10 +166,10 @@ and [Safety stops for proposals and actions](references/quest-document.md#safety
 7. **Delete.** Only quests the developer names, one per call, after a fresh read
    and an explicit yes; soft delete, no restore, see
    [Deleting](references/quest-document.md#deleting).
-8. **Optional Web Shop module.** Only when explicitly requested:
+8. **Web Shop Quests section.** When the developer asks for it:
    [`web-shop-module.md`](references/web-shop-module.md). Quest approval never
    authorizes shop source edits.
-9. **Optional Shop Builder Quests block.** Only when explicitly requested for a
+9. **Shop Builder Quests block.** When the developer asks for it on a
    Shop Builder site, follow [`shop-builder-quests-block.md`](references/shop-builder-quests-block.md):
    make the chosen quests public, then run every Quests operation (create, edit
    settings, reset media, reorder, limit, move, duplicate, hide or show,
