@@ -14,10 +14,10 @@ description: >-
   event", "why didn't my quest complete", "list my quests", "activate a quest",
   "quest platform API". Also adds a quest section to a headless Web Shop, and
   adds and manages a Quests block on a Shop Builder site (create, edit settings,
-  reset media, reorder, limit, move, duplicate, hide or show, delete; the skill
-  never publishes the site). Use for "show quests in my web
-  shop", "add a quest module to my shop", "add the Quests block to my Shop
-  Builder site", "change the quests in my block" or "remove the Quests block".
+  reset media, reorder, limit, move, duplicate, hide or show, delete). Use for
+  "show quests in my web shop", "add a quest module to my shop", "add the Quests
+  block to my Shop Builder site", "change the quests in my block" or "remove the
+  Quests block".
 metadata:
   owner: r.aliyev
   domain: quests
@@ -76,8 +76,7 @@ Use this skill when the developer wants to manage Xsolla Quest Platform quests:
 - Submit a single quest event, and check that it made the quest execute
 - Add or update a Quests section in a headless Web Shop
 - Add a Quests block to a Shop Builder site and manage it: edit settings, reset
-  media, reorder, limit, move, duplicate, hide or show, delete (the skill never
-  publishes the site)
+  media, reorder, limit, move, duplicate, hide or show, delete
 
 Out of scope: on-chain finality, wallet balances, Backpack display, publishing a
 Shop Builder site. A completed reward action is not proof of delivery.
