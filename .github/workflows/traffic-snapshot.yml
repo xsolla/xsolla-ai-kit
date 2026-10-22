@@ -1,0 +1,72 @@
+name: Traffic snapshot
+
+# GitHub keeps only 14 days of views and clones. This job saves them daily to the
+# `traffic-data` branch (CSV files), so we have usage history from now on.
+#
+# Needs the repository secret TRAFFIC_TOKEN: a fine-grained token for this repository
+# only, with "Administration: Read-only". The built-in GITHUB_TOKEN cannot read the
+# traffic API.
+
+on:
+  schedule:
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: traffic-snapshot
+  cancel-in-progress: false
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Fetch traffic
+        env:
+          GH_TOKEN: ${{ secrets.TRAFFIC_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::error::TRAFFIC_TOKEN secret is not set (see the comment at the top of this workflow)"
+            exit 1
+          fi
+          mkdir -p /tmp/traffic
+          gh api "repos/$REPO/traffic/views" > /tmp/traffic/views.json
+          gh api "repos/$REPO/traffic/clones" > /tmp/traffic/clones.json
+          gh api "repos/$REPO/traffic/popular/referrers" > /tmp/traffic/referrers.json
+          cp .github/scripts/traffic_snapshot.py /tmp/traffic/
+
+      - name: Switch to the data branch
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git ls-remote --exit-code --heads origin traffic-data >/dev/null; then
+            git fetch origin traffic-data
+            git switch traffic-data
+          else
+            git switch --orphan traffic-data
+            git rm -rf --quiet . || true
+            git clean -fdx --quiet
+          fi
+
+      - name: Merge and commit
+        run: |
+          set -euo pipefail
+          python3 /tmp/traffic/traffic_snapshot.py \
+            /tmp/traffic/views.json /tmp/traffic/clones.json /tmp/traffic/referrers.json .
+          git add views.csv clones.csv referrers.csv
+          if git diff --staged --quiet; then
+            echo "No change."
+            exit 0
+          fi
+          git commit -m "traffic snapshot $(date -u +%F)"
+          git push origin traffic-data
