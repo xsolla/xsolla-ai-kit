@@ -1,6 +1,6 @@
 # Headless Web Shop quest module
 
-Optional in-catalog quest section for the **headless** storefront from
+In-catalog quest section for the **headless** storefront from
 `shop-setup`. For a Shop Builder site use
 [`shop-builder-quests-block.md`](shop-builder-quests-block.md) instead. Never a
 top-level nav tab, router entry, or new shop route.

@@ -68,7 +68,28 @@ Check each one and stop with the smallest missing action when it fails.
   project must be the one the site belongs to. If the mapping is unclear or the
   environments differ, follow Hard rule 3 and stop for explicit confirmation.
 
+## Which shop
+
+Use this when the publisher mentions their shop, web shop, store or site without
+saying whether it is a Shop Builder site or a headless storefront. Do not assume
+either.
+
+1. Run `xsolla shopbuilder list-websites --json` (read-only) and show each site's
+   name and slug.
+2. Ask in one message: which of these sites, or a headless storefront codebase
+   (the current repo).
+3. If the CLI is not logged in or the command fails, say so briefly and ask the
+   same question without the list, suggesting `xsolla auth login`.
+4. If there are no Shop Builder sites, say so and ask whether they mean a
+   headless storefront.
+5. After the answer, continue with this reference for a Shop Builder site, or
+   [`web-shop-module.md`](web-shop-module.md) for a headless storefront.
+
+This applies to questions as well as change requests.
+
 ## Ask first
+
+If the site is not yet known, resolve it first in [Which shop](#which-shop).
 
 Ask before proposing, in one short message, only what you cannot read yourself:
 
