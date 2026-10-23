@@ -75,7 +75,8 @@ a quest) never trigger it.
 4. If the list is empty, say there are no Shop Builder sites and ask whether they mean
    a headless storefront.
 5. After the answer, continue here for a Shop Builder site, or with
-   [`web-shop-module.md`](web-shop-module.md) for a headless storefront.
+   [`web-shop-module.md`](web-shop-module.md) for a headless storefront. A question about
+   quests on the chosen Shop Builder site goes to [Describe the block](#describe-the-block).
 
 Keep the whole reply under 60 words. Show site names only, never IDs or hosts.
 
@@ -88,6 +89,33 @@ reward line and icon, and a heading; the skill can choose and order the cards, s
 their text and images, and move, hide, show or remove the block. Changes stay a draft
 until the publisher publishes them in Publisher Account. Keep the whole reply under
 about 60 words.
+
+## Describe the block
+
+Use when the site is known (chosen in [Which shop](#which-shop)) and the publisher asks
+about quests on it, for example "tell me about quests on my webshop" after naming the
+site. This is a read, so it needs no gate and no backup.
+
+1. Read the structure, read-only: `xsolla shopbuilder get-structure --slug <slug> --json`.
+2. Find the Quests block: a block under `pages[].blocks[]` whose `values.host` contains
+   `_quest-platform_quests-block` (the Quests block module; check `module` the same way
+   when `values.host` is absent). Note its page and its position on that page.
+3. Answer briefly from that data:
+   - whether the block exists, and on which page and at which position;
+   - how many quests are selected (`values.internalBlockValues.questIds`) and the limit
+     (`values.maxQuests`);
+   - the heading, when the block's translations have one;
+   - which cards have overrides, and which fields (title, description, image, reward
+     text, reward icon).
+   Do not dump JSON, and do not show ids unless the publisher asks.
+4. Quest names and status need Quest Platform access. If it is not set up, add one
+   sentence: "Quest names can be shown once Quest Platform access is set up." Never say
+   the block cannot be confirmed when get-structure works.
+5. If there is no Quests block, say so and offer to add one.
+6. End with at most one offer or question, for example "Want to change anything on it?"
+
+If the read itself fails, say in one sentence that the site structure couldn't be read,
+and ask the publisher to log in to the Xsolla CLI if needed.
 
 ## Ask first
 
