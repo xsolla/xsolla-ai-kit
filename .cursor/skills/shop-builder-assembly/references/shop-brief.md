@@ -45,10 +45,9 @@ when the publisher explicitly states in this conversation that the project is a 
 test project. The agent never sets it on its own or infers it from the project name, a
 test site, an earlier yes, or the approval list.
 
-Before a write, `preflight.py` and `apply_plan.py` additionally require a separate local
-approval list at the fixed path below (expand `~` before passing it to the scripts).
-Agent-internal: the agent does not read, stat, list or check that file. Only the scripts
-read it, and a preflight refusal is reported in the refusal shape (see SKILL.md Replies).
+Before a write, `preflight.py` and `apply_plan.py` require a separate local approval list
+at the fixed path below (expand `~` before passing it to the scripts). Only the scripts
+read it; the agent never reads, stats, lists or checks it.
 
 ```
 ~/.config/xsolla/approved-test-projects.json
@@ -70,8 +69,8 @@ Format of that file:
 }
 ```
 
-Keep the real allowlist outside the repository. This second artifact binds the exact
-project identity to approval evidence; a self-declared brief is not enough.
+Keep the real list outside the repository. It binds the exact project identity to approval
+evidence; a self-declared brief is not enough.
 
 ## Field behavior
 
@@ -111,12 +110,9 @@ before planning or writes.
 A brief with `block_operations` edits individual Quests blocks on an existing site and
 cannot be combined with `content.page_overrides`. Required: `version`, `project`
 (`environment`, `merchant_id`, `project_id`), `site.slug` and `block_operations`.
-`game`, `site.name`, `catalog`, `content` and `sources` are not needed. Render with
-`--structure` from the verified backup; apply runs only the planned block items (no
-page, navigation, locale or catalog phases) and removes only blocks named by a `delete`
-op. Operations write only to an approved `environment: test` project (`sandbox` is
-rejected). Preflight, the approval list and the backup stay mandatory, and
-`test_project_acknowledged` follows the rule above.
+`game`, `site.name`, `catalog`, `content` and `sources` are not needed. Operations write
+only to an approved `environment: test` project (`sandbox` is rejected). The approval
+list, backup and `test_project_acknowledged` rules above all apply.
 
 ```json
 "block_operations": [
@@ -133,9 +129,8 @@ rejected). Preflight, the approval list and the backup stay mandatory, and
 ```
 
 `values` keys are short; the plan maps them to the block's internal values and creates
-any missing parent object (for example `layout`) before patching. Apply runs every
-operation above after a backup. `delete` applies only to blocks named in the confirmed
-plan's removals. Operation details are in `cli-operations.md`.
+any missing parent object (for example `layout`) before patching. `delete` applies only to
+blocks named in the confirmed plan's removals. Semantics: [block-operations.md](block-operations.md).
 
 ## Handoff contract for other skills
 
