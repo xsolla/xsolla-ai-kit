@@ -40,7 +40,7 @@ to copy.
 - Last line: `Next: reply "yes" to apply this exact plan.`
 
 For a quest create or edit, the bullets are the labelled lines in
-[quest-document.md](quest-publish.md#proposal-format).
+[quest-publish.md](quest-publish.md#proposal-format).
 
 ## Examples
 

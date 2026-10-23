@@ -45,7 +45,7 @@ Check each one and stop with the smallest missing action when it fails.
   Creating the site itself is the gate's flow.
 - **Scope.** The merchant and project for the Quest Platform calls come from the
   same resolved credential as in
-  [`auth-and-environment.md`](auth-credentials.md#credential). The block reads
+  [`auth-credentials.md`](auth-credentials.md#credential). The block reads
   quests for the merchant and project of the site it sits on, so the Quest Platform
   project must be the one the site belongs to. If that mapping is unclear, follow
   Hard rule 2.
@@ -162,7 +162,7 @@ Cards read their content from each quest's public view:
 
 A quest appears to anonymous visitors only when it is public: `is_public: true` and
 `public_view` set. Set them through the edit flow in
-[`quest-document.md`](quest-edit.md#editing) (read, change, full `PUT`, before/after
+[`quest-edit.md`](quest-edit.md#editing) (read, change, full `PUT`, before/after
 diff, one approval, read back). Fill `public_view` with `name`, `description` and
 `image_url` (an absolute `https` URL; an `http` URL is refused, see Rules for every operation). Never invent an image. If the publisher has
 none, leave it empty and the card shows its neutral placeholder.
@@ -187,7 +187,7 @@ settings table). Never put reward text into the title or description as a workar
 3. **Build the brief.** Reward defaults: for each chosen quest with a `web3_item`
    reward node, read its `item_sku` and `project` from the quest document, look the
    SKU up with the read-only Store admin route in
-   [`auth-and-environment.md`](store-and-wallet.md#store-admin-catalog), and if
+   [`store-and-wallet.md`](store-and-wallet.md#store-admin-catalog), and if
    the item has an `https` `image_url`, propose it as that card's `rewardImageUrl`.
    No image means no icon: leave it unset. Never invent a URL. Reward text and icon
    changes the publisher asks for go through the same proposal and yes as title,
