@@ -174,7 +174,9 @@ the developer.
     Quests operation goes as a `block_operations` brief through the
     `shop-builder-assembly` safety gate. Delete needs its own yes; quest approval
     never authorizes site writes. Card reward text and reward icon are per-card
-    overrides in that reference, proposed from the quest's reward.
+    overrides in that reference, proposed from the quest's reward. A question about
+    the Quests block on a known site (what it shows, how many quests) is a read: see
+    [Describe the block](references/shop-builder-quests-block.md#describe-the-block).
 
 ## Safety stops
 
