@@ -21,10 +21,10 @@ QUESTS_MODULE = "_quest-platform_quests-block"
 OPS_BLOCK_MODULES = frozenset({QUESTS_MODULE})
 # add-block --block federated, then one update-block retargeting the wrapper.
 QUESTS_ADD_STRATEGY = "federated_patch"
-# Package version the add strategy retargets to. 0.1.0-qp-3126.2 is the first published
-# build whose default-data.json carries `layout` and `editorPreview`; its CDN files
-# (default-data.json, mf-manifest.json, remoteEntry.js) return 200 anonymously.
-QUESTS_VERSION = "0.1.0-qp-3126.2"
+# Package version the add strategy retargets to. 0.1.0-qp-3126.9 carries the reward
+# override fields (`rewardText`, `rewardImageUrl`) in its bundle, and its default-data.json
+# carries `layout` and `editorPreview`; its CDN files return 200 anonymously.
+QUESTS_VERSION = "0.1.0-qp-3126.9"
 QUESTS_CDN_ROOT = "https://cdn.xsolla.net/site-builder-modules/"
 # Editor layer label that UI-added federated blocks carry (top-level `devName`).
 QUESTS_DEV_NAME = "Quests"
