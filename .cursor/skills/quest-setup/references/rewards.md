@@ -13,7 +13,7 @@ These are the `parameters` of a node with `type: action` and
   "type": "web3_item",
   "purpose": "quest_completion",
   "body": {
-    "project": "<XSOLLA_PROJECT_ID the catalog read was scoped to>",
+    "project": "<project id the catalog read was scoped to>",
     "item_sku": "<catalog SKU>",
     "quantity": 1
   }
@@ -55,7 +55,7 @@ When the publisher requests a named item (`<requested item>`):
   endpoints, or a provider-default catalog).
 
 Never ask whether the destination is Backpack. The catalog project is the
-`XSOLLA_PROJECT_ID` the Store admin read was scoped to, never a value the
+project id the Store admin read was scoped to, never a value the
 publisher typed and never a project from another catalog.
 
 ## `web3_item`

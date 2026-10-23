@@ -318,60 +318,49 @@ Recipe:
 
 ## Conversation contract
 
-Keep the publisher experience business-first and progressive:
+- Do the read-only checks first and silently: project read, reward resolution, the
+  player action, the graph, schedule and limits. Do not ask for approval before they
+  finish.
+- Show one proposal in the format below, in business terms. Omit service names,
+  routes, auth, implementation fields (including `type`) and narration. Ask only for
+  approval of this draft.
+- Propose defaults instead of asking for implementation fields. A gameplay quest uses
+  `liveops` internally but is described as a gameplay quest. For an item reward:
+  quantity one, purpose `quest_completion`, one payout per player. `created_by` is
+  the developer's name, otherwise `AI Toolkit`. Start is the publisher's start or
+  activation time; end is the publisher's end, else the requested duration after the
+  start, else 7 days after the start. Do not ask for missing dates.
+- Use the event name the publisher supplied, or derive a stable `snake_case` name from
+  the player action (for example `monster_defeated`) and show it in the draft without
+  asking.
+- Named item rewards: resolve via [`rewards.md`](rewards.md). Never guess an SKU,
+  substitute a reward type or use public web search. Stop before any write if the
+  resolver is absent, unavailable or returns zero candidates. If several candidates
+  are plausible, ask the publisher to choose.
+- One approval of the exact proposal covers create, configure, activate and read-back.
+  The approval request names only publication. Never offer or bundle a test event in
+  it; offer the event after publication, with its payload. A material change after
+  approval needs a revised draft and a new approval.
+- A Web Shop quest section is optional and only on explicit request, per
+  [`web-shop-module.md`](web-shop-module.md). Quest approval never authorizes shop
+  source edits.
+- Keep IDs, auth, hosts, service names and narration out of replies (see Reply style
+  in `SKILL.md`).
 
-- Finish all read-only bring-up before any proposal: project GET, reward
-  resolution through an available supported capability (see
-  [`rewards.md`](rewards.md)), the player action,
-  complete graph, proposed schedule and repeat limits. Do not seek plan
-  approval before those GETs.
-- Show one concise proposal: publisher project name; what the player does; the
-  selected reward in business terms (for a named item, its name, SKU and
-  image URL); quantity or amount; schedule; repeat limit
-  and payout impact. Omit service names, routes, auth, implementation fields
-  and narration. Ask only for approval of this draft quest. If the publisher
-  wants a change, they will say so; do not request separate confirmation of
-  the schedule or event name.
-- Propose safe defaults instead of asking for implementation fields. For a
-  gameplay quest, use `liveops` internally but describe it as a gameplay quest.
-  Do not show `type` in the proposal. For an item reward, propose quantity one,
-  purpose `quest_completion`, and one payout per player. Use `AI Toolkit` as
-  the internal creator label unless another name was supplied. For a new quest,
-  use the publisher's start or start at activation. Use the publisher's end,
-  otherwise add their requested duration to the start, otherwise add 7 days.
-  Do not ask for missing dates.
-- For a named item (`<requested item>`), resolve via
-  [`rewards.md`](rewards.md). Never guess an SKU,
-  substitute a reward type, or use public web search for catalog lookup. Stop
-  before any Quest Platform write when the resolver is absent, unavailable, or
-  returns zero candidates; ask the publisher to choose when multiple candidates
-  are plausible. The optional headless Web Shop module is independent of the
-  quest flow; follow
-  [`web-shop-module.md`](web-shop-module.md) only when
-  explicitly requested.
-- Use the event name the publisher supplied, or derive a stable `snake_case`
-  name from the stated player action (for example, `monster_defeated`). Show
-  that name in the draft without asking the publisher to confirm it or flagging
-  it as an open question. If the publisher names a different game event later,
-  revise the draft then.
-- One approval of the exact proposal authorizes create, configure, activate and
-  read-back. Test events and shop source edits need separate consent. The
-  approval request names only publication; never offer, promise or bundle a
-  test event in it. Offer the event after publication, with its payload. If an
-  answer requests a material change after approval, show the revised draft
-  and ask for approval of that change before writing it.
-- A Web Shop quest section is optional and requires an explicit request. For
-  an existing headless shop, an explicit request to add or update it authorizes
-  those source edits; quest publication approval alone does not. For a new shop,
-  ask whether to opt in. Keep the module inside catalog content, never in
-  navigation, and follow [`web-shop-module.md`](web-shop-module.md).
-  Resolve the public URL from the known production host and the connected
-  project scope; never ask the developer to supply it or gate integration on a
-  live endpoint readiness check.
-- Keep merchant IDs, project IDs, auth lanes, headers, hostnames, service names,
-  internal paths and workflow narration out of normal replies. Never reveal
-  credentials. Use **Summary**, **Proposed setup**, **Need from you**,
-  **Next step** when practical; omit empty sections.
+### Proposal format
+
+Use this format for a write proposal only, with plain labelled lines:
+
+- Project: the publisher's project name
+- What the player does:
+- Reward:
+- Quantity or amount:
+- Schedule (UTC):
+- Repeat limit:
+- Payout impact:
+
+End with one line asking for a yes to create and activate this quest, or for the change
+they want.
 
 ## Safety stops for proposals and actions
 
