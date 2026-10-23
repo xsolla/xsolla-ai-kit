@@ -96,23 +96,28 @@ Use when the site is known (chosen in [Which shop](#which-shop)) and the publish
 about quests on it, for example "tell me about quests on my webshop" after naming the
 site. This is a read, so it needs no gate and no backup.
 
-1. Read the structure, read-only: `xsolla shopbuilder get-structure --slug <slug> --json`.
-2. Find the Quests block: a block under `pages[].blocks[]` whose `values.host` contains
-   `_quest-platform_quests-block` (the Quests block module; check `module` the same way
-   when `values.host` is absent). Note its page and its position on that page.
-3. Answer briefly from that data:
-   - whether the block exists, and on which page and at which position;
-   - how many quests are selected (`values.internalBlockValues.questIds`) and the limit
-     (`values.maxQuests`);
-   - the heading, when the block's translations have one;
-   - which cards have overrides, and which fields (title, description, image, reward
-     text, reward icon).
-   Do not dump JSON, and do not show ids unless the publisher asks.
-4. Quest names and status need Quest Platform access. If it is not set up, add one
-   sentence: "Quest names can be shown once Quest Platform access is set up." Never say
-   the block cannot be confirmed when get-structure works.
-5. If there is no Quests block, say so and offer to add one.
-6. End with at most one offer or question, for example "Want to change anything on it?"
+1. Read the structure once, read-only: `xsolla shopbuilder get-structure --slug <slug> --json`.
+   Pipe it into one `python3` step (not repeated greps) that finds the Quests block: a
+   block under `pages[].blocks[]` whose `values.host` contains
+   `_quest-platform_quests-block`, or whose `module` is that id when `values.host` is
+   absent. The step prints only: the page it is on, its 1-based position on that page,
+   `values.internalBlockValues.maxQuests`, the length of
+   `values.internalBlockValues.questIds`, and the cards that have an entry in
+   `values.internalBlockValues.overrides` (with which fields each one sets).
+2. Heading: `values.internalBlockValues.translations.heading` holds an `L:` id. Read its
+   text with `xsolla shopbuilder get-localization --slug <slug> --json`, which only
+   retrieves the localization store, then look up that id's `en-US` text in one
+   `python3` step. If the command or the lookup fails, say "heading is set" and move on.
+3. Reply in 2 to 4 short sentences, no bullet list, under about 70 words. Cover, in
+   order: the block exists on page X at position N (or that there is no Quests block,
+   with an offer to add one); N quests selected with limit M; the heading text, or
+   "heading is set"; and which cards have overrides, or "no card overrides". Add no
+   layout or style details, JSON, ids, or draft and publishing notes unless the
+   publisher asks.
+4. If Quest Platform access is not configured, add one sentence: "I can show the quest
+   names once Quest Platform access is set up." Never say the block cannot be confirmed
+   when get-structure works.
+5. Ask at most one question, for example "Want to change anything on it?"
 
 If the read itself fails, say in one sentence that the site structure couldn't be read,
 and ask the publisher to log in to the Xsolla CLI if needed.
