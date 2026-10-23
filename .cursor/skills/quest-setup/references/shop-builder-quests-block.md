@@ -35,7 +35,7 @@ to the publisher.
    stops in [`SKILL.md`](../SKILL.md).
 6. **Quests block only.** For the header, theme, other blocks, site language or
    anything else on the site, say: "That's outside the Quests block; change it in the
-   Shop Builder editor." Offer no site-wide change.
+   Shop Builder editor." Offer no site-wide change and give no steps or menu names.
 
 ## Prerequisites
 
@@ -64,28 +64,29 @@ publisher has not said whether the shop is a Shop Builder site or a headless
 storefront. Pure quest requests (list my quests, why a quest did not complete, create
 a quest) never trigger it.
 
-1. Run the read-only site list and show each site's name and slug.
-2. Ask in one message: which of these sites, or a headless storefront codebase.
-3. If the CLI is not logged in or the list fails, say so in one sentence and ask the
-   same question without the list, asking the publisher to log in to the Xsolla CLI.
-4. If there are no Shop Builder sites, say so and ask whether they mean a headless
-   storefront.
+1. Always run the read-only list, `xsolla shopbuilder list-websites --json`, before
+   replying. Never say the list is unavailable without running it.
+2. If the command succeeds, put the question first: which of these sites (name each
+   one from the list), or a headless storefront codebase.
+3. Only if the command itself fails, say in one sentence that the site list couldn't
+   be read, and ask which shop it is, asking the publisher to log in to the Xsolla CLI
+   if needed.
+4. If the list is empty, say there are no Shop Builder sites and ask whether they mean
+   a headless storefront.
 5. After the answer, continue here for a Shop Builder site, or with
    [`web-shop-module.md`](web-shop-module.md) for a headless storefront.
 
+Keep the whole reply under about 60 words. Show site names only, never IDs or hosts.
+
 ### Discovery answer
 
-For a question such as "what can quests do on my Shop Builder site", answer in a short
-list (under about 80 words):
-
-- The Quests block shows the chosen quests as cards: title, description, image,
-  an optional reward line and icon, and a heading.
-- The skill can choose and order the quests, set card text and images, set the card
-  limit and layout, and move, hide, show or remove the block.
-- The skill creates and edits the block as a draft. The publisher publishes in
-  Publisher Account.
-
-Then run step 1 above and ask which site.
+For a question such as "what can quests do on my Shop Builder site", run step 1 first,
+then reply with the which-shop question first (or after one short sentence), and at
+most one line on the block: cards show a title, description, image, an optional
+reward line and icon, and a heading; the skill can choose and order the cards, set
+their text and images, and move, hide, show or remove the block. Changes stay a draft
+until the publisher publishes them in Publisher Account. Keep the whole reply under
+about 60 words.
 
 ## Ask first
 
@@ -97,10 +98,13 @@ Ask in one message, and only for what you cannot read yourself:
   If a wanted quest is missing, offer the normal create flow.
 - **Card text and image**, only for a quest that lacks them. Where the quest already
   has them, do not ask: say the defaults in the proposal instead. Title defaults to
-  the quest name, explanation to the quest description, image to the quest image.
+  the quest name, explanation to the quest description, and image to the quest image
+  when it has one. Reward icon defaults to the reward item's catalog image when the
+  item has one.
 - **Card defaults line.** Whenever you stop or ask about card content, add one line
-  stating the defaults: "Card title is the quest name, explanation is the quest
-  description, image is the quest image."
+  stating only the defaults that apply: "Card title is the quest name, explanation is
+  the quest description, image is the quest image when it has one. Reward icon is the
+  reward item's image when the catalog has one."
 
 Use these defaults and state them in the proposal instead of asking: heading
 "Quests" (`en-US`), block at the end of the home page (or in the existing block's
@@ -305,13 +309,14 @@ action to continue.
 ## Out of scope
 
 Publishing, domains, production sites, other blocks and the rest of the site, reward
-delivery claims, and creating the Shop Builder site itself. Decline each in one
-sentence, with no caveats:
+delivery claims, and creating the Shop Builder site itself. Decline each in one or two
+sentences, with no caveats or steps:
 
 - Publish request: "The skill doesn't publish; you publish in Publisher Account when
   ready. The site stays unpublished."
 - Any other part of the site: "That's outside the Quests block; change it in the Shop
   Builder editor."
-- Localized card texts: "Card texts are single-language for now; the heading can use
-  languages already enabled on the site." Name locale codes only when the publisher
-  gave them.
+- Localized card texts: "Card texts are single-language for now (localization is
+  postponed). The heading can use only languages already enabled on the site, so which
+  one should it use?" Never suggest a translated heading. Name locale codes only when
+  the publisher gave them.

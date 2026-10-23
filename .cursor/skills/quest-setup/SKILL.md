@@ -18,6 +18,8 @@ metadata:
 - Answer first, in plain language. A simple question gets a few sentences; a stop
   or a question gets under about 80 words.
 - At most one question per message.
+- Which-shop replies (see [Which shop](references/shop-builder-quests-block.md#which-shop))
+  put the question first, and the whole reply stays under about 60 words.
 - No headings, and no Summary, Proposed setup or Need from you sections. The only
   exception is a write proposal, which uses the format in
   [quest-document.md](references/quest-document.md#proposal-format).
@@ -35,8 +37,9 @@ metadata:
 - Declines, one sentence each, with no caveats or click-paths:
   - Publish request: "The skill doesn't publish; you publish in Publisher Account when ready. The site stays unpublished."
   - Change outside the Quests block: "That's outside the Quests block; change it in the Shop Builder editor."
-  - Localized card texts: "Card texts are single-language for now; the heading can use languages already enabled on the site."
-    Name locale codes only when the publisher gave them.
+    Give no steps, menu names or click-paths, even when asked how.
+  - Localized card texts: "Card texts are single-language for now (localization is postponed). The heading can use only languages already enabled on the site, so which one should it use?"
+    Never suggest a translated heading. Name locale codes only when the publisher gave them.
 
 ## Hard rules
 
@@ -54,13 +57,14 @@ metadata:
    public base URL setting, and never suggest switching environments. Never send an
    ad hoc Quest Platform request (for example a GET with merchant or project ids) to
    check or explore anything outside the documented flow.
-4. **No secrets on screen.** Never open the credential file, print the
-   environment, run `env`, `printenv` or a grep of the environment, list
-   `~/.config/xsolla`, paste a key into a command, or print a key, even to yourself.
-   Parse credentials inside the request, as in
-   [Credential](references/auth-and-environment.md#credential). If the credentials
-   are present, continue with the read-only preflight. Never ask the publisher to
-   confirm settings, paste secrets or find another key.
+4. **No credential inspection.** The agent never inspects credentials itself. Never
+   open or search the credential file, read or print the environment, run `env`,
+   `printenv` or a grep of the environment, list `~/.config/xsolla` or the home
+   folder, check CLI config for credentials, paste a key into a command, or write a
+   script or helper file (in the temp folder or anywhere else) to read or send
+   credentials. Make the documented call only through the configured request pattern
+   in [Credential](references/auth-and-environment.md#credential), and never to probe.
+   Never ask the publisher to confirm settings, paste secrets or find another key.
 5. **No IDs or hosts in replies.** Outside the Web Shop URL and the event payload,
    never show merchant, project or player IDs, hosts, service names or environment
    names. A reward item's SKU and image URL are fine.
@@ -89,13 +93,10 @@ Shop Builder writes are separate (see
 scope from the configured integration; never fall back to another target,
 credential or catalog. Details: [Prerequisites and lane](references/auth-and-environment.md#prerequisites-and-lane).
 
-If access is missing or unknown, do not probe the environment. Run only the
-key-names check defined in
-[Prerequisites and lane](references/auth-and-environment.md#prerequisites-and-lane),
-and if it does not confirm a complete set, say in one sentence that Quest Platform
-access for this project is not set up yet, ask the publisher to set it up, and stop.
-Onboarding is a separate, offered write; see
-[Onboarding](references/auth-and-environment.md#onboarding).
+If access is missing, or the first documented call returns 401 or 403, do not
+inspect the environment or config to find out why. Say in one sentence that Quest
+Platform access isn't set up for this project, and stop. Onboarding is a separate,
+offered write; see [Onboarding](references/auth-and-environment.md#onboarding).
 
 ## Reference routing
 
@@ -122,7 +123,8 @@ the developer.
 1. **Bring-up.** Load [`qp-api-contract.md`](references/qp-api-contract.md) and run
    the read-only preflight in
    [`auth-and-environment.md`](references/auth-and-environment.md#service-preflight).
-   Bring-up is GET-only and runs silently. Confirm project scope before any write
+   Bring-up is one documented GET, sent through the configured request pattern, and
+   runs silently. Confirm project scope before any write
    and report only a short project name and status. If the project GET returns 404
    `Project not found`, follow [Onboarding](references/auth-and-environment.md#onboarding)
    and stop.
@@ -155,7 +157,8 @@ the developer.
    site: a change to it, or a question about it (for example "tell me about quests on
    my webshop" or "what can quests do on my Shop Builder site"). Pure quest requests
    (list my quests, why a quest did not complete, create a quest) skip this step.
-   Then follow [Which shop](references/shop-builder-quests-block.md#which-shop).
+   Then follow [Which shop](references/shop-builder-quests-block.md#which-shop), which
+   reads the site list first with the read-only CLI call.
 9. **Headless Web Shop section.** Only on explicit request, per
    [`web-shop-module.md`](references/web-shop-module.md). Quest approval never
    authorizes shop source edits.
