@@ -1,13 +1,14 @@
 ---
 name: quest-setup
 description: >-
-  Manages Xsolla Quest Platform quests and adds a Quests block to a Shop Builder
-  site. For quests: create, edit, list, activate or delete, add Web3 rewards and
-  conditions, send a quest event, or check why a quest did not complete. For a
-  Shop Builder site: add and manage the Quests block (quests and order, card text,
-  limit, move, hide, show, delete). Headless storefront quest section only briefly.
+  Manages Xsolla Quest Platform quests and the Quests block on a Shop Builder site.
+  For quests: create, edit, list, activate or delete, add Web3 rewards and conditions,
+  send a quest event, or check why a quest did not complete. For a Shop Builder site:
+  add and manage the Quests block (cards, order, hide, show, delete). Also loads for
+  edits to a Shop Builder site that has or should have a Quests block (it declines
+  non-Quests changes in one sentence).
   Triggers: "create a quest", "my quests", "trigger my quest", "add a Web3 reward",
-  "Shop Builder", "Quests block", "remove the Quests block".
+  "Shop Builder", "Quests block", "change my site".
 metadata:
   owner: r.aliyev
   domain: quests
@@ -21,8 +22,8 @@ metadata:
   or a question gets under about 80 words.
 - At most one question per message.
 - Which-shop replies (see [Which shop](references/shop-builder-quests-block.md#which-shop))
-  open with one short sentence at most, then the site list and the question. The whole
-  reply stays under 60 words.
+  start with the site list and the question. No capability or explanation sentence
+  comes before the question. The whole reply stays under 60 words.
 - No headings, and no Summary, Proposed setup or Need from you sections. The only
   exception is a write proposal, which uses the format in
   [quest-document.md](references/quest-document.md#proposal-format).
@@ -37,10 +38,13 @@ metadata:
   for example "The image needs an https address."
 - When asked about the publisher's project, ignore working-folder files that are not
   the project (logs, `*.jsonl`, scratch files). Never report them as content.
-- Declines, one sentence each, with no caveats or click-paths:
+- **Non-Quests change on a Shop Builder site** (a header, theme, colour, other block, or
+  any site edit that is not the Quests block): reply in at most two sentences, for
+  example "That's outside the Quests block, so change it in the Shop Builder editor."
+  No steps, menu names, click-paths or "Publish", even when asked how. Answer directly,
+  no tool calls needed.
+- Other declines, one sentence each, with no caveats or click-paths:
   - Publish request: "The skill doesn't publish; you publish in Publisher Account when ready. The site stays unpublished." Answer directly, no tool calls needed.
-  - Change outside the Quests block: "That's outside the Quests block; change it in the Shop Builder editor." Answer directly, no tool calls needed.
-    Give no steps, menu names or click-paths, even when asked how.
   - Localized card texts: "Card texts are single-language for now (localization is postponed). The heading can use only languages already enabled on the site, so which one should it use?" Answer directly, no tool calls needed.
     Never suggest a translated heading. Name locale codes only when the publisher gave them.
 
