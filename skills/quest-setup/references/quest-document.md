@@ -349,18 +349,21 @@ Recipe:
 
 ### Proposal format
 
-Use this format for a write proposal only, with plain labelled lines:
+Use the Plan shape from [reply-format.md](reply-format.md#write-proposals) for a write
+proposal only. Bold line first, then these bullets, in business terms:
 
-- Project: the publisher's project name
+```
+**Plan: create the "<quest name>" quest in <project name>**
 - What the player does:
-- Reward:
-- Quantity or amount:
+- Reward: <item name>, quantity 1
 - Schedule (UTC):
 - Repeat limit:
 - Payout impact:
 
-End with one line asking for a yes to create and activate this quest, or for the change
-they want.
+Next: reply "yes" to apply this exact plan.
+```
+
+If the publisher asks for a change instead, show the revised plan in the same shape.
 
 ## Safety stops for proposals and actions
 
