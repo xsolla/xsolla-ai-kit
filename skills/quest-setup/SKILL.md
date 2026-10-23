@@ -4,10 +4,11 @@ description: >-
   Use when the publisher wants to create, edit, list, activate, pause, delete or debug an
   Xsolla Quest Platform quest, including Web3 rewards, conditions and sending a quest
   event, or to add, reorder, retext, hide, show or remove the Quests block on a Shop
-  Builder site. Also covers a headless storefront quest section on explicit request. Key
-  triggers: "create a quest", "my quests", "trigger my quest", "add a Web3 reward", "why
-  didn't my quest complete", "Quests block", "remove the Quests block", "show quests in my
-  web shop". Not for other Shop Builder edits (header, theme, other blocks).
+  Builder site. Any other change to a Shop Builder site (header, theme, other blocks)
+  also loads this skill, only to decline it in one sentence. A headless storefront quest
+  section is covered on explicit request. Key triggers: "create a quest", "my quests",
+  "trigger my quest", "add a Web3 reward", "why didn't my quest complete", "Quests block",
+  "remove the Quests block", "show quests in my web shop".
 metadata:
   owner: r.aliyev
   domain: quests

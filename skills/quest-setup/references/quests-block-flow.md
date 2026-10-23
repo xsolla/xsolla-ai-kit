@@ -177,7 +177,8 @@ settings table). Never put reward text into the title or description as a workar
 
 1. **Choose quests.** List the existing quests (read-only) and agree the set, order
    and count with the publisher. A missing quest goes through the normal create flow
-   in [`SKILL.md`](../SKILL.md), created only after a yes to that exact proposal.
+   in [`SKILL.md`](../SKILL.md), created only after a yes to that exact proposal. Say a quest is missing only after the list read
+   succeeds and shows no match. If the read fails, say you cannot check whether it exists.
    **Missing quest offer:** a bold line that the quest doesn't exist yet, at most 2
    bullets, and one yes/no `Next:` ("want me to draft it?"). Under about 80 words. Do
    not draft creation details (player action, reward, schedule, event) before that yes.
