@@ -1,8 +1,9 @@
 # Headless Web Shop quest module
 
-Optional in-catalog quest section for the **headless** storefront from
-`shop-setup`. Not Site Builder / custom-blocks. Never a top-level nav tab,
-router entry, or new shop route.
+In-catalog quest section for the **headless** storefront from
+`shop-setup`. For a Shop Builder site use
+[`quests-block-flow.md`](quests-block-flow.md) instead. Never a
+top-level nav tab, router entry, or new shop route.
 
 Triggers: "show quests in my web shop", "add quest module to shop", "quest
 module", "catalog quests section".
@@ -21,7 +22,8 @@ contract. Give a brief progress update only when the work takes long enough to
 need one, then make the edits and run the shop's available checks.
 
 Out of scope: user progress / completion UI, fabricating sample quests,
-changing AdTech APIs, Site Builder blocks.
+changing AdTech APIs. Shop Builder sites are handled by
+[`quests-block-flow.md`](quests-block-flow.md), not here.
 
 ## Identity (source of truth)
 
@@ -62,6 +64,9 @@ configuration. Prefer the shop's existing variable naming (`VITE_*` for Vite,
 when the project already has a URL override setting or the developer supplied
 an exact URL.
 
+Agent-internal: these names go only into the shop's code and local config. Never
+name them in a reply.
+
 | Variable | Role |
 |---|---|
 | `XSOLLA_QP_MERCHANT_ID` | Path `merchant_id` |
@@ -75,7 +80,7 @@ For browser builds, use the shop's public-variable convention, for example
 such as `VITE_XSOLLA_PROJECT_ID` for catalog and checkout calls. Never expose
 the Quest Platform API key in browser configuration.
 
-`XSOLLA_QP_PUBLIC_BASE_URL` is **not** a substitute for the Quest Platform
+The public-base setting above is **not** a substitute for the Quest Platform
 host in [`qp-api-contract.md`](qp-api-contract.md). Agents keep using that
 host for quest writes. The storefront uses the public host and resolved
 merchant/project IDs only for the public list.
@@ -85,9 +90,7 @@ merchant/project IDs only for the public list.
 - Use `https://quests-platform.xsolla.com`. A configured public-base override
   takes precedence after validation.
 - Resolve the Quest Platform merchant/project pair from the connected Quest
-  Platform scope. Compare it with the shop's existing merchant and Store
-  project settings; use the Store project setting for quests only if it is
-  confirmed to be the same Quest Platform project. If the Quest Platform scope
+  Platform scope. Compare it with the shop's existing merchant setting. Never copy the Store catalog project ID into the Quest Platform project setting, and never offer to. If the Quest Platform project is unknown, ask which connected Quest Platform project to use. If the Quest Platform scope
   cannot be resolved, ask which connected Quest Platform project to use; never
   ask the developer to find or provide the API URL.
 - Never set the storefront public base to an internal or private host for a
@@ -221,12 +224,10 @@ send credentials (`credentials: 'include'`) on this fetch.
 5. Before writing, count imports and calls for the module in the bootstrap:
    if either count is greater than `1`, stop and ask. If one exists, update it
    in place with the current module path, resolved Quest Platform IDs, and base
-   URL. Check the active local/build configuration for the required public IDs;
-   do not mistake a sample or `.env.example` value for a configured value. If a
-   required value is missing, use the resolved scope to configure the shop's
-   local environment file with browser-safe IDs only, and restart the dev
-   server so Vite or the equivalent reloads build-time variables. If the scope
-   cannot be resolved, stop and ask instead of writing a placeholder. If none
+   URL. If the merchant or project ID (public IDs) is needed, ask the publisher for
+   it, and write it only into the shop's documented build config as part of the
+   approved source edit. Never read local config or env files to find it. If the
+   scope cannot be resolved, stop and ask instead of writing a placeholder. If none
    exists, add one import and one mount. Preserve unrelated bootstrap code.
 6. Re-run: second pass must be a no-op or overwrite the same targets. After
    write, tree-wide marker count and component-file count must each be exactly
@@ -243,27 +244,12 @@ send credentials (`credentials: 'include'`) on this fetch.
 
 ## Completion reply
 
-Do the work before reporting completion. After local checks, keep the reply
-short and structured. State only checks actually run. For example:
-
-```markdown
-## Summary
-Added a quests section to the shop catalog.
-
-## What players see
-Quest cards and reward details, with loading, empty and unavailable states.
-
-## Checks
-[Report the checks actually run and their results.]
-
-## Try it
-Run the shop locally using its documented development command.
-```
-
-Use the shop's actual commands and results instead of copying the example
-counts. Do not claim that live quests loaded or are visible unless the app
-itself has read and rendered them. A deployed endpoint is not a prerequisite
-for saying the storefront integration is complete.
+Do the work before reporting completion. Then reply in the shape from
+[reply-format.md](reply-format.md): a bold line on what the storefront now shows, bullets
+for only the checks actually run and their results, then `Next:`.
+Do not claim that live quests loaded or are visible unless the app itself has read and
+rendered them. A deployed endpoint is not a prerequisite for saying the storefront
+integration is complete.
 
 ## Agent rules
 
@@ -271,3 +257,9 @@ for saying the storefront integration is complete.
   module; describe the browser `fetch` URL shape instead.
 - Never fabricate quests or rewards for demos.
 - Errors degrade without breaking the catalog.
+- Never open `.env` or any env file, even to redact values, and never run `cat`, `sed`
+  or `head` on a credential file.
+- Do not describe catalog pages, their layout, or where the section will appear until
+  you have read the storefront source. If no storefront source is in the working folder,
+  reply with a bold line that no storefront source was found, and one `Next:` asking for
+  the path to the storefront source.

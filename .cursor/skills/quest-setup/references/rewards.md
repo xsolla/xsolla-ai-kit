@@ -13,7 +13,7 @@ These are the `parameters` of a node with `type: action` and
   "type": "web3_item",
   "purpose": "quest_completion",
   "body": {
-    "project": "<XSOLLA_PROJECT_ID the catalog read was scoped to>",
+    "project": "<project id the catalog read was scoped to>",
     "item_sku": "<catalog SKU>",
     "quantity": 1
   }
@@ -31,7 +31,7 @@ When the publisher requests a named item (`<requested item>`):
 - resolve it only through an available supported reward capability (catalog or
   type-specific provider read). For production `web3_item`, the supported
   capability is the read-only Store admin catalog lookup documented in
-  [auth and environment](auth-and-environment.md#store-admin-catalog). Page
+  [auth and environment](store-and-wallet.md#store-admin-catalog). Page
   through the whole catalog and match the requested name against the mintable
   items. Never use public web search for catalog lookup;
 - when the capability is available and returns exactly one verified candidate,
@@ -55,7 +55,7 @@ When the publisher requests a named item (`<requested item>`):
   endpoints, or a provider-default catalog).
 
 Never ask whether the destination is Backpack. The catalog project is the
-`XSOLLA_PROJECT_ID` the Store admin read was scoped to, never a value the
+project id the Store admin read was scoped to, never a value the
 publisher typed and never a project from another catalog.
 
 ## `web3_item`
@@ -123,7 +123,7 @@ event again.
 
 Both Web3 reward types need an `xsolla_id` in the event and a production wallet
 for that user. When a recipient is known, check the wallet with the recipient read in
-[`auth-and-environment.md`](auth-and-environment.md#recipient-wallet) during the
+[`store-and-wallet.md`](store-and-wallet.md#recipient-wallet) during the
 read-only work before the proposal, or otherwise before any publication write.
 Check it again before the event. A missing wallet is a non-retryable blocker,
 not an approval step. Confirm the wallet source is the Backpack-compatible
