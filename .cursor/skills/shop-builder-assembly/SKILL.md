@@ -51,24 +51,26 @@ until [expert-review.md](references/expert-review.md) records approval.
    first; the scripts do not). Do not read, stat, list or check that file yourself;
    only `preflight.py` reads it. Read back the matched merchant
    ID, project ID, safety environment, approval reference, active Publisher login,
-   target site, and catalog groups. If preflight refuses, report that in one sentence.
+   target site, and catalog groups. If preflight refuses, report that in the refusal shape under [Replies](#replies).
 2. If CLI context differs, switch it and rerun preflight; never override later commands.
 3. If the target site exists, export it before the first write with
    `scripts/backup_shop.py --brief <brief.json> --slug <slug> --output-dir <dir>`.
 4. Render with
    `scripts/render_plan.py <brief.json> --structure <backup-dir>/structure.json` and
-   show the ordered plan, exact block removals, and catalog mappings. Preserve
-   configured blocks lacking replacement data. Omit `--structure` only for a new
+   show the plan in the Plan shape under [Replies](#replies): the ordered operations,
+   exact block removals, and catalog mappings as bullets. Preserve configured blocks
+   lacking replacement data. Omit `--structure` only for a new
    slug's bootstrap-only plan.
 5. Ask for explicit confirmation of the plan's `confirmation_id` immediately before
-   the first remote write. Earlier permission to "build a shop" is not confirmation
+   the first remote write; the plan's Confirmation bullet and its `Next:` line ask for it.
+Earlier permission to "build a shop" is not confirmation
    of a new plan. Re-render and reconfirm if the brief or plan changes.
 
 The brief must target a sandbox or acknowledged dedicated test project. A `test`
 target must match the approval list that preflight reads, with exact IDs, approver, and
 approval reference. Never read, search for, stat, list, create, edit or suggest changing
-that list; if preflight refuses, stop and tell the user in one sentence that this
-project is not approved for test writes.
+that list; if preflight refuses, stop and reply in the refusal shape under [Replies](#replies),
+saying this project is not approved for test writes.
 
 Set `project.test_project_acknowledged` to `true` only when the publisher explicitly
 states in this conversation that the project is a dedicated test project. Never set it
@@ -76,8 +78,7 @@ yourself, and never infer it from the project name, a test site, an earlier yes,
 the approval list.
 
 Never use a partner project, publish, attach a production domain, enable live payments,
-or apply a saved version. For a publish request, say: "The skill doesn't publish; you
-publish in Publisher Account when ready. The site stays unpublished."
+or apply a saved version. For a publish request, use the publish shape under [Replies](#replies).
 
 A new site has generated blocks whose IDs do not exist before creation. Confirm the
 bootstrap, then export, re-render, and reconfirm before deleting any generated block.
@@ -123,8 +124,8 @@ It uses the same gate as a build: preflight, backup, plan, `confirmation_id`, th
 `scripts/apply_plan.py`, which verifies on exit and touches only the listed blocks.
 Deleting a block needs a `delete` op in the confirmed plan. Never use `--force` anywhere
 else. The `test_project_acknowledged` rule above applies to every brief. For a change to
-anything outside the Quests block in such a request, say: "That's outside the Quests
-block; change it in the Shop Builder editor."
+anything outside the Quests block in such a request, use the refusal shape under
+[Replies](#replies).
 
 ## Stop conditions
 
@@ -136,11 +137,36 @@ explain the smallest action needed to continue.
 
 ## Replies
 
-Answer briefly, ask one question at a time, and never include environment variable
-names, file paths, tokens, or internal codenames (for example, D2a) in a reply. Never
-mention the approval list or its location in a reply.
+Every reply uses one compact shape: a bold one-line answer, then 0 to 4 short bullets
+(`- Label: value`), then a last line `Next: <one question or action>`. A simple answer
+may be only the bold line and `Next:`. Ask one question at a time.
 
-For a publish request, say: "The skill doesn't publish; you publish in Publisher
-Account when ready. The site stays unpublished." For anything outside the Quests block
-in a block-operations request, use the sentence in the Block operations section. Keep
-each decline to one sentence, with no caveats.
+Never include environment variable names, file paths, tokens, or internal codenames (for
+example, D2a) in a reply. Never mention the approval list or its location in a reply.
+
+Plan: a bold `Plan: ...` line, up to about five bullets (Site, Change, defaults such as
+Reward icon, "Not published; you publish in Publisher Account", and Confirmation). Pack
+several operations or removals into one Change bullet, separated by semicolons.
+
+```
+**Plan: set reward text on the "QA Quest Badge" card**
+- Site: qa-quests-spike, Quests block on Main
+- Change: reward text → "Gold badge"
+- Reward icon: catalog image (unchanged)
+- Not published; you publish in Publisher Account
+- Confirmation: sha256:ab12cd34
+
+Next: reply "yes" to apply this exact plan.
+```
+
+Refusal, for anything outside the Quests block in a block-operations request:
+
+```
+**That's outside the Quests block.**
+- Change the header in the Shop Builder editor.
+
+Next: anything to change on the Quests block?
+```
+
+Publish request: bold "The skill doesn't publish.", bullets "You publish in Publisher Account
+when you're ready." and "The site stays unpublished.", then `Next:`.

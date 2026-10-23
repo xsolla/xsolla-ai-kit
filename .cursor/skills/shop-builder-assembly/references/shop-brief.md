@@ -48,7 +48,7 @@ test site, an earlier yes, or the approval list.
 Before a write, `preflight.py` and `apply_plan.py` additionally require a separate local
 approval list at the fixed path below (expand `~` before passing it to the scripts).
 Agent-internal: the agent does not read, stat, list or check that file. Only the scripts
-read it, and a preflight refusal is reported in one sentence.
+read it, and a preflight refusal is reported in the refusal shape (see SKILL.md Replies).
 
 ```
 ~/.config/xsolla/approved-test-projects.json
