@@ -26,7 +26,7 @@ target.
 
 Resolve a named `web3_item` through the Store admin virtual items reads at
 `https://store.xsolla.com/api/v2/project/{project_id}/admin/items/virtual_items`,
-with `{project_id}` set to the resolved project id from the credential set. Use only these
+with `{project_id}` set to the project id of the configured scope. Use only these
 two GET routes:
 
 | Route | Use |
@@ -86,57 +86,34 @@ publisher's approval covers it.
 
 ## Credential
 
-Use the selected merchant and project settings supplied by the configured
-integration. Never ask the publisher to paste a secret into chat or print a
-header.
+Use the scope supplied by the configured integration. Never ask the publisher to
+paste a secret into chat or print a header.
 
-Agent-internal: never show these names, values or this table to the publisher.
-The credential source uses these names. A process environment
-may provide the same values instead:
-
-| Value | Use |
-|---|---|
-| `XSOLLA_MERCHANT_ID` | merchant scope for the project |
-| `XSOLLA_PROJECT_ID` | Quest Platform project scope |
-| `XSOLLA_PROJECT_API_KEY` | project API key |
-
-Never print, log or commit credentials or encoded headers. Quest Platform
+Agent-internal: the agent never inspects credentials. It does not read the
+credential file or the environment, does not check which values exist, and does
+not write scripts that handle them. The configured request pattern attaches the
+publisher credential to each documented call on the request itself, as HTTP Basic
+with the merchant ID as the username and the project API key as the password, so
+the values never reach the command line, the output or a reply. Quest Platform
 publisher routes and the two Store admin GET reads in
-[Store admin catalog](#store-admin-catalog) use HTTP Basic with the configured
-merchant ID as the username and the project API key as the password. Send the
-key to no other Store, Catalog or unrelated route. Do not send multiple auth
-schemes in one request.
+[Store admin catalog](#store-admin-catalog) use that pair. Send the key to no other
+Store, Catalog or unrelated route. Do not send multiple auth schemes in one request.
 
-Agent-internal: never show the names or values below to the publisher.
-Read `.env` only as text; never source, execute, echo or interpolate the file.
-Never open `.env` in a file viewer or print it, and never paste a credential
-value into command text, a script file, a log or a reply. Parse the values
-inside the same command that sends the request, so they reach the HTTP client
-without ever appearing in the command line or its output. One safe pattern is a short script that parses `.env` as text and attaches
-`XSOLLA_MERCHANT_ID` and `XSOLLA_PROJECT_API_KEY` as the HTTP Basic pair
-on the request itself, so the values never reach the command line, the output
-or the reply. Send the request to a route from
-[`qp-api-contract.md`](qp-api-contract.md) or [Store admin catalog](#store-admin-catalog).
-Describe each call by method, route and body; do not hand the publisher a raw
-HTTP command.
+Never print, log or commit credentials or encoded headers. Describe each call by
+method, route and body; do not hand the publisher a raw HTTP command.
 
-Resolve the three credential values as an all-or-nothing set:
-
-1. If all three process-environment values are present and non-empty, use that
-   complete set.
-2. Otherwise, if all three project-local `.env` values are present and
-   non-empty, use that complete set.
-3. Never combine process values with `.env` values. If neither source is
-   complete, stop before network calls. Say in one sentence that Quest Platform
-   access for this project is not set up yet, and ask the publisher to set it up.
+If no access is configured, or a documented call returns 401 or 403, stop and say in
+one sentence that Quest Platform access isn't set up for this project. Do not look
+for another source of values.
 
 The project API key with the merchant ID as its Basic username is the only
-credential lane. Never request, print or use any other key as a fallback. If the developer asks for another lane, stop
-and direct them to the Quest Platform owner. Do not infer a target by probing
-hosts or by trying a credential against multiple gateways.
+credential lane. Never request, print or use any other key as a fallback. If the
+developer asks for another lane, stop and direct them to the Quest Platform owner.
+Do not infer a target by probing hosts or by trying a credential against multiple
+gateways.
 
-The catalog project is not a credential. It is the project id that
-the Store admin read was scoped to, never a value the publisher typed.
+The catalog project is not a credential. It is the project id that the Store admin
+read was scoped to, never a value the publisher typed.
 
 ## The merchant id in the path
 
@@ -251,35 +228,23 @@ fallback.
 
 ## Prerequisites and lane
 
-Detail behind the skill entry point. Agent-internal: when access is missing or unknown, this key-names
-parser is the only permitted check (names only). Never run `env`, `printenv`, grep the environment,
-open `.env` by any other means, or list `~/.config/xsolla`. Never show its output to the publisher:
-`python3 -c 'import pathlib; print([l.split("=")[0].strip() for l in pathlib.Path(".env").read_text().splitlines() if "=" in l])'`.
+Detail behind the skill entry point. Agent-internal: the agent never checks which
+credential values exist.
 
-Follow [`auth-and-environment.md`](auth-and-environment.md) for the production credential and scope.
-
-**The configured production publisher credential is the lane**. It works only
-on the project-scoped routes in
-[`qp-api-contract.md`](qp-api-contract.md); build each
-route from
-[Project-scoped routes](auth-and-environment.md#project-scoped-routes),
-not from memory. Merchant and project path values must come from the same
-resolved production scope, never user input or an unrelated response value (see
+**The configured production publisher credential is the lane**. It works only on the
+project-scoped routes in [`qp-api-contract.md`](qp-api-contract.md); build each route
+from [Project-scoped routes](auth-and-environment.md#project-scoped-routes), not from
+memory. Merchant and project path values come from the same configured scope, never
+user input or an unrelated response value (see
 [The merchant id in the path](auth-and-environment.md#the-merchant-id-in-the-path)).
-Resolve only the complete production credential source described in
-[Credential](auth-and-environment.md#credential). Never display
-`.env` or paste a key into a command; parse it inside the command that sends
-the request. Never fall back
-to another configuration, ask the publisher to paste secrets or search for
-another key. If no production credential is available, report only that the
-project is not set up for quests yet and stop. Keep service names and
-environment names out of user-facing replies. **Onboarding is a separate,
-offered write**, never silent, offered only after the developer says the
-project is their merchant's; see
+Never fall back to another configuration, ask the publisher to paste secrets or
+search for another key. If access is missing, report only that Quest Platform access
+isn't set up for this project, and stop. Keep service names and environment names
+out of user-facing replies. **Onboarding is a separate, offered write**, never
+silent, offered only after the developer says the project is their merchant's; see
 [Onboarding](auth-and-environment.md#onboarding).
 
-No other key is ever a fallback (see
-[Credential](auth-and-environment.md#credential)).
+No other key is ever a fallback (see [Credential](auth-and-environment.md#credential)).
 
 ## Safety stops for writes and credentials
 
