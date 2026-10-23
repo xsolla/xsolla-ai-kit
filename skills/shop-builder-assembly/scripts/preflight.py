@@ -13,11 +13,7 @@ from pathlib import Path
 from render_plan import common_layout_id
 from validate_shop_brief import load_brief, validate
 
-NEWER_CLI_FOR_LAYOUT = (
-    "this step needs a newer Xsolla CLI: the site has no common layout, and this CLI "
-    "has no `xsolla shopbuilder create-block` to add one. Update the CLI and run "
-    "preflight again; nothing was written"
-)
+LAYOUT_SKIPPED = "the common layout needs a newer Xsolla CLI; the site is built without it"
 
 
 def run_json(*args: str) -> object:
@@ -62,13 +58,16 @@ def cli_has_command(*command: str) -> bool:
     the usage line tells: it names the command when the command exists.
     """
 
-    result = subprocess.run(
-        ["xsolla", *command, "--help"],
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        check=False,
-    )
+    try:
+        result = subprocess.run(
+            ["xsolla", *command, "--help"],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            check=False,
+        )
+    except OSError:
+        return False
     usage = " ".join(["xsolla", *command])
     return any(
         line.strip() == usage or line.strip().startswith(usage + " ")
@@ -218,8 +217,8 @@ def main() -> int:
         websites = run_json("shopbuilder", "list-websites")
         landing = first_landing(websites, slug)
 
-        # Assembly adds the common layout after its page writes, so a CLI that cannot
-        # add it must stop the run here, before the first write.
+        # Assembly adds the common layout after its page writes. A CLI without
+        # create-block cannot add it, so assembly skips that step.
         layout_id = None
         if landing is not None:
             site = data(run_json("shopbuilder", "get-structure", "--slug", slug))
@@ -228,8 +227,13 @@ def main() -> int:
             layout_id = common_layout_id(
                 site, lambda block_id: site_block_module(slug, block_id)
             )
-        if layout_id is None and not cli_has_command("shopbuilder", "create-block"):
-            raise RuntimeError(NEWER_CLI_FOR_LAYOUT)
+        if layout_id is not None:
+            layout_step = "present"
+        elif cli_has_command("shopbuilder", "create-block"):
+            layout_step = "create"
+        else:
+            layout_step = "skip"
+            print(LAYOUT_SKIPPED, file=sys.stderr)
 
         groups = run_json(
             "catalog",
@@ -277,6 +281,7 @@ def main() -> int:
                 "landing_id": landing.get("_id") if landing else None,
                 "type": landing.get("type") if landing else None,
                 "common_layout_id": layout_id,
+                "layout_step": layout_step,
             },
             "catalog": {
                 "verified_groups": [

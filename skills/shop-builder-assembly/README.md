@@ -5,9 +5,9 @@ from a normalized JSON shop brief.
 
 ## Prerequisites
 
-- Xsolla CLI 1.9.4 or newer. A site without a common layout, including every new
-  site, also needs a CLI with `shopbuilder create-block` and the Shop Builder API
-  support for it; preflight stops before any write when the command is missing
+- Xsolla CLI 1.9.4 or newer. Adding the common layout to a site without one, including
+  every new site, needs a CLI with `shopbuilder create-block` and the Shop Builder API
+  support for it; without the command, assembly skips the layout step and says so
 - `xsolla auth login` completed for a Publisher account
 - An acknowledged dedicated test project with CLI sandbox mode disabled
 - Existing catalog group IDs for any `newStore` sections
