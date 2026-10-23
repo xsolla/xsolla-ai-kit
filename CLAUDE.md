@@ -29,6 +29,7 @@ On the headless path, skills call **Xsolla REST APIs directly**. The Shop Builde
 | `description-to-shop`           | Prose → shop brief for shop-builder-assembly — reached via shop-setup, not directly      |
 | `shopbuilder-translate`         | Translates Shop Builder page copy. Catalog and LiveOps text are out of scope             |
 | `game-web-portal`               | Builds a PC Game Web Portal (game home + shop) — handed off by the Shop Builder skills   |
+| `figma-to-webshop`              | Design file → shop brief + theme; structure via shop-builder-assembly                    |
 
 ---
 
@@ -68,6 +69,11 @@ Translate the Shop Builder FAQ / add German to the storefront page
 Set up a Game Web Portal for my PC game — a game home with news, rewards and a shop
 → triggers: shop-setup; on the Shop Builder path with the site kind portal, description-to-shop
   or shop-builder-assembly hands off to game-web-portal
+
+Turn this Figma design into a webshop / make the storefront match the comp
+→ triggers: figma-to-webshop (a design file the partner owns exists; writes the shop brief,
+  hands the structure to shop-builder-assembly, then applies theme, fonts, art and copy —
+  it never publishes)
 ```
 
 ---
