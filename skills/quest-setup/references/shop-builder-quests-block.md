@@ -16,7 +16,7 @@ to the publisher.
    right before the first remote write. Never run write commands by hand, make
    direct HTTP calls, or reuse browser cookies or tokens. An earlier "add quests to
    my site" is not that confirmation. If the Shop Builder block tooling or its
-   `block_operations` support is missing, stop and say so in one sentence, without
+   `block_operations` support is missing, stop and reply in the refusal shape, without
    naming any skill.
 2. **Approved test project only.** The brief uses `environment: test` on the gate's
    allowlist. Stop on a partner project, a `sandbox` target or an unclear project
@@ -66,29 +66,29 @@ a quest) never trigger it.
 
 1. Always run the read-only list, `xsolla shopbuilder list-websites --json`, before
    replying. Never say the list is unavailable without running it.
-2. If the command succeeds, start with the site list (name each site from the list)
-   and the question: which of these, or a headless storefront codebase. No capability
-   or explanation sentence comes before the question.
-3. Only if the command itself fails, say in one sentence that the site list couldn't
-   be read, and ask which shop it is, asking the publisher to log in to the Xsolla CLI
-   if needed.
+2. If the command succeeds, reply in the Which shop shape: the bold question, one bullet
+   per site name from the list, a bullet for a headless storefront codebase, then
+   `Next:`. No capability or explanation sentence comes before the question.
+3. Only if the command itself fails, reply with a bold line that the site list couldn't
+   be read, and a `Next:` asking which shop it is, and to log in to the Xsolla CLI if
+   needed.
 4. If the list is empty, say there are no Shop Builder sites and ask whether they mean
    a headless storefront.
 5. After the answer, continue here for a Shop Builder site, or with
    [`web-shop-module.md`](web-shop-module.md) for a headless storefront. A question about
    quests on the chosen Shop Builder site goes to [Describe the block](#describe-the-block).
 
-Keep the whole reply under 60 words. Show site names only, never IDs or hosts.
+Show site names only, never IDs or hosts.
 
 ### Discovery answer
 
 For a question such as "what can quests do on my Shop Builder site", run step 1 first,
-then reply with the which-shop question first, and after it at most one line on the
-block: cards show a title, description, image, an optional
-reward line and icon, and a heading; the skill can choose and order the cards, set
-their text and images, and move, hide, show or remove the block. Changes stay a draft
-until the publisher publishes them in Publisher Account. Keep the whole reply under
-about 60 words.
+then reply in the Which shop shape (bold question, one bullet per site, headless bullet,
+`Next:`). Describe the block only after the publisher picks a site: cards show a title,
+description, image, an optional reward line and icon, and a heading; the skill can choose
+and order the cards, set their text and images, and move, hide, show or remove the block.
+Changes stay a draft until the publisher publishes them in Publisher Account. Use the
+shape from [reply-format.md](reply-format.md), with at most four bullets.
 
 ## Describe the block
 
@@ -108,25 +108,27 @@ site. This is a read, so it needs no gate and no backup.
    text with `xsolla shopbuilder get-localization --slug <slug> --json`, which only
    retrieves the localization store, then look up that id's `en-US` text in one
    `python3` step. If the command or the lookup fails, say "heading is set" and move on.
-3. Reply in 2 to 4 short sentences, no bullet list, under about 70 words. Cover, in
-   order: the block exists on page X at position N (or that there is no Quests block,
-   with an offer to add one); N quests selected with limit M; the heading text, or
-   "heading is set"; and which cards have overrides, or "no card overrides". Add no
-   layout or style details, JSON, ids, or draft and publishing notes unless the
-   publisher asks.
-4. If Quest Platform access is not configured, add one sentence: "I can show the quest
-   names once Quest Platform access is set up." Never say the block cannot be confirmed
+3. Reply in the Describe-the-block shape from [reply-format.md](reply-format.md): a
+   bold line naming the site and that it has a Quests block (or, if there is none, that
+   it has no Quests block, with `Next:` offering to add one). Then bullets, in order:
+   Where (page X, position N); Quests (N selected, limit M); Heading (the heading text, or
+   "heading is set"); Card overrides (which cards, or "none"). Add no layout or style
+   details, JSON, ids, or draft and publishing notes unless the publisher asks.
+4. If Quest Platform access is not configured, add a bullet: "Quest names: I can show
+   them once Quest Platform access is set up." Never say the block cannot be confirmed
    when get-structure works.
-5. Ask at most one question, for example "Want to change anything on it?"
+5. The `Next:` line is one question, for example "want to change anything on it?"
 
-If the read itself fails, say in one sentence that the site structure couldn't be read,
-and ask the publisher to log in to the Xsolla CLI if needed.
+If the read itself fails, reply with a bold line that the site structure couldn't be read,
+and a `Next:` asking the publisher to log in to the Xsolla CLI if needed.
 
 ## Ask first
 
 If the site is not yet known, resolve it first in [Which shop](#which-shop).
 
-Ask in one message, and only for what you cannot read yourself:
+Ask in one message, in the question shape from [reply-format.md](reply-format.md) (a
+bold question, up to four bullets, then `Next:`), and only for what you cannot read
+yourself:
 
 - **Which quests** to show, and in what order. List the existing quests (read-only).
   If a wanted quest is missing, offer the normal create flow.
@@ -135,11 +137,11 @@ Ask in one message, and only for what you cannot read yourself:
   the quest name, explanation to the quest description, and image to the quest image
   when it has one. Reward icon defaults to the reward item's catalog image when the
   item has one.
-- **Card defaults line.** Whenever you stop or ask about card content, add one line
-  stating only the defaults that apply: "Card title is the quest name, explanation is
-  the quest description, image is the quest image when it has one. Reward icon is the
-  reward item's image when the catalog has one. The reward item image is used only as
-  the reward icon, never as the card image."
+- **Card defaults bullets.** Whenever you stop or ask about card content, add bullets for
+  only the defaults that apply: Card title is the quest name; Explanation is the quest
+  description; Image is the quest image when it has one; Reward icon is the reward item's
+  catalog image when the catalog has one. The reward item image is used only as the
+  reward icon, never as the card image.
 
 Use these defaults and state them in the proposal instead of asking: heading
 "Quests" (`en-US`), block at the end of the home page (or in the existing block's
@@ -285,8 +287,9 @@ Rules for every operation:
 - Ask for all missing inputs in one message. If the gate rejects the brief, relay its
   full error list in one reply, fix the brief and render again.
 - When a publisher value is rejected (for example an image URL that is not https), do
-  not repeat the value. Say what is required in one sentence: "The image needs an
-  https address."
+  not repeat the value. Use the rejected-value shape: a bold line that says what is
+  required, for example "**The reward icon needs an https link.**", then `Next:` asking
+  for an https image URL.
 - `index` is a position on the page, counted from 0. Reordering cards is an `update`
   of `questIds`; `move` repositions the whole block.
 - The gate touches only the blocks listed. Every other block must read back unchanged.
@@ -314,8 +317,11 @@ Rules for every operation:
 4. **Hand it to the gate.** Run the preflight, back up the target site, and render the
    plan from that backup. The plan must show exactly the requested operations with
    their leaf paths and values, any parent objects it creates, and any removal. Show
-   the plan, its `confirmation_id` and the defaults used. End the turn there; apply
-   nothing until the publisher confirms.
+   the plan in the Plan shape from [reply-format.md](reply-format.md): a bold
+   `Plan:` line, bullets for Site, Change (each operation and removal), the defaults used,
+   "Not published; you publish in Publisher Account", and `Confirmation: <confirmation_id>`,
+   then `Next: reply "yes" to apply this exact plan.` End the turn there; apply nothing
+   until the publisher confirms.
 5. **Apply.** After confirmation, apply exactly the confirmed plan with the gate's
    apply script, which reads the result back. On a partial failure, do not rerun it;
    take a fresh backup and plan first.
@@ -344,14 +350,12 @@ action to continue.
 ## Out of scope
 
 Publishing, domains, production sites, other blocks and the rest of the site, reward
-delivery claims, and creating the Shop Builder site itself. Decline each in one or two
-sentences, with no caveats or steps:
+delivery claims, and creating the Shop Builder site itself. Decline each in the shape from
+[reply-format.md](reply-format.md), with no caveats or steps:
 
-- Publish request: "The skill doesn't publish; you publish in Publisher Account when
-  ready. The site stays unpublished."
-- Any other part of the site: "That's outside the Quests block; change it in the Shop
-  Builder editor."
-- Localized card texts: "Card texts are single-language for now (localization is
-  postponed). The heading can use only languages already enabled on the site, so which
-  one should it use?" Never suggest a translated heading. Name locale codes only when
-  the publisher gave them.
+- Publish request: the publish shape ("The skill doesn't publish." with the two Publisher
+  Account bullets).
+- Any other part of the site: the refusal shape ("That's outside the Quests block." with
+  "Change it in the Shop Builder editor." as the bullet).
+- Localized card texts: the localized-texts shape. Never suggest a translated heading.
+  Name locale codes only when the publisher gave them.

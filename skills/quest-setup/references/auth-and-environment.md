@@ -102,8 +102,8 @@ Store, Catalog or unrelated route. Do not send multiple auth schemes in one requ
 Never print, log or commit credentials or encoded headers. Describe each call by
 method, route and body; do not hand the publisher a raw HTTP command.
 
-If no access is configured, or a documented call returns 401 or 403, stop and say in
-one sentence that Quest Platform access isn't set up for this project. Do not look
+If no access is configured, or a documented call returns 401 or 403, stop and reply in
+the access-missing shape (bold line: Quest Platform access isn't set up for this project). Do not look
 for another source of values.
 
 The project API key with the merchant ID as its Basic username is the only

@@ -246,8 +246,9 @@ send credentials (`credentials: 'include'`) on this fetch.
 
 ## Completion reply
 
-Do the work before reporting completion. Then reply in plain language, briefly: say
-what the storefront now shows, and name only the checks actually run and their results.
+Do the work before reporting completion. Then reply in the shape from
+[reply-format.md](reply-format.md): a bold line on what the storefront now shows, bullets
+for only the checks actually run and their results, then `Next:`.
 Do not claim that live quests loaded or are visible unless the app itself has read and
 rendered them. A deployed endpoint is not a prerequisite for saying the storefront
 integration is complete.

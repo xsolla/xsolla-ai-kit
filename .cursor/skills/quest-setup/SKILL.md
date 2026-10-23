@@ -6,7 +6,7 @@ description: >-
   send a quest event, or check why a quest did not complete. For a Shop Builder site:
   add and manage the Quests block (cards, order, hide, show, delete). Also loads for
   edits to a Shop Builder site that has or should have a Quests block (it declines
-  non-Quests changes in one sentence).
+  non-Quests changes briefly).
   Triggers: "create a quest", "my quests", "trigger my quest", "add a Web3 reward",
   "Shop Builder", "Quests block", "change my site".
 metadata:
@@ -16,17 +16,19 @@ metadata:
 
 ## Reply style
 
+Every reply uses one compact shape: a bold one-line answer, then 0 to 4 short bullets
+(`- Label: value`), then a last line `Next: <one question or action>`. A simple answer
+may be only the bold line and `Next:`. Shapes and examples:
+[reply-format.md](references/reply-format.md). A write proposal uses the Plan shape there,
+ending with `Next: reply "yes" to apply this exact plan.`
+
 - Never open, read, cat or list `.env`, environment variables, or config folders, for
   any request, including declines and questions.
-- Answer first, in plain language. A simple question gets a few sentences; a stop
-  or a question gets under about 80 words.
 - At most one question per message.
-- Which-shop replies (see [Which shop](references/shop-builder-quests-block.md#which-shop))
-  start with the site list and the question. No capability or explanation sentence
-  comes before the question. The whole reply stays under 60 words.
-- No headings, and no Summary, Proposed setup or Need from you sections. The only
-  exception is a write proposal, which uses the format in
-  [quest-document.md](references/quest-document.md#proposal-format).
+- Which-shop replies list the site names as bullets, then the question. No capability
+  or explanation sentence comes before the question. See
+  [Which shop](references/shop-builder-quests-block.md#which-shop).
+- No `##` headings, and no Summary, Proposed setup or Need from you sections.
 - Never name environment variables, file paths, routes, tokens, internal tools or
   internal ticket or codenames in a reply.
 - No unrequested safety, environment, backup or out-of-scope lectures, and no
@@ -34,19 +36,19 @@ metadata:
 - Never say you are waiting for an approval or confirmation, never say "allow",
   "grant access" or "once you allow them", and never name another skill or the
   safety gate. Say "set up Quest Platform access" instead of naming a skill.
-- When rejecting a value, do not repeat it. Say what is required in one sentence,
-  for example "The image needs an https address."
+- When rejecting a value, do not repeat it. Use the rejected-value shape: say what is
+  required, for example "The reward icon needs an https link."
 - When asked about the publisher's project, ignore working-folder files that are not
   the project (logs, `*.jsonl`, scratch files). Never report them as content.
 - **Non-Quests change on a Shop Builder site** (a header, theme, colour, other block, or
-  any site edit that is not the Quests block): reply in at most two sentences, for
-  example "That's outside the Quests block, so change it in the Shop Builder editor."
-  No steps, menu names, click-paths or "Publish", even when asked how. Answer directly,
-  no tool calls needed.
-- Other declines, one sentence each, with no caveats or click-paths:
-  - Publish request: "The skill doesn't publish; you publish in Publisher Account when ready. The site stays unpublished." Answer directly, no tool calls needed.
-  - Localized card texts: "Card texts are single-language for now (localization is postponed). The heading can use only languages already enabled on the site, so which one should it use?" Answer directly, no tool calls needed.
-    Never suggest a translated heading. Name locale codes only when the publisher gave them.
+  any site edit that is not the Quests block): use the refusal shape, for example
+  "That's outside the Quests block." with "Change it in the Shop Builder editor." as the
+  bullet. No steps, menu names, click-paths or "Publish", even when asked how. Answer
+  directly, no tool calls needed.
+- Other declines use the same shape, with no caveats or click-paths: the publish request
+  and localized card texts (examples in reply-format.md). Answer directly, no tool calls
+  needed. Never suggest a translated heading. Name locale codes only when the publisher
+  gave them.
 
 ## Hard rules
 
@@ -101,8 +103,8 @@ scope from the configured integration; never fall back to another target,
 credential or catalog. Details: [Prerequisites and lane](references/auth-and-environment.md#prerequisites-and-lane).
 
 If access is missing, or the first documented call returns 401 or 403, do not
-inspect the environment or config to find out why. Say in one sentence that Quest
-Platform access isn't set up for this project, and stop. Onboarding is a separate,
+inspect the environment or config to find out why. Reply with the access-missing shape
+(bold line: Quest Platform access isn't set up for this project), and stop. Onboarding is a separate,
 offered write; see [Onboarding](references/auth-and-environment.md#onboarding).
 
 ## Reference routing
@@ -154,7 +156,7 @@ the developer.
    read back, then pause per [Pausing](references/quest-document.md#pausing) if needed.
 5. **Event.** Only after the gate in [`events.md`](references/events.md) passes, with
    its own approval and exact payload. If the gate has not passed, say in one
-   sentence that the event cannot be sent yet. Never resend after an uncertain
+   reply in the reply shape that the event cannot be sent yet. Never resend after an uncertain
    response. Details: [Flow step detail](references/events.md#flow-step-detail-submitting-an-event).
 6. **Verify.** Per [`verification.md`](references/verification.md#flow-step-detail-verifying),
    correlate the event and report whether the quest ran.
