@@ -49,7 +49,9 @@ until [expert-review.md](references/expert-review.md) records approval.
 
 1. Run `scripts/preflight.py <brief.json> --approved-test-projects <local-allowlist.json>`.
    Read back the matched merchant ID, project ID, safety environment, approval reference, active Publisher login,
-   target site, and catalog groups.
+   target site, and catalog groups. When the site needs a common layout (a new site, or
+   one without it) and the CLI has no `shopbuilder create-block`, preflight stops with
+   "this step needs a newer Xsolla CLI"; write nothing.
 2. If CLI context differs, switch it and rerun preflight; never override later commands.
 3. If the target site exists, export it before the first write with
    `scripts/backup_shop.py --brief <brief.json> --slug <slug> --output-dir <dir>`.
@@ -77,9 +79,11 @@ After confirmation, apply the plan in this dependency order:
 
 1. **Theme** — set site and page theme source fields; page theme overrides site theme.
 2. **Pages** — create all page paths before linking navigation.
-3. **Site layout** — after page/template creation, add `common-layout` only if
-   `get-structure` has no layout; adding it earlier suppresses some template
-   headers and footers. Verify its ID appears in both `blocks` and `layouts`.
+3. **Site layout** — after page/template creation, add `common-layout` only if the
+   site has none; adding it earlier suppresses some template headers and footers.
+   Find it by module, not position: `get-structure` lists layouts by ID, so read each
+   one with `get-block`. Other layouts, such as a sidebar's side-by-side layout, stay.
+   Verify the common layout's ID appears in both `blocks` and `layouts`.
 4. **Navigation** — resolve page IDs and add internal links only after pages exist.
 5. **Blocks** — add/move/update blocks page by page; resolve IDs after each structural
    change and use targeted patches rather than replacing `values` or `components`.

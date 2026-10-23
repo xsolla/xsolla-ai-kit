@@ -8,6 +8,7 @@ import copy
 import hashlib
 import json
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 from validate_shop_brief import load_brief, validate
@@ -66,6 +67,7 @@ CUSTOM_CODE_WARNING = (
     "The Custom code block is added empty and hidden; paste your code and make the "
     "block visible in the Site Builder editor."
 )
+COMMON_LAYOUT = "common-layout"
 
 
 def choose_preset(brief: dict) -> str:
@@ -151,6 +153,51 @@ def page_path(page: object) -> str | None:
         return path
     if isinstance(path, dict) and isinstance(path.get("pathSegment"), str):
         return path["pathSegment"]
+    return None
+
+
+def site_block_ids(blocks: object) -> set:
+    if not isinstance(blocks, list):
+        return set()
+    return {
+        block if isinstance(block, str) else block.get("_id")
+        for block in blocks
+        if isinstance(block, (str, dict))
+    }
+
+
+def common_layout_id(
+    structure: dict, module_of: Callable[[str], object] | None = None
+) -> str | None:
+    """Return the ID of the site's ``common-layout`` block, or None if it has none.
+
+    Other layouts may sit next to it: a site with a sidebar lists its side-by-side
+    layout first. get-structure lists site-level blocks by ID only, so ``module_of``
+    reads a layout's module (get-block on a live site) when ``blocks`` does not inline it.
+    """
+
+    layouts = structure.get("layouts")
+    if not isinstance(layouts, list):
+        raise ValueError("get-structure returned no layouts list")
+    if not all(isinstance(layout_id, str) for layout_id in layouts):
+        raise ValueError("get-structure returned invalid layout IDs")
+    blocks = structure.get("blocks")
+    inlined = {
+        block.get("_id"): effective_module(block)
+        for block in (blocks if isinstance(blocks, list) else [])
+        if isinstance(block, dict)
+    }
+    for layout_id in layouts:
+        if layout_id in inlined:
+            module = inlined[layout_id]
+        elif module_of is not None:
+            module = module_of(layout_id)
+        else:
+            raise ValueError(f"cannot read the module of site layout {layout_id}")
+        if module == COMMON_LAYOUT:
+            if layout_id not in site_block_ids(blocks):
+                raise ValueError("existing common layout is missing from site blocks")
+            return layout_id
     return None
 
 
@@ -395,7 +442,7 @@ def build_plan(brief: dict, current_structure: object | None = None) -> dict:
         ],
         "pages": pages,
         "site_layout": {
-            "module": "common-layout",
+            "module": COMMON_LAYOUT,
             "when": "after-pages",
             "if_missing": True,
         },

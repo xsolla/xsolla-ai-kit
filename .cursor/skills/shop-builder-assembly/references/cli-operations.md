@@ -9,11 +9,13 @@ project overrides after preflight.
 | Discover | `xsolla config list --json` | Local profile | Merchant and project match; sandbox mode is off |
 | Discover | `xsolla auth list-account --json` | Credential store | Active Publisher login state |
 | Safety | `preflight.py --approved-test-projects <file>` | Separate local approval record | Exact test-project identity is allowlisted |
+| Safety | `shopbuilder create-block --help`, only when the site has no common layout | Installed CLI | The usage line names `create-block`; otherwise stop before any write |
 | Discover | `xsolla shopbuilder list-websites --json` | Project context | Slug, landing ID, type |
 | Backup | `get-landing`, `get-structure`, `get-localization`, `list-assets`, `list-versions` | Existing slug | Restorable configuration evidence |
 | Bootstrap | `create-website --type topup` | Name, slug | Empty landing with `type:null` |
 | Bootstrap | `set-landing-type --type store` | Slug | Configured webshop landing |
 | Pages | `add-page` | Slug, name, path | Page with default template blocks |
+| Site layout | `get-block --slug <slug> --block-id <id>` for each ID in `layouts` | `get-structure` layout IDs | The module of each site layout; `common-layout` can sit next to other layouts |
 | Site layout | `create-block --slug <slug> --block common-layout` (only if missing) | Pages already created | Site-level layout required by Editor, Publish, and preview; avoids suppressing template header/footer |
 | Blocks | `add-block`, `move-block`, and page-scoped `update-block` removal patches | Landing/page/block IDs | Ordered page block list |
 | Theme | `update-block` with `type:site` and `type:page` | Landing/page IDs, targeted patches | Site and page source themes |
@@ -82,5 +84,5 @@ the confirmed plan, stop before writes and report the extra paths instead of lea
 a silently mixed preset or deleting the whole website.
 
 Use `scripts/verify_structure.py` for the deterministic portion of verification. It
-does not replace `verify-website`, localization/catalog checks, or visual preview; it
+reads each site layout's module with read-only `get-block`. It does not replace `verify-website`, localization/catalog checks, or visual preview; it
 isolates structural failures from the currently tracked CLI readiness/preview defects.

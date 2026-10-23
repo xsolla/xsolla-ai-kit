@@ -15,10 +15,13 @@ import uuid
 from pathlib import Path
 
 from render_plan import (
+    COMMON_LAYOUT,
     CUSTOM_CODE_WARNING,
     build_plan,
+    common_layout_id,
     effective_module,
     page_path,
+    site_block_ids,
     structure_data,
     structure_hash,
 )
@@ -197,38 +200,29 @@ def structure(slug: str) -> dict:
     return value
 
 
+def site_block_module(slug: str, block_id: str) -> object:
+    block = data(
+        run_json("shopbuilder", "get-block", "--slug", slug, "--block-id", block_id)
+    )
+    return block.get("module") if isinstance(block, dict) else None
+
+
 def ensure_common_layout(slug: str) -> str:
     """Attach the site layout after pages so template headers/footers survive."""
-    def block_ids(value: object) -> set[str]:
-        if not isinstance(value, list):
-            return set()
-        return {
-            block if isinstance(block, str) else block.get("_id")
-            for block in value
-            if isinstance(block, str) or isinstance(block, dict)
-        }
-
-    current = structure(slug)
-    layouts = current.get("layouts")
-    if not isinstance(layouts, list):
-        raise RuntimeError("get-structure returned no layouts list")
-    if layouts:
-        if not all(isinstance(layout_id, str) for layout_id in layouts):
-            raise RuntimeError("get-structure returned invalid layout IDs")
-        if layouts[0] not in block_ids(current.get("blocks")):
-            raise RuntimeError("existing common layout is missing from site blocks")
-        return layouts[0]
+    layout_id = common_layout_id(
+        structure(slug), lambda block_id: site_block_module(slug, block_id)
+    )
+    if layout_id is not None:
+        return layout_id
     created = data(
-        run_json(
-            "shopbuilder", "create-block", "--slug", slug, "--block", "common-layout"
-        )
+        run_json("shopbuilder", "create-block", "--slug", slug, "--block", COMMON_LAYOUT)
     )
     block = created.get("block") if isinstance(created, dict) else None
     block_id = block.get("_id") if isinstance(block, dict) else None
     if not isinstance(block_id, str):
         raise RuntimeError("create-block returned no layout block ID")
     saved = structure(slug)
-    if block_id not in saved.get("layouts", []) or block_id not in block_ids(
+    if block_id not in saved.get("layouts", []) or block_id not in site_block_ids(
         saved.get("blocks")
     ):
         raise RuntimeError("created common layout is missing from the saved structure")

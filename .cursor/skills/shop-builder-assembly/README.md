@@ -5,8 +5,9 @@ from a normalized JSON shop brief.
 
 ## Prerequisites
 
-- Xsolla CLI build that includes `shopbuilder create-block`; the corresponding
-  Shop Builder API support must be deployed before assembly uses it
+- Xsolla CLI 1.9.4 or newer. A site without a common layout, including every new
+  site, also needs a CLI with `shopbuilder create-block` and the Shop Builder API
+  support for it; preflight stops before any write when the command is missing
 - `xsolla auth login` completed for a Publisher account
 - An acknowledged dedicated test project with CLI sandbox mode disabled
 - Existing catalog group IDs for any `newStore` sections
@@ -42,7 +43,7 @@ from a normalized JSON shop brief.
 
    For a new slug, render without `--structure` and confirm the bootstrap-only plan.
    Bootstrap creates the landing and page paths, then adds a site-level common
-   layout if none exists. It never adds the layout before page/template setup.
+   layout if the site has none. It never adds the layout before page/template setup.
    Then back up generated templates and
    repeat with `--structure` before removing blocks. Use the same re-backup and
    reconfirmation boundary after adding missing paths to an existing site.

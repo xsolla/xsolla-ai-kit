@@ -365,6 +365,7 @@ class ShopBriefTests(unittest.TestCase):
             mock.patch.object(
                 preflight, "run_json", side_effect=[config, accounts, {}, {}]
             ) as run_json,
+            mock.patch.object(preflight, "cli_has_command", return_value=True),
             contextlib.redirect_stdout(stdout),
         ):
             self.assertEqual(0, preflight.main())
