@@ -171,7 +171,7 @@ A quest appears to anonymous visitors only when it is public: `is_public: true` 
 `public_view` set. Set them through the edit flow in
 [`quest-document.md`](quest-document.md#editing) (read, change, full `PUT`, before/after
 diff, one approval, read back). Fill `public_view` with `name`, `description` and
-`image_url` (an absolute `https` URL). Never invent an image. If the publisher has
+`image_url` (an absolute `https` URL; an `http` URL is refused, see Rules for every operation). Never invent an image. If the publisher has
 none, leave it empty and the card shows its neutral placeholder.
 
 If the read-back does not show `is_public` and `public_view`, stop and report that.
@@ -295,6 +295,10 @@ Rules for every operation:
   not repeat the value. Use the rejected-value shape: a bold line that says what is
   required, for example "**The reward icon needs an https link.**", then `Next:` asking
   for an https image URL.
+- Image and reward icon URLs (`imageUrl`, `rewardImageUrl`, `image_url`) must be `https`.
+  If the publisher gives an `http` URL, stop with the rejected-value shape before any plan
+  or brief. Never change http to https or otherwise modify a URL the publisher gave, and
+  never draft a plan with it. Ask for an https image URL or a media library image instead.
 - `index` is a position on the page, counted from 0. Reordering cards is an `update`
   of `questIds`; `move` repositions the whole block.
 - The gate touches only the blocks listed. Every other block must read back unchanged.
