@@ -22,8 +22,7 @@ Never print, log or commit credentials or encoded headers. Describe each call by
 method, route and body; do not hand the publisher a raw HTTP command.
 
 If no access is configured, or a documented call returns 401 or 403, stop and reply in
-the access-missing shape (bold line: Quest Platform access isn't set up for this project). Do not look
-for another source of values.
+the access-missing shape (bold line: Quest Platform access isn't set up for this project). Do not look for another source of values, and do not make any other call to check access: no direct HTTP request, no environment or `.env` read, no search for credential patterns. Do not explain how credentials are attached, and do not ask for a route. Use the exact access-missing example in [reply-format.md](reply-format.md#examples).
 
 The project API key with the merchant ID as its Basic username is the only
 credential lane. Never request, print or use any other key as a fallback. If the

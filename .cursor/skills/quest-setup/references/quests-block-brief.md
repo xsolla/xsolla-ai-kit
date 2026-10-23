@@ -114,6 +114,7 @@ Move, duplicate, hide, show, delete (delete needs its own yes, Hard rule 4):
 Rules for every operation:
 
 - Keys not in the settings table are rejected by the gate. Never invent one.
+- `maxQuests` below 1 or above 24 gets one refusal line that names only the range, 1 to 24. Never offer to hide the block instead.
 - Ask for all missing inputs in one message. If the gate rejects the brief, relay its
   full error list in one reply, fix the brief and render again.
 - When a publisher value is rejected (for example an image URL that is not https), do

@@ -17,8 +17,7 @@ metadata:
 # Quest setup
 
 Quests and the Quests block on a Shop Builder site. Every reply follows
-[reply-format.md](references/reply-format.md): one bold line, up to four bullets, one
-`Next:` ask. Never name environment variables, file paths, tokens, routes, tools, tickets
+[reply-format.md](references/reply-format.md): one bold line, up to four bullets, one `Next:` ask. The bold line comes first, with no text before it. Never name environment variables, file paths, tokens, routes, tools, tickets
 or other skills in a reply. Never open `.env`, environment variables or config folders,
 even to redact them, for any request.
 
@@ -43,7 +42,7 @@ even to redact them, for any request.
    list `~/.config/xsolla` or the home folder, paste a key into a command, or write a
    helper to read or send credentials. Make the documented call only through the
    configured pattern in [Credential](references/auth-credentials.md#credential), and
-   never to probe. Never ask the publisher to paste secrets or find another key.
+   never to probe. Never ask the publisher to paste secrets or find another key. Never make a direct HTTP call, search the skills for credential patterns, or explain how credentials are attached, even when access fails.
 5. **No IDs or hosts in replies.** Outside the Web Shop URL and the event payload, never
    show merchant, project or player IDs, hosts, service names or environment names. A
    reward item's SKU and image URL are fine.
@@ -60,10 +59,12 @@ even to redact them, for any request.
     Resolve named items with the read-only lookup in
     [Named item behavior](references/rewards.md#named-item-behavior). If the lookup is
     unavailable, say so without implying the catalog is disconnected. If it finds no
-    match, report that and stop before any write.
+    match, report that and stop before any write. Never propose a reward item, SKU or reward text that the publisher did not give and a lookup did not verify.
 11. **Image and reward icon URLs must be https.** If the publisher gives an `http` URL,
     stop before any plan with the rejected-value shape. Never change it to https or draft
     a plan with it ([reply-format.md](references/reply-format.md#examples)).
+12. **No temp files.** Never write scratch or output files to `/tmp`, the working folder or anywhere else. Parse command output in a pipe.
+13. **Named sites.** Write only to the site the publisher chose under [Which shop](references/quests-block-flow.md#which-shop). A site they name that is not that choice, or one they say must not be touched, gets no plan and no write.
 
 ## Prerequisites
 
@@ -73,7 +74,7 @@ writes are separate. Resolve scope from the configured integration; never fall b
 another target, credential or catalog: [Prerequisites and lane](references/auth-credentials.md#prerequisites-and-lane).
 
 If access is missing, or the first documented call returns 401 or 403, do not inspect the
-environment or config. Reply with the access-missing shape and stop. Onboarding is a
+environment or config. Reply with the exact access-missing shape in [reply-format.md](references/reply-format.md#examples) and stop, with no credential explanation. Onboarding is a
 separate, offered write: [Onboarding](references/auth-credentials.md#onboarding).
 
 ## Which shop first
@@ -145,8 +146,7 @@ answers, ask the developer.
    yes; quest approval never authorizes site writes. A question about the block on a known
    site is a read: [Describe the block](references/quests-block-flow.md#describe-the-block).
 9. **Headless Web Shop section.** Only on explicit request, and only then load
-   [web-shop-module.md](references/web-shop-module.md). Quest approval never authorizes
-   shop source edits.
+   [web-shop-module.md](references/web-shop-module.md). Quest approval never authorizes shop source edits. Never copy the catalog project ID into the Quest Platform project setting, and never offer to; ask which Quest Platform project to use.
 
 ## Safety stops
 

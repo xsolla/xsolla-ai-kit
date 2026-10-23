@@ -21,7 +21,7 @@ Loaded for a Quests block request on a Shop Builder site. Settings and the opera
    intended. Never proceed on assumption. The agent never reads the approval list and
    never sets `test_project_acknowledged`; only the gate's preflight reads the list, and
    the flag is set only when the publisher says in this conversation that the project is a
-   dedicated test project (the `shop-builder-assembly` shop brief describes the flag).
+   dedicated test project (the `shop-builder-assembly` shop brief describes the flag). Before the publisher has said in this conversation that the project is a dedicated test project, do not run preflight, backup or render, and do not read the approval list. Reply with the draft plan in [reply-format.md](reply-format.md#draft-plan-before-confirmation), and make `Next:` the single ask: "Confirm this is a dedicated test project, and I'll give you the final plan to approve." After the publisher confirms in a later message, run the gate and show the final Plan with its Confirmation line, asking for yes. Never set the flag without that statement. A site other than the one the publisher chose under Which shop, or one they say must not be touched, gets no plan and no write: say so and ask which site to use.
 3. **Never publish.** Do not apply a saved version, attach a domain or enable live
    payments. For a publish request, say: "The skill doesn't publish; you publish in
    Publisher Account when ready. The site stays unpublished."
@@ -190,12 +190,12 @@ settings table). Never put reward text into the title or description as a workar
    SKU up with the read-only Store admin route in
    [`store-and-wallet.md`](store-and-wallet.md#store-admin-catalog), and if
    the item has an `https` `image_url`, propose it as that card's `rewardImageUrl`.
-   No image means no icon: leave it unset. Never invent a URL. Reward text and icon
+   No image means no icon: leave it unset. Never invent a URL. Never propose a reward item, SKU or reward text that the publisher did not give and a lookup did not verify. Reward text and icon
    changes the publisher asks for go through the same proposal and yes as title,
    description and image. Turn the agreed settings and defaults into `block_operations`.
    For an existing block, take its id from the structure in the gate's backup. Check
    every key against the settings table.
-4. **Hand it to the gate.** Run the preflight, back up the target site, and render the
+4. **Hand it to the gate.** After the dedicated-test confirmation in Hard rule 2, run the preflight, back up the target site, and render the
    plan from that backup. The plan must show exactly the requested operations with
    their leaf paths and values, any parent objects it creates, and any removal. Show
    the plan in the Plan shape from [reply-format.md](reply-format.md): a bold

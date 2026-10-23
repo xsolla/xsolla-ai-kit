@@ -5,6 +5,7 @@ to copy.
 
 ## Rules
 
+- Line 1 is the bold line. Nothing comes before it, not even a sentence about what you found.
 - No `##` headings, and no Summary, Proposed setup or Need from you sections.
 - `Next:` holds exactly one question or action, never two and never an "or" offer. At most
   one question per message.
@@ -23,6 +24,10 @@ to copy.
   Shop Builder site use the refusal shape. Never give steps, menu names or click-paths for
   a decline, even when asked how. Never suggest a translated heading or name locale codes
   the publisher did not give.
+- A "why" follow-up or a refusal is at most two sentences, with no list and under about 40 words. Don't guess a cause you can't verify; say what you would need to check.
+- Never propose a reward item, SKU or reward text the publisher did not give, or one a lookup did not verify.
+- Access missing: use the access-missing example below word for word. Don't explain credentials, and don't offer another way to get access.
+- A limit outside 1 to 24 gets one line that names only the range, 1 to 24. Don't offer to hide the block.
 
 ## Shape
 
@@ -38,6 +43,10 @@ to copy.
 - Then up to about five bullets, for example Site, Change, defaults such as Reward icon,
   "Not published; you publish in Publisher Account", and Confirmation.
 - Last line: `Next: reply "yes" to apply this exact plan.`
+
+### Draft plan before confirmation
+
+Until the publisher has said in this conversation that the project is a dedicated test project, use the draft form instead: a bold `Draft plan: ...` line, the change bullets, "Not published; you publish in Publisher Account", no Confirmation line, and `Next: Confirm this is a dedicated test project, and I'll give you the final plan to approve.` as the only ask. Do not run preflight, backup or render first.
 
 For a quest create or edit, the bullets are the labelled lines in
 [quest-publish.md](quest-publish.md#proposal-format).
@@ -79,6 +88,17 @@ Plan:
 - Confirmation: sha256:ab12cd34
 
 Next: reply "yes" to apply this exact plan.
+```
+
+Draft plan before confirmation:
+
+```
+**Draft plan: set reward text on card 2 of the Quests block**
+- Site: qa-quests-spike, Quests block on Main
+- Change: reward text → "Gold badge"
+- Not published; you publish in Publisher Account
+
+Next: Confirm this is a dedicated test project, and I'll give you the final plan to approve.
 ```
 
 Refusal, outside the Quests block:

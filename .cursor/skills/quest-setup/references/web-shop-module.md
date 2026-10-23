@@ -90,9 +90,7 @@ merchant/project IDs only for the public list.
 - Use `https://quests-platform.xsolla.com`. A configured public-base override
   takes precedence after validation.
 - Resolve the Quest Platform merchant/project pair from the connected Quest
-  Platform scope. Compare it with the shop's existing merchant and Store
-  project settings; use the Store project setting for quests only if it is
-  confirmed to be the same Quest Platform project. If the Quest Platform scope
+  Platform scope. Compare it with the shop's existing merchant setting. Never copy the Store catalog project ID into the Quest Platform project setting, and never offer to. If the Quest Platform project is unknown, ask which connected Quest Platform project to use. If the Quest Platform scope
   cannot be resolved, ask which connected Quest Platform project to use; never
   ask the developer to find or provide the API URL.
 - Never set the storefront public base to an internal or private host for a
