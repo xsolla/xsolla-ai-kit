@@ -128,8 +128,7 @@ Resolve the three credential values as an all-or-nothing set:
    non-empty, use that complete set.
 3. Never combine process values with `.env` values. If neither source is
    complete, stop before network calls. Say in one sentence that Quest Platform
-   access for this project is not configured yet, and ask the publisher to set it up
-   with the merchant setup skill.
+   access for this project is not set up yet, and ask the publisher to set it up.
 
 The project API key with the merchant ID as its Basic username is the only
 credential lane. Never request, print or use any other key as a fallback. If the developer asks for another lane, stop
@@ -163,7 +162,10 @@ Use the merchant/project-scoped Quest Platform route family in the
 
 Do not substitute an account-scoped, publisher-scoped or unscoped route from a
 different authentication lane. A route absent from the versioned contract is
-not called.
+not called. These routes run only inside the flow in [`SKILL.md`](../SKILL.md)
+(bring-up, proposal, publication, edit, event, verification, delete). A GET with
+merchant or project ids made to check, explore or test anything outside that flow is
+not allowed, even with the configured credentials.
 
 ## When a route is missing
 
@@ -249,8 +251,9 @@ fallback.
 
 ## Prerequisites and lane
 
-Detail behind the skill entry point. Agent-internal: if needed, check which setting names exist with this
-key-names parser. Never show its output to the publisher:
+Detail behind the skill entry point. Agent-internal: when access is missing or unknown, this key-names
+parser is the only permitted check (names only). Never run `env`, `printenv`, grep the environment,
+open `.env` by any other means, or list `~/.config/xsolla`. Never show its output to the publisher:
 `python3 -c 'import pathlib; print([l.split("=")[0].strip() for l in pathlib.Path(".env").read_text().splitlines() if "=" in l])'`.
 
 Follow [`auth-and-environment.md`](auth-and-environment.md) for the production credential and scope.

@@ -15,8 +15,9 @@ to the publisher.
    plan, then an explicit publisher confirmation of the plan's `confirmation_id`
    right before the first remote write. Never run write commands by hand, make
    direct HTTP calls, or reuse browser cookies or tokens. An earlier "add quests to
-   my site" is not that confirmation. If `shop-builder-assembly` or its
-   `block_operations` support is missing, stop and say so in one sentence.
+   my site" is not that confirmation. If the Shop Builder block tooling or its
+   `block_operations` support is missing, stop and say so in one sentence, without
+   naming any skill.
 2. **Approved test project only.** The brief uses `environment: test` on the gate's
    allowlist. Stop on a partner project, a `sandbox` target or an unclear project
    identity. If the Quest Platform project and the test site belong to different
@@ -24,8 +25,8 @@ to the publisher.
    confirm that making these quests public and showing them on a test site is
    intended. Never proceed on assumption.
 3. **Never publish.** Do not apply a saved version, attach a domain or enable live
-   payments. Say in one sentence that the publisher previews and publishes in
-   Publisher Account.
+   payments. For a publish request, say: "The skill doesn't publish; you publish in
+   Publisher Account when ready. The site stays unpublished."
 4. **Delete needs its own yes.** Remove a block only when the publisher names it, and
    only as a `delete` operation in the confirmed plan. Nothing else in the plan may
    remove a block.
@@ -33,8 +34,8 @@ to the publisher.
    write, and a site confirmation never covers a quest write. Quest edits keep the
    stops in [`SKILL.md`](../SKILL.md).
 6. **Quests block only.** For the header, theme, other blocks, site language or
-   anything else on the site, say in one sentence that it is changed in the Shop
-   Builder editor. Offer no site-wide change.
+   anything else on the site, say: "That's outside the Quests block; change it in the
+   Shop Builder editor." Offer no site-wide change.
 
 ## Prerequisites
 
@@ -57,9 +58,11 @@ Check each one and stop with the smallest missing action when it fails.
 
 ## Which shop
 
-Use this only when the request is to add, change, show or remove quests in a shop,
-block or section, and the publisher has not said whether the shop is a Shop Builder
-site or a headless storefront. Quest-only requests never trigger it.
+Use this whenever the request is about the publisher's shop, webshop or site (a change
+to it, or a question about it, such as "tell me about quests on my webshop"), and the
+publisher has not said whether the shop is a Shop Builder site or a headless
+storefront. Pure quest requests (list my quests, why a quest did not complete, create
+a quest) never trigger it.
 
 1. Run the read-only site list and show each site's name and slug.
 2. Ask in one message: which of these sites, or a headless storefront codebase.
@@ -69,6 +72,20 @@ site or a headless storefront. Quest-only requests never trigger it.
    storefront.
 5. After the answer, continue here for a Shop Builder site, or with
    [`web-shop-module.md`](web-shop-module.md) for a headless storefront.
+
+### Discovery answer
+
+For a question such as "what can quests do on my Shop Builder site", answer in a short
+list (under about 80 words):
+
+- The Quests block shows the chosen quests as cards: title, description, image,
+  an optional reward line and icon, and a heading.
+- The skill can choose and order the quests, set card text and images, set the card
+  limit and layout, and move, hide, show or remove the block.
+- The skill creates and edits the block as a draft. The publisher publishes in
+  Publisher Account.
+
+Then run step 1 above and ask which site.
 
 ## Ask first
 
@@ -81,6 +98,9 @@ Ask in one message, and only for what you cannot read yourself:
 - **Card text and image**, only for a quest that lacks them. Where the quest already
   has them, do not ask: say the defaults in the proposal instead. Title defaults to
   the quest name, explanation to the quest description, image to the quest image.
+- **Card defaults line.** Whenever you stop or ask about card content, add one line
+  stating the defaults: "Card title is the quest name, explanation is the quest
+  description, image is the quest image."
 
 Use these defaults and state them in the proposal instead of asking: heading
 "Quests" (`en-US`), block at the end of the home page (or in the existing block's
@@ -225,6 +245,9 @@ Rules for every operation:
 - Keys not in the settings table are rejected by the gate. Never invent one.
 - Ask for all missing inputs in one message. If the gate rejects the brief, relay its
   full error list in one reply, fix the brief and render again.
+- When a publisher value is rejected (for example an image URL that is not https), do
+  not repeat the value. Say what is required in one sentence: "The image needs an
+  https address."
 - `index` is a position on the page, counted from 0. Reordering cards is an `update`
   of `questIds`; `move` repositions the whole block.
 - The gate touches only the blocks listed. Every other block must read back unchanged.
@@ -252,8 +275,8 @@ Rules for every operation:
 4. **Hand it to the gate.** Run the preflight, back up the target site, and render the
    plan from that backup. The plan must show exactly the requested operations with
    their leaf paths and values, any parent objects it creates, and any removal. Show
-   the plan, its `confirmation_id` and the defaults used. Stop and wait for the
-   publisher's confirmation.
+   the plan, its `confirmation_id` and the defaults used. End the turn there; apply
+   nothing until the publisher confirms.
 5. **Apply.** After confirmation, apply exactly the confirmed plan with the gate's
    apply script, which reads the result back. On a partial failure, do not rerun it;
    take a fresh backup and plan first.
@@ -283,4 +306,12 @@ action to continue.
 
 Publishing, domains, production sites, other blocks and the rest of the site, reward
 delivery claims, and creating the Shop Builder site itself. Decline each in one
-sentence, pointing to the Shop Builder editor or Publisher Account as relevant.
+sentence, with no caveats:
+
+- Publish request: "The skill doesn't publish; you publish in Publisher Account when
+  ready. The site stays unpublished."
+- Any other part of the site: "That's outside the Quests block; change it in the Shop
+  Builder editor."
+- Localized card texts: "Card texts are single-language for now; the heading can use
+  languages already enabled on the site." Name locale codes only when the publisher
+  gave them.

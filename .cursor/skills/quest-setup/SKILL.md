@@ -25,6 +25,18 @@ metadata:
   internal ticket or codenames in a reply.
 - No unrequested safety, environment, backup or out-of-scope lectures, and no
   narration of internal steps.
+- Never say you are waiting for an approval or confirmation, never say "allow",
+  "grant access" or "once you allow them", and never name another skill or the
+  safety gate. Say "set up Quest Platform access" instead of naming a skill.
+- When rejecting a value, do not repeat it. Say what is required in one sentence,
+  for example "The image needs an https address."
+- When asked about the publisher's project, ignore working-folder files that are not
+  the project (logs, `*.jsonl`, scratch files). Never report them as content.
+- Declines, one sentence each, with no caveats or click-paths:
+  - Publish request: "The skill doesn't publish; you publish in Publisher Account when ready. The site stays unpublished."
+  - Change outside the Quests block: "That's outside the Quests block; change it in the Shop Builder editor."
+  - Localized card texts: "Card texts are single-language for now; the heading can use languages already enabled on the site."
+    Name locale codes only when the publisher gave them.
 
 ## Hard rules
 
@@ -39,9 +51,12 @@ metadata:
 3. **One target.** Quest configuration and events use only the production Quest
    Platform routes in [`qp-api-contract.md`](references/qp-api-contract.md). Never
    call another gateway, even after a failure, never send requests to the shop's
-   public base URL setting, and never suggest switching environments.
+   public base URL setting, and never suggest switching environments. Never send an
+   ad hoc Quest Platform request (for example a GET with merchant or project ids) to
+   check or explore anything outside the documented flow.
 4. **No secrets on screen.** Never open the credential file, print the
-   environment, paste a key into a command, or print a key, even to yourself.
+   environment, run `env`, `printenv` or a grep of the environment, list
+   `~/.config/xsolla`, paste a key into a command, or print a key, even to yourself.
    Parse credentials inside the request, as in
    [Credential](references/auth-and-environment.md#credential). If the credentials
    are present, continue with the read-only preflight. Never ask the publisher to
@@ -74,9 +89,12 @@ Shop Builder writes are separate (see
 scope from the configured integration; never fall back to another target,
 credential or catalog. Details: [Prerequisites and lane](references/auth-and-environment.md#prerequisites-and-lane).
 
-If no production credential is set up, say in one sentence that Quest Platform
-access for this project is not configured yet, ask the publisher to set it up with
-the merchant setup skill, and stop. Onboarding is a separate, offered write; see
+If access is missing or unknown, do not probe the environment. Run only the
+key-names check defined in
+[Prerequisites and lane](references/auth-and-environment.md#prerequisites-and-lane),
+and if it does not confirm a complete set, say in one sentence that Quest Platform
+access for this project is not set up yet, ask the publisher to set it up, and stop.
+Onboarding is a separate, offered write; see
 [Onboarding](references/auth-and-environment.md#onboarding).
 
 ## Reference routing
@@ -133,10 +151,11 @@ the developer.
    correlate the event and report whether the quest ran.
 7. **Delete.** Only quests the developer names, one per call, after a fresh read and
    an explicit yes. Soft delete, no restore; see [Deleting](references/quest-document.md#deleting).
-8. **Which shop.** Only when the request is to add, change, show or remove quests in
-   a shop, block or section. Quest-only requests (list quests, why a quest did not
-   complete, create a quest) skip this step. Then follow
-   [Which shop](references/shop-builder-quests-block.md#which-shop).
+8. **Which shop.** Whenever the request is about the publisher's shop, webshop or
+   site: a change to it, or a question about it (for example "tell me about quests on
+   my webshop" or "what can quests do on my Shop Builder site"). Pure quest requests
+   (list my quests, why a quest did not complete, create a quest) skip this step.
+   Then follow [Which shop](references/shop-builder-quests-block.md#which-shop).
 9. **Headless Web Shop section.** Only on explicit request, per
    [`web-shop-module.md`](references/web-shop-module.md). Quest approval never
    authorizes shop source edits.
