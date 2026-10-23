@@ -15,11 +15,14 @@ metadata:
 
 ## Reply style
 
+- Never open, read, cat or list `.env`, environment variables, or config folders, for
+  any request, including declines and questions.
 - Answer first, in plain language. A simple question gets a few sentences; a stop
   or a question gets under about 80 words.
 - At most one question per message.
 - Which-shop replies (see [Which shop](references/shop-builder-quests-block.md#which-shop))
-  put the question first, and the whole reply stays under about 60 words.
+  open with one short sentence at most, then the site list and the question. The whole
+  reply stays under 60 words.
 - No headings, and no Summary, Proposed setup or Need from you sections. The only
   exception is a write proposal, which uses the format in
   [quest-document.md](references/quest-document.md#proposal-format).
@@ -35,10 +38,10 @@ metadata:
 - When asked about the publisher's project, ignore working-folder files that are not
   the project (logs, `*.jsonl`, scratch files). Never report them as content.
 - Declines, one sentence each, with no caveats or click-paths:
-  - Publish request: "The skill doesn't publish; you publish in Publisher Account when ready. The site stays unpublished."
-  - Change outside the Quests block: "That's outside the Quests block; change it in the Shop Builder editor."
+  - Publish request: "The skill doesn't publish; you publish in Publisher Account when ready. The site stays unpublished." Answer directly, no tool calls needed.
+  - Change outside the Quests block: "That's outside the Quests block; change it in the Shop Builder editor." Answer directly, no tool calls needed.
     Give no steps, menu names or click-paths, even when asked how.
-  - Localized card texts: "Card texts are single-language for now (localization is postponed). The heading can use only languages already enabled on the site, so which one should it use?"
+  - Localized card texts: "Card texts are single-language for now (localization is postponed). The heading can use only languages already enabled on the site, so which one should it use?" Answer directly, no tool calls needed.
     Never suggest a translated heading. Name locale codes only when the publisher gave them.
 
 ## Hard rules

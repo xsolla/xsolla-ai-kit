@@ -226,12 +226,10 @@ send credentials (`credentials: 'include'`) on this fetch.
 5. Before writing, count imports and calls for the module in the bootstrap:
    if either count is greater than `1`, stop and ask. If one exists, update it
    in place with the current module path, resolved Quest Platform IDs, and base
-   URL. Check the active local/build configuration for the required public IDs;
-   do not mistake a sample or `.env.example` value for a configured value. If a
-   required value is missing, use the resolved scope to configure the shop's
-   local environment file with browser-safe IDs only, and restart the dev
-   server so Vite or the equivalent reloads build-time variables. If the scope
-   cannot be resolved, stop and ask instead of writing a placeholder. If none
+   URL. If the merchant or project ID (public IDs) is needed, ask the publisher for
+   it, and write it only into the shop's documented build config as part of the
+   approved source edit. Never read local config or env files to find it. If the
+   scope cannot be resolved, stop and ask instead of writing a placeholder. If none
    exists, add one import and one mount. Preserve unrelated bootstrap code.
 6. Re-run: second pass must be a no-op or overwrite the same targets. After
    write, tree-wide marker count and component-file count must each be exactly

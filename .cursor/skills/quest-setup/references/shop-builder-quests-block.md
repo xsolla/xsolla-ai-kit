@@ -66,8 +66,9 @@ a quest) never trigger it.
 
 1. Always run the read-only list, `xsolla shopbuilder list-websites --json`, before
    replying. Never say the list is unavailable without running it.
-2. If the command succeeds, put the question first: which of these sites (name each
-   one from the list), or a headless storefront codebase.
+2. If the command succeeds, open with one short sentence at most, then the site list
+   (name each site from the list) and the question: which of these, or a headless
+   storefront codebase.
 3. Only if the command itself fails, say in one sentence that the site list couldn't
    be read, and ask which shop it is, asking the publisher to log in to the Xsolla CLI
    if needed.
@@ -76,7 +77,7 @@ a quest) never trigger it.
 5. After the answer, continue here for a Shop Builder site, or with
    [`web-shop-module.md`](web-shop-module.md) for a headless storefront.
 
-Keep the whole reply under about 60 words. Show site names only, never IDs or hosts.
+Keep the whole reply under 60 words. Show site names only, never IDs or hosts.
 
 ### Discovery answer
 
@@ -104,7 +105,8 @@ Ask in one message, and only for what you cannot read yourself:
 - **Card defaults line.** Whenever you stop or ask about card content, add one line
   stating only the defaults that apply: "Card title is the quest name, explanation is
   the quest description, image is the quest image when it has one. Reward icon is the
-  reward item's image when the catalog has one."
+  reward item's image when the catalog has one. The reward item image is used only as
+  the reward icon, never as the card image."
 
 Use these defaults and state them in the proposal instead of asking: heading
 "Quests" (`en-US`), block at the end of the home page (or in the existing block's
