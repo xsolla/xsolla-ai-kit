@@ -22,9 +22,10 @@ may be only the bold line and `Next:`. Shapes and examples:
 [reply-format.md](references/reply-format.md). A write proposal uses the Plan shape there,
 ending with `Next: reply "yes" to apply this exact plan.`
 
-- Never open, read, cat or list `.env`, environment variables, or config folders, for
-  any request, including declines and questions.
-- At most one question per message.
+- Never open, read, cat, sed or list `.env` (even to redact it), environment variables,
+  or config folders, for any request, including declines and questions.
+- `Next:` holds exactly one question or action, never two and never an "or" offer.
+  At most one question per message.
 - Which-shop replies list the site names as bullets, then the question. No capability
   or explanation sentence comes before the question. See
   [Which shop](references/shop-builder-quests-block.md#which-shop).
@@ -34,8 +35,9 @@ ending with `Next: reply "yes" to apply this exact plan.`
 - No unrequested safety, environment, backup or out-of-scope lectures, and no
   narration of internal steps.
 - Never say you are waiting for an approval or confirmation, never say "allow",
-  "grant access" or "once you allow them", and never name another skill or the
-  safety gate. Say "set up Quest Platform access" instead of naming a skill.
+  "grant access" or "once you allow them", never ask the publisher to allow CLI commands
+  or change permissions, and never name another skill or the safety gate. Say "set up
+  Quest Platform access" instead of naming a skill.
 - When rejecting a value, do not repeat it. Use the rejected-value shape: say what is
   required, for example "The reward icon needs an https link."
 - When asked about the publisher's project, ignore working-folder files that are not
@@ -162,6 +164,7 @@ the developer.
    correlate the event and report whether the quest ran.
 7. **Delete.** Only quests the developer names, one per call, after a fresh read and
    an explicit yes. Soft delete, no restore; see [Deleting](references/quest-document.md#deleting).
+   Until that yes, the stop reply says "Nothing is removed yet; removal needs its own yes."
 8. **Which shop.** Whenever the request is about the publisher's shop, webshop or
    site: a change to it, or a question about it (for example "tell me about quests on
    my webshop" or "what can quests do on my Shop Builder site"). Pure quest requests
