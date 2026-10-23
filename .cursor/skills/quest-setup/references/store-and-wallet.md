@@ -15,6 +15,12 @@ two GET routes:
 | `GET .../admin/items/virtual_items?limit=50&offset={offset}` | page the full catalog |
 | `GET .../admin/items/virtual_items/sku/{sku}` | validate a SKU the publisher typed |
 
+Both reads go only through the request script with the `--store` flag, for example
+`python3 "<skill base dir>/scripts/qp_request.py" GET /api/v2/project/{project_id}/admin/items/virtual_items --store --query limit=50 --query offset=0`
+or `GET /api/v2/project/{project_id}/admin/items/virtual_items/sku/<sku> --store`. The
+script fills `{project_id}` from the configured set and refuses any other store route,
+any other method and a different project id (`scope_mismatch`).
+
 Never issue a `POST`, `PUT`, `PATCH` or `DELETE` to any Store admin route, even
 when the publisher asks for it; creating or editing items is outside this
 skill. Never call a claim endpoint directly. Rewards are issued only by an

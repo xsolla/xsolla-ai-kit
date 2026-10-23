@@ -3,6 +3,14 @@
 Project-scoped routes the flow uses, the merchant ID rule, service preflight and the scope check.
 The full route contract is in [qp-api-contract.md](qp-api-contract.md).
 
+## Calls
+
+Every call on these routes goes through the request script in
+[Credential](auth-credentials.md#credential). The script refuses any other target and
+any path whose merchant or project segment is not the configured one (`scope_mismatch`).
+A GET for the preflight is `GET /api/v2/merchants/{merchant_id}/projects/{project_id}`
+with the ids from `whoami`.
+
 ## Services
 
 The integration may expose separate services for quest configuration, event
@@ -15,7 +23,8 @@ target.
 ## The merchant id in the path
 
 When the contract uses merchant and project path parameters, both must come
-from the same resolved credential set. Never take them from
+from the same resolved credential set. The only source is the request script's
+`whoami` output (`merchant_id` and `project_id`, ids only). Never take them from
 the quest body, a read-back row, an earlier answer or a guess. A developer who
 names another merchant or project needs the matching credential set.
 
@@ -39,7 +48,7 @@ different authentication lane. A route absent from the versioned contract is
 not called. These routes run only inside the flow in [`SKILL.md`](../SKILL.md)
 (bring-up, proposal, publication, edit, event, verification, delete). A GET with
 merchant or project ids made to check, explore or test anything outside that flow is
-not allowed, even with the configured credentials.
+not allowed, even through the request script.
 
 ## Service preflight
 

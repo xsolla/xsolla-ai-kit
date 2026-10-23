@@ -38,11 +38,13 @@ even to redact them, for any request.
    gateway, the shop's public base URL, or an ad hoc route, even after a failure. Never
    suggest switching environments. Shop Builder writes go only to an approved test
    project ([quests-block-flow.md](references/quests-block-flow.md)).
-4. **No credential inspection.** Never open the credential file, print the environment,
-   list `~/.config/xsolla` or the home folder, paste a key into a command, or write a
-   helper to read or send credentials. Make the documented call only through the
-   configured pattern in [Credential](references/auth-credentials.md#credential), and
-   never to probe. Never ask the publisher to paste secrets or find another key. Never make a direct HTTP call, search the skills for credential patterns, or explain how credentials are attached, even when access fails.
+4. **No credential inspection.** Never open `.env`, the environment or any credential file,
+   never grep for credential patterns, never write a helper that reads or sends credentials,
+   and never make a direct HTTP call to Quest Platform or the Store admin catalog. Those reads
+   and writes go only through the request script in [Credential](references/auth-credentials.md#credential),
+   on the documented paths. The credential-free recipient wallet check is the only other direct read
+   ([store-and-wallet.md](references/store-and-wallet.md#recipient-wallet)). Never ask the publisher to paste secrets or find another key,
+   never probe, and never explain how credentials are attached, even when access fails.
 5. **No IDs or hosts in replies.** Outside the Web Shop URL and the event payload, never
    show merchant, project or player IDs, hosts, service names or environment names. A
    reward item's SKU and image URL are fine.
@@ -68,10 +70,11 @@ even to redact them, for any request.
 
 ## Prerequisites
 
-The production publisher credential is the only lane for quest endpoints, on the
-project-scoped routes in [qp-api-contract.md](references/qp-api-contract.md). Shop Builder
-writes are separate. Resolve scope from the configured integration; never fall back to
-another target, credential or catalog: [Prerequisites and lane](references/auth-credentials.md#prerequisites-and-lane).
+The publisher credential held by the request script is the only lane for quest endpoints,
+on the project-scoped routes in [qp-api-contract.md](references/qp-api-contract.md). Shop Builder
+writes are separate. Get the merchant and project ids from the script's `whoami` output, never from
+the request; never fall back to another target, credential or catalog:
+[Prerequisites and lane](references/auth-credentials.md#prerequisites-and-lane).
 
 If access is missing, or the first documented call returns 401 or 403, do not inspect the
 environment or config. Reply with the exact access-missing shape in [reply-format.md](references/reply-format.md#examples) and stop, with no credential explanation. Onboarding is a

@@ -1,34 +1,56 @@
 # Credentials and errors
 
 Read before any credential, access, route or error question. The agent never inspects credentials;
-see the Credential section for the only allowed request pattern.
+see the Credential section for the only allowed request path, the request script.
 
 ## Credential
 
-Use the scope supplied by the configured integration. Never ask the publisher to
-paste a secret into chat or print a header.
+Every Quest Platform call and every Store admin catalog read goes through one script,
+and only that script. Run it from the skill's base directory (shown when this skill
+loads) as `python3 "<skill base dir>/scripts/qp_request.py" ...`:
 
-Agent-internal: the agent never inspects credentials. It does not read the
-credential file or the environment, does not check which values exist, and does
-not write scripts that handle them. The configured request pattern attaches the
-publisher credential to each documented call on the request itself, as HTTP Basic
-with the merchant ID as the username and the project API key as the password, so
-the values never reach the command line, the output or a reply. Quest Platform
-publisher routes and the two Store admin GET reads in
-[Store admin catalog](store-and-wallet.md#store-admin-catalog) use that pair. Send the key to no other
-Store, Catalog or unrelated route. Do not send multiple auth schemes in one request.
+| Use | Command |
+|---|---|
+| Merchant and project ids for building paths | `whoami` |
+| Quest Platform read or write | `METHOD /api/v2/...` with optional `--body-file FILE` and `--query k=v` |
+| Store admin catalog read (GET only) | `GET /api/v2/project/{project_id}/admin/items/virtual_items --store`, or `.../virtual_items/sku/<sku>` |
 
-Never print, log or commit credentials or encoded headers. Describe each call by
-method, route and body; do not hand the publisher a raw HTTP command.
+Example: `python3 "<skill base dir>/scripts/qp_request.py" GET /api/v2/merchants/<merchant>/projects/<project>/quests --query page=1 --query limit=50`
 
-If no access is configured, or a documented call returns 401 or 403, stop and reply in
-the access-missing shape (bold line: Quest Platform access isn't set up for this project). Do not look for another source of values, and do not make any other call to check access: no direct HTTP request, no environment or `.env` read, no search for credential patterns. Do not explain how credentials are attached, and do not ask for a route. Use the exact access-missing example in [reply-format.md](reply-format.md#examples).
+- The script resolves the publisher credential itself, from the process environment or
+  the project's `.env` file, as one complete set and never mixed. The agent does not
+  read `.env`, the environment or any credential pattern, does not grep for credentials,
+  does not write its own HTTP code and never passes a key on the command line.
+- The script refuses any other host or path, and any merchant or project path segment
+  that is not the configured one. It never follows redirects. The Store reads are
+  GET only; `{project_id}` is filled from the configured set.
+- Read the output `ok`, `status` and `error` fields and act on the value:
+  - `access_not_configured`, or `error: access_denied` (401 or 403): reply in the
+    access-missing shape and stop. Do not retry and do not check access again.
+  - `scope_mismatch` or `target_not_allowed`: the call was not sent. Stop and say so in
+    one sentence, without ids or paths.
+  - `network`: the call did not complete. Treat it like a 5xx: a read may be retried
+    at most twice with backoff; a write is never retried automatically.
+  - `invalid_body`, `invalid_query` or `usage`: the call itself was malformed. Fix the
+    call shape and do not treat it as an access problem.
+- `whoami` prints only `ok`, `merchant_id` and `project_id`. Build route paths from
+  those ids. Never take ids from the user's words, a quest body or an earlier answer.
+- The script does not bypass approval. Every POST, PUT or DELETE still needs the
+  approved proposal first, exactly as the hard rules in [SKILL.md](../SKILL.md) say.
+
+Never print, log or commit credentials, encoded headers or raw script output that
+contains them. Describe each call by method, route and body; do not hand the publisher
+a raw command. If no access is configured, or a documented call returns 401 or 403,
+stop and reply in the access-missing shape (bold line: Quest Platform access isn't set
+up for this project). Do not look for another source of values, and do not make any
+other call to check access. Do not explain how credentials are attached, and do not
+ask for a route. Use the exact access-missing example in [reply-format.md](reply-format.md#examples).
 
 The project API key with the merchant ID as its Basic username is the only
-credential lane. Never request, print or use any other key as a fallback. If the
-developer asks for another lane, stop and direct them to the Quest Platform owner.
-Do not infer a target by probing hosts or by trying a credential against multiple
-gateways.
+credential lane, and the script is the only holder of it. Never request, print or use
+any other key as a fallback. If the developer asks for another lane, stop and direct
+them to the Quest Platform owner. Do not infer a target by probing hosts or by trying a
+credential against multiple gateways.
 
 The catalog project is not a credential. It is the project id that the Store admin
 read was scoped to, never a value the publisher typed.
@@ -38,7 +60,7 @@ read was scoped to, never a value the publisher typed.
 Detail behind the skill entry point. Agent-internal: the agent never checks which
 credential values exist.
 
-**The configured production publisher credential is the lane**. It works only on the
+**The publisher credential held by the request script is the lane**. It works only on the
 project-scoped routes in [`qp-api-contract.md`](qp-api-contract.md); build each route
 from [Project-scoped routes](qp-config-routes.md#project-scoped-routes), not from
 memory. Merchant and project path values come from the same configured scope, never
