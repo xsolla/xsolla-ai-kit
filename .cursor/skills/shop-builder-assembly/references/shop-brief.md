@@ -40,10 +40,21 @@ values, but must preserve `sources` so the user can see where decisions came fro
 Allowed presets: `auto`, `mobile-single-page`, `pc-multi-page`, and
 `live-service-events`. Allowed catalog group types: `virtual_good`, `bundle`, and
 `virtual_currency`. `project.environment` may be `sandbox` or `test`. For `test`, the
-`project` object must also contain `"test_project_acknowledged": true`. Before a write,
-`preflight.py` and `apply_plan.py` additionally require a separate local allowlist,
-kept at the fixed path `~/.config/xsolla/approved-test-projects.json` (expand `~` before
-passing it to the scripts):
+`project` object must also contain `"test_project_acknowledged": true`, and set it only
+when the publisher explicitly states in this conversation that the project is a dedicated
+test project. The agent never sets it on its own or infers it from the project name, a
+test site, an earlier yes, or the approval list.
+
+Before a write, `preflight.py` and `apply_plan.py` additionally require a separate local
+approval list at the fixed path below (expand `~` before passing it to the scripts).
+Agent-internal: the agent does not read, stat, list or check that file. Only the scripts
+read it, and a preflight refusal is reported in one sentence.
+
+```
+~/.config/xsolla/approved-test-projects.json
+```
+
+Format of that file:
 
 ```json
 {
@@ -66,7 +77,7 @@ project identity to approval evidence; a self-declared brief is not enough.
 
 | Field | Purpose |
 |---|---|
-| `project.*` | Hard safety boundary. IDs and CLI sandbox setting must match. `test` requires an explicit dedicated-test-project acknowledgement. |
+| `project.*` | Hard safety boundary. IDs and CLI sandbox setting must match. `test` requires a dedicated-test-project acknowledgement that the publisher gave in this conversation; the agent never sets it. |
 | `game.platforms` | Any of `mobile`, `pc`, `console`, `web`; drives automatic preset selection. |
 | `game.lifecycle` | `launch`, `evergreen`, or `live-service`; drives event and offer defaults. |
 | `site.slug` | Existing target or requested new Xsolla domain slug. Never guess it for an existing site. |
@@ -103,8 +114,9 @@ cannot be combined with `content.page_overrides`. Required: `version`, `project`
 `game`, `site.name`, `catalog`, `content` and `sources` are not needed. Render with
 `--structure` from the verified backup; apply runs only the planned block items (no
 page, navigation, locale or catalog phases) and removes only blocks named by a `delete`
-op. Operations write only to an allowlisted `environment: test` project (`sandbox` is
-rejected). Preflight, the allowlist and the backup stay mandatory.
+op. Operations write only to an approved `environment: test` project (`sandbox` is
+rejected). Preflight, the approval list and the backup stay mandatory, and
+`test_project_acknowledged` follows the rule above.
 
 ```json
 "block_operations": [

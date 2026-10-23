@@ -46,10 +46,12 @@ until [expert-review.md](references/expert-review.md) records approval.
 ## Non-negotiable safety gate
 
 1. Run `scripts/preflight.py <brief.json>`; for a non-sandbox test project, also pass
-   `--approved-test-projects ~/.config/xsolla/approved-test-projects.json` (expand `~`
-   first; the scripts do not). Read back the matched merchant
+   the fixed approval-list path from the allowlist paragraph in
+   [shop brief](references/shop-brief.md) as `--approved-test-projects` (expand `~`
+   first; the scripts do not). Do not read, stat, list or check that file yourself;
+   only `preflight.py` reads it. Read back the matched merchant
    ID, project ID, safety environment, approval reference, active Publisher login,
-   target site, and catalog groups.
+   target site, and catalog groups. If preflight refuses, report that in one sentence.
 2. If CLI context differs, switch it and rerun preflight; never override later commands.
 3. If the target site exists, export it before the first write with
    `scripts/backup_shop.py --brief <brief.json> --slug <slug> --output-dir <dir>`.
@@ -63,13 +65,19 @@ until [expert-review.md](references/expert-review.md) records approval.
    of a new plan. Re-render and reconfirm if the brief or plan changes.
 
 The brief must target a sandbox or acknowledged dedicated test project. A `test`
-target must match the approved test-projects file, `~/.config/xsolla/approved-test-projects.json`,
-with exact IDs, approver, and approval reference. If that file is missing or does not
-list the project, stop and tell the user in one sentence that this project is not
-approved for test writes. Never search the filesystem for the file, never suggest
-creating or editing it, and never suggest granting access or changing permissions.
+target must match the approval list that preflight reads, with exact IDs, approver, and
+approval reference. Never read, search for, stat, list, create, edit or suggest changing
+that list; if preflight refuses, stop and tell the user in one sentence that this
+project is not approved for test writes.
+
+Set `project.test_project_acknowledged` to `true` only when the publisher explicitly
+states in this conversation that the project is a dedicated test project. Never set it
+yourself, and never infer it from the project name, a test site, an earlier yes, or
+the approval list.
+
 Never use a partner project, publish, attach a production domain, enable live payments,
-or apply a saved version. A human publishes in Publisher Account.
+or apply a saved version. For a publish request, say: "The skill doesn't publish; you
+publish in Publisher Account when ready. The site stays unpublished."
 
 A new site has generated blocks whose IDs do not exist before creation. Confirm the
 bootstrap, then export, re-render, and reconfirm before deleting any generated block.
@@ -114,7 +122,9 @@ A brief with `block_operations` edits single Quests blocks on an existing site; 
 It uses the same gate as a build: preflight, backup, plan, `confirmation_id`, then
 `scripts/apply_plan.py`, which verifies on exit and touches only the listed blocks.
 Deleting a block needs a `delete` op in the confirmed plan. Never use `--force` anywhere
-else.
+else. The `test_project_acknowledged` rule above applies to every brief. For a change to
+anything outside the Quests block in such a request, say: "That's outside the Quests
+block; change it in the Shop Builder editor."
 
 ## Stop conditions
 
@@ -127,4 +137,10 @@ explain the smallest action needed to continue.
 ## Replies
 
 Answer briefly, ask one question at a time, and never include environment variable
-names, file paths, tokens, or internal codenames (for example, D2a) in a reply.
+names, file paths, tokens, or internal codenames (for example, D2a) in a reply. Never
+mention the approval list or its location in a reply.
+
+For a publish request, say: "The skill doesn't publish; you publish in Publisher
+Account when ready. The site stays unpublished." For anything outside the Quests block
+in a block-operations request, use the sentence in the Block operations section. Keep
+each decline to one sentence, with no caveats.
