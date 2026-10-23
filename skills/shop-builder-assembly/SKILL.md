@@ -51,7 +51,7 @@ until [expert-review.md](references/expert-review.md) records approval.
    first; the scripts do not). Do not read, stat, list or check that file yourself;
    only `preflight.py` reads it. Read back the matched merchant
    ID, project ID, safety environment, approval reference, active Publisher login,
-   target site, and catalog groups. If preflight refuses, report that in the refusal shape under [Replies](#replies).
+   target site, and catalog groups. If preflight refuses, reply in the blocked shape under [Replies](#replies).
 2. If CLI context differs, switch it and rerun preflight; never override later commands.
 3. If the target site exists, export it before the first write with
    `scripts/backup_shop.py --brief <brief.json> --slug <slug> --output-dir <dir>`.
@@ -69,7 +69,7 @@ Earlier permission to "build a shop" is not confirmation
 The brief must target a sandbox or acknowledged dedicated test project. A `test`
 target must match the approval list that preflight reads, with exact IDs, approver, and
 approval reference. Never read, search for, stat, list, create, edit or suggest changing
-that list; if preflight refuses, stop and reply in the refusal shape under [Replies](#replies),
+that list; if preflight refuses, stop and reply in the blocked shape under [Replies](#replies),
 saying this project is not approved for test writes.
 
 Set `project.test_project_acknowledged` to `true` only when the publisher explicitly
@@ -157,6 +157,16 @@ several operations or removals into one Change bullet, separated by semicolons.
 - Confirmation: sha256:ab12cd34
 
 Next: reply "yes" to apply this exact plan.
+```
+
+Blocked, when preflight refuses or a gate stops the write (the project is not approved, the
+brief is not acknowledged, the target does not match):
+
+```
+**This project can't take test writes yet.**
+- Site: qa-quests-spike, nothing changed
+
+Next: confirm the project is the dedicated test project you intended.
 ```
 
 Refusal, for anything outside the Quests block in a block-operations request:
