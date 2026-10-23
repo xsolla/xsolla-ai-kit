@@ -23,26 +23,6 @@ metadata:
 Build an unpublished Publisher Account **Shop Builder site**, not a custom frontend,
 in a dedicated non-partner test project through `xsolla shopbuilder`.
 
-## Inputs
-
-Normalize publisher answers, existing stores, descriptions, and designs into the
-[shop brief](references/shop-brief.md). Writes require that brief; callers own source
-extraction.
-
-If `preset` is `auto`, choose in this order:
-
-1. Live-service game with active events or rotating offers → `live-service-events`.
-2. PC/console game needing content beyond purchase → `pc-multi-page`.
-3. Mobile-first or purchase-focused game → `mobile-single-page`.
-
-Before planning, read [presets](references/presets.md) and the
-[block catalog](references/block-catalog.md). Before applying, read the
-[exported contracts](references/exported-block-contracts.md) and
-[CLI operations](references/cli-operations.md).
-
-The official inventory is authoritative; its mappings and presets remain provisional
-until [expert-review.md](references/expert-review.md) records approval.
-
 ## Non-negotiable safety gate
 
 1. Run `scripts/preflight.py <brief.json>`; for a non-sandbox test project, also pass
@@ -84,48 +64,18 @@ A new site has generated blocks whose IDs do not exist before creation. Confirm 
 bootstrap, then export, re-render, and reconfirm before deleting any generated block.
 If the target changes after export, repeat this sequence.
 
-## Assembly order
+## Build
 
-After confirmation, apply the plan in this dependency order:
+For a full site from a shop brief, follow [build-flow.md](references/build-flow.md) after
+the gate below. It covers the preset choice, the inputs to read, the assembly order, and
+verification and handoff. Use pre-written scripts for repeated work; never invent HTTP or
+`curl` workarounds. If the CLI lacks an operation, stop, record the gap, and file a
+CLI/API ticket.
 
-1. **Theme** — set site and page theme source fields; page theme overrides site theme.
-2. **Pages** — create all page paths before linking navigation.
-3. **Navigation** — resolve page IDs and add internal links only after pages exist.
-4. **Blocks** — add/move/update blocks page by page; resolve IDs after each structural
-   change and use targeted patches rather than replacing `values` or `components`.
-5. **Copy and assets** — upload local assets, then patch returned CDN URLs; write
-   localized HTML through localization commands, never through block value patches.
-6. **Catalog links** — configure `newStore` sections only after catalog groups and
-   SKUs have been verified in the same project. Localize a section title before
-   enabling its `L:` ID.
-
-Use pre-written scripts for repeated work; never invent HTTP or `curl` workarounds.
-If the CLI lacks an operation, stop it, record the gap, and file a CLI/API ticket.
-
-## Verification and handoff
-
-- Re-read structure and localization after assembly. Run
-  `scripts/verify_structure.py --plan <confirmed-plan.json> --structure
-  <post-apply-structure.json>` for the deterministic structural comparison.
-- Check every requested locale, page path, navigation target, block order, catalog
-  group, and asset URL.
-- Run `xsolla shopbuilder verify-website --slug <slug>`.
-- Enable preview only if the confirmed plan includes it, then return the preview link.
-- Report skips, interventions, and gaps; state that the site is **not published**.
-- If the plan adds the Custom code (`html`) block, tell the user it is added empty and
-  hidden: they paste their code and make the block visible in the Site Builder editor.
-  Never write HTML, CSS, or JavaScript into it.
-
-## Block operations (Quests block)
-
-A brief with `block_operations` edits single Quests blocks on an existing site; see the
-[shop brief](references/shop-brief.md) and [CLI operations](references/cli-operations.md).
-It uses the same gate as a build: preflight, backup, plan, `confirmation_id`, then
-`scripts/apply_plan.py`, which verifies on exit and touches only the listed blocks.
-Deleting a block needs a `delete` op in the confirmed plan. Never use `--force` anywhere
-else. The `test_project_acknowledged` rule above applies to every brief. For a change to
-anything outside the Quests block in such a request, use the refusal shape under
-[Replies](#replies).
+For block operations on an existing Quests block, follow
+[block-operations.md](references/block-operations.md) (same gate). Deleting a block
+needs a `delete` op in the confirmed plan; `--force` is used only for that. For a change
+outside the Quests block in such a request, use the refusal shape under [Replies](#replies).
 
 ## Stop conditions
 
