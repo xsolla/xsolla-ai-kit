@@ -77,10 +77,14 @@ still reject it because they check `VERIFIED_BLOCK_MODULES`.
   `default-data.json`; the server mints the default `L:` texts. Adding by template
   name returns HTTP 500, so there is no palette template.
 - Patchable leaves, all under `["values","internalBlockValues", ...]`: `questIds`,
-  `maxQuests`, `overrides.<questId>.{title,description,imageUrl,imageRef}`,
+  `maxQuests`, `overrides.<questId>.{title,description,imageUrl,imageRef,rewardText,rewardImageUrl}`,
   `layout.{showHeading,showDescription,showImage,cardAlign,imageFit,buttonStyle,blockBackground,cardBackground}`
   and `editorPreview`. The heading is the `L:` text at `translations.heading`; change
   it with localization commands.
+- `rewardText` (string, at most 120 characters) and `rewardImageUrl` (absolute https URL,
+  same check as `imageUrl`) are validated and can be removed with `reset`. They need the
+  next Quests block release; the pinned version does not carry them yet. The version pin
+  is unchanged in this change.
 - Quest ids (in `questIds`, in `overrides.<questId>` keys and in reset paths) must be
   Quest Platform quest UUIDs. Preflight rejects any other string before a plan is made.
 - A leaf patch into a missing parent (for example `layout`) returns 200 and is

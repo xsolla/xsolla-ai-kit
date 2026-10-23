@@ -1,16 +1,18 @@
 ---
 name: shop-builder-assembly
 description: >-
-  Assemble a complete Xsolla Shop Builder storefront from a structured shop brief,
-  working top-down from theme and pages through navigation, standard blocks,
-  localization, and catalog links. Not the entry point for "build me a shop" — that is
-  shop-setup, which routes here once the build path is Shop Builder and a validated
-  brief exists (from description-to-shop). Use for AI-built Shop Builder sites, full
-  website or webshop assembly,
-  game-type storefront presets, mobile single-page shops, PC multi-page shops, and
-  live-service stores with bundles or events. Prefer this skill over creating isolated
-  Shop Builder blocks. Do not use it for a custom headless storefront; use shop-setup
-  for that architecture.
+  Assemble a complete Xsolla Shop Builder storefront from a structured shop brief:
+  theme and pages first, then navigation, standard blocks, localization, and catalog
+  links. Use for AI-built Shop Builder sites, full website or webshop assembly,
+  game-type storefront presets (mobile single-page, PC multi-page, live-service stores
+  with bundles or events), and block operations on the Quests block of an existing
+  Shop Builder site (add, update, reset, move, duplicate, hide, show, delete). Not for
+  single unrelated edits such as changing the header, a theme, or a color of an
+  existing site on request; those go to the Shop Builder editor. When the user asks
+  about one block, do not offer site-wide theme changes. Not the entry point for
+  "build me a shop": that is shop-setup, which routes here once the build path is
+  Shop Builder and a validated brief exists. Do not use it for a custom headless
+  storefront; use shop-setup for that architecture.
 metadata:
   owner: k.shah
   domain: store
@@ -44,7 +46,8 @@ until [expert-review.md](references/expert-review.md) records approval.
 ## Non-negotiable safety gate
 
 1. Run `scripts/preflight.py <brief.json>`; for a non-sandbox test project, also pass
-   `--approved-test-projects <local-allowlist.json>`. Read back the matched merchant
+   `--approved-test-projects ~/.config/xsolla/approved-test-projects.json` (expand `~`
+   first; the scripts do not). Read back the matched merchant
    ID, project ID, safety environment, approval reference, active Publisher login,
    target site, and catalog groups.
 2. If CLI context differs, switch it and rerun preflight; never override later commands.
@@ -60,9 +63,13 @@ until [expert-review.md](references/expert-review.md) records approval.
    of a new plan. Re-render and reconfirm if the brief or plan changes.
 
 The brief must target a sandbox or acknowledged dedicated test project. A `test`
-target must match a separate local allowlist with exact IDs, approver, and approval
-reference. Never use a partner project, publish, attach a production domain, enable
-live payments, or apply a saved version. A human publishes in Publisher Account.
+target must match the approved test-projects file, `~/.config/xsolla/approved-test-projects.json`,
+with exact IDs, approver, and approval reference. If that file is missing or does not
+list the project, stop and tell the user in one sentence that this project is not
+approved for test writes. Never search the filesystem for the file, never suggest
+creating or editing it, and never suggest granting access or changing permissions.
+Never use a partner project, publish, attach a production domain, enable live payments,
+or apply a saved version. A human publishes in Publisher Account.
 
 A new site has generated blocks whose IDs do not exist before creation. Confirm the
 bootstrap, then export, re-render, and reconfirm before deleting any generated block.
@@ -102,18 +109,22 @@ If the CLI lacks an operation, stop it, record the gap, and file a CLI/API ticke
 
 ## Block operations (Quests block)
 
-A brief with `block_operations` edits single Quests blocks on an existing site
-(`add`, `update`, `reset`, `move`, `duplicate`, `hide`, `show`, `delete`); see the
+A brief with `block_operations` edits single Quests blocks on an existing site; see the
 [shop brief](references/shop-brief.md) and [CLI operations](references/cli-operations.md).
-Same gate as a build: preflight, backup, plan, `confirmation_id`, then
-`scripts/apply_plan.py`, which verifies on exit. It touches only the listed blocks.
-Deleting a block needs a `delete` op in the confirmed plan and runs
-`delete-block --force` while the block is on its page. Never add `--force` anywhere
-else. Known gap: a deleted block's id stays in the landing `blocks[]` (warning only).
+It uses the same gate as a build: preflight, backup, plan, `confirmation_id`, then
+`scripts/apply_plan.py`, which verifies on exit and touches only the listed blocks.
+Deleting a block needs a `delete` op in the confirmed plan. Never use `--force` anywhere
+else.
 
 ## Stop conditions
 
 Stop before writes when project identity is ambiguous, backup fails, confirmation is
-missing, the target is neither sandbox nor an acknowledged dedicated test project,
-catalog/project IDs do not match, or the plan requires an unverified block module.
-Preserve completed safe work and explain the smallest action needed to continue.
+missing, the target is neither sandbox nor an acknowledged dedicated test project, the
+test project is not in the approved test-projects file, catalog/project IDs do not
+match, or the plan requires an unverified block module. Preserve completed safe work and
+explain the smallest action needed to continue.
+
+## Replies
+
+Answer briefly, ask one question at a time, and never include environment variable
+names, file paths, tokens, or internal codenames (for example, D2a) in a reply.

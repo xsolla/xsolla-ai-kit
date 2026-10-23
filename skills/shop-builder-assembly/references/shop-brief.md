@@ -41,7 +41,9 @@ Allowed presets: `auto`, `mobile-single-page`, `pc-multi-page`, and
 `live-service-events`. Allowed catalog group types: `virtual_good`, `bundle`, and
 `virtual_currency`. `project.environment` may be `sandbox` or `test`. For `test`, the
 `project` object must also contain `"test_project_acknowledged": true`. Before a write,
-`preflight.py` and `apply_plan.py` additionally require a separate local allowlist:
+`preflight.py` and `apply_plan.py` additionally require a separate local allowlist,
+kept at the fixed path `~/.config/xsolla/approved-test-projects.json` (expand `~` before
+passing it to the scripts):
 
 ```json
 {
@@ -118,15 +120,10 @@ rejected). Preflight, the allowlist and the backup stay mandatory.
 ]
 ```
 
-`values` keys are short; the plan maps them to `["values","internalBlockValues",...]`
-and lists in `create_parents` any parent object (for example `layout`) that must be
-created first, because a leaf patch into a missing parent is silently ignored. Apply
-runs every operation above after a backup and a structure-hash check. `add` uses the
-`federated_patch` route (an empty `federated` wrapper, then one `update-block` that
-retargets it from the CDN defaults), heading translations go through
-`update-many-localization`, and `delete` uses `delete-block --force` only for blocks
-named in the confirmed plan removals while they are still on their page. Known gap: a
-deleted block's id stays in the landing `blocks[]` (see `cli-operations.md`).
+`values` keys are short; the plan maps them to the block's internal values and creates
+any missing parent object (for example `layout`) before patching. Apply runs every
+operation above after a backup. `delete` applies only to blocks named in the confirmed
+plan's removals. Operation details are in `cli-operations.md`.
 
 ## Handoff contract for other skills
 
