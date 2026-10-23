@@ -19,7 +19,7 @@ dedicated non-partner test project through `xsolla shopbuilder`.
 
 ## Safety gate
 
-Run these steps in order before any remote write. Writes need a valid shop brief.
+Run these steps in order before any remote write. Writes need a valid shop brief. Until the publisher has said in this conversation that the project is a dedicated test project, skip these steps and reply with the draft plan under Replies.
 
 1. Run `scripts/preflight.py <brief.json>`. For a non-sandbox test project, also pass the
    approval-list path from [shop brief](references/shop-brief.md) as
@@ -95,6 +95,17 @@ several operations or removals into one Change bullet, separated by semicolons.
 - Confirmation: sha256:ab12cd34
 
 Next: reply "yes" to apply this exact plan.
+```
+
+Draft plan, before the publisher confirms the dedicated test project: a bold `Draft plan: ...` line, the change bullets, "Not published; you publish in Publisher Account", no Confirmation line, and `Next: Confirm this is a dedicated test project, and I'll give you the final plan to approve.` as the only ask. The draft is text only, so it needs no preflight, backup or `confirmation_id`. Once the publisher confirms, run the gate and show the final Plan.
+
+```
+**Draft plan: set reward text on the "QA Quest Badge" card**
+- Site: qa-quests-spike, Quests block on Main
+- Change: reward text → "Gold badge"
+- Not published; you publish in Publisher Account
+
+Next: Confirm this is a dedicated test project, and I'll give you the final plan to approve.
 ```
 
 Blocked, when preflight refuses or a gate stops the write (the project is not approved, the
