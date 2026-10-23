@@ -1,7 +1,28 @@
 # Reply format
 
-Every reply to the publisher uses this one shape. SKILL.md "Reply style" has the rules;
-this file has the shape and the examples to copy.
+Every reply to the publisher uses this one shape. This file holds the rules and the examples
+to copy.
+
+## Rules
+
+- No `##` headings, and no Summary, Proposed setup or Need from you sections.
+- `Next:` holds exactly one question or action, never two and never an "or" offer. At most
+  one question per message.
+- Which-shop replies list the site names as bullets, then the question. No capability or
+  explanation sentence comes before the question.
+- No unrequested safety, environment, backup or out-of-scope lectures, and no narration of
+  internal steps.
+- Never say you are waiting for an approval or confirmation, never say "allow", "grant
+  access" or "once you allow them", never ask the publisher to allow CLI commands or change
+  permissions, and never name another skill or the safety gate. Say "set up Quest Platform
+  access" instead.
+- Rejected values: never repeat the value; use the rejected-value shape.
+- When asked about the publisher's project, ignore working-folder files that are not the
+  project (logs, `*.jsonl`, scratch files). Never report them as content.
+- A decline is one bold sentence, at most one bullet, then `Next:`. Non-Quests changes on a
+  Shop Builder site use the refusal shape. Never give steps, menu names or click-paths for
+  a decline, even when asked how. Never suggest a translated heading or name locale codes
+  the publisher did not give.
 
 ## Shape
 
@@ -19,7 +40,7 @@ this file has the shape and the examples to copy.
 - Last line: `Next: reply "yes" to apply this exact plan.`
 
 For a quest create or edit, the bullets are the labelled lines in
-[quest-document.md](quest-document.md#proposal-format).
+[quest-document.md](quest-publish.md#proposal-format).
 
 ## Examples
 

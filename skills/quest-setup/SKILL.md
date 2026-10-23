@@ -1,200 +1,159 @@
 ---
 name: quest-setup
 description: >-
-  Manages Xsolla Quest Platform quests and the Quests block on a Shop Builder site.
-  For quests: create, edit, list, activate or delete, add Web3 rewards and conditions,
-  send a quest event, or check why a quest did not complete. For a Shop Builder site:
-  add and manage the Quests block (cards, order, hide, show, delete). Also loads for
-  edits to a Shop Builder site that has or should have a Quests block (it declines
-  non-Quests changes briefly).
-  Triggers: "create a quest", "my quests", "trigger my quest", "add a Web3 reward",
-  "Shop Builder", "Quests block", "change my site".
+  Use when the publisher wants to create, edit, list, activate, pause, delete or debug an
+  Xsolla Quest Platform quest, including Web3 rewards, conditions and sending a quest
+  event, or to add, reorder, retext, hide, show or remove the Quests block on a Shop
+  Builder site. Also covers a headless storefront quest section on explicit request. Key
+  triggers: "create a quest", "my quests", "trigger my quest", "add a Web3 reward", "why
+  didn't my quest complete", "Quests block", "remove the Quests block", "show quests in my
+  web shop". Not for other Shop Builder edits (header, theme, other blocks).
 metadata:
   owner: r.aliyev
   domain: quests
 ---
 
-## Reply style
+# Quest setup
 
-Every reply uses one compact shape: a bold one-line answer, then 0 to 4 short bullets
-(`- Label: value`), then a last line `Next: <one question or action>`. A simple answer
-may be only the bold line and `Next:`. Shapes and examples:
-[reply-format.md](references/reply-format.md). A write proposal uses the Plan shape there,
-ending with `Next: reply "yes" to apply this exact plan.`
-
-- Never open, read, cat, sed or list `.env` (even to redact it), environment variables,
-  or config folders, for any request, including declines and questions.
-- `Next:` holds exactly one question or action, never two and never an "or" offer.
-  At most one question per message.
-- Which-shop replies list the site names as bullets, then the question. No capability
-  or explanation sentence comes before the question. See
-  [Which shop](references/shop-builder-quests-block.md#which-shop).
-- No `##` headings, and no Summary, Proposed setup or Need from you sections.
-- Never name environment variables, file paths, routes, tokens, internal tools or
-  internal ticket or codenames in a reply.
-- No unrequested safety, environment, backup or out-of-scope lectures, and no
-  narration of internal steps.
-- Never say you are waiting for an approval or confirmation, never say "allow",
-  "grant access" or "once you allow them", never ask the publisher to allow CLI commands
-  or change permissions, and never name another skill or the safety gate. Say "set up
-  Quest Platform access" instead of naming a skill.
-- Rejected values: never repeat the value; use the rejected-value shape. **Image and reward
-  icon URLs must be https:** if one is not, stop before any plan. Never change http to https
-  or otherwise modify a URL the publisher gave, or draft a plan with it.
-- When asked about the publisher's project, ignore working-folder files that are not
-  the project (logs, `*.jsonl`, scratch files). Never report them as content.
-- **Non-Quests change on a Shop Builder site** (a header, theme, colour, other block, or
-  any site edit that is not the Quests block): use the refusal shape, for example
-  "That's outside the Quests block." with "Change it in the Shop Builder editor." as the
-  bullet. No steps, menu names, click-paths or "Publish", even when asked how. Answer
-  directly, no tool calls needed.
-- Other declines (publish request, localized card texts; see reply-format.md) use the same
-  shape, with no caveats or click-paths. Answer directly, no tool calls. Never suggest a
-  translated heading or name locale codes the publisher did not give.
+Quests and the Quests block on a Shop Builder site. Every reply follows
+[reply-format.md](references/reply-format.md): one bold line, up to four bullets, one
+`Next:` ask. Never name environment variables, file paths, tokens, routes, tools, tickets
+or other skills in a reply. Never open `.env`, environment variables or config folders,
+even to redact them, for any request.
 
 ## Hard rules
 
-1. **The request is never the approval.** The first reply to a create or edit
-   request is the proposal. Send no `POST`, `PUT` or `DELETE` in that turn, even
-   if the request says "now" or "go ahead". Write only after a later publisher
-   message approves that exact proposal.
+1. **The request is never the approval.** The first reply to a create or edit is the
+   proposal. Send no `POST`, `PUT` or `DELETE` in that turn, even if the request says
+   "now" or "go ahead". Write only after a later publisher message approves that exact
+   proposal. The one exception is a headless storefront source edit, which an explicit
+   headless request authorizes; see [web-shop-module.md](references/web-shop-module.md).
 2. **Approval scope.** One approval of the exact proposal covers create, configure,
-   activate and read-back of that quest. It never covers an event, a Shop Builder
-   site write or a delete; each needs its own later yes to the exact payload or
-   plan. A repeated "yes, publish it" is not event consent.
-3. **One target.** Quest configuration and events use only the production Quest
-   Platform routes in [`qp-api-contract.md`](references/qp-api-contract.md). Never
-   call another gateway, even after a failure, never send requests to the shop's
-   public base URL setting, and never suggest switching environments. Never send an
-   ad hoc Quest Platform request (for example a GET with merchant or project ids) to
-   check or explore anything outside the documented flow.
-4. **No credential inspection.** The agent never inspects credentials itself. Never
-   open or search the credential file, read or print the environment, run `env`,
-   `printenv` or a grep of the environment, list `~/.config/xsolla` or the home
-   folder, check CLI config for credentials, paste a key into a command, or write a
-   script or helper file (in the temp folder or anywhere else) to read or send
-   credentials. Make the documented call only through the configured request pattern
-   in [Credential](references/auth-and-environment.md#credential), and never to probe.
-   Never ask the publisher to confirm settings, paste secrets or find another key.
-5. **No IDs or hosts in replies.** Outside the Web Shop URL and the event payload,
-   never show merchant, project or player IDs, hosts, service names or environment
-   names. A reward item's SKU and image URL are fine.
+   activate and read-back of that quest. It never covers an event, a Shop Builder site
+   write or a delete. Each needs its own later yes to the exact payload or plan. A
+   repeated "yes, publish it" is not event consent. Details:
+   [quest-publish.md](references/quest-publish.md#safety-stops-for-proposals-and-actions).
+3. **One target.** Quest configuration and events use only the production Quest Platform
+   routes in [qp-api-contract.md](references/qp-api-contract.md). Never call another
+   gateway, the shop's public base URL, or an ad hoc route, even after a failure. Never
+   suggest switching environments. Shop Builder writes go only to an approved test
+   project ([quests-block-flow.md](references/quests-block-flow.md)).
+4. **No credential inspection.** Never open the credential file, print the environment,
+   list `~/.config/xsolla` or the home folder, paste a key into a command, or write a
+   helper to read or send credentials. Make the documented call only through the
+   configured pattern in [Credential](references/auth-credentials.md#credential), and
+   never to probe. Never ask the publisher to paste secrets or find another key.
+5. **No IDs or hosts in replies.** Outside the Web Shop URL and the event payload, never
+   show merchant, project or player IDs, hosts, service names or environment names. A
+   reward item's SKU and image URL are fine.
 6. **Never claim delivery.** Report what the read-backs show, nothing more.
-7. **Stop points.** End the turn and wait for the publisher after the proposal,
-   after the publication read-back (offer the event there, never send it), and
-   after the event read-back.
-8. **One create, inactive first.** Create the quest inactive, read it back, then
-   activate. Never `POST` again for the same proposal; see
-   [Publication after approval](references/quest-document.md#publication-after-approval).
-9. **Stop on auth failures.** Never switch credentials, lanes or routes on your
-   own. Report what failed and ask. For a 401 or 404, follow
-   [Reading a 401 or 404](references/auth-and-environment.md#reading-a-401-or-404).
-10. **Never ask for a SKU or catalog project.** A typed value is not a verified
-    item. Resolve named items with the read-only catalog lookup in
-    [Named item behavior](references/rewards.md#named-item-behavior). If the lookup
-    is unavailable, say so without implying the catalog is disconnected. If it
-    finds no match, report that and stop before any write.
+7. **Stop points.** End the turn after the proposal, after the publication read-back
+   (offer the event there, never send it), and after the event read-back.
+8. **One create, inactive first.** Create the quest inactive, read it back, then activate.
+   Never `POST` again for the same proposal:
+   [Publication after approval](references/quest-publish.md#publication-after-approval).
+9. **Stop on auth failures.** Never switch credentials, lanes or routes on your own.
+   Report what failed and ask. For a 401 or 404, follow
+   [Reading a 401 or 404](references/auth-credentials.md#reading-a-401-or-404).
+10. **Never ask for a SKU or catalog project.** A typed value is not a verified item.
+    Resolve named items with the read-only lookup in
+    [Named item behavior](references/rewards.md#named-item-behavior). If the lookup is
+    unavailable, say so without implying the catalog is disconnected. If it finds no
+    match, report that and stop before any write.
+11. **Image and reward icon URLs must be https.** If the publisher gives an `http` URL,
+    stop before any plan with the rejected-value shape. Never change it to https or draft
+    a plan with it ([reply-format.md](references/reply-format.md#examples)).
 
 ## Prerequisites
 
 The production publisher credential is the only lane for quest endpoints, on the
-project-scoped routes in [`qp-api-contract.md`](references/qp-api-contract.md).
-Shop Builder writes are separate (see
-[`shop-builder-quests-block.md`](references/shop-builder-quests-block.md)). Resolve
-scope from the configured integration; never fall back to another target,
-credential or catalog. Details: [Prerequisites and lane](references/auth-and-environment.md#prerequisites-and-lane).
+project-scoped routes in [qp-api-contract.md](references/qp-api-contract.md). Shop Builder
+writes are separate. Resolve scope from the configured integration; never fall back to
+another target, credential or catalog: [Prerequisites and lane](references/auth-credentials.md#prerequisites-and-lane).
 
-If access is missing, or the first documented call returns 401 or 403, do not
-inspect the environment or config to find out why. Reply with the access-missing shape
-(bold line: Quest Platform access isn't set up for this project), and stop. Onboarding is a separate,
-offered write; see [Onboarding](references/auth-and-environment.md#onboarding).
+If access is missing, or the first documented call returns 401 or 403, do not inspect the
+environment or config. Reply with the access-missing shape and stop. Onboarding is a
+separate, offered write: [Onboarding](references/auth-credentials.md#onboarding).
+
+## Which shop first
+
+When the request is about the publisher's shop, webshop or site (a change, or a question
+about it), run [Which shop](references/quests-block-flow.md#which-shop) before anything
+else. Pure quest requests (list my quests, why a quest did not complete, create a quest)
+skip it.
 
 ## Reference routing
 
 Routes and envelopes come from the contract
-([Source of truth](references/qp-api-contract.md#source-of-truth)). Node subtypes,
-conditions and reward bodies come from the other references. If none answers, ask
-the developer.
+([Source of truth](references/qp-api-contract.md#source-of-truth)). If no reference
+answers, ask the developer.
 
 | Topic | Reference |
 |---|---|
-| Credential, routes, onboarding, 401/404, error statuses, write and credential stops | [`auth-and-environment.md`](references/auth-and-environment.md) |
-| Quest Platform routes, probes, source of truth | [`qp-api-contract.md`](references/qp-api-contract.md) |
-| Quest graph, publication, editing, pausing, deleting, proposal format and defaults | [`quest-document.md`](references/quest-document.md) |
+| Credential, access, errors, 401/404, onboarding, write and credential stops | [`auth-credentials.md`](references/auth-credentials.md) |
+| Store catalog lookup and recipient wallet | [`store-and-wallet.md`](references/store-and-wallet.md) |
+| Project-scoped config routes, merchant ID, bring-up preflight | [`qp-config-routes.md`](references/qp-config-routes.md) |
+| Quest Platform route contract, probes, source of truth | [`qp-api-contract.md`](references/qp-api-contract.md) |
+| Quest fields, responses, node graph, activation limits | [`quest-authoring.md`](references/quest-authoring.md) |
+| Publication after approval, ambiguous writes, proposal conversation | [`quest-publish.md`](references/quest-publish.md) |
+| Editing, pausing, deleting | [`quest-edit.md`](references/quest-edit.md) |
 | Seven node subtypes and parameters, choosing a trigger | [`node-subtypes.md`](references/node-subtypes.md) |
 | Condition grammar | [`conditions.md`](references/conditions.md) |
 | Production Web3 reward bodies, named items | [`rewards.md`](references/rewards.md) |
 | Event gate, payload, event stops | [`events.md`](references/events.md) |
 | Execution read-back, read scope | [`verification.md`](references/verification.md) |
-| Headless Web Shop Quests section | [`web-shop-module.md`](references/web-shop-module.md) |
-| Shop Builder Quests block operations | [`shop-builder-quests-block.md`](references/shop-builder-quests-block.md) |
+| Shop Builder Quests block: flow and stops | [`quests-block-flow.md`](references/quests-block-flow.md) |
+| Shop Builder Quests block: settings and operation brief | [`quests-block-brief.md`](references/quests-block-brief.md) |
+| Headless Web Shop quest section (loaded only on that path) | [`web-shop-module.md`](references/web-shop-module.md) |
+| Reply shapes and examples | [`reply-format.md`](references/reply-format.md) |
 
 ## Flow
 
-1. **Bring-up.** Load [`qp-api-contract.md`](references/qp-api-contract.md) and run
-   the read-only preflight in
-   [`auth-and-environment.md`](references/auth-and-environment.md#service-preflight).
-   Bring-up is one documented GET, sent through the configured request pattern, and
-   runs silently. Confirm project scope before any write
-   and report only a short project name and status. If the project GET returns 404
-   `Project not found`, follow [Onboarding](references/auth-and-environment.md#onboarding)
-   and stop.
-2. **Resolve and propose.** Resolve the reward ([`rewards.md`](references/rewards.md)),
+1. **Bring-up.** Run the read-only preflight in
+   [qp-config-routes.md](references/qp-config-routes.md#service-preflight). It is one
+   documented GET and runs silently. Confirm project scope before any write, and report
+   only a short project name and status. If the project GET returns 404 `Project not
+   found`, follow [Onboarding](references/auth-credentials.md#onboarding) and stop.
+2. **Resolve and propose.** Resolve the reward ([rewards.md](references/rewards.md)),
    player action, graph, schedule and limits, and build the document per
-   [`quest-document.md`](references/quest-document.md). Never send `publisher_id` or
-   `project_id`; the server stamps them. Show the proposal in the format and with
-   the defaults of
-   [Conversation contract](references/quest-document.md#conversation-contract), then
-   stop. Stop before any write if the reward is not uniquely verified.
+   [quest-authoring.md](references/quest-authoring.md). Never send `publisher_id` or
+   `project_id`; the server stamps them. Show the proposal in the format of
+   [Conversation contract](references/quest-publish.md#conversation-contract), then stop.
+   Stop before any write if the reward is not uniquely verified.
 3. **Publish.** After approval of that exact proposal, follow
-   [Publication after approval](references/quest-document.md#publication-after-approval).
-   Report publication complete only when the read-back matches. After an uncertain
-   outcome, reconcile per
-   [Ambiguous or partial writes](references/quest-document.md#ambiguous-or-partial-writes)
-   before any retry; never duplicate on timeout.
-4. **Edit.** Read, change, full `PUT` per
-   [Editing](references/quest-document.md#editing). Warn that `PUT` replaces the whole
-   document and an active edit goes live. Show a before/after diff, get approval,
-   read back, then pause per [Pausing](references/quest-document.md#pausing) if needed.
-5. **Event.** Only after the gate in [`events.md`](references/events.md) passes, with
-   its own approval and exact payload. If the gate has not passed, say in one
-   reply in the reply shape that the event cannot be sent yet. Never resend after an uncertain
-   response. Details: [Flow step detail](references/events.md#flow-step-detail-submitting-an-event).
-6. **Verify.** Per [`verification.md`](references/verification.md#flow-step-detail-verifying),
+   [Publication after approval](references/quest-publish.md#publication-after-approval).
+   Report completion only when the read-back matches. After an uncertain outcome, reconcile
+   per [Ambiguous or partial writes](references/quest-publish.md#ambiguous-or-partial-writes);
+   never duplicate on timeout.
+4. **Edit.** Read, change, full `PUT` per [Editing](references/quest-edit.md#editing).
+   Warn that `PUT` replaces the whole document and an active edit goes live. Show a
+   before/after diff, get approval, read back, then pause per
+   [Pausing](references/quest-edit.md#pausing) if needed.
+5. **Event.** Only after the gate in [events.md](references/events.md) passes, with its own
+   approval and exact payload. If the gate has not passed, say in one reply that the event
+   cannot be sent yet. Never resend after an uncertain response:
+   [Flow step detail](references/events.md#flow-step-detail-submitting-an-event).
+6. **Verify.** Per [verification.md](references/verification.md#flow-step-detail-verifying),
    correlate the event and report whether the quest ran.
-7. **Delete.** Only quests the developer names, one per call, after a fresh read and
-   an explicit yes. Soft delete, no restore; see [Deleting](references/quest-document.md#deleting).
-   Until that yes, the stop reply says "Nothing is removed yet; removal needs its own yes."
-8. **Which shop.** Whenever the request is about the publisher's shop, webshop or
-   site: a change to it, or a question about it (for example "tell me about quests on
-   my webshop" or "what can quests do on my Shop Builder site"). Pure quest requests
-   (list my quests, why a quest did not complete, create a quest) skip this step.
-   Then follow [Which shop](references/shop-builder-quests-block.md#which-shop), which
-   reads the site list first with the read-only CLI call.
-9. **Headless Web Shop section.** Only on explicit request, per
-   [`web-shop-module.md`](references/web-shop-module.md). Quest approval never
-   authorizes shop source edits.
-10. **Shop Builder Quests block.** On request for a Shop Builder site, follow
-    [`shop-builder-quests-block.md`](references/shop-builder-quests-block.md). Every
-    Quests operation goes as a `block_operations` brief through the
-    `shop-builder-assembly` safety gate. Delete needs its own yes; quest approval
-    never authorizes site writes. Card reward text and reward icon are per-card
-    overrides in that reference, proposed from the quest's reward. A question about
-    the Quests block on a known site (what it shows, how many quests) is a read: see
-    [Describe the block](references/shop-builder-quests-block.md#describe-the-block).
+7. **Delete.** Only quests the developer names, one per call, after a fresh read and an
+   explicit yes: [Deleting](references/quest-edit.md#deleting). Until that yes, reply
+   "Nothing is removed yet; removal needs its own yes."
+8. **Shop Builder Quests block.** On request for a Shop Builder site, follow
+   [quests-block-flow.md](references/quests-block-flow.md). Every operation goes as a
+   `block_operations` brief through the `shop-builder-assembly` gate. Delete needs its own
+   yes; quest approval never authorizes site writes. A question about the block on a known
+   site is a read: [Describe the block](references/quests-block-flow.md#describe-the-block).
+9. **Headless Web Shop section.** Only on explicit request, and only then load
+   [web-shop-module.md](references/web-shop-module.md). Quest approval never authorizes
+   shop source edits.
 
 ## Safety stops
 
-Full text: [writes and credentials](references/auth-and-environment.md#safety-stops-for-writes-and-credentials),
-[proposals and actions](references/quest-document.md#safety-stops-for-proposals-and-actions),
-[events and failed rewards](references/events.md#safety-stops-for-events-and-failed-rewards),
-[execution reads](references/verification.md#scope-of-execution-reads).
-
-- Show the resolved scope before the first write; ask before any other non-GET call,
-  showing the exact body first.
-- Each event needs its own payload and yes; never resend after a timeout or a
-  `FAILED` reward action.
-- Never point `send_http_webhook` at a private service or an unapproved host. Read
-  executions only by the developer's own quest id, after confirming ownership.
-- Branch errors on HTTP status per [Errors](references/auth-and-environment.md#errors).
-  `ID 0` is a valid ID, never treat it as absent.
+Each stop sits at its flow step and in its reference: writes and credentials
+([auth-credentials.md](references/auth-credentials.md#safety-stops-for-writes-and-credentials)),
+proposals ([quest-publish.md](references/quest-publish.md#safety-stops-for-proposals-and-actions)),
+events ([events.md](references/events.md#safety-stops-for-events-and-failed-rewards)),
+execution reads ([verification.md](references/verification.md#scope-of-execution-reads)).
+Show the resolved scope before the first write, and ask before any other non-GET call,
+showing the exact body first. `ID 0` is a valid ID, never treat it as absent
+([Errors](references/auth-credentials.md#errors)).
