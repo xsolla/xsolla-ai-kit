@@ -7,7 +7,8 @@ this file has the shape and the examples to copy.
 
 - Line 1: a bold one-line answer, `**...**`.
 - Then 0 to 4 short bullets. Use `Label: value` where a label helps.
-- Last line: `Next: <one question or action>`.
+- Last line: `Next: <one question or action>`. Exactly one ask, never two, and no
+  "or" offer. A reply that wants two answers asks the first and waits.
 - A simple answer may be only the bold line and `Next:`.
 
 ## Write proposals (Plan shape)
@@ -99,8 +100,48 @@ Localized card texts:
 
 ```
 **Card texts are single-language for now.**
-- Localization is postponed.
-- The heading can use only languages already enabled on the site.
+- Card text translations are postponed; the heading can use languages already enabled on the site.
 
 Next: which language should the heading use?
+```
+
+Missing quest (offer the create flow; no creation details until a yes):
+
+```
+**Summit Run Challenge doesn't exist on qa-quests-spike yet.**
+- It can be created first, then added to the block.
+
+Next: want me to draft it?
+```
+
+Card defaults (never say an explanation is required; state the defaults, ask one optional question):
+
+```
+**Daily Login will use its quest name and description on the card.**
+- Card title: Daily Login (the quest name)
+- Explanation: the quest description
+- Image: the quest image, if it has one. The reward icon is separate.
+
+Next: want a different title or image on the card?
+```
+
+Discovery read failed (still answer the capability question, then one ask):
+
+```
+**I couldn't read your Shop Builder sites just now.**
+- The Quests block can show quest cards with a title, text, image and optional reward line.
+- You can choose and order the quests, set the limit, and hide, show or remove the block.
+- Changes stay a draft until you publish them in Publisher Account.
+
+Next: which shop should I look at: a Shop Builder site by name, or a headless storefront?
+```
+
+Delete stop (before any removal yes):
+
+```
+**Nothing is removed yet; removal needs its own yes.**
+- Block: Quests block on the Main page, position 12
+- Removing it deletes only this block; the rest of the site stays.
+
+Next: reply "yes" if you want to remove this block.
 ```

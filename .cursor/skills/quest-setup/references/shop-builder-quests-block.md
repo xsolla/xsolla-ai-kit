@@ -29,7 +29,8 @@ to the publisher.
    Publisher Account when ready. The site stays unpublished."
 4. **Delete needs its own yes.** Remove a block only when the publisher names it, and
    only as a `delete` operation in the confirmed plan. Nothing else in the plan may
-   remove a block.
+   remove a block. Until that yes, the stop reply says "Nothing is removed yet; removal
+   needs its own yes."
 5. **Quest and site approvals are separate.** A quest approval never covers a site
    write, and a site confirmation never covers a quest write. Quest edits keep the
    stops in [`SKILL.md`](../SKILL.md).
@@ -69,9 +70,11 @@ a quest) never trigger it.
 2. If the command succeeds, reply in the Which shop shape: the bold question, one bullet
    per site name from the list, a bullet for a headless storefront codebase, then
    `Next:`. No capability or explanation sentence comes before the question.
-3. Only if the command itself fails, reply with a bold line that the site list couldn't
-   be read, and a `Next:` asking which shop it is, and to log in to the Xsolla CLI if
-   needed.
+3. Only if the command itself fails, use the Discovery failure shape in
+   [reply-format.md](reply-format.md): a bold line that the site list couldn't be read,
+   2 or 3 bullets with the block's capabilities (see [Discovery answer](#discovery-answer)),
+   and one `Next:` asking which shop it is. Mention logging in to the Xsolla CLI only if
+   it is needed, and never ask the publisher to allow CLI commands.
 4. If the list is empty, say there are no Shop Builder sites and ask whether they mean
    a headless storefront.
 5. After the answer, continue here for a Shop Builder site, or with
@@ -88,7 +91,9 @@ then reply in the Which shop shape (bold question, one bullet per site, headless
 description, image, an optional reward line and icon, and a heading; the skill can choose
 and order the cards, set their text and images, and move, hide, show or remove the block.
 Changes stay a draft until the publisher publishes them in Publisher Account. Use the
-shape from [reply-format.md](reply-format.md), with at most four bullets.
+shape from [reply-format.md](reply-format.md), with at most four bullets. When the list
+read fails (step 3), give the same capability bullets (at most three) in the Discovery
+failure shape, then the one `Next:`.
 
 ## Describe the block
 
@@ -131,12 +136,12 @@ bold question, up to four bullets, then `Next:`), and only for what you cannot r
 yourself:
 
 - **Which quests** to show, and in what order. List the existing quests (read-only).
-  If a wanted quest is missing, offer the normal create flow.
-- **Card text and image**, only for a quest that lacks them. Where the quest already
-  has them, do not ask: say the defaults in the proposal instead. Title defaults to
-  the quest name, explanation to the quest description, and image to the quest image
-  when it has one. Reward icon defaults to the reward item's catalog image when the
-  item has one.
+  If a wanted quest is missing, use the Missing quest offer in the Flow (step 1).
+- **Card text and image.** Never say that an explanation is required, and never ask for
+  card text that has a default. Say the defaults instead: card title is the quest name,
+  explanation is the quest description, image is the quest image when it has one, and
+  the reward item image is used only as the reward icon. Then ask at most one optional
+  question, for example "want a different title or image on the card?"
 - **Card defaults bullets.** Whenever you stop or ask about card content, add bullets for
   only the defaults that apply: Card title is the quest name; Explanation is the quest
   description; Image is the quest image when it has one; Reward icon is the reward item's
@@ -301,6 +306,9 @@ Rules for every operation:
 1. **Choose quests.** List the existing quests (read-only) and agree the set, order
    and count with the publisher. A missing quest goes through the normal create flow
    in [`SKILL.md`](../SKILL.md), created only after a yes to that exact proposal.
+   **Missing quest offer:** a bold line that the quest doesn't exist yet, at most 2
+   bullets, and one yes/no `Next:` ("want me to draft it?"). Under about 80 words. Do
+   not draft creation details (player action, reward, schedule, event) before that yes.
 2. **Make them public.** For each chosen quest that is not public, set `is_public` and
    `public_view` per [Quest public view](#quest-public-view): one proposal, one
    approval. Stop if a quest is not found or the read-back does not show the fields.

@@ -259,3 +259,9 @@ integration is complete.
   module; describe the browser `fetch` URL shape instead.
 - Never fabricate quests or rewards for demos.
 - Errors degrade without breaking the catalog.
+- Never open `.env` or any env file, even to redact values, and never run `cat`, `sed`
+  or `head` on a credential file.
+- Do not describe catalog pages, their layout, or where the section will appear until
+  you have read the storefront source. If no storefront source is in the working folder,
+  reply with a bold line that no storefront source was found, and one `Next:` asking for
+  the path to the storefront source.
