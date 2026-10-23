@@ -1,14 +1,14 @@
 # CLI assembly operations
 
-This is the dependency map for `xsolla` 1.9.4 or newer. Run every command against the
-already verified sandbox or dedicated-test-project context; do not add per-command
-project overrides after preflight.
+Dependency map for `xsolla` 1.9.4 or newer. Run every command against the verified
+sandbox or dedicated-test-project context; do not add per-command project overrides after
+preflight.
 
 | Phase | Command | Consumes | Produces / unlocks |
 |---|---|---|---|
 | Discover | `xsolla config list --json` | Local profile | Merchant, project, environment/sandbox match |
 | Discover | `xsolla auth list-account --json` | Credential store | Active Publisher login state |
-| Safety | `preflight.py --approved-test-projects ~/.config/xsolla/approved-test-projects.json` | Separate local approval record (fixed path, `~` expanded) | Exact non-sandbox test-project identity is allowlisted |
+| Safety | `preflight.py --approved-test-projects <fixed path>` | Approval list read by scripts only (see [shop brief](shop-brief.md)) | Exact non-sandbox test-project identity is allowlisted |
 | Discover | `xsolla shopbuilder list-websites --json` | Project context | Slug, landing ID, type |
 | Backup | `get-landing`, `get-structure`, `get-localization`, `list-assets`, `list-versions` | Existing slug | Restorable configuration evidence |
 | Bootstrap | `create-website --type topup` | Name, slug | Empty landing with `type:null` |
@@ -22,14 +22,8 @@ project overrides after preflight.
 | Verify | `get-structure`, `get-localization`, `verify-website` | Slug | Plan comparison and readiness result |
 | Preview | `enable-preview`, `preview-link` | Slug | Human-reviewable preview only |
 
-`apply_plan.py` and `backup_shop.py` do not log in before commands; the CLI refreshes
-an expired token on its own. When a command fails with an authentication error or a
-Publisher-session bootstrap failure, the script runs `xsolla auth login` once per run,
-re-reads `xsolla config list --json`, stops if the merchant, project, or sandbox
-setting changed, and retries the command. A second authentication failure ends the
-run. The scripts never read a browser cookie, never accept a manually copied PA token,
-and do not retry ambiguous API operation failures. Session-bootstrap HTTP 429
-responses use bounded backoff.
+`apply_plan.py` and `backup_shop.py` handle expired sessions themselves (one re-login per
+run, then retry). The agent never runs `auth login` and never supplies a token. Block operations are in [block-operations.md](block-operations.md).
 
 ## ID dependencies
 
@@ -56,55 +50,11 @@ responses use bounded backoff.
   are unavailable, keep each section title disabled rather than reusing a misleading
   template title.
 
-## Block operations (Quests block, `block_operations` briefs)
-
-`apply_plan.py` runs a confirmed operations plan item by item. Every step re-reads
-`get-structure` for ids and indices; the plan's positions are never trusted. Before the
-first write it compares the live structure with the backup (volatile component IDs
-ignored) and stops if they differ.
-
-| Op | Commands | Notes |
-|---|---|---|
-| `add` | `add-block --block federated [--index N]`, then `get-structure` for the new id, one `update-block`, one `update-block` for `devName`, optional `move-block` | Created bare, then retargeted to the Quests module from the pinned version's defaults. Index 0 omits the flag. |
-| `update` values | `update-block` with leaf `replace` patches under `["values","internalBlockValues", ...]` | A missing parent object (`layout`, `overrides.<questId>`) is created with `add` of `{}` first, only when it is absent now: a leaf patch under a missing parent answers 200 and is ignored, and an `add` over an existing object would wipe it. Whole `values` are never patched. |
-| `reset` | `update-block` with leaf `remove` patches | Skips leaves already absent. |
-| `update` heading | `update-many-localization --slug <slug> --data '{"locale":"en-US","perScopeValues":{"<pageId>":{"L:<id>":{"translation":"..."}}}}'` | The `L:` id is `values.resources.localizedValues[<translations.heading>].texts.id`; the scope is the namespace of `get-localization` that holds it. The value key must be `translation`. Any other key writes an empty string. |
-| `move` | `move-block --source <live index> --destination <index>` | The source index is looked up from the block id. |
-| `duplicate` | `duplicate-block --blockid <id> [--index N]` | The copy gets its own `L:` texts. The copy id is found by re-reading the page. |
-| `hide` / `show` | `update-block`, `replace ["hidden"]` | Same helper (`set_block_hidden`) as the Custom code hiding. |
-| `delete` | `delete-block --landing-id --page-id --blockid <id> --force` | See below. |
-
-`delete` is the only place `--force` is used: Quests blocks listed under `removals` in the
-confirmed plan, while the block is still on its page. Do not run a page-scoped
-`removeBlocks` patch first; it detaches the block but leaves it in the landing block list.
-
-Verification runs automatically at the end of an apply and reads every planned leaf back.
-Known gap: a deleted block's id can remain in the landing `blocks[]` (the apply report
-warns). Track it as a CLI/API gap; do not patch `blocks[]` by hand.
-
-## Known gaps to track
-
-The official Blocks page is the authoritative product inventory, but the CLI does not
-expose a machine-readable mapping from those names to current template modules or
-their value contracts. The mapping in `block-catalog.md` therefore combines the
-official inventory, the live Add block palette, and sanitized UI-created exports.
-Subscriptions is absent from the observed palette, and five palette entries are absent
-from the official page. Current exports show that `lead` versus `leadGameSales` is
-landing-template-dependent and that `federated` is a runtime wrapper whose effective
-module is `values.blockId`. Preserve that wrapper and patch only exported leaf paths.
-Track remaining discrepancies as linked gaps rather than guessing aliases.
-
-- Inventory/UI reconciliation: still open
-- CLI module and contract discovery: still open
-
-The first dedicated-project run also found defects in Publisher-session reuse,
-`verify-website`, and CLI preview authorization. See
-[`test-findings.md`](test-findings.md) for reproducible evidence.
+## Page deletion
 
 The CLI does not expose page deletion. If an existing target contains paths outside
 the confirmed plan, stop before writes and report the extra paths instead of leaving
 a silently mixed preset or deleting the whole website.
 
 Use `scripts/verify_structure.py` for the deterministic portion of verification. It
-does not replace `verify-website`, localization/catalog checks, or visual preview; it
-isolates structural failures from the currently tracked CLI readiness/preview defects.
+does not replace `verify-website`, localization/catalog checks, or visual preview.
