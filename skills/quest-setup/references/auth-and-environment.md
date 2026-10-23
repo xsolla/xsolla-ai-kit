@@ -26,7 +26,7 @@ target.
 
 Resolve a named `web3_item` through the Store admin virtual items reads at
 `https://store.xsolla.com/api/v2/project/{project_id}/admin/items/virtual_items`,
-with `{project_id}` set to the resolved `XSOLLA_PROJECT_ID`. Use only these
+with `{project_id}` set to the resolved project id from the credential set. Use only these
 two GET routes:
 
 | Route | Use |
@@ -66,25 +66,8 @@ A named item is resolved from the list pages alone. A SKU the publisher typed
 is validated with the single-item read instead: require HTTP 200, the same
 `sku`, and the mintable rule above. A 404 means the SKU is not in the catalog.
 Abort on any other failure. The catalog project for the `web3_item` body is the
-`XSOLLA_PROJECT_ID` the read was scoped to. A zero or ambiguous result stops
+project id the read was scoped to. A zero or ambiguous result stops
 the flow.
-
-Observed 2026-10-05 on the kit's production project (49 virtual items):
-
-- HTTP Basic with `XSOLLA_PROJECT_ID` (documented `basicAuth`) and with
-  `XSOLLA_MERCHANT_ID` (documented `basicMerchantAuth`) as the username both
-  return 200 on both reads. No header or a wrong key returns 401 with
-  `errorCode` 1501. The skill uses `XSOLLA_MERCHANT_ID`, the same pair as the
-  Quest Platform routes.
-- `limit` below 1 returns 422. Values up to 10001 returned 200; the whole
-  catalog fit on one page at every limit, so no server cap was observed. Page
-  by `has_more`, not by item count.
-- The single-item read returns the same item object; an unknown SKU returns
-  404 with `errorCode` 4001.
-- Parity: the minting service's SKU list held 47 SKUs, all in the admin list
-  and identical to the public client catalog. The two admin-only items were
-  one with `is_show_in_store: false` and one whose only period starts in the
-  future. `type`, `groups` and `attributes` did not separate them.
 
 ## Recipient wallet
 
@@ -107,7 +90,8 @@ Use the selected merchant and project settings supplied by the configured
 integration. Never ask the publisher to paste a secret into chat or print a
 header.
 
-The shared project-local configuration uses these names. A process environment
+Agent-internal: never show these names, values or this table to the publisher.
+The credential source uses these names. A process environment
 may provide the same values instead:
 
 | Value | Use |
@@ -123,6 +107,7 @@ merchant ID as the username and the project API key as the password. Send the
 key to no other Store, Catalog or unrelated route. Do not send multiple auth
 schemes in one request.
 
+Agent-internal: never show the names or values below to the publisher.
 Read `.env` only as text; never source, execute, echo or interpolate the file.
 Never open `.env` in a file viewer or print it, and never paste a credential
 value into command text, a script file, a log or a reply. Parse the values
@@ -135,23 +120,23 @@ or the reply. Send the request to a route from
 Describe each call by method, route and body; do not hand the publisher a raw
 HTTP command.
 
-Resolve the three credential names as an all-or-nothing set:
+Resolve the three credential values as an all-or-nothing set:
 
 1. If all three process-environment values are present and non-empty, use that
    complete set.
 2. Otherwise, if all three project-local `.env` values are present and
    non-empty, use that complete set.
 3. Never combine process values with `.env` values. If neither source is
-   complete, stop before network calls and tell the publisher to set
-   `XSOLLA_MERCHANT_ID`, `XSOLLA_PROJECT_ID`, and
-   `XSOLLA_PROJECT_API_KEY` in the project-local `.env` or process environment.
+   complete, stop before network calls. Say in one sentence that Quest Platform
+   access for this project is not configured yet, and ask the publisher to set it up
+   with the merchant setup skill.
 
 The project API key with the merchant ID as its Basic username is the only
 credential lane. Never request, print or use any other key as a fallback. If the developer asks for another lane, stop
 and direct them to the Quest Platform owner. Do not infer a target by probing
 hosts or by trying a credential against multiple gateways.
 
-The catalog project is not a credential. It is the `XSOLLA_PROJECT_ID` that
+The catalog project is not a credential. It is the project id that
 the Store admin read was scoped to, never a value the publisher typed.
 
 ## The merchant id in the path
@@ -262,16 +247,10 @@ Web3 payout is ready. Confirm each required operation against the contract for
 its selected service target before using it. Never switch targets as a
 fallback.
 
-The Shop Builder Quests block shows signed-in player progress through the
-player-facing `/api/v2/me/...` routes. These are live on stage only for now. That
-is a runtime fact about the block, not a route this skill calls: the skill never
-sends requests to them, and must not promise signed-in progress on a production
-site (see [`shop-builder-quests-block.md`](shop-builder-quests-block.md)).
-
 ## Prerequisites and lane
 
-Detail behind the skill entry point. To see which settings exist, list only the
-names left of `=`, for example
+Detail behind the skill entry point. Agent-internal: if needed, check which setting names exist with this
+key-names parser. Never show its output to the publisher:
 `python3 -c 'import pathlib; print([l.split("=")[0].strip() for l in pathlib.Path(".env").read_text().splitlines() if "=" in l])'`.
 
 Follow [`auth-and-environment.md`](auth-and-environment.md) for the production credential and scope.

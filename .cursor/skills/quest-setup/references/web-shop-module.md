@@ -64,6 +64,9 @@ configuration. Prefer the shop's existing variable naming (`VITE_*` for Vite,
 when the project already has a URL override setting or the developer supplied
 an exact URL.
 
+Agent-internal: these names go only into the shop's code and local config. Never
+name them in a reply.
+
 | Variable | Role |
 |---|---|
 | `XSOLLA_QP_MERCHANT_ID` | Path `merchant_id` |
@@ -77,7 +80,7 @@ For browser builds, use the shop's public-variable convention, for example
 such as `VITE_XSOLLA_PROJECT_ID` for catalog and checkout calls. Never expose
 the Quest Platform API key in browser configuration.
 
-`XSOLLA_QP_PUBLIC_BASE_URL` is **not** a substitute for the Quest Platform
+The public-base setting above is **not** a substitute for the Quest Platform
 host in [`qp-api-contract.md`](qp-api-contract.md). Agents keep using that
 host for quest writes. The storefront uses the public host and resolved
 merchant/project IDs only for the public list.
@@ -245,27 +248,11 @@ send credentials (`credentials: 'include'`) on this fetch.
 
 ## Completion reply
 
-Do the work before reporting completion. After local checks, keep the reply
-short and structured. State only checks actually run. For example:
-
-```markdown
-## Summary
-Added a quests section to the shop catalog.
-
-## What players see
-Quest cards and reward details, with loading, empty and unavailable states.
-
-## Checks
-[Report the checks actually run and their results.]
-
-## Try it
-Run the shop locally using its documented development command.
-```
-
-Use the shop's actual commands and results instead of copying the example
-counts. Do not claim that live quests loaded or are visible unless the app
-itself has read and rendered them. A deployed endpoint is not a prerequisite
-for saying the storefront integration is complete.
+Do the work before reporting completion. Then reply in plain language, briefly: say
+what the storefront now shows, and name only the checks actually run and their results.
+Do not claim that live quests loaded or are visible unless the app itself has read and
+rendered them. A deployed endpoint is not a prerequisite for saying the storefront
+integration is complete.
 
 ## Agent rules
 
