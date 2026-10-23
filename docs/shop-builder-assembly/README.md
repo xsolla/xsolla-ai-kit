@@ -60,7 +60,7 @@ catalog. Federated wrappers use their effective `values.blockId` module.
 
 ## Known limitations
 
-- Record formal inventory and preset approval in `references/expert-review.md` during
+- Record formal inventory and preset approval in `expert-review.md` during
   PR review; implementation testing may start earlier.
 - Test project IDs are intentionally not stored in committed examples.
 - A `test` brief is insufficient on its own: preflight and apply also require a
@@ -68,7 +68,7 @@ catalog. Federated wrappers use their effective `values.blockId` module.
   briefs do not require this file.
 - The CLI does not currently expose an authoritative list of standard block modules.
 - Multi-command Shop Builder authentication, readiness verification, and CLI preview
-  have confirmed defects captured in `references/test-findings.md`.
+  have confirmed defects captured in `test-findings.md`.
 - The CLI has no page-deletion command. Application stops before writes when an
   existing target contains pages outside the confirmed plan.
 - The official block inventory is fully documented, and every observed official
