@@ -1,18 +1,12 @@
 ---
 name: shop-builder-assembly
 description: >-
-  Assemble a complete Xsolla Shop Builder storefront from a structured shop brief:
-  theme and pages first, then navigation, standard blocks, localization, and catalog
-  links. Use for AI-built Shop Builder sites, full website or webshop assembly,
-  game-type storefront presets (mobile single-page, PC multi-page, live-service stores
-  with bundles or events), and block operations on the Quests block of an existing
-  Shop Builder site (add, update, reset, move, duplicate, hide, show, delete). Not for
-  single unrelated edits such as changing the header, a theme, or a color of an
-  existing site on request; those go to the Shop Builder editor. When the user asks
-  about one block, do not offer site-wide theme changes. Not the entry point for
-  "build me a shop": that is shop-setup, which routes here once the build path is
-  Shop Builder and a validated brief exists. Do not use it for a custom headless
-  storefront; use shop-setup for that architecture.
+  Use for building or changing an Xsolla Shop Builder site from a validated shop brief
+  (pages, navigation, blocks, localization, catalog links, game-type presets), and for
+  block_operations edits to the Quests block of an existing Shop Builder site (add,
+  update, reset, move, duplicate, hide, show, delete). Not for one-off edits to a
+  header, theme, or colour (Shop Builder editor), not the entry point for "build me a
+  shop" (shop-setup routes here), and not for headless storefronts.
 metadata:
   owner: k.shah
   domain: store
@@ -20,70 +14,64 @@ metadata:
 
 # Shop Builder Assembly
 
-Build an unpublished Publisher Account **Shop Builder site**, not a custom frontend,
-in a dedicated non-partner test project through `xsolla shopbuilder`.
+Build an unpublished Publisher Account **Shop Builder site** (not a custom frontend) in a
+dedicated non-partner test project through `xsolla shopbuilder`.
 
-## Non-negotiable safety gate
+## Safety gate
 
-1. Run `scripts/preflight.py <brief.json>`; for a non-sandbox test project, also pass
-   the fixed approval-list path from the allowlist paragraph in
-   [shop brief](references/shop-brief.md) as `--approved-test-projects` (expand `~`
-   first; the scripts do not). Do not read, stat, list or check that file yourself;
-   only `preflight.py` reads it. Read back the matched merchant
-   ID, project ID, safety environment, approval reference, active Publisher login,
-   target site, and catalog groups. If preflight refuses, reply in the blocked shape under [Replies](#replies).
-2. If CLI context differs, switch it and rerun preflight; never override later commands.
-3. If the target site exists, export it before the first write with
+Run these steps in order before any remote write. Writes need a valid shop brief.
+
+1. Run `scripts/preflight.py <brief.json>`. For a non-sandbox test project, also pass the
+   approval-list path from [shop brief](references/shop-brief.md) as
+   `--approved-test-projects` (expand `~` first). Only the scripts read that list: never
+   read, search for, stat, list, create, edit, or suggest changing it. Read back the
+   matched merchant ID, project ID, environment, approval reference, active Publisher
+   login, target site, and catalog groups. If preflight refuses, reply in the blocked shape.
+2. If CLI context differs, switch it and rerun preflight. Never override later commands.
+3. If the target site exists, export it before the first write:
    `scripts/backup_shop.py --brief <brief.json> --slug <slug> --output-dir <dir>`.
-4. Render with
-   `scripts/render_plan.py <brief.json> --structure <backup-dir>/structure.json` and
-   show the plan in the Plan shape under [Replies](#replies): the ordered operations,
-   exact block removals, and catalog mappings as bullets. Preserve configured blocks
-   lacking replacement data. Omit `--structure` only for a new
-   slug's bootstrap-only plan.
-5. Ask for explicit confirmation of the plan's `confirmation_id` immediately before
-   the first remote write; the plan's Confirmation bullet and its `Next:` line ask for it.
-Earlier permission to "build a shop" is not confirmation
-   of a new plan. Re-render and reconfirm if the brief or plan changes.
+4. Render with `scripts/render_plan.py <brief.json> --structure <backup-dir>/structure.json`
+   and show the plan in the Plan shape. Preserve configured blocks lacking replacement
+   data. Omit `--structure` only for a new slug's bootstrap-only plan.
+5. Ask for explicit confirmation of the plan's `confirmation_id` immediately before the
+   first remote write. Earlier permission to "build a shop" is not confirmation. Re-render
+   and reconfirm if the brief or plan changes.
 
-The brief must target a sandbox or acknowledged dedicated test project. A `test`
-target must match the approval list that preflight reads, with exact IDs, approver, and
-approval reference. Never read, search for, stat, list, create, edit or suggest changing
-that list; if preflight refuses, stop and reply in the blocked shape under [Replies](#replies),
-saying this project is not approved for test writes.
-
-Set `project.test_project_acknowledged` to `true` only when the publisher explicitly
-states in this conversation that the project is a dedicated test project. Never set it
-yourself, and never infer it from the project name, a test site, an earlier yes, or
-the approval list.
+The target must be a sandbox or an acknowledged dedicated test project. A `test` target
+must match the approval list exactly (IDs, approver, approval reference), or preflight
+refuses. Set `project.test_project_acknowledged` to `true` only when the publisher
+explicitly says in this conversation that the project is a dedicated test project. Never
+set it yourself or infer it from the name, a test site, an earlier yes, or the list.
 
 Never use a partner project, publish, attach a production domain, enable live payments,
-or apply a saved version. For a publish request, use the publish shape under [Replies](#replies).
+or apply a saved version. For a publish request, use the publish shape under Replies.
 
 A new site has generated blocks whose IDs do not exist before creation. Confirm the
-bootstrap, then export, re-render, and reconfirm before deleting any generated block.
-If the target changes after export, repeat this sequence.
+bootstrap, then export, re-render, and reconfirm before deleting any generated block. If
+the target changes after export, repeat this sequence.
 
 ## Build
 
 For a full site from a shop brief, follow [build-flow.md](references/build-flow.md) after
-the gate below. It covers the preset choice, the inputs to read, the assembly order, and
+the gate. It covers the preset choice, the inputs to read, the assembly order, and
 verification and handoff. Use pre-written scripts for repeated work; never invent HTTP or
 `curl` workarounds. If the CLI lacks an operation, stop, record the gap, and file a
 CLI/API ticket.
 
-For block operations on an existing Quests block, follow
-[block-operations.md](references/block-operations.md) (same gate). Deleting a block
-needs a `delete` op in the confirmed plan; `--force` is used only for that. For a change
-outside the Quests block in such a request, use the refusal shape under [Replies](#replies).
+## Block operations (Quests block)
+
+For `block_operations` on an existing site, follow [block-operations.md](references/block-operations.md)
+with the same gate. A delete needs a `delete` op in the confirmed plan, and `--force` is
+used only for that. For any change outside the Quests block in such a request, use the
+refusal shape under Replies.
 
 ## Stop conditions
 
 Stop before writes when project identity is ambiguous, backup fails, confirmation is
 missing, the target is neither sandbox nor an acknowledged dedicated test project, the
-test project is not in the approved test-projects file, catalog/project IDs do not
-match, or the plan requires an unverified block module. Preserve completed safe work and
-explain the smallest action needed to continue.
+test project is not on the approved list, catalog or project IDs do not match, or the
+plan needs an unverified block module. Keep completed safe work and name the smallest
+action that continues.
 
 ## Replies
 

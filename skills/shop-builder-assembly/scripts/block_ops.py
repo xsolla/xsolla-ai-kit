@@ -13,7 +13,7 @@ from __future__ import annotations
 import re
 from urllib.parse import urlparse
 
-# Contract recorded in references/exported-block-contracts.md ("Quests block").
+# Contract recorded in references/block-operations.md ("Quests block contract").
 QUESTS_MODULE = "_quest-platform_quests-block"
 # Operations-only blocks: exported contracts exist, but they are outside the reviewed
 # presets. validate_shop_brief re-exports this set; it is not part of
