@@ -14,7 +14,14 @@ import time
 import uuid
 from pathlib import Path
 
-from render_plan import build_plan, effective_module, structure_data, structure_hash
+from render_plan import (
+    CUSTOM_CODE_WARNING,
+    build_plan,
+    effective_module,
+    page_path,
+    structure_data,
+    structure_hash,
+)
 from validate_shop_brief import VERIFIED_BLOCK_MODULES, load_brief, validate
 
 BACKUP_FILE_NAMES = {
@@ -30,14 +37,28 @@ SESSION_BOOTSTRAP_RETRY_DELAYS = (5, 10, 20)
 LOGIN_SETTLE_SECONDS = 2
 LOGIN_TIMEOUT_SECONDS = 45
 LOGIN_RETRY_DELAY_SECONDS = 5
+# `xsolla` exits with 10 when the API answers HTTP 401 or 403.
+CLI_EXIT_AUTH = 10
+AUTH_FAILURE_MARKERS = (
+    "authentication required",
+    "publisher session bootstrap did not yield",
+    "auto-bootstrapping publisher session",
+)
+# A run logs in at most once, and only after the CLI reports an auth failure.
+# `context` is the merchant, project and sandbox setting that main() verified;
+# `xsolla auth login` can write token claims into the CLI config, so it is
+# re-checked after the login.
+RUN_AUTH: dict = {"logged_in": False, "context": None}
 
 
 def refresh_supported_login() -> None:
     for attempt in range(2):
         try:
+            # Login messages go to stderr so stdout stays the JSON report.
             result = subprocess.run(
                 ["xsolla", "auth", "login"],
                 check=False,
+                stdout=sys.stderr,
                 timeout=LOGIN_TIMEOUT_SECONDS,
             )
         except subprocess.TimeoutExpired:
@@ -53,19 +74,74 @@ def refresh_supported_login() -> None:
     raise RuntimeError("supported Publisher login refresh failed")
 
 
+def auth_failure(returncode: int, detail: str) -> bool:
+    """Return whether a CLI failure is one that a fresh supported login can fix."""
+    if "HTTP 429" in detail:
+        return False
+    return returncode == CLI_EXIT_AUTH or any(
+        marker in detail for marker in AUTH_FAILURE_MARKERS
+    )
+
+
+def cli_context(config: object) -> dict:
+    value = data(config)
+    if not isinstance(value, dict):
+        raise RuntimeError("xsolla config list returned an unexpected shape")
+    return {
+        "merchant_id": value.get("merchant_id"),
+        "project_id": value.get("project_id"),
+        "sandbox": value.get("sandbox") is True,
+    }
+
+
+def login_once(detail: str) -> None:
+    if RUN_AUTH["logged_in"]:
+        raise RuntimeError(
+            "authentication still fails after this run's one `xsolla auth login`. "
+            "The failed command made no change, so it is safe to rerun. CLI error: "
+            + detail
+        )
+    approved = RUN_AUTH["context"]
+    if approved is None:
+        raise RuntimeError(
+            "authentication failed before the CLI context was verified: " + detail
+        )
+    RUN_AUTH["logged_in"] = True
+    refresh_supported_login()
+    current = cli_context(run_json("config", "list"))
+    changed = [
+        f"{key} {approved[key]!r} -> {current[key]!r}"
+        for key in approved
+        if current[key] != approved[key]
+    ]
+    if changed:
+        raise RuntimeError(
+            "CLI context changed after `xsolla auth login` ("
+            + ", ".join(changed)
+            + "). The command was not retried and made no change, so it is safe to "
+            "rerun: check .xsolla.json in the working directory, then run preflight "
+            "again"
+        )
+
+
 def run_json(*args: str) -> object:
     if any(arg == "--force" or arg.startswith("--force=") for arg in args):
         raise RuntimeError("--force is prohibited in Shop Builder assembly")
     command = ["xsolla", *args, "--json"]
-    if args and args[0] == "shopbuilder":
-        refresh_supported_login()
     rate_limit_attempt = 0
-    refreshed_login = False
     while True:
-        result = subprocess.run(command, capture_output=True, text=True, check=False)
+        # The CLI writes UTF-8; without an explicit encoding Windows decodes with
+        # the ANSI code page and loses the output.
+        result = subprocess.run(
+            command, capture_output=True, text=True, encoding="utf-8", check=False
+        )
         if not result.returncode:
             break
-        detail = result.stderr.strip() or result.stdout.strip()
+        detail = (
+            (result.stderr or "").strip()
+            or (result.stdout or "").strip()
+            or f"exit code {result.returncode}"
+        )
         retryable_bootstrap_limit = (
             "publisher session bootstrap" in detail and "HTTP 429" in detail
         )
@@ -75,12 +151,8 @@ def run_json(*args: str) -> object:
             time.sleep(SESSION_BOOTSTRAP_RETRY_DELAYS[rate_limit_attempt])
             rate_limit_attempt += 1
             continue
-        missing_bootstrap_cookie = (
-            "publisher session bootstrap did not yield" in detail
-        )
-        if missing_bootstrap_cookie and not refreshed_login:
-            refresh_supported_login()
-            refreshed_login = True
+        if auth_failure(result.returncode, detail):
+            login_once(detail)
             continue
         if "publisher session bootstrap" in detail:
             detail += (
@@ -88,10 +160,14 @@ def run_json(*args: str) -> object:
                 "and rerun—never copy a browser PA token"
             )
         raise RuntimeError(f"{' '.join(args)} failed: {detail}")
+    stdout = result.stdout or ""
+    stderr = (result.stderr or "").strip() or "no stderr output"
+    if not stdout.strip():
+        raise RuntimeError(f"{' '.join(args)} returned no output: {stderr}")
     try:
-        return json.loads(result.stdout)
+        return json.loads(stdout)
     except json.JSONDecodeError as exc:
-        raise RuntimeError(f"{' '.join(args)} returned invalid JSON") from exc
+        raise RuntimeError(f"{' '.join(args)} returned invalid JSON: {stderr}") from exc
 
 
 def data(value: object) -> object:
@@ -161,7 +237,7 @@ def ensure_common_layout(slug: str) -> str:
 
 def page_for_path(value: dict, path: str) -> dict | None:
     for page in value["pages"]:
-        if isinstance(page, dict) and page.get("path") == path:
+        if page_path(page) == path:
             return page
     return None
 
@@ -213,8 +289,12 @@ def backup_structure(path: Path) -> object:
 
 
 def run_preflight(brief_path: Path, approved_test_projects: Path | None) -> None:
+    # `-X utf8` makes the child write UTF-8 to the pipe; on Windows it would
+    # otherwise write the ANSI code page.
     command = [
         sys.executable,
+        "-X",
+        "utf8",
         str(Path(__file__).with_name("preflight.py")),
         str(brief_path),
     ]
@@ -224,11 +304,14 @@ def run_preflight(brief_path: Path, approved_test_projects: Path | None) -> None
         command,
         capture_output=True,
         text=True,
+        encoding="utf-8",
         check=False,
     )
     if result.returncode:
         raise RuntimeError(
-            result.stderr.strip() or result.stdout.strip() or "preflight failed"
+            (result.stderr or "").strip()
+            or (result.stdout or "").strip()
+            or "preflight failed"
         )
 
 
@@ -286,6 +369,7 @@ def reconcile_page(slug: str, landing_id: str, page_plan: dict) -> dict:
             "page_id": page_id,
             "blocks": current_modules,
             "removed_blocks": 0,
+            "hidden_custom_code": [],
         }
     if removals:
         removal_ids = {block["_id"] for block in removals}
@@ -322,6 +406,7 @@ def reconcile_page(slug: str, landing_id: str, page_plan: dict) -> dict:
             f"page disappeared during reconciliation: {page_plan['path']}"
         )
     existing = [effective_module(block) for block in page.get("blocks", [])]
+    known_block_ids = {block.get("_id") for block in page.get("blocks", [])}
     for module in desired:
         if module not in existing:
             run_json(
@@ -335,6 +420,11 @@ def reconcile_page(slug: str, landing_id: str, page_plan: dict) -> dict:
                 module,
             )
             existing.append(module)
+    hidden_custom_code = (
+        hide_added_custom_code(slug, landing_id, page_plan["path"], known_block_ids)
+        if "html" in desired
+        else []
+    )
 
     for destination, module in enumerate(desired):
         page = page_for_path(structure(slug), page_plan["path"])
@@ -364,12 +454,64 @@ def reconcile_page(slug: str, landing_id: str, page_plan: dict) -> dict:
         raise RuntimeError(
             f"block reconciliation failed for {page_plan['path']}: {final_modules}"
         )
+    still_visible = [
+        block.get("_id")
+        for block in final_page.get("blocks", [])
+        if block.get("_id") in hidden_custom_code and block.get("hidden") is not True
+    ]
+    if still_visible:
+        raise RuntimeError(
+            f"could not hide the new Custom code block on {page_plan['path']}: "
+            + ", ".join(still_visible)
+        )
     return {
         "path": page_plan["path"],
         "page_id": page_id,
         "blocks": final_modules,
         "removed_blocks": len(removals),
+        "hidden_custom_code": hidden_custom_code,
     }
+
+
+def hide_added_custom_code(
+    slug: str, landing_id: str, path: str, known_block_ids: set
+) -> list[str]:
+    """Hide each Custom code block this run added; `add-block` creates it visible.
+
+    Blocks that were on the page before this run are left as the user set them.
+    """
+    page = page_for_path(structure(slug), path)
+    if page is None:
+        raise RuntimeError(f"page disappeared during reconciliation: {path}")
+    hidden: list[str] = []
+    for block in page.get("blocks", []):
+        block_id = block.get("_id")
+        if effective_module(block) != "html" or block_id in known_block_ids:
+            continue
+        if not isinstance(block_id, str):
+            raise RuntimeError(f"new Custom code block on {path} has no _id")
+        if block.get("hidden") is not True:
+            run_json(
+                "shopbuilder",
+                "update-block",
+                "--landing-id",
+                landing_id,
+                "--data",
+                json.dumps(
+                    {
+                        "hideCustomCode": {
+                            "type": "block",
+                            "id": block_id,
+                            "patches": [
+                                {"op": "replace", "path": ["hidden"], "value": True}
+                            ],
+                        }
+                    },
+                    separators=(",", ":"),
+                ),
+            )
+        hidden.append(block_id)
+    return hidden
 
 
 def add_missing_pages(slug: str, page_plans: list[dict]) -> list[str]:
@@ -845,6 +987,7 @@ def main() -> int:
             raise RuntimeError("CLI project_id does not match the shop brief")
         if config.get("sandbox") is True:
             raise RuntimeError("CLI sandbox must be disabled for Shop Builder")
+        RUN_AUTH["context"] = cli_context(config)
 
         slug = brief["site"]["slug"]
         existed = website_exists(run_json("shopbuilder", "list-websites"), slug)
@@ -973,6 +1116,11 @@ def main() -> int:
                     "locales": locales,
                     "completed_phases": plan["implemented_phases"],
                     "pending_phases": plan["unsupported_phases"],
+                    "warnings": (
+                        [CUSTOM_CODE_WARNING]
+                        if any(page.get("hidden_custom_code") for page in pages)
+                        else []
+                    ),
                     "published": False,
                 },
                 indent=2,

@@ -62,6 +62,10 @@ PRESET_PAGES = {
         },
     ],
 }
+CUSTOM_CODE_WARNING = (
+    "The Custom code block is added empty and hidden; paste your code and make the "
+    "block visible in the Site Builder editor."
+)
 
 
 def choose_preset(brief: dict) -> str:
@@ -131,6 +135,36 @@ def effective_module(block: dict) -> object:
         if isinstance(block_id, str) and block_id:
             return block_id
     return module
+
+
+def page_path(page: object) -> str | None:
+    """Return the URL path of a page from get-structure.
+
+    Shop Builder returns a page ``path`` either as a string (``"/"``) or as an object
+    (``{"pathSegment": "/", "type": "static"}``), depending on the landing.
+    """
+
+    if not isinstance(page, dict):
+        return None
+    path = page.get("path")
+    if isinstance(path, str):
+        return path
+    if isinstance(path, dict) and isinstance(path.get("pathSegment"), str):
+        return path["pathSegment"]
+    return None
+
+
+def custom_code_warnings(pages: list[dict]) -> list[str]:
+    """Warn when the plan adds a Custom code block.
+
+    The skill never writes custom HTML, CSS, or JS, so the user must add it. A block
+    already on the page is left as the user set it, so it gets no warning.
+    """
+    for page in pages:
+        current = {block.get("module") for block in page.get("current_blocks", [])}
+        if "html" in page.get("blocks", []) and "html" not in current:
+            return [CUSTOM_CODE_WARNING]
+    return []
 
 
 def selected_pages(brief: dict, preset: str) -> list[dict]:
@@ -227,19 +261,18 @@ def bind_current_state(
     extra_pages = []
     by_path = {}
     for page in current_pages:
-        if not isinstance(page, dict) or not isinstance(page.get("path"), str):
+        path = page_path(page)
+        if path is None:
             raise ValueError("every current page must be an object with a path")
-        if page["path"] in by_path:
-            raise ValueError(
-                f"current structure contains duplicate path {page['path']}"
-            )
-        by_path[page["path"]] = page
-        if page["path"] not in planned_paths:
+        if path in by_path:
+            raise ValueError(f"current structure contains duplicate path {path}")
+        by_path[path] = page
+        if path not in planned_paths:
             extra_pages.append(
                 {
                     "page_id": page.get("_id"),
                     "name": page.get("name"),
-                    "path": page["path"],
+                    "path": path,
                 }
             )
 
@@ -332,6 +365,7 @@ def build_plan(brief: dict, current_structure: object | None = None) -> dict:
         warnings.append(
             "No event data supplied; omit event-specific copy and scarcity claims."
         )
+    warnings.extend(custom_code_warnings(pages))
     plan = {
         "version": 2,
         "target": {

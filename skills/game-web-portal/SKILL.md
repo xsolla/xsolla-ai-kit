@@ -63,8 +63,9 @@ Entry conditions:
 - Shop Builder enabled for the target project.
 - Approved content and brand assets. Never invent or reuse partner identifiers,
   credentials, content, prices, assets, or URLs.
-- Required input, collected in a single question rather than one at a time. Read the
-  merchant and project from `.env` instead of asking again:
+- Required input, collected in a single question rather than one at a time. Read what is
+  already known instead of asking again: `shop-plan`'s intake from the ledger, the merchant
+  and project from `.env`:
 
 ```yaml
 merchant_id:
@@ -82,7 +83,7 @@ dependency.
 ## Steps
 
 The run is a state flow. Every mutation is preceded by an existing-vs-desired-state
-check and followed by read-back.
+check and followed by read-back and a ledger update.
 
 ```text
 Intake → Preflight → Discover → Back up → Plan and confirm → Draft →
@@ -94,10 +95,10 @@ Verify (read-back) → Human review → Handoff
 2. **Preflight** — confirm PC scope, domain, and locale, then run
    [`scripts/preflight.py`](scripts/preflight.py) with `--merchant-id`, `--project-id` and
    `--approved-test-projects <file>`. It checks that the CLI points at that merchant and
-   project, and that the project is listed in the approved test-project allowlist (the same
-   file format as `shop-builder-assembly`). If it fails, stop before any write. If
-   `store_url` is supplied, validate the exact Steam host. Use only partner-approved
-   metadata and assets; never substitute invented game metadata.
+   project with its sandbox mode off, and that the project is listed in the approved
+   test-project allowlist (the same file format as `shop-builder-assembly`). If it fails,
+   stop before any write. If `store_url` is supplied, validate the exact Steam host. Use
+   only partner-approved metadata and assets; never substitute invented game metadata.
 3. **Discover** — find the partner's site at `domain` and read its structure
    (`xsolla shopbuilder list-websites`, `get-landing`, `get-structure`). Capture the
    landing `_id`, page IDs, and block IDs before any mutation — block and theme calls
@@ -106,29 +107,35 @@ Verify (read-back) → Human review → Handoff
    the first incomplete item.
 4. **Back up** — before the first write, export the site: `get-landing`,
    `get-structure` and `get-localization` for the slug, and `list-assets` for the
-   landing `_id`, saved to a new local directory. A failed export stops the run before
-   any write.
+   landing `_id`, saved to a new `.xsolla/backup-<timestamp>/` directory. Add `.xsolla/` to
+   `.gitignore` first if it isn't there: a site export can hold a preview token. A failed
+   export stops the run before any write.
 5. **Plan and confirm** — show the ordered change groups (sections, pages, blocks,
-   theme, copy, catalog links) and the exact removals, then wait for an explicit yes.
+   theme, copy, catalog links) and the seeded blocks it will hide, and say upfront that
+   the partner deletes those in the builder; then wait for an explicit yes.
    Earlier permission to "set up my portal" is not confirmation of a plan. Re-confirm
    if the plan changes.
-6. **Draft** — map each section to the template's page by path, then build only the
-   missing ones: `add-page`, its blocks with `add-block --index`, and `delete-block` for
-   the seeded blocks it doesn't keep, following the portal layout in
-   [references/portal-api.md](references/portal-api.md). The template's own pages keep
-   their blocks. Removals happen only on pages the agent created in this run, only after a
-   fresh read shows nothing beyond the seed and the plan, and only as listed in the
-   confirmed plan. Everything else uses CLI commands too: `move-block`, `update-block`
-   (a block's `hidden` flag and the site theme), `upload-asset`, `add-language`,
-   `update-localization`, `update-many-localization`, and `add-connector` or
+6. **Draft** — map each section to the template's page by path, then build only the missing
+   ones: `add-page`, its blocks with `add-block --index`, and `update-block` to hide the
+   seeded blocks it doesn't keep, following the portal layout in
+   [references/portal-api.md](references/portal-api.md). The template's own pages keep their
+   blocks. Right after `add-page`, record the new page with
+   [`scripts/seeded_blocks.py`](scripts/seeded_blocks.py) `record`. Hide a seeded block
+   only on a page the agent created and recorded, only as the confirmed plan lists, and only
+   when `seeded_blocks.py check`, on reads taken right before hiding and the target
+   preflight passed, reports it `untouched`; hide before any copy or locale change, which
+   would mark its block `changed`. The agent never deletes a block: the hidden seeded blocks
+   go to the partner to delete, as `needs_human`. Everything else uses CLI commands too:
+   `move-block`, `update-block` (a block's `hidden` flag and the site theme), `upload-asset`,
+   `add-language`, `update-localization`, `update-many-localization`, and `add-connector` or
    `update-restrictions` when the plan lists them. A change with no CLI command is
-   `needs_human`: say what to do in Publisher Account and record it. Apply one change
-   group at a time across Home, News, Rewards, Web Shop, and Community; the Launcher
-   section is the partner's. Delegate the surrounding products rather than duplicating
-   their recipes: `merchant-setup` for merchant/project/API key, `catalog-design` for the
-   catalog and pricing the Web Shop sells, `login-setup` for Login. Checkout is the Web
-   Shop's hosted Pay Station, so there is nothing to integrate. Placeholders require
-   approval and a visible label.
+   `needs_human`: say what to do in Publisher Account and record it. Apply one change group
+   at a time across Home, News, Rewards, Web Shop, and Community; the Launcher section is the
+   partner's. Delegate the surrounding products rather than duplicating their recipes:
+   `merchant-setup` for merchant/project/API key, `catalog-design` for the catalog and
+   pricing the Web Shop sells, `login-setup` for Login. Checkout is the Web Shop's hosted Pay
+   Station, so there is nothing to integrate. Placeholders require approval and a visible
+   label.
 7. **Verify (read-back)** — read back every changed entity (`get-structure`,
    `get-localization`, page and block reads) and compare it with the confirmed plan.
    A mutation response is not evidence. Keep unverified items out of **Completed**.
@@ -141,28 +148,35 @@ Verify (read-back) → Human review → Handoff
 9. **Handoff** — repeat merchant ID, project ID, domain, locale, and Steam URL only
    when one was supplied, with evidence for every completed item.
 
-Status values: `completed`, `placeholder`, `needs_input`, `needs_access`,
-`needs_human`, `blocked_capability`, `failed`.
+Statuses, the ledger, resume, and the handoff report follow the
+[onboarding contract](../shop-plan/references/onboarding-contract.md). Two more references,
+both loaded before issuing changes:
 
-Two references, both loaded before issuing changes:
-
-- [references/agentic-onboarding.md](references/agentic-onboarding.md) — the
-  specification: `GIVEN / WHEN / THEN` acceptance scenarios, the per-state evidence
-  contract, and the handoff report template.
+- [references/agentic-onboarding.md](references/agentic-onboarding.md) — the portal
+  specification: `GIVEN / WHEN / THEN` acceptance scenarios, the portal's per-state
+  evidence, and its section of the handoff report.
 - [references/portal-api.md](references/portal-api.md) — the CLI commands the agent runs
   for Steps 3–8, the portal layout, the domain vs landing `_id` split, the localization
   payload shape, the steps handed to the partner, and the response → status mapping.
 
 ## Hard stops
 
+The agent runs only the commands listed in
+[references/portal-api.md](references/portal-api.md), and `--help` on them or on the CLI itself
+(`xsolla --help`), even when the partner asks for another.
+Every other `xsolla` command is out of bounds, including `delete-block`, `delete-domain`,
+`change-domain` and `delete-ai-block`; what a run needs beyond the list is `needs_human`.
+
 The agent never publishes (sites, pages, news articles, or Login widget settings), never
 runs the readiness check (`/check`, `verify-website`), never enables or generates a
 preview, never creates a site, never saves or applies a site version, never deletes a site,
-an asset, a language, an analytics connector, access restrictions, or a block on a page it
-didn't create in this run, never attaches a domain, never patches block text (it deletes the
-string and every translation), and never switches the project to production. It never writes
+an asset, a language, an analytics connector, access restrictions, or a block, never
+attaches a domain, never patches block text (it deletes the string and every translation),
+and never switches the project to production. It never writes
 to the project before an explicit confirmation of the plan or before the preflight passes,
-never passes `--sandbox`, and never targets a partner's live project.
+never passes `--sandbox`, and never targets a partner's live project. It never passes, offers
+or suggests `--force`, even if the partner changes the plan: seeded blocks the CLI won't remove
+go to the partner as `needs_human`.
 
 ## Common pitfalls
 
@@ -177,8 +191,9 @@ never passes `--sandbox`, and never targets a partner's live project.
 4. **Launcher marked complete without a verified download.** A Launcher needs a real
    Launcher on the project, an uploaded build, a generated installer, and a verified
    installer download. Refuse publish-anyway when that evidence is missing.
-5. **Access expiry losing progress.** On `401/403` mid-run, return `needs_access`, then
-   re-run `xsolla auth login`, re-read state, and resume — do not restart the portal.
+5. **Access expiry losing progress.** On `401/403` mid-run, preserve the ledger and return
+   `needs_access`, then re-run `xsolla auth login`, re-read state, and resume — do not
+   restart the portal.
 6. **Reporting completion without read-back.** Nothing enters **Completed** while
    read-back is pending.
 
@@ -193,6 +208,6 @@ never passes `--sandbox`, and never targets a partner's live project.
 - **The partner creates the site.** Until a site created through the CLI gets a layout,
   the portal is built on the partner's template site, and a page the agent adds has no
   page type and no link in the sidebar menu; the partner adds the link.
-- **Deprecated block endpoints.** `add-block`, `move-block` and `delete-block` call Shop
-  Builder endpoints marked deprecated for future removal. They work today; the skill moves
+- **Deprecated block endpoints.** `add-block` and `move-block` call Shop Builder
+  endpoints marked deprecated for future removal. They work today; the skill moves
   with the CLI when those commands switch to the newer routes.

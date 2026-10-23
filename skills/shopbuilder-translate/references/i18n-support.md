@@ -99,19 +99,6 @@ carry their own rule: **never wholesale-replace `values` or `components`**, beca
 | **Custom React blocks** | Only if authored for it | You own the i18n |
 | **Header nav chrome** (Store / Daily gifts / Rewards / Redeem code) | Xsolla-owned | Xsolla translates it. It is also not in the landing structure and cannot be removed or edited via CLI |
 
-## Prices are a separate axis
-
-Price display keys off the user's **country** (explicit `country` param or IP), never the
-UI language. From Xsolla's own worked example: with a USD default and EUR regional prices,
-a user in Japan sees *7 USD* — "the currency of Japan is not specified, so the price is
-displayed in the default currency."
-
-And the fallback is catalog-wide, not per-item: if regional prices exist for a country on
-every item *except one*, prices for **the entire catalog** in that country fall back to the
-default currency. Price coverage is all-or-nothing per market and must be audited as a set.
-
-Source: [pricing policy › country determination](https://developers.xsolla.com/items-catalog/catalog-features/pricing-policy/).
-
 ## Length expansion
 
 Budget for it at translation time, not at QA time.

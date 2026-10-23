@@ -31,7 +31,7 @@ done
 WORK="l10n/work/$TGT/translated.json"
 [ -f "$WORK" ] || { echo "missing $WORK — nothing to verify against" >&2; exit 1; }
 
-DOMAIN="$DOMAIN" TGT="$TGT" WORK="$WORK" JSON_OUT="$JSON_OUT" python3 <<'PY'
+DOMAIN="$DOMAIN" TGT="$TGT" WORK="$WORK" JSON_OUT="$JSON_OUT" python3 -X utf8 <<'PY'
 import json, os, subprocess, sys, collections
 
 DOMAIN, TGT, WORK = os.environ['DOMAIN'], os.environ['TGT'], os.environ['WORK']
@@ -56,7 +56,7 @@ def cli(args):
     """Every read goes through here so the whole script can be pointed at a fake CLI.
     A non-zero rc or unparseable output is a FINDING, not a crash: 'unknown flag' comes back
     as plain text and would otherwise blow up as a JSON error three frames away."""
-    r = subprocess.run([XS] + args, capture_output=True, text=True)
+    r = subprocess.run([XS] + args, capture_output=True, text=True, encoding='utf-8')
     if r.returncode != 0:
         return None, (r.stderr or r.stdout or '').strip()[:200]
     try:

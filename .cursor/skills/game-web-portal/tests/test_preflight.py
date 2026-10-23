@@ -44,9 +44,15 @@ class CheckProjectTest(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "not in the approved test-project allowlist"):
             preflight.check_project(11, 22, allowlist(other), config=CONFIG)
 
-    def test_cli_sandbox_setting_does_not_skip_the_allowlist(self):
-        with self.assertRaisesRegex(RuntimeError, "not in the approved test-project allowlist"):
-            preflight.check_project(11, 22, allowlist(), config={**CONFIG, "sandbox": True})
+    def test_cli_sandbox_mode_stops(self):
+        with self.assertRaisesRegex(RuntimeError, "sandbox mode is on"):
+            preflight.check_project(11, 22, allowlist(APPROVAL), config={**CONFIG, "sandbox": True})
+
+    def test_cli_sandbox_off_or_missing_passes(self):
+        for config in (CONFIG, {**CONFIG, "sandbox": False}):
+            with self.subTest(config=config):
+                approval = preflight.check_project(11, 22, allowlist(APPROVAL), config=config)
+                self.assertEqual(approval["approved_by"], "Product owner")
 
     def test_cli_pointing_at_another_project_stops(self):
         with self.assertRaisesRegex(RuntimeError, "does not match the target"):
@@ -86,6 +92,19 @@ class CliConfigTest(unittest.TestCase):
 
     def test_missing_config_names_the_fix(self):
         done = mock.Mock(stdout="Config file .xsolla.json not found in current or home directory")
+        with mock.patch.object(preflight.subprocess, "run", return_value=done):
+            with self.assertRaisesRegex(RuntimeError, "xsolla config init"):
+                preflight.cli_config()
+
+    def test_cli_output_is_read_as_strict_utf8(self):
+        done = mock.Mock(stdout=json.dumps({"ok": True, "data": CONFIG}))
+        with mock.patch.object(preflight.subprocess, "run", return_value=done) as run:
+            preflight.cli_config()
+        self.assertEqual(run.call_args.kwargs["encoding"], "utf-8")
+        self.assertNotIn("errors", run.call_args.kwargs)
+
+    def test_missing_stdout_is_a_runtime_error(self):
+        done = mock.Mock(stdout=None)
         with mock.patch.object(preflight.subprocess, "run", return_value=done):
             with self.assertRaisesRegex(RuntimeError, "xsolla config init"):
                 preflight.cli_config()

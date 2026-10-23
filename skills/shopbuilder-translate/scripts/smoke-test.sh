@@ -33,7 +33,7 @@ for b in cosmetics virtual_good rgba 'cdn\\.x' skin_ember 'L:'; do
 done
 
 echo "== ingest: publisher JSON/TXT fills translated.json =="
-python3 -c 'import json; json.dump({"block:blk_hero:values.title":"<h1>Aus Datei</h1>"}, open("pub.json","w"))'
+python3 -X utf8 -c 'import json; json.dump({"block:blk_hero:values.title":"<h1>Aus Datei</h1>"}, open("pub.json","w"))'
 bash "$HERE/ingest-user-translations.sh" de-DE pub.json >/dev/null
 chk "ingest filled the named unit" "jq -e '.units[]|select(.id==\"block:blk_hero:values.title\")|.target==\"<h1>Aus Datei</h1>\"' l10n/work/de-DE/translated.json"
 printf '%s\n' 'block:common:L:c1	<p>Aus TXT</p>' > pub.txt
@@ -63,6 +63,7 @@ chk "per-id envelope is {translation:...}"   "jq -e '.perScopeValues.page1[\"L:t
 chk "per-id envelope keeps description"      "jq -e '.perScopeValues.page1[\"L:t1\"]|has(\"description\")' $L"
 chk "legal string not written"               "jq -e '.perScopeValues.page1|has(\"L:t6\")|not' $L"
 chk "dry run does not change the opening language" "grep -q 'does not change the language' l10n/work/de-DE/apply.out"
+chk "dry run shows add-language and does not run it" "grep -q add-language $PD/add-language.cmd.json && [ ! -f $PD/add-language.response.json ]"
 chk "no call carries --sandbox at all"       "! grep -rq -- '--sandbox' $PD/"
 chk "asset URL never written"                "! grep -rq 'og-image' $PD/"
 chk "no catalog payload"                     "! ls $PD/catalog.* >/dev/null 2>&1"
@@ -136,14 +137,22 @@ XSOLLA_MERCHANT_ID=1 XSOLLA_PROJECT_ID=2 bash "$HERE/apply.sh" voidwall-45e0 de-
 chk "identical existing value needs no confirmation" "grep -q 'Copy was written' noop-overwrite.out"
 
 echo "== apply: a failed write is not a success =="
+echo '["en-US"]' > "$TMP/langs-fail.json"
 export FAKE_FAIL_CMD="shopbuilder update-many-localization"
 set +e
-XSOLLA_MERCHANT_ID=1 XSOLLA_PROJECT_ID=2 bash "$HERE/apply.sh" voidwall-45e0 de-DE --commit \
-  > writefail.out 2>&1; wrc=$?
+FAKE_LANG_FILE="$TMP/langs-fail.json" XSOLLA_MERCHANT_ID=1 XSOLLA_PROJECT_ID=2 \
+  bash "$HERE/apply.sh" voidwall-45e0 de-DE --commit > writefail.out 2>&1; wrc=$?
+FAKE_LANG_FILE="$TMP/langs-fail.json" XSOLLA_MERCHANT_ID=1 XSOLLA_PROJECT_ID=2 \
+  bash "$HERE/apply.sh" voidwall-45e0 de-DE --commit > writefail-again.out 2>&1
 set -e
 unset FAKE_FAIL_CMD
 chk "failed update-many exits non-zero" "[ $wrc -ne 0 ]"
 chk "failed update-many does not claim success" "! grep -q 'Copy was written' writefail.out"
+chk "failed write prints the delete-language command" \
+  "grep -q 'shopbuilder delete-language --slug voidwall-45e0 --language de-DE' writefail.out"
+chk "failed write does not run delete-language" "jq -e 'index(\"de-DE\")!=null' $TMP/langs-fail.json"
+chk "language enabled before the run gets no delete-language hint" \
+  "grep -q 'already enabled on voidwall-45e0 before this run' writefail-again.out && ! grep -q delete-language writefail-again.out"
 
 echo "== apply: a live edit after extract blocks the write =="
 mkdir -p "$TMP/live"
@@ -159,20 +168,44 @@ chk "live edit names the string" "grep -q 'block:blk_hero:values.title' drift.ou
 chk "live edit does not claim success" "! grep -q 'Copy was written' drift.out"
 unset XSOLLA_CLI FAKE_STORE XSOLLA_APPROVED_TEST_PROJECTS
 
-echo "== enable-language: already enabled is success =="
+echo "== add-language: only behind the --commit gate =="
+cp "$HERE/fixtures/translated.de-DE.json" l10n/work/de-DE/translated.json
 echo '["en-US"]' > "$TMP/langs-enable.json"
 export XSOLLA_CLI="$HERE/fixtures/fake-xsolla.sh"
 export FAKE_STORE="$HERE/fixtures/baseline"
-FAKE_LANG_FILE="$TMP/langs-enable.json" bash "$HERE/enable-language.sh" voidwall-45e0 de-DE > enable.out 2>&1
-chk "add-language enables a new locale" "grep -q 'enabled de-DE' enable.out"
-FAKE_LANG_FILE="$TMP/langs-enable.json" bash "$HERE/enable-language.sh" voidwall-45e0 de-DE > taken.out 2>&1
-chk "language is taken is success" "grep -q 'already enabled' taken.out"
 set +e
-FAKE_LANG_REJECT=fr-FR FAKE_LANG_FILE="$TMP/langs-enable.json" \
-  bash "$HERE/enable-language.sh" voidwall-45e0 fr-FR > reject.out 2>&1; lrc=$?
+env -u XSOLLA_APPROVED_TEST_PROJECTS -u XSOLLA_PROJECT_ID XSOLLA_MERCHANT_ID=1 \
+  FAKE_LANG_FILE="$TMP/langs-enable.json" \
+  bash "$HERE/apply.sh" voidwall-45e0 de-DE --commit > enable-noallow.out 2>&1; narc=$?
+set -e
+chk "--commit refuses without the allowlist and project id" "[ $narc -ne 0 ]"
+chk "refused run never called add-language" "jq -e '.==[\"en-US\"]' $TMP/langs-enable.json"
+chk "refused run does not claim the language" "! grep -q 'enabled de-DE' enable-noallow.out"
+export XSOLLA_APPROVED_TEST_PROJECTS="$HERE/fixtures/approved-test-projects.json"
+FAKE_LANG_FILE="$TMP/langs-enable.json" XSOLLA_MERCHANT_ID=1 XSOLLA_PROJECT_ID=2 \
+  bash "$HERE/apply.sh" voidwall-45e0 de-DE --commit > enable.out 2>&1
+chk "add-language enables a new locale" "grep -q 'enabled de-DE' enable.out && jq -e 'index(\"de-DE\")!=null' $TMP/langs-enable.json"
+chk "language is enabled after the backup, before the copy" \
+  "awk '/read-only export before write/{b=NR} /add-language/{a=NR} /update-many-localization/{u=NR} END{exit !(b && a>b && u>a)}' enable.out"
+rm -rf l10n/work/de-DE/payloads
+FAKE_LANG_FILE="$TMP/langs-enable.json" XSOLLA_MERCHANT_ID=1 XSOLLA_PROJECT_ID=2 \
+  bash "$HERE/apply.sh" voidwall-45e0 de-DE --commit > skip.out 2>&1
+chk "already enabled: add-language is skipped" \
+  "grep -q 'add-language skipped' skip.out && [ ! -f l10n/work/de-DE/payloads/add-language.response.json ]"
+chk "already enabled: the copy is still written" "grep -q 'Copy was written' skip.out"
+FAKE_LANG_TAKEN=1 XSOLLA_MERCHANT_ID=1 XSOLLA_PROJECT_ID=2 \
+  bash "$HERE/apply.sh" voidwall-45e0 de-DE --commit > taken.out 2>&1
+chk "language is taken is success" "grep -q 'already enabled' taken.out && grep -q 'Copy was written' taken.out"
+echo '["en-US"]' > "$TMP/langs-reject.json"
+rm -rf l10n/work/de-DE/payloads
+set +e
+FAKE_LANG_REJECT=de-DE FAKE_LANG_FILE="$TMP/langs-reject.json" XSOLLA_MERCHANT_ID=1 XSOLLA_PROJECT_ID=2 \
+  bash "$HERE/apply.sh" voidwall-45e0 de-DE --commit > reject.out 2>&1; lrc=$?
 set -e
 chk "any other add-language failure still fails" "[ $lrc -ne 0 ]"
-unset XSOLLA_CLI FAKE_STORE FAKE_LANG_REJECT
+chk "a failed add-language writes no copy" \
+  "[ ! -f l10n/work/de-DE/payloads/localization.response.json ] && ! grep -q 'Copy was written' reject.out"
+unset XSOLLA_CLI FAKE_STORE XSOLLA_APPROVED_TEST_PROJECTS
 cp "$HERE/fixtures/translated.de-DE.json" l10n/work/de-DE/translated.json
 
 echo "== verify: reads the STORE back, not the file =="

@@ -55,7 +55,7 @@ elif ! command -v python3 >/dev/null 2>&1; then
   bad "python3 is required to read the CLI sandbox flag"
 else
   cfg="$("$XS" config list --json 2>/dev/null || true)"
-  sandbox="$(printf '%s' "$cfg" | python3 -c '
+  sandbox="$(printf '%s' "$cfg" | python3 -X utf8 -c '
 import json, sys
 raw = sys.stdin.read().strip()
 def finish(value):

@@ -19,15 +19,29 @@ SESSION_BOOTSTRAP_RETRY_DELAYS = (5, 10, 20)
 LOGIN_SETTLE_SECONDS = 2
 LOGIN_TIMEOUT_SECONDS = 45
 LOGIN_RETRY_DELAY_SECONDS = 5
+# `xsolla` exits with 10 when the API answers HTTP 401 or 403.
+CLI_EXIT_AUTH = 10
+AUTH_FAILURE_MARKERS = (
+    "authentication required",
+    "publisher session bootstrap did not yield",
+    "auto-bootstrapping publisher session",
+)
+# A run logs in at most once, and only after the CLI reports an auth failure.
+# `context` is the merchant, project and sandbox setting that main() verified;
+# `xsolla auth login` can write token claims into the CLI config, so it is
+# re-checked after the login.
+RUN_AUTH: dict = {"logged_in": False, "context": None}
 
 
 def refresh_supported_login() -> None:
     """Refresh the supported CLI login without handling or copying PA tokens."""
     for attempt in range(2):
         try:
+            # Login messages go to stderr so stdout stays the script's result.
             result = subprocess.run(
                 ["xsolla", "auth", "login"],
                 check=False,
+                stdout=sys.stderr,
                 timeout=LOGIN_TIMEOUT_SECONDS,
             )
         except subprocess.TimeoutExpired:
@@ -43,19 +57,74 @@ def refresh_supported_login() -> None:
     raise RuntimeError("supported Publisher login refresh failed")
 
 
+def auth_failure(returncode: int, detail: str) -> bool:
+    """Return whether a CLI failure is one that a fresh supported login can fix."""
+    if "HTTP 429" in detail:
+        return False
+    return returncode == CLI_EXIT_AUTH or any(
+        marker in detail for marker in AUTH_FAILURE_MARKERS
+    )
+
+
+def cli_context(config: object) -> dict:
+    value = data(config)
+    if not isinstance(value, dict):
+        raise RuntimeError("xsolla config list returned an unexpected shape")
+    return {
+        "merchant_id": value.get("merchant_id"),
+        "project_id": value.get("project_id"),
+        "sandbox": value.get("sandbox") is True,
+    }
+
+
+def login_once(detail: str) -> None:
+    if RUN_AUTH["logged_in"]:
+        raise RuntimeError(
+            "authentication still fails after this run's one `xsolla auth login`. "
+            "The failed command made no change, so it is safe to rerun. CLI error: "
+            + detail
+        )
+    approved = RUN_AUTH["context"]
+    if approved is None:
+        raise RuntimeError(
+            "authentication failed before the CLI context was verified: " + detail
+        )
+    RUN_AUTH["logged_in"] = True
+    refresh_supported_login()
+    current = cli_context(run_json("config", "list"))
+    changed = [
+        f"{key} {approved[key]!r} -> {current[key]!r}"
+        for key in approved
+        if current[key] != approved[key]
+    ]
+    if changed:
+        raise RuntimeError(
+            "CLI context changed after `xsolla auth login` ("
+            + ", ".join(changed)
+            + "). The command was not retried and made no change, so it is safe to "
+            "rerun: check .xsolla.json in the working directory, then run preflight "
+            "again"
+        )
+
+
 def run_json(*args: str) -> object:
     if any(arg == "--force" or arg.startswith("--force=") for arg in args):
         raise RuntimeError("--force is prohibited in Shop Builder assembly")
     command = ["xsolla", *args, "--json"]
-    if args and args[0] == "shopbuilder":
-        refresh_supported_login()
     rate_limit_attempt = 0
-    refreshed_login = False
     while True:
-        result = subprocess.run(command, capture_output=True, text=True, check=False)
+        # The CLI writes UTF-8; without an explicit encoding Windows decodes with
+        # the ANSI code page and loses the output.
+        result = subprocess.run(
+            command, capture_output=True, text=True, encoding="utf-8", check=False
+        )
         if result.returncode == 0:
             break
-        detail = result.stderr.strip() or result.stdout.strip()
+        detail = (
+            (result.stderr or "").strip()
+            or (result.stdout or "").strip()
+            or f"exit code {result.returncode}"
+        )
         retryable_bootstrap_limit = (
             "publisher session bootstrap" in detail and "HTTP 429" in detail
         )
@@ -65,12 +134,8 @@ def run_json(*args: str) -> object:
             time.sleep(SESSION_BOOTSTRAP_RETRY_DELAYS[rate_limit_attempt])
             rate_limit_attempt += 1
             continue
-        missing_bootstrap_cookie = (
-            "publisher session bootstrap did not yield" in detail
-        )
-        if missing_bootstrap_cookie and not refreshed_login:
-            refresh_supported_login()
-            refreshed_login = True
+        if auth_failure(result.returncode, detail):
+            login_once(detail)
             continue
         if "publisher session bootstrap" in detail:
             detail += (
@@ -78,10 +143,14 @@ def run_json(*args: str) -> object:
                 "and rerun—never copy a browser PA token"
             )
         raise RuntimeError(f"{' '.join(args)} failed: {detail}")
+    stdout = result.stdout or ""
+    stderr = (result.stderr or "").strip() or "no stderr output"
+    if not stdout.strip():
+        raise RuntimeError(f"{' '.join(args)} returned no output: {stderr}")
     try:
-        return json.loads(result.stdout)
+        return json.loads(stdout)
     except json.JSONDecodeError as exc:
-        raise RuntimeError(f"{' '.join(args)} returned invalid JSON") from exc
+        raise RuntimeError(f"{' '.join(args)} returned invalid JSON: {stderr}") from exc
 
 
 def data(value: object) -> object:
@@ -136,6 +205,7 @@ def main() -> int:
             raise RuntimeError("CLI project_id does not match the shop brief")
         if config_data.get("sandbox") is True:
             raise RuntimeError("CLI sandbox must be disabled for Shop Builder")
+        RUN_AUTH["context"] = cli_context(config_data)
 
         websites = run_json("shopbuilder", "list-websites")
         landing = run_json("shopbuilder", "get-landing", "--slug", args.slug)
