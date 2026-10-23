@@ -85,6 +85,11 @@ dependency.
 The run is a state flow. Every mutation is preceded by an existing-vs-desired-state
 check and followed by read-back and a ledger update.
 
+After every write to `.xsolla/onboarding.json`, run [`scripts/ledger.py`](scripts/ledger.py)
+`check --ledger .xsolla/onboarding.json`; if it fails, fix the step it names before going on.
+A step still under way has no `status` key (never `partial`, `in_progress` or another word)
+until it ends with one of the contract's seven statuses.
+
 ```text
 Intake → Preflight → Discover → Back up → Plan and confirm → Draft →
 Verify (read-back) → Human review → Handoff

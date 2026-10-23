@@ -60,8 +60,8 @@ Every step carries exactly one:
 
 A step is `completed` only when its evidence below has been observed in this run or
 re-read on resume. A mutation response is a receipt, not evidence. Anything not yet
-verified stays out of `completed`. A step that is under way has no status yet; its `ids` may
-already hold what it created.
+verified stays out of `completed`. A step that is under way has no `status` key yet, not
+`partial`, `in_progress` or any other word; its `ids` may already hold what it created.
 
 ## Steps and their evidence
 

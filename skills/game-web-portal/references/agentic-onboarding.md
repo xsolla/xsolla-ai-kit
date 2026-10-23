@@ -148,7 +148,7 @@ download.
 ### 7. Verify
 
 - Read back changed entities and compare them with the confirmed plan.
-- Update the ledger.
+- Update the ledger, then run `scripts/ledger.py check`.
 - Keep unverified items out of **Completed**.
 
 ### 8. Draft gate, review and hand over
