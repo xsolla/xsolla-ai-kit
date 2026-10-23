@@ -119,7 +119,7 @@ class BlockContractTests(unittest.TestCase):
         self.assertEqual('{\n  "version": 2\n}\n', extractor.render_contracts({"version": 2}))
 
     def test_quests_block_contract_is_exported(self) -> None:
-        path = ROOT / "references" / "exported-block-contracts-topup.json"
+        path = ROOT / "tests" / "fixtures" / "exported-block-contracts-topup.json"
         contracts = json.loads(path.read_text(encoding="utf-8"))
         quests = {m["module"]: m for m in contracts["modules"]}[
             "_quest-platform_quests-block"
