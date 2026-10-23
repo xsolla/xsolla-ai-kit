@@ -66,9 +66,9 @@ a quest) never trigger it.
 
 1. Always run the read-only list, `xsolla shopbuilder list-websites --json`, before
    replying. Never say the list is unavailable without running it.
-2. If the command succeeds, open with one short sentence at most, then the site list
-   (name each site from the list) and the question: which of these, or a headless
-   storefront codebase.
+2. If the command succeeds, start with the site list (name each site from the list)
+   and the question: which of these, or a headless storefront codebase. No capability
+   or explanation sentence comes before the question.
 3. Only if the command itself fails, say in one sentence that the site list couldn't
    be read, and ask which shop it is, asking the publisher to log in to the Xsolla CLI
    if needed.
@@ -82,8 +82,8 @@ Keep the whole reply under 60 words. Show site names only, never IDs or hosts.
 ### Discovery answer
 
 For a question such as "what can quests do on my Shop Builder site", run step 1 first,
-then reply with the which-shop question first (or after one short sentence), and at
-most one line on the block: cards show a title, description, image, an optional
+then reply with the which-shop question first, and after it at most one line on the
+block: cards show a title, description, image, an optional
 reward line and icon, and a heading; the skill can choose and order the cards, set
 their text and images, and move, hide, show or remove the block. Changes stay a draft
 until the publisher publishes them in Publisher Account. Keep the whole reply under
