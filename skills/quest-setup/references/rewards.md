@@ -123,7 +123,7 @@ event again.
 
 Both Web3 reward types need an `xsolla_id` in the event and a production wallet
 for that user. When a recipient is known, check the wallet with the recipient read in
-[`auth-and-environment.md`](store-and-wallet.md#recipient-wallet) during the
+[`store-and-wallet.md`](store-and-wallet.md#recipient-wallet) during the
 read-only work before the proposal, or otherwise before any publication write.
 Check it again before the event. A missing wallet is a non-retryable blocker,
 not an approval step. Confirm the wallet source is the Backpack-compatible
