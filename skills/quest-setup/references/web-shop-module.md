@@ -2,7 +2,7 @@
 
 In-catalog quest section for the **headless** storefront from
 `shop-setup`. For a Shop Builder site use
-[`shop-builder-quests-block.md`](shop-builder-quests-block.md) instead. Never a
+[`quests-block-flow.md`](quests-block-flow.md) instead. Never a
 top-level nav tab, router entry, or new shop route.
 
 Triggers: "show quests in my web shop", "add quest module to shop", "quest
@@ -23,7 +23,7 @@ need one, then make the edits and run the shop's available checks.
 
 Out of scope: user progress / completion UI, fabricating sample quests,
 changing AdTech APIs. Shop Builder sites are handled by
-[`shop-builder-quests-block.md`](shop-builder-quests-block.md), not here.
+[`quests-block-flow.md`](quests-block-flow.md), not here.
 
 ## Identity (source of truth)
 
