@@ -78,10 +78,10 @@ Quest Platform access missing:
 Next: set it up, then ask me again.
 ```
 
-Rejected value (say what is required, never repeat the value):
+Rejected value (say what is required, never repeat the value). An `http` image or reward icon URL gets this reply before any plan. Never change it to https or draft a plan with it:
 
 ```
-**The reward icon needs an https link.**
+**The image needs an https link.**
 
 Next: send an https image URL.
 ```
