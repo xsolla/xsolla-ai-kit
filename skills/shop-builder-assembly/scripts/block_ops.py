@@ -38,7 +38,14 @@ LAYOUT_ENUMS = {
     "cardBackground": {"transparent", "primary", "secondary"},
 }
 LAYOUT_BOOLEANS = {"showHeading", "showDescription", "showImage"}
-OVERRIDE_FIELDS = {"title", "description", "imageUrl", "imageRef"}
+OVERRIDE_FIELDS = {
+    "title",
+    "description",
+    "imageUrl",
+    "imageRef",
+    "rewardText",
+    "rewardImageUrl",
+}
 EDITOR_PREVIEW = {
     "live",
     "anonymous",
@@ -58,6 +65,7 @@ QUESTS_MAX_IDS = 24
 # Quest Platform quest ids are UUIDs; a format check stops typos before any write.
 QUEST_ID_RE = re.compile(r"[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}")
 TITLE_MAX = 120
+REWARD_TEXT_MAX = 120
 DESCRIPTION_MAX = 400
 TRANSLATION_KEYS = {"heading"}
 # Objects the pinned default-data.json already contains. A freshly added block has
@@ -256,7 +264,10 @@ def _validate_leaf_value(key: str, value: object) -> str | None:
         elif field == "description":
             if not isinstance(value, str) or len(value) > DESCRIPTION_MAX:
                 return f"{key} must be a string of at most {DESCRIPTION_MAX} characters"
-        elif field == "imageUrl":
+        elif field == "rewardText":
+            if not isinstance(value, str) or len(value) > REWARD_TEXT_MAX:
+                return f"{key} must be a string of at most {REWARD_TEXT_MAX} characters"
+        elif field in ("imageUrl", "rewardImageUrl"):
             parsed = urlparse(value) if isinstance(value, str) else None
             if parsed is None or parsed.scheme != "https" or not parsed.netloc:
                 return f"{key} must be an https URL"

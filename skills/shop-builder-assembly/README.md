@@ -10,7 +10,8 @@ from a normalized JSON shop brief.
 - Sandbox IDs or an acknowledged dedicated test project
 - Existing catalog group IDs for any `newStore` sections
 - For a non-sandbox test project, a separate local approval allowlist containing the
-  exact merchant/project identity and the mentor or lead's approval reference
+  exact merchant/project identity and the mentor or lead's approval reference, kept at
+  `~/.config/xsolla/approved-test-projects.json`
 
 ## Happy path
 
@@ -21,7 +22,7 @@ from a normalized JSON shop brief.
    ```bash
    python3 scripts/validate_shop_brief.py brief.json
    python3 scripts/preflight.py brief.json \
-     --approved-test-projects /path/to/approved-test-projects.json
+     --approved-test-projects ~/.config/xsolla/approved-test-projects.json
    ```
 
 3. If the target exists, back it up before rendering or confirming a plan:
@@ -36,7 +37,7 @@ from a normalized JSON shop brief.
    python3 scripts/render_plan.py brief.json --structure ./backups/my-shop/structure.json
    python3 scripts/apply_plan.py brief.json --confirmation-id <id> \
      --backup-dir ./backups/my-shop \
-     --approved-test-projects /path/to/approved-test-projects.json
+     --approved-test-projects ~/.config/xsolla/approved-test-projects.json
    ```
 
    For a new slug, render without `--structure` and confirm the bootstrap-only plan.

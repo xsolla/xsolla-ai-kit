@@ -137,6 +137,35 @@ class BlockOpsTests(unittest.TestCase):
             ),
         )
 
+    def test_reward_text_limits(self) -> None:
+        key = f"overrides.{QUEST_A}.rewardText"
+        for good in ("Bonus gem pack", "x" * 120):
+            self.assertEqual([], self.errors(add_op(values={key: good})), good[:20])
+        self.assertTrue(self.errors(add_op(values={key: "x" * 121})))
+        self.assertTrue(self.errors(add_op(values={key: 5})))
+
+    def test_reward_image_url_must_be_https(self) -> None:
+        key = f"overrides.{QUEST_A}.rewardImageUrl"
+        self.assertEqual(
+            [], self.errors(add_op(values={key: "https://x.test/reward.png"}))
+        )
+        for bad in ("http://x.test/reward.png", "not a url", "ftp://x.test/a.png", 5):
+            self.assertTrue(self.errors(add_op(values={key: bad})), bad)
+
+    def test_reset_removes_reward_fields(self) -> None:
+        paths = [f"overrides.{QUEST_A}.rewardText", f"overrides.{QUEST_A}.rewardImageUrl"]
+        reset = {"op": "reset", "block_id": "q1", "paths": paths}
+        self.assertEqual([], self.errors(reset, structure=make_structure()))
+        plan = render_plan.build_plan(ops_brief([reset]), make_structure())
+        removed = plan["block_operations"][0]["patches"]
+        self.assertEqual(
+            [
+                ["values", "internalBlockValues", "overrides", QUEST_A, "rewardText"],
+                ["values", "internalBlockValues", "overrides", QUEST_A, "rewardImageUrl"],
+            ],
+            [patch["path"] for patch in removed],
+        )
+
     def test_rejects_ops_with_page_overrides(self) -> None:
         brief = ops_brief([add_op()])
         brief["content"] = {
