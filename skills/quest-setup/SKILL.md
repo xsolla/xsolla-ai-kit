@@ -91,8 +91,7 @@ Resolve scope and the Web3 catalog from the configured integration; never fall
 back to another target, credential source or catalog. Credential and onboarding:
 [Prerequisites and lane](references/auth-and-environment.md#prerequisites-and-lane).
 With no production credential, report only that the project is not set up for
-quests yet and stop. Events and execution read-back still need the versioned
-contract and preflight.
+quests yet and stop. Events and execution read-back still need the versioned contract and preflight.
 
 ## Reference routing
 
@@ -133,9 +132,8 @@ and [Safety stops for proposals and actions](references/quest-document.md#safety
 1. **Bring-up.** Load [`qp-api-contract.md`](references/qp-api-contract.md) and
    run the preflight reads in
    [`auth-and-environment.md`](references/auth-and-environment.md#service-preflight).
-   Bring-up is GET-only. Never fetch OpenAPI or another target. Confirm project scope before a write and report only a
-   short project name and status. If the project GET is 404 `Project not found`,
-   follow [Onboarding](references/auth-and-environment.md#onboarding) and stop.
+   Bring-up is GET-only. Never fetch OpenAPI or another target. Confirm project scope before a write and report only a short project name and status.
+   If the project GET is 404 `Project not found`, follow [Onboarding](references/auth-and-environment.md#onboarding) and stop.
 2. **Resolve and propose.** Resolve the reward
    ([`rewards.md`](references/rewards.md)), player action, graph, schedule and
    limits; build the document per
@@ -165,10 +163,14 @@ and [Safety stops for proposals and actions](references/quest-document.md#safety
 7. **Delete.** Only quests the developer names, one per call, after a fresh read
    and an explicit yes; soft delete, no restore, see
    [Deleting](references/quest-document.md#deleting).
-8. **Web Shop Quests section.** When the developer asks for it:
+8. **Which shop.** If the publisher mentions their shop without saying whether it is
+   Shop Builder or headless, do not assume. List their Shop Builder sites (read-only)
+   and ask which one or a headless storefront:
+   [Which shop](references/shop-builder-quests-block.md#which-shop). Applies to questions too.
+9. **Web Shop Quests section.** When the developer asks for it:
    [`web-shop-module.md`](references/web-shop-module.md). Quest approval never
    authorizes shop source edits.
-9. **Shop Builder Quests block.** When the developer asks for it on a
+10. **Shop Builder Quests block.** When the developer asks for it on a
    Shop Builder site, follow [`shop-builder-quests-block.md`](references/shop-builder-quests-block.md):
    make the chosen quests public, then run every Quests operation (create, edit
    settings, reset media, reorder, limit, move, duplicate, hide or show,
