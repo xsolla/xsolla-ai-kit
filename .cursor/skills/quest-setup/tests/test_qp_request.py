@@ -1,7 +1,9 @@
-"""Tests for scripts/qp_request.py. Never reaches the network: urlopen is mocked."""
+"""Tests for scripts/qp_request.py. Never reaches the network: the opener or the HTTPS handler is mocked."""
 from __future__ import annotations
 
 import base64
+import email.message
+import http.client
 import io
 import json
 import socket
@@ -9,6 +11,8 @@ import sys
 import tempfile
 import unittest
 import urllib.error
+import urllib.request
+import urllib.response
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from unittest import mock
@@ -40,7 +44,8 @@ class CliTestCase(unittest.TestCase):
     def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()
         self.tmp = Path(self._tmp.name)
-        patcher = mock.patch("urllib.request.urlopen")
+        # Patched on the class, so the mock is called without `self`: args[0] is the Request.
+        patcher = mock.patch.object(urllib.request.OpenerDirector, "open")
         self.urlopen = patcher.start()
         self.urlopen.return_value = fake_response()
         self.addCleanup(patcher.stop)
@@ -94,6 +99,28 @@ class CredentialTests(CliTestCase):
         self.assertEqual(code, 2)
         self.assertEqual(json.loads(out), {"ok": False, "error": "access_not_configured"})
         self.urlopen.assert_not_called()
+
+    def test_dotenv_export_and_quotes_on_every_line(self) -> None:
+        self.write_dotenv(
+            "export XSOLLA_MERCHANT_ID='7'\n"
+            "export XSOLLA_PROJECT_ID=\"42\"\n"
+            f"export XSOLLA_PROJECT_API_KEY = \"{SENTINEL}\"\n"
+        )
+        code, out, _ = self.run_cli(["GET", "/api/v2/merchants/7/projects/42/quests"], environ={})
+        self.assertEqual(code, 0)
+        self.assertNotIn(SENTINEL, out)
+        req = self.urlopen.call_args.args[0]
+        self.assertEqual(req.get_header("Authorization"), "Basic " + SENTINEL_TOKEN)
+
+    def test_non_numeric_ids_in_dotenv_are_refused(self) -> None:
+        for merchant, project in (("abc", "42"), ("7", "4x2"), ("7", "-42"), ("1e3", "42")):
+            with self.subTest(merchant=merchant, project=project):
+                self.write_dotenv(f"XSOLLA_MERCHANT_ID={merchant}\nXSOLLA_PROJECT_ID={project}\n"
+                                  f"XSOLLA_PROJECT_API_KEY={SENTINEL}\n")
+                code, out, _ = self.run_cli(["GET", "/api/v2/merchants/7/projects/42/quests"], environ={})
+                self.assertEqual(code, 2)
+                self.assertEqual(json.loads(out), {"ok": False, "error": "access_not_configured"})
+                self.urlopen.assert_not_called()
 
     def test_no_credentials_is_access_not_configured(self) -> None:
         code, out, _ = self.run_cli(["whoami"], environ={})
@@ -185,6 +212,18 @@ class TargetTests(CliTestCase):
         self.assertEqual(self.urlopen.call_args.args[0].full_url,
                          "https://store.xsolla.com/api/v2/project/42/admin/items/virtual_items/sku/FIRE_SWORD_01")
 
+    def test_invalid_query_key_is_refused(self) -> None:
+        for pair in ("a b=1", "page", "=1", "k&x=1", "k?=1"):
+            with self.subTest(pair=pair):
+                self.assert_refused(["GET", "/api/v2/merchants/7/projects/42/quests", "--query", pair],
+                                    "invalid_query")
+
+    def test_global_opener_is_not_installed(self) -> None:
+        with mock.patch("urllib.request.install_opener") as install:
+            code, _, _ = self.run_cli(["GET", "/api/v2/merchants/7/projects/42/quests"], environ=dict(ENV_FULL))
+        self.assertEqual(code, 0)
+        install.assert_not_called()
+
     def test_urlopen_gets_timeout(self) -> None:
         self.run_cli(["GET", "/api/v2/merchants/7/projects/42/quests"], environ=dict(ENV_FULL))
         self.assertEqual(self.urlopen.call_args.kwargs.get("timeout"), 20)
@@ -229,6 +268,59 @@ class ResponseTests(CliTestCase):
                 self.assertEqual(result["error"], "network")
                 self.assertIn("detail", result)
 
+    def test_incomplete_read_is_network(self) -> None:
+        self.urlopen.side_effect = http.client.IncompleteRead(b"")
+        code, out, err = self.run_cli(["GET", "/api/v2/merchants/7/projects/42/quests"], environ=dict(ENV_FULL))
+        self.assertEqual(code, 1)
+        self.assertEqual(err, "")
+        result = json.loads(out)
+        self.assertEqual(result["ok"], False)
+        self.assertEqual(result["error"], "network")
+        self.assertTrue(result["detail"].startswith("IncompleteRead"))
+
+    def test_incomplete_read_while_reading_body_is_network(self) -> None:
+        resp = fake_response()
+        resp.read.side_effect = http.client.IncompleteRead(b"partial")
+        self.urlopen.return_value = resp
+        code, out, _ = self.run_cli(["GET", "/api/v2/merchants/7/projects/42/quests"], environ=dict(ENV_FULL))
+        self.assertEqual(code, 1)
+        self.assertEqual(json.loads(out)["error"], "network")
+
+
+class RedirectTests(unittest.TestCase):
+    """Uses the real opener; only the HTTPS handler is replaced, so redirect handling is exercised."""
+
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+
+    def test_3xx_is_not_followed(self) -> None:
+        for status in (301, 302, 303, 307, 308):
+            with self.subTest(status=status):
+                seen = []
+
+                def https_open(handler, req, status=status, seen=seen):
+                    seen.append((req.full_url, req.get_header("Authorization")))
+                    headers = email.message.Message()
+                    headers["Location"] = "https://evil.example/steal"
+                    resp = urllib.response.addinfourl(io.BytesIO(b"moved"), headers, req.full_url, code=status)
+                    resp.msg = "Moved"
+                    return resp
+
+                out = io.StringIO()
+                with mock.patch.object(urllib.request.HTTPSHandler, "https_open", https_open), \
+                        redirect_stdout(out), redirect_stderr(io.StringIO()):
+                    code = qp_request.main(["GET", "/api/v2/merchants/7/projects/42/quests"],
+                                           environ=dict(ENV_FULL), cwd=self._tmp.name)
+                self.assertEqual(code, 1)
+                result = json.loads(out.getvalue())
+                self.assertEqual(result["ok"], False)
+                self.assertEqual(result["status"], status)
+                self.assertEqual(len(seen), 1)
+                self.assertEqual(seen[0][0],
+                                 "https://quests-platform.xsolla.com/api/v2/merchants/7/projects/42/quests")
+                self.assertNotIn("evil.example", out.getvalue().replace("moved", ""))
+
 
 class BodyTests(CliTestCase):
     def test_body_file_sent_as_json(self) -> None:
@@ -247,6 +339,16 @@ class BodyTests(CliTestCase):
     def test_invalid_body_file_is_refused(self) -> None:
         body_path = self.tmp / "bad.json"
         body_path.write_text("{not json", encoding="utf-8")
+        code, out, _ = self.run_cli(
+            ["POST", "/api/v2/merchants/7/projects/42/quests", "--body-file", str(body_path)],
+            environ=dict(ENV_FULL))
+        self.assertEqual(code, 2)
+        self.assertEqual(json.loads(out), {"ok": False, "error": "invalid_body"})
+        self.urlopen.assert_not_called()
+
+    def test_oversized_body_file_is_refused(self) -> None:
+        body_path = self.tmp / "big.json"
+        body_path.write_text('"' + "a" * qp_request.MAX_BODY_FILE_BYTES + '"', encoding="utf-8")
         code, out, _ = self.run_cli(
             ["POST", "/api/v2/merchants/7/projects/42/quests", "--body-file", str(body_path)],
             environ=dict(ENV_FULL))
