@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import argparse
 import base64
+import http.client
 import json
 import os
 import re
@@ -214,9 +215,9 @@ def send(method: str, url: str, creds: Credentials, body: Optional[bytes]) -> Di
     if body is not None:
         headers["Content-Type"] = "application/json"
     request = urllib.request.Request(url, data=body, method=method, headers=headers)
-    urllib.request.install_opener(urllib.request.build_opener(_NoRedirect))
+    opener = urllib.request.build_opener(_NoRedirect)
     try:
-        response = urllib.request.urlopen(request, timeout=TIMEOUT_SECONDS)
+        response = opener.open(request, timeout=TIMEOUT_SECONDS)
         try:
             status = int(response.status)
             raw = response.read(MAX_RESPONSE_BYTES)
@@ -226,11 +227,11 @@ def send(method: str, url: str, creds: Credentials, body: Optional[bytes]) -> Di
         status = int(exc.code)
         try:
             raw = exc.read(MAX_RESPONSE_BYTES)
-        except OSError:
+        except (OSError, http.client.HTTPException):
             raw = b""
         finally:
             exc.close()
-    except (OSError, ValueError) as exc:
+    except (OSError, ValueError, http.client.HTTPException) as exc:
         return {"ok": False, "error": "network", "detail": _network_detail(exc, creds)}
 
     result: Dict[str, Any] = {
