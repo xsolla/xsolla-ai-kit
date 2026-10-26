@@ -21,6 +21,7 @@ from render_plan import (
     common_layout_id,
     effective_module,
     page_path,
+    require_own_header,
     site_block_ids,
     structure_data,
     structure_hash,
@@ -1013,6 +1014,7 @@ def main() -> int:
                     "target contains pages outside the confirmed plan and the CLI cannot "
                     f"delete pages safely: {paths}"
                 )
+            require_own_header(plan["pages"], current)
         else:
             run_json(
                 "shopbuilder",

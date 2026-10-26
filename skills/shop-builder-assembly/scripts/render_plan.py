@@ -68,6 +68,11 @@ CUSTOM_CODE_WARNING = (
     "block visible in the Site Builder editor."
 )
 COMMON_LAYOUT = "common-layout"
+NO_OWN_HEADER = (
+    "Page {path} has no header block of its own. Sites created from a Publisher "
+    "Account template keep the header in the common layout, and assembly can't build "
+    "on them yet. Nothing was written."
+)
 
 
 def choose_preset(brief: dict) -> str:
@@ -199,6 +204,31 @@ def common_layout_id(
                 raise ValueError("existing common layout is missing from site blocks")
             return layout_id
     return None
+
+
+def require_own_header(pages: list[dict], structure: object) -> None:
+    """Stop when a planned page already on the site has no header block of its own.
+
+    A site created from a Publisher Account template keeps its header and footer in
+    the common layout. Navigation looks for the header among the page's own blocks,
+    so assembly would add a second header and footer or fail halfway. Pages the plan
+    creates are not on the site yet and pass.
+    """
+
+    current_pages = structure_data(structure).get("pages")
+    if not isinstance(current_pages, list):
+        raise ValueError("structure.pages must be a list")
+    by_path = {page_path(page): page for page in current_pages}
+    for page_plan in pages:
+        current_page = by_path.get(page_plan["path"])
+        if current_page is None:
+            continue
+        blocks = current_page.get("blocks")
+        if not any(
+            isinstance(block, dict) and effective_module(block) == "header"
+            for block in (blocks if isinstance(blocks, list) else [])
+        ):
+            raise ValueError(NO_OWN_HEADER.format(path=page_plan["path"]))
 
 
 def custom_code_warnings(pages: list[dict]) -> list[str]:
@@ -504,6 +534,8 @@ def main() -> int:
         return 1
     try:
         plan = build_plan(brief, structure)
+        if structure is not None:
+            require_own_header(plan["pages"], structure)
     except ValueError as exc:
         print(str(exc), file=sys.stderr)
         return 1

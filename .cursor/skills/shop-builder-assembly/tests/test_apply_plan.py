@@ -55,6 +55,19 @@ def load_preflight():
 
 preflight = load_preflight()
 
+
+def load_render_plan():
+    path = ROOT / "scripts" / "render_plan.py"
+    spec = importlib.util.spec_from_file_location("render_plan_for_tests", path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"cannot load {path}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+render_plan = load_render_plan()
+
 APPROVED_CONTEXT = {"merchant_id": 100, "project_id": 200, "sandbox": False}
 
 
@@ -1706,6 +1719,182 @@ class CommonLayoutPreflightTests(unittest.TestCase):
                     ["xsolla", "shopbuilder", "create-block", "--help"],
                     run.call_args.args[0],
                 )
+
+
+NO_OWN_HEADER = (
+    "Page / has no header block of its own. Sites created from a Publisher Account "
+    "template keep the header in the common layout, and assembly can't build on them "
+    "yet. Nothing was written."
+)
+READ_COMMANDS = {
+    ("config", "list"),
+    ("shopbuilder", "list-websites"),
+    ("shopbuilder", "get-structure"),
+    ("shopbuilder", "get-block"),
+}
+
+
+def publisher_template_site(brief: dict, own_header: bool = False) -> tuple[dict, dict]:
+    """Masked get-structure of a site created from a Publisher Account template.
+
+    The shape comes from a real export; IDs, copy and account data are replaced.
+    Page "/" has no header of its own: the header and footer sit in the common
+    layout. Returns the structure and the modules get-block reports for site blocks.
+    """
+    page_blocks = [
+        ("lead", None),
+        ("newStore", None),
+        ("federated", "sb-daily-reward"),
+        ("federated", "sb-offer-chain"),
+        ("newStore", None),
+        ("rewards", None),
+        ("newStore", None),
+        ("promocodes", None),
+        ("federated", "offerwall-block"),
+        ("faq", None),
+        ("lead", None),
+    ]
+    if own_header:
+        page_blocks.insert(0, ("header", None))
+    blocks = []
+    for index, (module, federated_id) in enumerate(page_blocks, start=1):
+        block = {"_id": f"page-block-{index}", "module": module, "hidden": False}
+        if federated_id is not None:
+            block["values"] = {"blockId": federated_id}
+        blocks.append(block)
+    site_modules = {
+        "layout-header": "header",
+        "layout-footer": "footer",
+        "layout-1": "common-layout",
+    }
+    site = {
+        "_id": "landing-1",
+        "domain": brief["site"]["slug"],
+        "merchantId": brief["project"]["merchant_id"],
+        "projectId": brief["project"]["project_id"],
+        "type": "store",
+        "published": None,
+        "languages": ["en-US"],
+        "pages": [
+            {
+                "_id": "page-1",
+                "name": "Main page",
+                "path": object_path("/"),
+                "blocks": blocks,
+            }
+        ],
+        "layouts": ["layout-1"],
+        "blocks": [block["_id"] for block in blocks] + list(site_modules),
+    }
+    return site, site_modules
+
+
+class PublisherTemplateSiteTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.brief = json.loads(EXAMPLE_BRIEF.read_text(encoding="utf-8"))
+
+    def fake_cli(self, own_header: bool) -> FakeShopBuilderCli:
+        cli = FakeShopBuilderCli(self.brief)
+        cli.landing, cli.site_modules = publisher_template_site(self.brief, own_header)
+        return cli
+
+    def run_render(self, site: dict) -> tuple[int, str, str]:
+        stdout, stderr = io.StringIO(), io.StringIO()
+        with tempfile.TemporaryDirectory() as directory:
+            structure_path = Path(directory) / "structure.json"
+            structure_path.write_text(
+                json.dumps({"ok": True, "data": site}), encoding="utf-8"
+            )
+            argv = ["render_plan.py", str(EXAMPLE_BRIEF), "--structure", str(structure_path)]
+            with (
+                mock.patch.object(sys, "argv", argv),
+                contextlib.redirect_stdout(stdout),
+                contextlib.redirect_stderr(stderr),
+            ):
+                code = render_plan.main()
+        return code, stdout.getvalue(), stderr.getvalue()
+
+    def run_apply(self, cli: FakeShopBuilderCli) -> tuple[int, str, str, mock.Mock]:
+        saved = copy.deepcopy(cli.landing)
+        confirmation_id = apply_plan.build_plan(self.brief, saved)["confirmation_id"]
+
+        def reconciled(slug: str, landing_id: str, page: dict) -> dict:
+            return {
+                "path": page["path"],
+                "page_id": page["page_id"],
+                "blocks": page["blocks"],
+                "removed_blocks": len(page["removals"]),
+                "hidden_custom_code": [],
+            }
+
+        stdout, stderr = io.StringIO(), io.StringIO()
+        with tempfile.TemporaryDirectory() as directory:
+            argv = [
+                "apply_plan.py",
+                str(EXAMPLE_BRIEF),
+                "--confirmation-id",
+                confirmation_id,
+                "--backup-dir",
+                directory,
+            ]
+            with (
+                mock.patch.dict(apply_plan.RUN_AUTH, {"logged_in": False, "context": None}),
+                mock.patch.object(sys, "argv", argv),
+                mock.patch.object(apply_plan, "run_preflight"),
+                mock.patch.object(apply_plan, "run_json", side_effect=cli),
+                mock.patch.object(apply_plan, "verified_backup", return_value=True),
+                mock.patch.object(apply_plan, "backup_structure", return_value=saved),
+                mock.patch.object(
+                    apply_plan, "reconcile_page", side_effect=reconciled
+                ) as reconcile,
+                mock.patch.object(apply_plan, "apply_navigation", return_value=[]),
+                mock.patch.object(apply_plan, "wire_catalog_sections", return_value=[]),
+                contextlib.redirect_stdout(stdout),
+                contextlib.redirect_stderr(stderr),
+            ):
+                code = apply_plan.main()
+        return code, stdout.getvalue(), stderr.getvalue(), reconcile
+
+    def writes(self, cli: FakeShopBuilderCli) -> list[tuple[str, ...]]:
+        return [call for call in cli.calls if call[:2] not in READ_COMMANDS]
+
+    def test_render_refuses_a_page_whose_header_is_in_the_common_layout(self) -> None:
+        site, _ = publisher_template_site(self.brief)
+        code, stdout, stderr = self.run_render(site)
+        self.assertEqual(1, code)
+        self.assertEqual("", stdout)
+        self.assertEqual(NO_OWN_HEADER + "\n", stderr)
+
+    def test_apply_stops_with_no_write_when_the_header_is_in_the_common_layout(self) -> None:
+        cli = self.fake_cli(own_header=False)
+        code, stdout, stderr, reconcile = self.run_apply(cli)
+        self.assertEqual(1, code)
+        self.assertEqual("", stdout)
+        self.assertEqual(f"Apply failed: {NO_OWN_HEADER}\n", stderr)
+        self.assertEqual([], self.writes(cli))
+        slug = self.brief["site"]["slug"]
+        self.assertIn(("shopbuilder", "get-structure", "--slug", slug), cli.calls)
+        reconcile.assert_not_called()
+
+    def test_site_whose_page_has_its_own_header_renders_and_applies(self) -> None:
+        site, _ = publisher_template_site(self.brief, own_header=True)
+        code, stdout, stderr = self.run_render(site)
+        self.assertEqual(0, code, stderr)
+        self.assertEqual("page-1", json.loads(stdout)["pages"][0]["page_id"])
+
+        cli = self.fake_cli(own_header=True)
+        code, stdout, stderr, reconcile = self.run_apply(cli)
+        self.assertEqual(0, code, stderr)
+        self.assertEqual("implemented-phases-applied", json.loads(stdout)["status"])
+        self.assertEqual(["/"], [call.args[2]["path"] for call in reconcile.call_args_list])
+
+    def test_only_pages_already_on_the_site_need_their_own_header(self) -> None:
+        site, _ = publisher_template_site(self.brief, own_header=True)
+        pages = [{"path": "/"}, {"path": "/store"}]
+        render_plan.require_own_header(pages, site)
+        site["pages"][0]["blocks"].pop(0)
+        with self.assertRaisesRegex(ValueError, "^Page / has no header block of its own"):
+            render_plan.require_own_header(pages, site)
 
 
 if __name__ == "__main__":
