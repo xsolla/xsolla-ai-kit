@@ -146,9 +146,11 @@ Apply to every non-GET call and every credential decision.
   first. That includes a request you expect to be rejected, such as a
   deliberately invalid body sent to see the 422.
 - Never switch credentials, lanes or routes on your own after a failure;
-  report what failed and ask. A developer-requested negative-auth GET
-  (made-up key or no header) is not a switch; see
-  [Credential](auth-credentials.md#credential).
+  report what failed and ask.
+- Negative-auth probes (a made-up key, no Authorization header, or any other
+  deliberately wrong credential) are unsupported, even when the developer asks.
+  Decline them: only `qp_request.py` makes calls, and it always sends the
+  configured credential (see [Credential](#credential)).
 
 ## Errors
 
@@ -160,7 +162,7 @@ received in this session. For a request refused before sending, explain the
 
 | Status | What to tell the developer |
 |---|---|
-| 400 | `Only one authentication method may be used per request`: more than one credential was sent. Send only the one the developer chose. |
+| 400 | `Only one authentication method may be used per request`: more than one credential was sent. The script sends exactly one Authorization header, so this is a bug: report it with the body and do not retry. |
 | 401 | `Invalid credentials`: see [Reading a 401 or 404](auth-credentials.md#reading-a-401-or-404). Never fall back to another credential or environment. |
 | 403 | `Insufficient capability`: the credential lacks the capability for that route. `Service identity is inactive`, `Master role required` or `This endpoint requires the user sign-in lane`: the route or identity is off-limits; do not retry. |
 | 404 | `Cannot GET <path>` (plain text, any method): router miss, the route does not exist; not an auth or project answer. Follow [When a route is missing](#when-a-route-is-missing). |

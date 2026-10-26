@@ -5,10 +5,12 @@ Loaded for a Quests block request on a Shop Builder site. Settings and the opera
 
 ## Hard rules
 
-1. **Only through the gate.** Use the `xsolla shopbuilder` CLI (1.9.4 or newer)
-   only through the gate's scripts: preflight, backup of the target site, rendered
-   plan, then an explicit publisher confirmation of the plan's `confirmation_id`
-   right before the first remote write. Never run write commands by hand, make
+1. **Writes only through the gate.** Every change to a site goes through the gate's
+   scripts, which drive the `xsolla shopbuilder` CLI (1.9.4 or newer): preflight,
+   backup of the target site, rendered plan, then an explicit publisher confirmation
+   of the plan's `confirmation_id` right before the first remote write. The only
+   `xsolla shopbuilder` commands you run directly are the read-only `list-websites`,
+   `get-structure` and `get-localization` used below. Never run write commands by hand, make
    direct HTTP calls, or reuse browser cookies or tokens. An earlier "add quests to
    my site" is not that confirmation. If the Shop Builder block tooling or its
    `block_operations` support is missing, stop and reply in the refusal shape, without
@@ -144,8 +146,10 @@ yourself:
 Use these defaults and state them in the proposal instead of asking: heading
 "Quests" (`en-US`), block at the end of the home page (or in the existing block's
 place when one exists), at most 6 cards (or fewer when fewer quests are chosen),
-and the layout defaults in the settings table below. The block shows at most 24
-quests.
+and the layout defaults in the [settings table](quests-block-brief.md#block-settings). The block shows
+at most 24 quests. For the end of the home page, set the `add` operation's `index` to
+the home page's current block count read from the gate's backup; never omit `index`,
+because an `add` without it puts the block first.
 
 Do not ask for IDs, hosts or slugs you can read from the CLI. Existing block ids come
 from the structure in the gate's backup, never from a guess.
@@ -164,14 +168,14 @@ A quest appears to anonymous visitors only when it is public: `is_public: true` 
 `public_view` set. Set them through the edit flow in
 [`quest-edit.md`](quest-edit.md#editing) (read, change, full `PUT`, before/after
 diff, one approval, read back). Fill `public_view` with `name`, `description` and
-`image_url` (an absolute `https` URL; an `http` URL is refused, see Rules for every operation). Never invent an image. If the publisher has
+`image_url` (an absolute `https` URL; an `http` URL is refused, see [Rules for every operation](quests-block-brief.md#rules-for-every-operation)). Never invent an image. If the publisher has
 none, leave it empty and the card shows its neutral placeholder.
 
 If the read-back does not show `is_public` and `public_view`, stop and report that.
 
 Each card can also show a reward line and a reward icon, set per card with
 `overrides.<questId>.rewardText` and `overrides.<questId>.rewardImageUrl` (see the
-settings table). Never put reward text into the title or description as a workaround.
+[settings table](quests-block-brief.md#block-settings)). Never put reward text into the title or description as a workaround.
 
 ## Flow
 
@@ -194,7 +198,7 @@ settings table). Never put reward text into the title or description as a workar
    changes the publisher asks for go through the same proposal and yes as title,
    description and image. Turn the agreed settings and defaults into `block_operations`.
    For an existing block, take its id from the structure in the gate's backup. Check
-   every key against the settings table.
+   every key against the [settings table](quests-block-brief.md#block-settings).
 4. **Hand it to the gate.** After the dedicated-test confirmation in Hard rule 2, run the preflight, back up the target site, and render the
    plan from that backup. The plan must show exactly the requested operations with
    their leaf paths and values, any parent objects it creates, and any removal. Show
@@ -222,8 +226,7 @@ stop and report the gap. Never improvise raw `xsolla shopbuilder` commands.
 Stop before any write when: the gate is unavailable or lacks `block_operations`; the
 mapping between the Quest Platform project and the test site is unclear, or the
 environments differ without the publisher's explicit confirmation; the project is not
-an approved `environment: test` project; the block version question is unresolved;
-backup failed; the plan was not confirmed; a delete was not named and confirmed; a
+an approved `environment: test` project; backup failed; the plan was not confirmed; a delete was not named and confirmed; a
 chosen quest is not found or not public; a setting is not in the table or out of
 range; or an image URL is not `https`. Keep completed safe work and state the smallest
 action to continue.

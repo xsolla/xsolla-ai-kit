@@ -10,7 +10,7 @@ block's real path and creates a missing parent object (for example `layout`) fir
 
 | Brief key | Allowed values | Default | What it does |
 |---|---|---|---|
-| `questIds` | list of unique quest ids, at most 24 | empty | Which quests show, in display order. Changing the order is a `questIds` update. |
+| `questIds` | list of unique quest UUIDs (the `id` from the quest list), at most 24 | empty | Which quests show, in display order. Changing the order is a `questIds` update. |
 | `maxQuests` | whole number 1 to 24 | `6` | How many cards show at most. |
 | `layout.showHeading` | `true` or `false` | `true` | Heading above the cards |
 | `layout.showDescription` | `true` or `false` | `true` | Description on each card |
@@ -30,6 +30,8 @@ block's real path and creates a missing parent object (for example `layout`) fir
 
 Notes:
 
+- `<questId>` in every `overrides.<questId>` key is the quest UUID, the `id` from the
+  quest list, the same value as in `questIds`.
 - Overrides are plain strings, are not localized, and win over the quest's own view.
   Prefer fixing the quest's `public_view`. Overrides stay on the block when a quest
   is removed from `questIds`.
@@ -94,7 +96,7 @@ Change only the heading:
 ```
 
 Reset media or text overrides (paths are `overrides.<questId>.<field>` leaves, or a
-whole `overrides.<questId>`):
+whole `overrides.<questId>`, where `<questId>` is the quest UUID):
 
 ```json
 {"op": "reset", "block_id": "<block-id>",
@@ -111,9 +113,13 @@ Move, duplicate, hide, show, delete (delete needs its own yes, Hard rule 4):
 {"op": "delete", "block_id": "<block-id>"}
 ```
 
-Rules for every operation:
+### Rules for every operation
 
-- Keys not in the settings table are rejected by the gate. Never invent one.
+- Keys not in the settings table are rejected by the gate. Never invent one. Never set
+  `editorPreview`: the gate accepts it, but it is an editor-only key.
+- Quest references are quest UUIDs, the `id` from the quest list: every `questIds`
+  entry, every `overrides.<questId>` key and every `reset` path. Never use a quest name,
+  slug or position.
 - `maxQuests` below 1 or above 24 gets one refusal line that names only the range, 1 to 24. Never offer to hide the block instead.
 - Ask for all missing inputs in one message. If the gate rejects the brief, relay its
   full error list in one reply, fix the brief and render again.
@@ -125,8 +131,10 @@ Rules for every operation:
   If the publisher gives an `http` URL, stop with the rejected-value shape before any plan
   or brief. Never change http to https or otherwise modify a URL the publisher gave, and
   never draft a plan with it. Ask for an https image URL or a media library image instead.
-- `index` is a position on the page, counted from 0. Reordering cards is an `update`
-  of `questIds`; `move` repositions the whole block.
+- `index` is a position on the page, counted from 0. An `add` without `index` puts the
+  block first on the page. For the end of the page, set `index` to the page's current
+  block count from the backup; a larger `index` is rejected. Reordering cards is an
+  `update` of `questIds`; `move` repositions the whole block.
 - The gate touches only the blocks listed. Every other block must read back unchanged.
 - A deleted block's id may stay in the site's top-level block list, which the apply
   report shows as a warning. This is a known CLI gap; do not fix it by hand.
