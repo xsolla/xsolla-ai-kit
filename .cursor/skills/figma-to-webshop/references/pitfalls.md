@@ -50,14 +50,14 @@ read its result and fill the brief, not to patch blocks here.
    server-side — it stores anything and the renderer then misbehaves. Read real values
    from the GUI or an existing block; never write a test value to find out.
 10. **Don't edit in the GUI and the CLI at once** — concurrent edits desync the document.
-11. **A currency package must hold exactly one currency.** `admin-create-currency-package`
-    rejects two with `[0401-4305]`. Comp cards that read "25,000 Gold + 1,425 Gems"
-    are therefore **bundles**, not currency packages — `admin-create-bundles` takes multiple
-    currencies in `--content` and is the right model for any combo card.
-12. **A freshly created bundle is invisible to the storefront.** `admin-create-bundles`
-    has no `--is-show-in-store`, and the item will not appear in `list-catalog-bundles`
-    until you run `admin-unhide-bundle --bundle-sku <sku>`. Do it for every item you
-    create, then re-check.
+11. **A combo card is a bundle, not a currency package.** A currency package holds
+    exactly one currency, so a comp card that reads "25,000 Gold + 1,425 Gems" maps to a
+    **bundle**. This skill never creates or edits catalog items. If the comp needs a
+    bundle the catalog doesn't have, stop and point the user to `catalog-design`.
+12. **A new bundle stays hidden until it's unhidden.** A bundle created without the
+    show-in-store flag doesn't appear in `list-catalog-bundles`. If a bundle the comp
+    needs is in the catalog but missing from the storefront, tell the user and point them
+    to `catalog-design`. Don't unhide it here.
 13. **Storefront *group* listings lag; a single-SKU read does not.** Right after a write,
     `list-catalog-bundles-by-group` can return `items: []` while
     `get-catalog-bundle --sku <sku>` already shows the item with its group and price.
