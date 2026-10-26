@@ -11,7 +11,7 @@ description: >-
   look like our Figma", or "convert our Figma to a shop". Never recreate another
   company's storefront from a screenshot. Never publishes.
 metadata:
-  owner: r.addoumie
+  owner: a.pyanzin
   domain: design
   status: draft
 ---
@@ -161,7 +161,7 @@ In full: [pitfalls.md](references/pitfalls.md).
 |---|---|
 | **Theme patched, nothing changed** | You patched `theme.input`. Patch `theme.calculatedTheme` via `update-block` with `"type": "site"`. |
 | **A string's `description` went blank** | `update-many-localization` without `description` clears it. Send the existing one with every translation. |
-| **A fresh bundle is invisible to the storefront** | Not shown until `admin-unhide-bundle`. A combo card ("25,000 Gold + 1,425 Gems") must be a **bundle** — a currency package holds exactly one currency. |
+| **A combo card has no catalog item** | A combo card ("25,000 Gold + 1,425 Gems") is a **bundle**, and a new bundle stays hidden until it's unhidden. This skill only reads the catalog: stop and point the user to `catalog-design`. |
 | **Assembly omitted a section** | Its data is missing from the brief (`content.faq`, `features`, `gallery`…). Add it and re-render — Step 2. |
 
 ## Examples
