@@ -56,7 +56,9 @@ case "$GROUP $CMD" in
         exit 1
       fi
       if [ -n "${FAKE_LANG_FILE:-}" ] && [ -f "$FAKE_LANG_FILE" ]; then
-        body="$(jq -c --slurpfile langs "$FAKE_LANG_FILE" '.languages = $langs[0]' "$STORE/structure.json")"
+        # baseline/ is already an envelope: set the list on the structure inside it.
+        body="$(jq -c --slurpfile langs "$FAKE_LANG_FILE" \
+          'if has("data") then .data.languages = $langs[0] else .languages = $langs[0] end' "$STORE/structure.json")"
         printf '{"ok":true,"data":%s}' "$body"
       else
         emit "$STORE/structure.json"
@@ -64,6 +66,11 @@ case "$GROUP $CMD" in
   "shopbuilder update-many-localization")
       echo '{"ok":true,"data":{}}' ;;
   "shopbuilder add-language"|"shopbuilder delete-language")
+      # FAKE_LANG_TAKEN: the language was enabled after the caller last read the list.
+      if [ "$CMD" = "add-language" ] && [ -n "${FAKE_LANG_TAKEN:-}" ]; then
+        echo "language is taken" >&2
+        exit 1
+      fi
       # No language file: the caller is not exercising order. Succeed so a store that
       # already opens in the target does not need a mutable list.
       [ -n "${FAKE_LANG_FILE:-}" ] || { echo '{"ok":true,"data":{}}'; exit 0; }

@@ -1,19 +1,22 @@
 # CLI assembly operations
 
 This is the dependency map for `xsolla` 1.9.4 or newer. Run every command against the
-already verified sandbox or dedicated-test-project context; do not add per-command
+already verified dedicated-test-project context; do not add per-command
 project overrides after preflight.
 
 | Phase | Command | Consumes | Produces / unlocks |
 |---|---|---|---|
-| Discover | `xsolla config list --json` | Local profile | Merchant, project, environment/sandbox match |
+| Discover | `xsolla config list --json` | Local profile | Merchant and project match; sandbox mode is off |
 | Discover | `xsolla auth list-account --json` | Credential store | Active Publisher login state |
-| Safety | `preflight.py --approved-test-projects <file>` | Separate local approval record | Exact non-sandbox test-project identity is allowlisted |
+| Safety | `preflight.py --approved-test-projects <file>` | Separate local approval record | Exact test-project identity is allowlisted |
+| Safety | `shopbuilder create-block --help`, only when the site has no common layout | Installed CLI | The usage line names `create-block`; otherwise stop before any write |
 | Discover | `xsolla shopbuilder list-websites --json` | Project context | Slug, landing ID, type |
 | Backup | `get-landing`, `get-structure`, `get-localization`, `list-assets`, `list-versions` | Existing slug | Restorable configuration evidence |
 | Bootstrap | `create-website --type topup` | Name, slug | Empty landing with `type:null` |
 | Bootstrap | `set-landing-type --type store` | Slug | Configured webshop landing |
 | Pages | `add-page` | Slug, name, path | Page with default template blocks |
+| Site layout | `get-block --slug <slug> --block-id <id>` for each ID in `layouts` | `get-structure` layout IDs | The module of each site layout; `common-layout` can sit next to other layouts |
+| Site layout | `create-block --slug <slug> --block common-layout` (only if missing) | Pages already created | Site-level layout required by Editor, Publish, and preview; avoids suppressing template header/footer |
 | Blocks | `add-block`, `move-block`, and page-scoped `update-block` removal patches | Landing/page/block IDs | Ordered page block list |
 | Theme | `update-block` with `type:site` and `type:page` | Landing/page IDs, targeted patches | Site and page source themes |
 | Assets | `upload-asset` | Landing ID, local file | Permanent CDN URL |
@@ -22,12 +25,15 @@ project overrides after preflight.
 | Verify | `get-structure`, `get-localization`, `verify-website` | Slug | Plan comparison and readiness result |
 | Preview | `enable-preview`, `preview-link` | Slug | Human-reviewable preview only |
 
-Before each Shop Builder command, `apply_plan.py` refreshes the supported
-Publisher login through `xsolla auth login`. If a read reports that session bootstrap
-produced no cookie before the operation was issued, it performs one bounded refresh
-and retries that read. It never reads a browser cookie, never accepts a manually copied
-PA token, and does not retry ambiguous API operation failures. Session-bootstrap HTTP
-429 responses use bounded backoff.
+`apply_plan.py` and `backup_shop.py` do not log in before commands; the CLI refreshes
+an expired token on its own. When a command fails with an authentication error or a
+Publisher-session bootstrap failure, the script runs `xsolla auth login` once per run,
+re-reads `xsolla config list --json`, stops if the merchant, project, or sandbox
+setting changed, and retries the command. A second authentication failure ends the
+run. The scripts never read a browser cookie, never accept a manually copied PA token,
+and do not retry ambiguous API operation failures. Session-bootstrap HTTP 429
+responses use bounded backoff.
+No script passes `--force`; an operation that requires it stops for review.
 
 ## ID dependencies
 
@@ -78,5 +84,5 @@ the confirmed plan, stop before writes and report the extra paths instead of lea
 a silently mixed preset or deleting the whole website.
 
 Use `scripts/verify_structure.py` for the deterministic portion of verification. It
-does not replace `verify-website`, localization/catalog checks, or visual preview; it
+reads each site layout's module with read-only `get-block`. It does not replace `verify-website`, localization/catalog checks, or visual preview; it
 isolates structural failures from the currently tracked CLI readiness/preview defects.

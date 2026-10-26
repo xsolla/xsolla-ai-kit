@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Refuse a portal write unless the CLI targets an approved test project."""
+"""Refuse a portal write unless the CLI targets an approved test project, with sandbox mode off."""
 
 from __future__ import annotations
 
@@ -18,11 +18,17 @@ def positive_int(value: str) -> int:
 
 
 def cli_config() -> dict:
+    # The CLI writes UTF-8; without an explicit encoding Windows decodes with the
+    # ANSI code page and loses the output.
     result = subprocess.run(
-        ["xsolla", "config", "list", "--json"], capture_output=True, text=True, check=False
+        ["xsolla", "config", "list", "--json"],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        check=False,
     )
     try:
-        value = json.loads(result.stdout)
+        value = json.loads(result.stdout or "")
     except json.JSONDecodeError:
         raise RuntimeError(
             "no Xsolla CLI project context: run `xsolla config init` for the test project"
@@ -67,6 +73,8 @@ def check_project(
     config = cli_config() if config is None else config
     if config.get("merchant_id") != merchant_id or config.get("project_id") != project_id:
         raise RuntimeError("the CLI's configured merchant/project does not match the target")
+    if config.get("sandbox") is True:
+        raise RuntimeError("the CLI's sandbox mode is on: Shop Builder has no sandbox, turn it off")
     return approved_test_project(allowlist, merchant_id, project_id)
 
 

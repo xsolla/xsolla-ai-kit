@@ -10,26 +10,77 @@ import subprocess
 import sys
 from pathlib import Path
 
+from render_plan import common_layout_id
 from validate_shop_brief import load_brief, validate
+
+NEWER_CLI_FOR_LAYOUT = (
+    "this step needs a newer Xsolla CLI: the site has no common layout, and this CLI "
+    "has no `xsolla shopbuilder create-block` to add one. Update the CLI and run "
+    "preflight again; nothing was written"
+)
 
 
 def run_json(*args: str) -> object:
+    if any(arg == "--force" or arg.startswith("--force=") for arg in args):
+        raise RuntimeError("--force is prohibited in Shop Builder assembly")
+    # The CLI writes UTF-8; without an explicit encoding Windows decodes with the
+    # ANSI code page and loses the output.
     result = subprocess.run(
-        ["xsolla", *args, "--json"], capture_output=True, text=True, check=False
+        ["xsolla", *args, "--json"],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        check=False,
     )
     if result.returncode:
-        detail = result.stderr.strip() or result.stdout.strip()
+        detail = (
+            (result.stderr or "").strip()
+            or (result.stdout or "").strip()
+            or f"exit code {result.returncode}"
+        )
         raise RuntimeError(f"{' '.join(args)} failed: {detail}")
+    stdout = result.stdout or ""
+    stderr = (result.stderr or "").strip() or "no stderr output"
+    if not stdout.strip():
+        raise RuntimeError(f"{' '.join(args)} returned no output: {stderr}")
     try:
-        return json.loads(result.stdout)
+        return json.loads(stdout)
     except json.JSONDecodeError as exc:
-        raise RuntimeError(f"{' '.join(args)} returned invalid JSON") from exc
+        raise RuntimeError(f"{' '.join(args)} returned invalid JSON: {stderr}") from exc
 
 
 def data(value: object) -> object:
     if isinstance(value, dict) and value.get("ok") is True and "data" in value:
         return value["data"]
     return value
+
+
+def cli_has_command(*command: str) -> bool:
+    """Return whether the installed CLI has the command.
+
+    For an unknown subcommand the CLI prints its parent's help and exits 0, so only
+    the usage line tells: it names the command when the command exists.
+    """
+
+    result = subprocess.run(
+        ["xsolla", *command, "--help"],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        check=False,
+    )
+    usage = " ".join(["xsolla", *command])
+    return any(
+        line.strip() == usage or line.strip().startswith(usage + " ")
+        for line in (result.stdout or "").splitlines()
+    )
+
+
+def site_block_module(slug: str, block_id: str) -> object:
+    block = data(
+        run_json("shopbuilder", "get-block", "--slug", slug, "--block-id", block_id)
+    )
+    return block.get("module") if isinstance(block, dict) else None
 
 
 def objects(value: object):
@@ -78,10 +129,10 @@ def group_external_ids(value: object) -> set[str]:
     }
 
 
-def approved_test_project(path: Path | None, expected: dict) -> dict | None:
+def approved_test_project(path: Path | None, expected: dict) -> dict:
     """Return the separate approval record for a dedicated test project."""
     if expected["environment"] != "test":
-        return None
+        raise RuntimeError("Shop Builder assembly requires a dedicated test project")
     if path is None:
         raise RuntimeError(
             "--approved-test-projects is required for a dedicated test project"
@@ -152,12 +203,8 @@ def main() -> int:
         test_project_approval = approved_test_project(
             args.approved_test_projects, expected
         )
-        expected_sandbox = expected["environment"] == "sandbox"
-        sandbox_enabled = config.get("sandbox") is True
-        if sandbox_enabled != expected_sandbox:
-            raise RuntimeError(
-                "CLI sandbox setting does not match the shop brief environment"
-            )
+        if config.get("sandbox") is True:
+            raise RuntimeError("CLI sandbox must be disabled for Shop Builder")
         if config.get("merchant_id") != expected["merchant_id"]:
             raise RuntimeError("CLI merchant_id does not match the shop brief")
         if config.get("project_id") != expected["project_id"]:
@@ -167,8 +214,22 @@ def main() -> int:
         if not active_publisher_account(accounts):
             raise RuntimeError("no active, unexpired Publisher login is available")
 
+        slug = brief["site"]["slug"]
         websites = run_json("shopbuilder", "list-websites")
-        landing = first_landing(websites, brief["site"]["slug"])
+        landing = first_landing(websites, slug)
+
+        # Assembly adds the common layout after its page writes, so a CLI that cannot
+        # add it must stop the run here, before the first write.
+        layout_id = None
+        if landing is not None:
+            site = data(run_json("shopbuilder", "get-structure", "--slug", slug))
+            if not isinstance(site, dict):
+                raise RuntimeError("get-structure returned an unexpected shape")
+            layout_id = common_layout_id(
+                site, lambda block_id: site_block_module(slug, block_id)
+            )
+        if layout_id is None and not cli_has_command("shopbuilder", "create-block"):
+            raise RuntimeError(NEWER_CLI_FOR_LAYOUT)
 
         groups = run_json(
             "catalog",
@@ -202,23 +263,20 @@ def main() -> int:
                 "merchant_id": expected["merchant_id"],
                 "project_id": expected["project_id"],
                 "environment": expected["environment"],
-                "sandbox": sandbox_enabled,
+                "sandbox": False,
                 "test_project_acknowledged": expected.get(
                     "test_project_acknowledged", False
                 ),
-                "test_project_allowlisted": test_project_approval is not None,
-                "approval_reference": (
-                    test_project_approval["approval_reference"]
-                    if test_project_approval
-                    else None
-                ),
+                "test_project_allowlisted": True,
+                "approval_reference": test_project_approval["approval_reference"],
             },
             "auth": {"publisher_account_active": True},
             "target": {
-                "slug": brief["site"]["slug"],
+                "slug": slug,
                 "exists": landing is not None,
                 "landing_id": landing.get("_id") if landing else None,
                 "type": landing.get("type") if landing else None,
+                "common_layout_id": layout_id,
             },
             "catalog": {
                 "verified_groups": [

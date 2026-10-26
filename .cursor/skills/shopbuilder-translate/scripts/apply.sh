@@ -3,11 +3,13 @@
 #
 # Shop Builder page copy only. Catalog and LiveOps text are out of scope.
 # Default is a DRY RUN: builds and saves every payload, sends nothing.
-#   --commit              write page copy. Does not change the language the shop opens in.
+#   --commit              enable the target language, then write page copy. Does not change
+#                         the language the shop opens in.
 #                         Before the first write, checks the approved-test-project allowlist,
 #                         lists that project's websites, and blocks unless the slug is in
 #                         that list. Then it exports the live site read-only and blocks if
-#                         that text changed since extract. A failed write exits non-zero.
+#                         that text changed since extract. Only then does it run add-language
+#                         and write the copy. A failed write exits non-zero.
 #   --report              reconcile the localization store against translated.json
 #   --confirm-overwrites  required on --commit whenever a unit already has a target-locale
 #                         value that differs from what is about to be written. Without it,
@@ -36,7 +38,7 @@ WORK="l10n/work/$TGT/translated.json"
 SCRIPTDIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DOMAIN="$DOMAIN" TGT="$TGT" WORK="$WORK" COMMIT="$COMMIT" REPORT="$REPORT" \
 CONFIRM_OVERWRITES="$CONFIRM_OVERWRITES" \
-SCRIPTDIR="$SCRIPTDIR" python3 <<'PY'
+SCRIPTDIR="$SCRIPTDIR" python3 -X utf8 <<'PY'
 import json, os, re, subprocess, sys, collections, time
 
 DOMAIN, TGT, WORK = os.environ['DOMAIN'], os.environ['TGT'], os.environ['WORK']
@@ -87,7 +89,7 @@ def run(args, tag, sandbox=False):
     print("   ", " ".join(a if len(a) < 60 else a[:57] + "..." for a in args))
     if not COMMIT:
         return 0
-    r = subprocess.run(args, capture_output=True, text=True)
+    r = subprocess.run(args, capture_output=True, text=True, encoding='utf-8')
     save(f"{tag}.response.json", {"rc": r.returncode, "stdout": r.stdout, "stderr": r.stderr})
     print(f"    -> rc={r.returncode}" + ("" if r.returncode == 0 else f" {r.stderr[:160]}"))
     if r.returncode != 0:
@@ -218,7 +220,8 @@ def allowlist_allows():
             break
     if matched is None:
         block(f"merchant {merchant} project {project} is not on the approved-test-project allowlist.")
-    r = subprocess.run([XS, 'config', 'list', '--json'], capture_output=True, text=True)
+    r = subprocess.run([XS, 'config', 'list', '--json'], capture_output=True, text=True,
+                       encoding='utf-8')
     try:
         config = json.loads(r.stdout)
     except json.JSONDecodeError:
@@ -239,7 +242,7 @@ def domain_on_project():
     r = subprocess.run(
         [XS, 'shopbuilder', 'list-websites',
          '--merchant-id', M, '--project-id', P, '--json'],
-        capture_output=True, text=True)
+        capture_output=True, text=True, encoding='utf-8')
     if r.returncode != 0:
         detail = (r.stderr or r.stdout or 'list-websites failed').strip()
         block(f"could not list websites for the allowlisted project: {detail}")
@@ -291,9 +294,10 @@ def live_drift(base_path, live_path):
     return changed
 
 def backup_before_write():
-    """Allowlist, then a read-only export, before the first write. Not a production denylist."""
+    """Allowlist, then a read-only export, before the first write. Not a production denylist.
+    Returns the exported structure."""
     if not COMMIT:
-        return
+        return None
     allowlist_allows()
     domain_on_project()
     script = os.path.join(os.environ['SCRIPTDIR'], 'export-backup.sh')
@@ -326,8 +330,33 @@ def backup_before_write():
             print(f"  {line}")
         sys.exit(1)
     print(f"  export -> {out}")
+    return structure
 
-backup_before_write()
+structure = backup_before_write()
+
+# --- language: only behind the gate above, and before the copy ---------------
+# add-language appends to the site language list. It does not change the language the
+# shop opens in. Copy written to a locale that is not enabled never renders. If the
+# pre-write export already lists the locale, add-language is skipped. A 400 whose message
+# says the language is taken also means the locale is already enabled: that is success.
+print(f"\n== language: enable {TGT} on {DOMAIN} ==")
+lang_args = [XS, 'shopbuilder', 'add-language', '--slug', DOMAIN, '--language', TGT]
+save("add-language.cmd.json", lang_args)
+print("   ", " ".join(lang_args))
+enabled_here = False
+site_languages = structure.get('languages') if isinstance(structure, dict) else None
+if COMMIT and isinstance(site_languages, list) and TGT in site_languages:
+    print(f"    -> {TGT} is already enabled (pre-write export): add-language skipped")
+elif COMMIT:
+    r = subprocess.run(lang_args, capture_output=True, text=True, encoding='utf-8')
+    save("add-language.response.json", {"rc": r.returncode, "stdout": r.stdout, "stderr": r.stderr})
+    if r.returncode == 0:
+        enabled_here = True
+        print(f"    -> enabled {TGT}")
+    elif 'language is taken' in (r.stdout + r.stderr).lower():
+        print(f"    -> {TGT} is already enabled")
+    else:
+        block(f"add-language failed (rc={r.returncode}): {(r.stderr or r.stdout).strip()[:160]}")
 
 # --- blocks (surface B): the localization store, NOT update-block -----------
 # Block text is referenced by an "L:" id; the text lives in a separate store keyed by the
@@ -357,6 +386,13 @@ if per_scope:
 if write_failed:
     print("\nBLOCKED — a write failed (" + ", ".join(write_failed) + ").")
     print("The copy was not written. Do not treat this run as a success.")
+    if enabled_here:
+        print(f"This run enabled {TGT} on {DOMAIN}, so shoppers can pick it without this copy.")
+        print("Fix the failure and re-run with --commit. To take the language out of the")
+        print("selector until then, show this command to a human. This script does not run it:")
+        print(f"    {XS} shopbuilder delete-language --slug {DOMAIN} --language {TGT}")
+    else:
+        print(f"{TGT} was already enabled on {DOMAIN} before this run. Fix the failure and re-run with --commit.")
     sys.exit(1)
 
 # --- reconciliation ---------------------------------------------------------
@@ -381,7 +417,7 @@ if REPORT:
 
 print(f"\npayloads -> {PAYDIR}")
 if not COMMIT:
-    print("DRY RUN — nothing was sent. --commit writes the copy and does not change the language the shop opens in.")
+    print(f"DRY RUN — nothing was sent. --commit enables {TGT}, writes the copy, and does not change the language the shop opens in.")
     print("Review the payloads, then re-run with --commit.")
 else:
     print("\nCopy was written. This run did not change the language the shop opens in.")

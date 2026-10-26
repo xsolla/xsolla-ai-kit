@@ -47,10 +47,11 @@ until [expert-review.md](references/expert-review.md) records approval.
 
 ## Non-negotiable safety gate
 
-1. Run `scripts/preflight.py <brief.json>`; for a non-sandbox test project, also pass
-   `--approved-test-projects <local-allowlist.json>`. Read back the matched merchant
-   ID, project ID, safety environment, approval reference, active Publisher login,
-   target site, and catalog groups.
+1. Run `scripts/preflight.py <brief.json> --approved-test-projects <local-allowlist.json>`.
+   Read back the matched merchant ID, project ID, safety environment, approval reference, active Publisher login,
+   target site, and catalog groups. When the site needs a common layout (a new site, or
+   one without it) and the CLI has no `shopbuilder create-block`, preflight stops with
+   "this step needs a newer Xsolla CLI"; write nothing.
 2. If CLI context differs, switch it and rerun preflight; never override later commands.
 3. If the target site exists, export it before the first write with
    `scripts/backup_shop.py --brief <brief.json> --slug <slug> --output-dir <dir>`.
@@ -63,10 +64,10 @@ until [expert-review.md](references/expert-review.md) records approval.
    the first remote write. Earlier permission to "build a shop" is not confirmation
    of a new plan. Re-render and reconfirm if the brief or plan changes.
 
-The brief must target a sandbox or acknowledged dedicated test project. A `test`
-target must match a separate local allowlist with exact IDs, approver, and approval
-reference. Never use a partner project, publish, attach a production domain, enable
-live payments, or apply a saved version. A human publishes in Publisher Account.
+The brief must target an acknowledged dedicated test project and match a separate
+local allowlist with exact IDs, approver, and approval reference. Never use sandbox
+as a Shop Builder target or use a partner project. Never publish, attach a production
+domain, enable live payments, or apply a saved version. A human publishes in Publisher Account.
 
 A new site has generated blocks whose IDs do not exist before creation. Confirm the
 bootstrap, then export, re-render, and reconfirm before deleting any generated block.
@@ -78,16 +79,22 @@ After confirmation, apply the plan in this dependency order:
 
 1. **Theme** — set site and page theme source fields; page theme overrides site theme.
 2. **Pages** — create all page paths before linking navigation.
-3. **Navigation** — resolve page IDs and add internal links only after pages exist.
-4. **Blocks** — add/move/update blocks page by page; resolve IDs after each structural
+3. **Site layout** — after page/template creation, add `common-layout` only if the
+   site has none; adding it earlier suppresses some template headers and footers.
+   Find it by module, not position: `get-structure` lists layouts by ID, so read each
+   one with `get-block`. Other layouts, such as a sidebar's side-by-side layout, stay.
+   Verify the common layout's ID appears in both `blocks` and `layouts`.
+4. **Navigation** — resolve page IDs and add internal links only after pages exist.
+5. **Blocks** — add/move/update blocks page by page; resolve IDs after each structural
    change and use targeted patches rather than replacing `values` or `components`.
-5. **Copy and assets** — upload local assets, then patch returned CDN URLs; write
+6. **Copy and assets** — upload local assets, then patch returned CDN URLs; write
    localized HTML through localization commands, never through block value patches.
-6. **Catalog links** — configure `newStore` sections only after catalog groups and
+7. **Catalog links** — configure `newStore` sections only after catalog groups and
    SKUs have been verified in the same project. Localize a section title before
    enabling its `L:` ID.
 
-Use pre-written scripts for repeated work; never invent HTTP or `curl` workarounds.
+Use pre-written scripts for repeated work; never pass `--force` or invent HTTP or
+`curl` workarounds. If an operation requires `--force`, stop and report it.
 If the CLI lacks an operation, stop it, record the gap, and file a CLI/API ticket.
 
 ## Verification and handoff
@@ -100,10 +107,13 @@ If the CLI lacks an operation, stop it, record the gap, and file a CLI/API ticke
 - Run `xsolla shopbuilder verify-website --slug <slug>`.
 - Enable preview only if the confirmed plan includes it, then return the preview link.
 - Report skips, interventions, and gaps; state that the site is **not published**.
+- If the plan adds the Custom code (`html`) block, tell the user it is added empty and
+  hidden: they paste their code and make the block visible in the Site Builder editor.
+  Never write HTML, CSS, or JavaScript into it.
 
 ## Stop conditions
 
 Stop before writes when project identity is ambiguous, backup fails, confirmation is
-missing, the target is neither sandbox nor an acknowledged dedicated test project,
+missing, the target is not an acknowledged dedicated test project,
 catalog/project IDs do not match, or the plan requires an unverified block module.
 Preserve completed safe work and explain the smallest action needed to continue.

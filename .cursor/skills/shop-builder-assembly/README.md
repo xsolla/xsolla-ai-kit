@@ -1,15 +1,17 @@
 # Shop Builder assembly skill
 
-Assembles an unpublished Shop Builder site in a sandbox or dedicated test project
+Assembles an unpublished Shop Builder site in a dedicated test project
 from a normalized JSON shop brief.
 
 ## Prerequisites
 
-- Xsolla CLI with `shopbuilder` commands
+- Xsolla CLI 1.9.4 or newer. A site without a common layout, including every new
+  site, also needs a CLI with `shopbuilder create-block` and the Shop Builder API
+  support for it; preflight stops before any write when the command is missing
 - `xsolla auth login` completed for a Publisher account
-- Sandbox IDs or an acknowledged dedicated test project
+- An acknowledged dedicated test project with CLI sandbox mode disabled
 - Existing catalog group IDs for any `newStore` sections
-- For a non-sandbox test project, a separate local approval allowlist containing the
+- A separate local approval allowlist containing the
   exact merchant/project identity and the mentor or lead's approval reference
 
 ## Happy path
@@ -40,7 +42,9 @@ from a normalized JSON shop brief.
    ```
 
    For a new slug, render without `--structure` and confirm the bootstrap-only plan.
-   Bootstrap creates the landing and page paths. Then back up generated templates and
+   Bootstrap creates the landing and page paths, then adds a site-level common
+   layout if the site has none. It never adds the layout before page/template setup.
+   Then back up generated templates and
    repeat with `--structure` before removing blocks. Use the same re-backup and
    reconfirmation boundary after adding missing paths to an existing site.
 
@@ -63,13 +67,16 @@ catalog. Federated wrappers use their effective `values.blockId` module.
   PR review; implementation testing may start earlier.
 - Test project IDs are intentionally not stored in committed examples.
 - A `test` brief is insufficient on its own: preflight and apply also require a
-  separate, uncommitted allowlist record for the exact merchant/project IDs. Sandbox
-  briefs do not require this file.
+  separate, uncommitted allowlist record for the exact merchant/project IDs.
+- Sandbox briefs are rejected, and the scripts never pass `--force` to the CLI.
 - The CLI does not currently expose an authoritative list of standard block modules.
 - Multi-command Shop Builder authentication, readiness verification, and CLI preview
   have confirmed defects captured in `references/test-findings.md`.
 - The CLI has no page-deletion command. Application stops before writes when an
   existing target contains pages outside the confirmed plan.
+- Bare `create-website` still leaves a blank site without a layout; this skill adds
+  one after pages. Editor/Publish/private-preview checks require the API change to
+  be deployed and a fresh test-project run; neither is implied by unit tests.
 - The official block inventory is fully documented, and every observed official
   module has a UI-created exported contract. Subscriptions is documented but absent
   from the observed palette/export, while five palette entries are absent from the

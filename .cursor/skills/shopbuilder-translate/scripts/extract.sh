@@ -23,7 +23,7 @@ BASE="${3:-$(ls -d l10n/backup/*/ 2>/dev/null | sort | tail -1)}"
 OUT="l10n/work/$TGT"; mkdir -p "$OUT"
 echo "extract  baseline=$BASE  $SRC -> $TGT"
 
-BASE="$BASE" SRC="$SRC" TGT="$TGT" OUT="$OUT" python3 <<'PY'
+BASE="$BASE" SRC="$SRC" TGT="$TGT" OUT="$OUT" python3 -X utf8 <<'PY'
 import json, os, re, math, datetime
 
 BASE, SRC, TGT, OUT = os.environ['BASE'], os.environ['SRC'], os.environ['TGT'], os.environ['OUT']
@@ -218,7 +218,6 @@ doc = {
     'domain': (structure or {}).get('domain'),
     'counts': {
       'total': len(units),
-      'catalog': sum(1 for u in units if u['surface'] == 'catalog'),
       'block': sum(1 for u in units if u['surface'] == 'block'),
       'common_scope': sum(1 for u in units if u.get('scope') == 'common'),
       'legal_flagged': sum(1 for u in units if u['kind'] == 'legal'),
@@ -239,7 +238,6 @@ with open(os.path.join(OUT, 'translatable.json'), 'w') as f:
 
 c = doc['meta']['counts']
 print(f"  units            {c['total']}")
-print(f"    catalog        {c['catalog']}")
 print(f"    block          {c['block']}  (of which {c['common_scope']} in the common scope)")
 print(f"    legal (DO NOT TRANSLATE — route to counsel)  {c['legal_flagged']}")
 print(f"    asset URLs (NOT translatable)  {c['assets_skipped']}")

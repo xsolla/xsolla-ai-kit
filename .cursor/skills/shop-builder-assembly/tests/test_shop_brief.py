@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import copy
+import contextlib
 import importlib.util
+import io
 import json
 import subprocess
 import sys
@@ -79,6 +81,34 @@ class ShopBriefTests(unittest.TestCase):
         ]
         self.assertEqual([], validator.validate(brief))
 
+    def test_custom_code_block_is_flagged_in_plan_warnings(self) -> None:
+        brief = copy.deepcopy(self.brief)
+        brief["content"]["page_overrides"] = [
+            {"name": "Home", "path": "/", "blocks": ["header", "html", "footer"]}
+        ]
+        self.assertEqual([], validator.validate(brief))
+        warning = (
+            "The Custom code block is added empty and hidden; paste your code and "
+            "make the block visible in the Site Builder editor."
+        )
+        self.assertIn(warning, render_plan.build_plan(brief)["warnings"])
+        self.assertNotIn(warning, render_plan.build_plan(self.brief)["warnings"])
+
+        already_there = {
+            "pages": [
+                {
+                    "_id": "home",
+                    "path": "/",
+                    "blocks": [
+                        {"_id": "header", "module": "header"},
+                        {"_id": "user-code", "module": "html"},
+                        {"_id": "footer", "module": "footer"},
+                    ],
+                }
+            ]
+        }
+        self.assertNotIn(warning, render_plan.build_plan(brief, already_there)["warnings"])
+
     def test_unmapped_subscription_module_is_rejected(self) -> None:
         brief = copy.deepcopy(self.brief)
         brief["content"]["page_overrides"] = [
@@ -116,14 +146,16 @@ class ShopBriefTests(unittest.TestCase):
 
     def test_non_test_environment_is_rejected(self) -> None:
         brief = copy.deepcopy(self.brief)
-        brief["project"]["environment"] = "production"
-        self.assertIn(
-            "project.environment must be sandbox or test", validator.validate(brief)
-        )
+        for environment in ("sandbox", "production"):
+            with self.subTest(environment=environment):
+                brief["project"]["environment"] = environment
+                self.assertIn(
+                    "project.environment must be test", validator.validate(brief)
+                )
 
     def test_dedicated_test_project_requires_acknowledgement(self) -> None:
         brief = copy.deepcopy(self.brief)
-        brief["project"]["environment"] = "test"
+        brief["project"]["test_project_acknowledged"] = False
         self.assertIn(
             "project.test_project_acknowledged must be true for a dedicated test project",
             validator.validate(brief),
@@ -159,7 +191,7 @@ class ShopBriefTests(unittest.TestCase):
         cases = [
             ("platforms", ["mobile", []], "game.platforms must use:"),
             ("lifecycle", [], "game.lifecycle must use:"),
-            ("environment", [], "project.environment must be sandbox or test"),
+            ("environment", [], "project.environment must be test"),
             ("preset", [], "site.preset must use:"),
             ("locales", 7, "site.locales must be a non-empty list"),
             ("group type", [], "catalog.groups[0].type must use:"),
@@ -278,6 +310,68 @@ class ShopBriefTests(unittest.TestCase):
                 ],
             )
 
+    def test_sandbox_project_cannot_skip_allowlist(self) -> None:
+        expected = {"merchant_id": 100, "project_id": 200, "environment": "sandbox"}
+        with self.assertRaisesRegex(RuntimeError, "dedicated test project"):
+            preflight.approved_test_project(None, expected)
+
+    def test_read_scripts_refuse_force_before_running_cli(self) -> None:
+        for module in (preflight, backup_shop):
+            with self.subTest(module=module.__name__):
+                with mock.patch.object(module.subprocess, "run") as run:
+                    with self.assertRaisesRegex(RuntimeError, "--force is prohibited"):
+                        module.run_json("shopbuilder", "delete-block", "--force")
+                    run.assert_not_called()
+
+    def test_preflight_rejects_enabled_cli_sandbox_before_shopbuilder_reads(self) -> None:
+        brief = ROOT / "examples" / "mobile-single-page.json"
+        stderr = io.StringIO()
+        with (
+            mock.patch.object(sys, "argv", ["preflight.py", str(brief)]),
+            mock.patch.object(preflight.shutil, "which", return_value="xsolla"),
+            mock.patch.object(
+                preflight,
+                "approved_test_project",
+                return_value={"approval_reference": "test approval"},
+            ),
+            mock.patch.object(
+                preflight,
+                "run_json",
+                return_value={"merchant_id": 12345, "project_id": 67890, "sandbox": True},
+            ) as run_json,
+            contextlib.redirect_stderr(stderr),
+        ):
+            self.assertEqual(1, preflight.main())
+        self.assertIn("CLI sandbox must be disabled", stderr.getvalue())
+        run_json.assert_called_once_with("config", "list")
+
+    def test_preflight_accepts_config_without_sandbox_key(self) -> None:
+        brief = ROOT / "examples" / "mobile-single-page.json"
+        stdout = io.StringIO()
+        config = {"merchant_id": 12345, "project_id": 67890}
+        accounts = {
+            "accounts": [
+                {"context": "publisher", "active": True, "expired": False}
+            ]
+        }
+        with (
+            mock.patch.object(sys, "argv", ["preflight.py", str(brief)]),
+            mock.patch.object(preflight.shutil, "which", return_value="xsolla"),
+            mock.patch.object(
+                preflight,
+                "approved_test_project",
+                return_value={"approval_reference": "test approval"},
+            ),
+            mock.patch.object(
+                preflight, "run_json", side_effect=[config, accounts, {}, {}]
+            ) as run_json,
+            mock.patch.object(preflight, "cli_has_command", return_value=True),
+            contextlib.redirect_stdout(stdout),
+        ):
+            self.assertEqual(0, preflight.main())
+        self.assertFalse(json.loads(stdout.getvalue())["context"]["sandbox"])
+        self.assertEqual(4, run_json.call_count)
+
     def test_test_project_rejects_different_allowlisted_identity(self) -> None:
         expected = {
             "merchant_id": 100,
@@ -336,6 +430,81 @@ class ShopBriefTests(unittest.TestCase):
                 backup_shop.refresh_supported_login()
         self.assertEqual(2, run.call_count)
         sleep.assert_called_once_with(backup_shop.LOGIN_RETRY_DELAY_SECONDS)
+
+    def test_backup_run_json_does_not_log_in_before_commands(self) -> None:
+        succeeded = mock.Mock(returncode=0, stderr="", stdout='{"ok":true}')
+        with (
+            mock.patch.dict(
+                backup_shop.RUN_AUTH, {"logged_in": False, "context": BACKUP_CONTEXT}
+            ),
+            mock.patch.object(backup_shop.subprocess, "run", return_value=succeeded) as run,
+        ):
+            backup_shop.run_json("shopbuilder", "get-structure", "--slug", "shop")
+        run.assert_called_once()
+        self.assertEqual(
+            ["xsolla", "shopbuilder", "get-structure", "--slug", "shop", "--json"],
+            run.call_args.args[0],
+        )
+
+    def test_backup_aborts_when_login_changes_cli_context(self) -> None:
+        unauthenticated = mock.Mock(
+            returncode=1, stderr="authentication required for this command.", stdout=""
+        )
+        login_succeeded = mock.Mock(returncode=0, stderr="", stdout="Login successful")
+        drifted = mock.Mock(
+            returncode=0,
+            stderr="",
+            stdout=json.dumps({"ok": True, "data": {"merchant_id": 999, "project_id": 200}}),
+        )
+        with (
+            mock.patch.dict(
+                backup_shop.RUN_AUTH, {"logged_in": False, "context": BACKUP_CONTEXT}
+            ),
+            mock.patch.object(
+                backup_shop.subprocess,
+                "run",
+                side_effect=[unauthenticated, login_succeeded, drifted],
+            ),
+            mock.patch.object(backup_shop.time, "sleep"),
+        ):
+            with self.assertRaisesRegex(RuntimeError, r"merchant_id 100 -> 999"):
+                backup_shop.run_json("shopbuilder", "get-landing", "--slug", "shop")
+
+    def test_backup_says_a_rerun_is_safe_when_it_ends_after_its_login(self) -> None:
+        unauthenticated = mock.Mock(
+            returncode=1, stderr="authentication required for this command.", stdout=""
+        )
+        login_succeeded = mock.Mock(returncode=0, stderr="", stdout="")
+        config = mock.Mock(
+            returncode=0,
+            stderr="",
+            stdout=json.dumps({"ok": True, "data": {"merchant_id": 100, "project_id": 200}}),
+        )
+        drifted = mock.Mock(
+            returncode=0,
+            stderr="",
+            stdout=json.dumps({"ok": True, "data": {"merchant_id": 100, "project_id": 300}}),
+        )
+        endings = {
+            "second auth failure": [unauthenticated, login_succeeded, config, unauthenticated],
+            "context drift": [unauthenticated, login_succeeded, drifted],
+        }
+        for ending, results in endings.items():
+            with self.subTest(ending):
+                with (
+                    mock.patch.dict(
+                        backup_shop.RUN_AUTH, {"logged_in": False, "context": BACKUP_CONTEXT}
+                    ),
+                    mock.patch.object(backup_shop.subprocess, "run", side_effect=results),
+                    mock.patch.object(backup_shop.time, "sleep"),
+                ):
+                    with self.assertRaisesRegex(
+                        RuntimeError, "made no change, so it is safe to rerun"
+                    ):
+                        backup_shop.run_json("shopbuilder", "get-landing", "--slug", "shop")
+
+
+BACKUP_CONTEXT = {"merchant_id": 100, "project_id": 200, "sandbox": False}
 
 
 

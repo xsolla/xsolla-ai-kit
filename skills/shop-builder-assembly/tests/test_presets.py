@@ -139,6 +139,14 @@ class PresetTests(unittest.TestCase):
         self.assertIn("catalog_links", plan["implemented_phases"])
         self.assertNotIn("catalog_links", plan["unsupported_phases"])
 
+    def test_site_layout_follows_page_templates(self) -> None:
+        plan = render_plan.build_plan(self.brief)
+        self.assertEqual("common-layout", plan["site_layout"]["module"])
+        self.assertTrue(plan["site_layout"]["if_missing"])
+        self.assertLess(
+            plan["order"].index("pages"), plan["order"].index("site_layout")
+        )
+
     def test_existing_block_without_replacement_data_is_preserved(self) -> None:
         self.brief["content"].pop("faq", None)
         structure = {
