@@ -88,3 +88,6 @@ catalog. Federated wrappers use their effective `values.blockId` module.
   CLI readiness and preview remain tracked gaps.
 - Description callers produce this skill's brief and leave all site writes here. Figma
   integration remains separate.
+- Sites created from a Publisher Account template keep the header in the common layout;
+  render and apply stop on them before any write. Report the stop and suggest nothing
+  else: not another site, not manual edits, no other workaround.
