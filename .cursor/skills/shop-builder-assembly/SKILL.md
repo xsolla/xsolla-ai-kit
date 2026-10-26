@@ -121,4 +121,5 @@ Preserve completed safe work and explain the smallest action needed to continue.
 ## Known limitations
 
 - Sites created from a Publisher Account template keep the header in the common layout;
-  render and apply stop on them before any write. Report the stop; offer no workaround.
+  render and apply stop on them before any write. Report the stop and suggest nothing
+  else: not another site, not manual edits, no other workaround.
