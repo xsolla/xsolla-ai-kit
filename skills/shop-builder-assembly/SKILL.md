@@ -59,8 +59,11 @@ until [expert-review.md](references/expert-review.md) records approval.
    `scripts/render_plan.py <brief.json> --structure <backup-dir>/structure.json` and
    show one plan in plain language: each page and its sections in order, the products
    and offers in each, the visual direction (palette, backgrounds, artwork and where it
-   came from), exact block removals, catalog mappings, and what is still to connect.
-   Keep the `confirmation_id` in the audit trail, not in the question. Preserve
+   came from), exact block removals, catalog mappings, a preview for the visual review,
+   and what is still to connect. Call each section by its block name in the
+   [block catalog](references/block-catalog.md), such as Offer chain or Reward system,
+   never by a module ID such as `sb-offer-chain`. Keep module IDs and the
+   `confirmation_id` in the audit trail, not in the question. Preserve
    configured blocks lacking replacement data. Omit `--structure` only for a new
    slug's bootstrap-only plan; it still shows every page and section to be built.
 5. Ask for one explicit yes to that plan immediately before the first remote write.
@@ -120,9 +123,11 @@ If the CLI lacks an operation, stop it, record the gap, and file a CLI/API ticke
 - Check every requested locale, page path, navigation target, block order, catalog
   group, and asset URL.
 - Run `xsolla shopbuilder verify-website --slug <slug>`.
-- Enable preview only if the confirmed plan includes it, then return the preview link.
+- Enable preview for the visual review (`enable-preview`, `preview-link`); the plan's yes
+  covers it. Return the preview link.
 - Before the first handoff, review desktop and mobile screenshots of every page and fix
   what they show: [visual style](references/visual-style.md#visual-review-before-handoff).
+  If the preview doesn't open, say the review wasn't done and why.
 - Report skips, interventions, and gaps; state that the site is **not published**.
 - If the plan adds the Custom code (`html`) block, tell the user it is added empty and
   hidden: they paste their code and make the block visible in the Site Builder editor.

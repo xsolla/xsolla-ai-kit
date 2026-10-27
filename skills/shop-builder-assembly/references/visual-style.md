@@ -57,5 +57,6 @@ width and look at screenshots of every page. Fix what they show, then look again
   only when more exists.
 
 These fixes are cosmetic: the developer's yes to the plan covers them (see `SKILL.md`). If the
-preview can't be opened (see [test-findings.md](test-findings.md)), say the visual review
-wasn't done; don't report the site as reviewed.
+preview can't be opened, say the visual review wasn't done and why: the CLI preview
+permission error in [test-findings.md](test-findings.md), or a site without the common
+layout, which private preview doesn't open. Don't report the site as reviewed.
