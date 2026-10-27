@@ -47,7 +47,8 @@ Create in this order: groups → virtual currency → virtual items → VC packa
   "quantity": <amount granted> }]`.
 - Pricing: `prices` for real currency (see [pricing.md](pricing.md)), `vc_prices` for
   virtual currency, `is_free: true` for free items.
-- `limits` (+ `limits.recurrent_schedule`) — per-user purchase limits with optional reset.
+- `limits` (+ `limits.recurrent_schedule`) — per-user purchase limits with optional reset;
+  `limits.per_item` caps the total across all users. See [liveops.md](liveops.md).
 - `periods` — time-limited display windows (ISO 8601).
 - `regions` — regional sale restrictions (see [pricing.md](pricing.md)).
 

@@ -41,12 +41,14 @@ from a normalized JSON shop brief.
      --approved-test-projects /path/to/approved-test-projects.json
    ```
 
-   For a new slug, render without `--structure` and confirm the bootstrap-only plan.
+   For a new slug, render without `--structure` and apply the bootstrap-only plan.
    Bootstrap creates the landing and page paths, then adds a site-level common
    layout if the site has none. It never adds the layout before page/template setup.
    Then back up generated templates and
-   repeat with `--structure` before removing blocks. Use the same re-backup and
-   reconfirmation boundary after adding missing paths to an existing site.
+   repeat with `--structure` before removing blocks. Use the same re-backup boundary
+   after adding missing paths to an existing site. The developer's one yes to the plan
+   covers the second run when the re-rendered plan keeps the same pages and sections;
+   `SKILL.md` lists what needs a new yes.
 
 5. Follow the confirmed assembly sequence in `SKILL.md`; verify and preview, but do
    not publish. Export a fresh post-apply structure and compare it with the exact
@@ -86,6 +88,10 @@ catalog. Federated wrappers use their effective `values.blockId` module.
   paths, block order, retained/removal IDs, navigation, catalog, locales, and unpublished
   state. Theme and copy/assets await stable normalized inputs and contract acceptance;
   CLI readiness and preview remain tracked gaps.
+- Presets add the promo codes, reward and offer chain blocks only for features listed in
+  `catalog.liveops`, with the blocks' default settings; `catalog-design` sets up the
+  features themselves. A daily rewards block isn't on the official block page, so
+  assembly can't add it.
 - Description callers produce this skill's brief and leave all site writes here. Figma
   integration remains separate.
 - Sites created from a Publisher Account template keep the header in the common layout;

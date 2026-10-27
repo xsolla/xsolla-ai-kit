@@ -18,7 +18,16 @@ PRESET_PAGES = {
         {
             "name": "Home",
             "path": "/",
-            "blocks": ["header", "leadGameSales", "newStore", "faq", "footer"],
+            "blocks": [
+                "header",
+                "leadGameSales",
+                "sb-offer-chain",
+                "newStore",
+                "rewards",
+                "promocodes",
+                "faq",
+                "footer",
+            ],
         }
     ],
     "pc-multi-page": [
@@ -30,7 +39,15 @@ PRESET_PAGES = {
         {
             "name": "Store",
             "path": "/store",
-            "blocks": ["header", "newStore", "faq", "footer"],
+            "blocks": [
+                "header",
+                "sb-offer-chain",
+                "newStore",
+                "rewards",
+                "promocodes",
+                "faq",
+                "footer",
+            ],
         },
         {
             "name": "About",
@@ -45,6 +62,7 @@ PRESET_PAGES = {
             "blocks": [
                 "header",
                 "leadGameSales",
+                "sb-offer-chain",
                 "newStore",
                 "gallery",
                 "faq",
@@ -54,7 +72,7 @@ PRESET_PAGES = {
         {
             "name": "Store",
             "path": "/store",
-            "blocks": ["header", "newStore", "faq", "footer"],
+            "blocks": ["header", "newStore", "rewards", "promocodes", "faq", "footer"],
         },
         {
             "name": "Events",
@@ -67,6 +85,11 @@ CUSTOM_CODE_WARNING = (
     "The Custom code block is added empty and hidden; paste your code and make the "
     "block visible in the Site Builder editor."
 )
+LIVEOPS_BLOCKS = {
+    "promocodes": ("promo_codes", "no promo code promotion configured in the project"),
+    "rewards": ("reward_chain", "no reward chain configured in the project"),
+    "sb-offer-chain": ("offer_chain", "no offer chain configured in the project"),
+}
 COMMON_LAYOUT = "common-layout"
 NO_OWN_HEADER = (
     "Page {path} has no header block of its own. Sites created from a Publisher "
@@ -268,6 +291,10 @@ def missing_data_reason(module: str, brief: dict) -> str | None:
         return "no approved feature cards supplied"
     if module == "packs" and not (catalog["groups"] or catalog.get("featured_skus")):
         return "no catalog groups or featured SKUs supplied"
+    if module in LIVEOPS_BLOCKS:
+        feature, reason = LIVEOPS_BLOCKS[module]
+        if feature not in catalog.get("liveops", []):
+            return reason
     return None
 
 

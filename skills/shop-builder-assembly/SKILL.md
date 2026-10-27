@@ -57,27 +57,40 @@ until [expert-review.md](references/expert-review.md) records approval.
    `scripts/backup_shop.py --brief <brief.json> --slug <slug> --output-dir <dir>`.
 4. Render with
    `scripts/render_plan.py <brief.json> --structure <backup-dir>/structure.json` and
-   show the ordered plan, exact block removals, and catalog mappings. Preserve
+   show one plan in plain language: each page and its sections in order, the products
+   and offers in each, the visual direction (palette, backgrounds, artwork and where it
+   came from), exact block removals, catalog mappings, and what is still to connect.
+   Keep the `confirmation_id` in the audit trail, not in the question. Preserve
    configured blocks lacking replacement data. Omit `--structure` only for a new
-   slug's bootstrap-only plan.
-5. Ask for explicit confirmation of the plan's `confirmation_id` immediately before
-   the first remote write. Earlier permission to "build a shop" is not confirmation
-   of a new plan. Re-render and reconfirm if the brief or plan changes.
+   slug's bootstrap-only plan; it still shows every page and section to be built.
+5. Ask for one explicit yes to that plan immediately before the first remote write.
+   Earlier permission to "build a shop" is not that yes. Apply with the plan's current
+   `confirmation_id` and record every ID you apply with.
 
 The brief must target an acknowledged dedicated test project and match a separate
 local allowlist with exact IDs, approver, and approval reference. Never use sandbox
 as a Shop Builder target or use a partner project. Never publish, attach a production
 domain, enable live payments, or apply a saved version. A human publishes in Publisher Account.
 
-A new site has generated blocks whose IDs do not exist before creation. Confirm the
-bootstrap, then export, re-render, and reconfirm before deleting any generated block.
-If the target changes after export, repeat this sequence.
+A new site's generated blocks have no IDs before creation, so it is applied in two runs:
+the bootstrap, then, after a fresh export and re-render, the rest. The one yes covers both
+runs and the cosmetic fixes after the visual review: colors, gradients, tints,
+backgrounds, fonts, image placement, and wording within the approved facts. Re-render and
+apply with the new `confirmation_id` without asking again only when the new plan has the
+same pages, sections, catalog sections and locales, and every removal is on a page this
+run created or was in the approved plan.
+
+Ask again, showing what changed, before anything else: removing or changing a block or
+page that existed before this run and wasn't in the approved plan, a different page or
+section list, any price, promotion, limit, date or eligibility, another site or project,
+or a target that changed after export.
 
 ## Assembly order
 
 After confirmation, apply the plan in this dependency order:
 
 1. **Theme** — set site and page theme source fields; page theme overrides site theme.
+   Take the palette from the game's own art: [visual style](references/visual-style.md).
 2. **Pages** — create all page paths before linking navigation.
 3. **Site layout** — after page/template creation, add `common-layout` only if the
    site has none; adding it earlier suppresses some template headers and footers.
@@ -89,6 +102,8 @@ After confirmation, apply the plan in this dependency order:
    change and use targeted patches rather than replacing `values` or `components`.
 6. **Copy and assets** — upload local assets, then patch returned CDN URLs; write
    localized HTML through localization commands, never through block value patches.
+   Give sections the game's art and gradients; an opaque `background.color` hides the
+   image under it. See [visual style](references/visual-style.md).
 7. **Catalog links** — configure `newStore` sections only after catalog groups and
    SKUs have been verified in the same project. Localize a section title before
    enabling its `L:` ID.
@@ -106,6 +121,8 @@ If the CLI lacks an operation, stop it, record the gap, and file a CLI/API ticke
   group, and asset URL.
 - Run `xsolla shopbuilder verify-website --slug <slug>`.
 - Enable preview only if the confirmed plan includes it, then return the preview link.
+- Before the first handoff, review desktop and mobile screenshots of every page and fix
+  what they show: [visual style](references/visual-style.md#visual-review-before-handoff).
 - Report skips, interventions, and gaps; state that the site is **not published**.
 - If the plan adds the Custom code (`html`) block, tell the user it is added empty and
   hidden: they paste their code and make the block visible in the Site Builder editor.
