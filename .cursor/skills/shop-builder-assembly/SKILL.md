@@ -62,8 +62,8 @@ until [expert-review.md](references/expert-review.md) records approval.
    came from), exact block removals, catalog mappings, a preview for the visual review,
    and what is still to connect. Call each section by its block name in the
    [block catalog](references/block-catalog.md), such as Offer chain or Reward system,
-   never by a module ID such as `sb-offer-chain`. Keep module IDs and the
-   `confirmation_id` in the audit trail, not in the question. Preserve
+   never by a module ID such as `sb-offer-chain`. Don't show the developer module IDs or
+   the `confirmation_id`; record them only in the audit trail. Preserve
    configured blocks lacking replacement data. Omit `--structure` only for a new
    slug's bootstrap-only plan; it still shows every page and section to be built.
 5. Ask for one explicit yes to that plan immediately before the first remote write.
