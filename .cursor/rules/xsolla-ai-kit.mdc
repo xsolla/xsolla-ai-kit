@@ -17,4 +17,4 @@ Do **not** invent Xsolla integration steps from memory. Open the matching skill,
 
 ## Entry point
 
-For an end-to-end shop, start with `shop-setup`. It scopes the work and chains the domain skills.
+For an end-to-end shop, read **Shop building paths** in `AGENTS.md`. In code, start with `shop-setup`. In Shop Builder, start with `nocode-shop-setup`.

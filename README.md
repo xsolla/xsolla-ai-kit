@@ -81,7 +81,7 @@ XSOLLA_PROJECT_API_KEY=<your API key>
 | Skill | Domain | Owner | Status  |
 |-------|--------|-------|---------|
 | `shop-setup` | Entry point — build path, then the flow | @y.klochikhin | Done    |
-| `shop-plan` | Orchestrator — Xsolla-hosted or custom (headless) storefront | @s.sadruddin | Draft   |
+| `nocode-shop-setup` | Shop Builder entry — store or game home | @a.pyanzin | Draft   |
 | `description-to-shop` | Description → Shop Builder shop brief | @k.shah | Draft   |
 | `shop-builder-assembly` | Shop Builder site assembly | @k.shah | Draft   |
 | `game-web-portal` | Game Web Portal — PC game home + shop | @a.pyanzin | Draft   |
@@ -107,12 +107,12 @@ specific skill:
 | Codex CLI    | No per-skill command — describe the task; Codex routes via AGENTS.md |
 | Others       | Natural language; skills load from SKILL.md / generated rules   |
 
-`shop-setup` is the entry point. It confirms the build path with `shop-plan`, then
-chains the domain skills: on the headless path `catalog-design`, `login-setup`,
-`headless-checkout-integration`, `webhooks-impl` and `production`; on the Shop
-Builder path `description-to-shop` and `shop-builder-assembly`, which hand a PC game
-portal to `game-web-portal`. `shopbuilder-translate` translates the page copy of a
-Shop Builder site.
+`shop-setup` is the entry for a shop the user codes and deploys. It chains
+`catalog-design`, `login-setup`, `headless-checkout-integration`, `webhooks-impl`,
+and `production`. `nocode-shop-setup` is the entry for Shop Builder: a store goes to
+`description-to-shop` and `shop-builder-assembly`, and a PC game home goes to
+`game-web-portal`. `shopbuilder-translate` translates the page copy of a Shop Builder
+site.
 
 ## Contributing
 

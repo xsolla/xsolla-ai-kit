@@ -133,7 +133,7 @@ Once all credentials are confirmed, write them to `.env` in the project root. Us
 
 ```bash
 # Remove only this skill's own three keys. Deleting every ^XSOLLA_ line also erases
-# keys other skills record there, such as XSOLLA_BUILD_PATH from shop-plan.
+# keys this skill does not own.
 sed -i.bak -E '/^XSOLLA_(MERCHANT_ID|PROJECT_ID|PROJECT_API_KEY)=/d' .env && rm .env.bak
 cat >> .env << EOF
 
