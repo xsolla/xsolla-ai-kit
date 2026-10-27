@@ -51,7 +51,9 @@ until [expert-review.md](references/expert-review.md) records approval.
    Read back the matched merchant ID, project ID, safety environment, approval reference, active Publisher login,
    target site, and catalog groups. When the site needs a common layout (a new site, or
    one without it) and the CLI has no `shopbuilder create-block`, preflight prints "the
-   common layout needs a newer Xsolla CLI; the site is built without it". Tell the user.
+   common layout needs a newer Xsolla CLI; the site is built without it". Tell the user
+   in the plan, before any write: a site without the common layout won't open in the
+   Editor, Publish or private preview.
 2. If CLI context differs, switch it and rerun preflight; never override later commands.
 3. If the target site exists, export it before the first write with
    `scripts/backup_shop.py --brief <brief.json> --slug <slug> --output-dir <dir>`.

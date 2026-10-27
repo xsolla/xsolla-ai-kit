@@ -13,7 +13,10 @@ from pathlib import Path
 from render_plan import common_layout_id
 from validate_shop_brief import load_brief, validate
 
-LAYOUT_SKIPPED = "the common layout needs a newer Xsolla CLI; the site is built without it"
+LAYOUT_SKIPPED = (
+    "the common layout needs a newer Xsolla CLI; the site is built without it. A site "
+    "without the common layout won't open in the Editor, Publish or private preview"
+)
 
 
 def run_json(*args: str) -> object:

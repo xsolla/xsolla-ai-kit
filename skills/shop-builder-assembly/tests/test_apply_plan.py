@@ -211,7 +211,8 @@ class ApplyPlanTests(unittest.TestCase):
             self.assertIsNone(apply_plan.ensure_common_layout("shop"))
         run_json.assert_not_called()
         self.assertIn(
-            "the common layout needs a newer Xsolla CLI; the site is built without it",
+            "the common layout needs a newer Xsolla CLI; the site is built without it. A site "
+            "without the common layout won't open in the Editor, Publish or private preview",
             stderr.getvalue(),
         )
 
@@ -1167,7 +1168,10 @@ class ApplyPlanTests(unittest.TestCase):
         )
         self.assertTrue(skipped["ok"], skipped["errors"])
         self.assertEqual(
-            ["the common layout needs a newer Xsolla CLI; the site is built without it"],
+            [
+                "the common layout needs a newer Xsolla CLI; the site is built without it. A site "
+                "without the common layout won't open in the Editor, Publish or private preview"
+            ],
             skipped["warnings"],
         )
         structure["layouts"] = ["side-id"]
@@ -1680,7 +1684,8 @@ class CommonLayoutPreflightTests(unittest.TestCase):
         code, stdout, stderr, has_command = self.run_preflight(cli, has_create_block=False)
         self.assertEqual(0, code, stderr)
         self.assertIn(
-            "the common layout needs a newer Xsolla CLI; the site is built without it",
+            "the common layout needs a newer Xsolla CLI; the site is built without it. A site "
+            "without the common layout won't open in the Editor, Publish or private preview",
             stderr,
         )
         self.assertEqual("skip", json.loads(stdout)["target"]["layout_step"])
