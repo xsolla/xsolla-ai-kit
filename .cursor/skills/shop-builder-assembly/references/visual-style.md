@@ -6,9 +6,9 @@ colors, placeholder art and hard section edges read as unfinished.
 ## Start from the game's identity
 
 - Use, in this order: the brief's `brand` (logo, hero image, colors, fonts), then the art
-  on the game's public store page that `description-to-shop` recorded (app icon,
-  screenshots, key art), then the developer's own files. The plan lists every asset and
-  where it came from.
+  on the publisher's own store listing that `description-to-shop` recorded after the
+  publisher confirmed it's theirs (app icon, screenshots, key art), then the developer's
+  own files. The plan lists every asset and where it came from.
 - Take the palette from that art: a dark or light base, one accent for calls to action, and
   one or two supporting colors. Keep it on every page.
 - Without key art, build section backgrounds as gradients in that palette, not one flat
@@ -56,7 +56,9 @@ width and look at screenshots of every page. Fix what they show, then look again
 - copy that promises something real: a login prompt names a benefit, and "see more" appears
   only when more exists.
 
-These fixes are cosmetic: the developer's yes to the plan covers them (see `SKILL.md`). If the
-preview can't be opened, say the visual review wasn't done and why: the CLI preview
+The developer's yes to the plan covers only background fixes on blocks this assembly
+created, applied with `scripts/patch_backgrounds.py` (see `SKILL.md`). Show anything else
+the review finds, such as theme, font, wording or layout fixes, and ask before changing it.
+If the preview can't be opened, say the visual review wasn't done and why: the CLI preview
 permission error in [test-findings.md](test-findings.md), or a site without the common
 layout, which private preview doesn't open. Don't report the site as reviewed.

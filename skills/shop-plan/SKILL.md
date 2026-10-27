@@ -123,9 +123,9 @@ asks the rest of the [intake](references/onboarding-contract.md#intake) — the 
 details the Shop Builder part needs — so the developer answers one round of questions, not two.
 Infer an answer only when the request already states it plainly (e.g. "embed this in my existing
 React app" answers custom UI *and* hosting) — but still show your inference back before moving
-on, so a wrong read gets caught immediately. Ask for a link to the game's store page (App Store,
-Google Play, Steam) unless the developer gave one: its public page answers the game questions of
-the intake, so don't ask them separately.
+on, so a wrong read gets caught immediately. Ask for a link to the developer's own store listing
+(App Store, Google Play, Steam) unless they gave one: it answers the game questions of the intake,
+so don't ask them separately. Never search for it by the game's name.
 
 1. **Custom UI needs.** Do you already have a frontend/site this plugs into, or do you want one
    built for you?

@@ -16,7 +16,7 @@ On the headless path, skills call **Xsolla REST APIs directly**. The Shop Builde
 
 | Skill                           | What it does                                                                             |
 |---------------------------------|------------------------------------------------------------------------------------------|
-| `shop-plan`                     | **Decides the build path** — headless or Shop Builder (shop or portal), before any build |
+| `shop-plan`                     | **Decides the build path** — Xsolla-hosted or custom (headless) storefront, pre-build    |
 | `shop-setup`                    | **Entry point** for "build me a shop" — checks the build path, chains the right skills   |
 | `shop-builder-assembly`         | Assembles a Shop Builder site from a shop brief — reached via shop-setup, not directly   |
 | `merchant-setup`                | Creates and configures an Xsolla account + get API key                                   |
@@ -37,7 +37,7 @@ On the headless path, skills call **Xsolla REST APIs directly**. The Shop Builde
 Skills are loaded automatically when you open this repo in your agent. To run a specific skill, ask your agent naturally:
 
 ```
-Should I use Shop Builder or build a headless shop?
+Should Xsolla host my store, or should I build my own storefront with Xsolla APIs?
 → triggers: shop-plan (weighs six criteria, shows the trade-offs, records the choice)
 
 Build me a shop / set up a full Xsolla game shop for my project

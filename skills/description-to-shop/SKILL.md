@@ -39,10 +39,12 @@ Never ask the publisher to repeat a usable recorded answer. Infer presentation c
 likely preset; never invent prices, catalog groups, dates, game facts, studio names, or
 translated copy.
 
-Before asking anything, read the game's public store page (App Store, Google Play, Steam):
-the recorded `store_url`, a link in the conversation, or the page you find by the game's
-name, which the plan then names so a wrong match gets caught. It supplies the name,
-platforms, developer, description, icon and screenshots; ask only for what it doesn't.
+Before asking anything, read the publisher's own store listing (App Store, Google Play,
+Steam), and only that: the recorded `store_url` or a link the publisher gives. Never
+search for it by the game's name. It supplies the name, platforms, developer,
+description, icon and screenshots; ask only for what it doesn't. In the same batch, ask
+whether the listing is theirs and its art and text may be used on the site. Until they
+say yes, use its facts only; its description, icon and screenshots stay out of the brief.
 When the publisher delegates routine choices ("decide for me"), choose the preset,
 layout, visual treatment and draft copy yourself and show them in assembly's plan
 instead of asking.
@@ -60,14 +62,15 @@ version-1 JSON object:
 - `site` — proposed slug, locales, and `auto` or an explicit preset.
 - `catalog.groups` — only verified same-project groups; `__all__` for all items of a
   supported type.
-- `catalog.liveops` — the active promo code or coupon promotions, reward chains and offer
-  chains found by read-only `xsolla liveops list-promo-codes`, `list-coupons`,
-  `list-reward-chain` and `list-offer-chain`.
+- `catalog.liveops` — the promo code or coupon promotions, reward chains and offer chains
+  found by read-only `xsolla liveops list-promo-codes`, `list-coupons`,
+  `list-reward-chain` and `list-offer-chain`. The lists include inactive entries: count
+  only those with `is_enabled: true`.
 - `content` — approved copy and publisher page overrides.
-- `brand` — the store page's app icon as the logo and its art for the hero, unless the
-  publisher supplied their own.
+- `brand` — the listing's app icon as the logo and its art for the hero, once the
+  publisher confirmed they may be used, unless they supplied their own.
 - `sources` — add `{"kind":"description", ...}`, and `{"kind":"external_store", ...}` with
-  the page URL when the store page supplied facts or art. Keep the provenance of any publisher
+  the listing URL when it supplied facts or art. Keep the provenance of any publisher
   answer used to fill a gap. Attribute reused intake to `.xsolla/onboarding.json` and
   its keys with `kind: publisher_answers`; retain provenance for corrections and inferences.
 - Never include API keys, tokens, session cookies, passwords, or browser storage.

@@ -56,20 +56,22 @@ until [expert-review.md](references/expert-review.md) records approval.
 3. If the target site exists, export it before the first write with
    `scripts/backup_shop.py --brief <brief.json> --slug <slug> --output-dir <dir>`.
 4. Render with
-   `scripts/render_plan.py <brief.json> --structure <backup-dir>/structure.json` and
-   show one plan in plain language: each page and its sections in order, the products
-   and offers in each, the visual direction (palette, backgrounds, artwork and where it
-   came from), exact block removals, catalog mappings, a preview for the visual review,
-   and what is still to connect. Call each section by its block name in the
+   `scripts/render_plan.py <brief.json> --structure <backup-dir>/structure.json`, save
+   the output as `approved-plan.json`, and show one plan in plain language: each page and
+   its sections in order, the products and offers in each, the visual direction (palette,
+   backgrounds, artwork and where it came from), exact block removals, the template
+   sections each new page comes with that are removed (`template_removals`), catalog
+   mappings, a preview link for the visual review that anyone with the link can open, and
+   what is still to connect. Call each section by its block name in the
    [block catalog](references/block-catalog.md), such as Offer chain or Reward system,
-   never by a module ID such as `sb-offer-chain`. The audit trail is the rendered plan
-   saved as `confirmed-plan.json`, which `verify_structure.py` reads later. Don't show the
-   developer module IDs or the `confirmation_id`, not even labelled as audit details. Preserve
-   configured blocks lacking replacement data. Omit `--structure` only for a new
-   slug's bootstrap-only plan; it still shows every page and section to be built.
+   never by a module ID such as `sb-offer-chain`. Don't show the developer module IDs or
+   the `confirmation_id`, not even labelled as audit details. Preserve configured blocks
+   lacking replacement data. Omit `--structure` only for a new slug's bootstrap-only
+   plan; it still shows every page and section to be built.
 5. Ask for one explicit yes to that plan immediately before the first remote write.
-   Earlier permission to "build a shop" is not that yes. Apply with the plan's current
-   `confirmation_id` and record every ID you apply with.
+   Earlier permission to "build a shop" is not that yes. Apply with
+   `--approved-plan approved-plan.json --confirmation-id <its confirmation_id>`; the
+   script refuses an edited plan file.
 
 The brief must target an acknowledged dedicated test project and match a separate
 local allowlist with exact IDs, approver, and approval reference. Never use sandbox
@@ -77,17 +79,22 @@ as a Shop Builder target or use a partner project. Never publish, attach a produ
 domain, enable live payments, or apply a saved version. A human publishes in Publisher Account.
 
 A new site's generated blocks have no IDs before creation, so it is applied in two runs:
-the bootstrap, then, after a fresh export and re-render, the rest. The one yes covers both
-runs and the cosmetic fixes after the visual review: colors, gradients, tints,
-backgrounds, fonts, image placement, and wording within the approved facts. Re-render and
-apply with the new `confirmation_id` without asking again only when the new plan has the
-same pages, sections, catalog sections and locales, and every removal is on a page this
-run created or was in the approved plan.
+the bootstrap, then the rest. Save run 1's report as `run1-report.json`, export again,
+and render with `--structure`, `--approved-plan approved-plan.json` and
+`--run-report run1-report.json`. Apply run 2 with `--approved-plan`, `--run-report`,
+`--backup-dir` and the approved `confirmation_id` only if the render says "Covered by the
+approved plan": the same pages,
+sections, catalog, locales, brand and content, and removals only of blocks run 1 created
+or the approved plan listed. `apply_plan.py` checks this again and stops before any write.
 
-Ask again, showing what changed, before anything else: removing or changing a block or
-page that existed before this run and wasn't in the approved plan, a different page or
-section list, any price, promotion, limit, date or eligibility, another site or project,
-or a target that changed after export.
+The yes also covers background fixes after the visual review: `values.background` leaves
+(color, gradient, image, position, size) on blocks this assembly created, applied with
+`scripts/patch_backgrounds.py` after a fresh export. It refuses anything else.
+
+Ask again, showing what changed, before anything else: a render that "Needs a new yes",
+the site or page theme, fonts, wording, a block or page that existed before this run, any
+price, promotion, limit, date or eligibility, another site or project, or a target that
+changed after export.
 
 ## Assembly order
 
@@ -119,13 +126,14 @@ If the CLI lacks an operation, stop it, record the gap, and file a CLI/API ticke
 ## Verification and handoff
 
 - Re-read structure and localization after assembly. Run
-  `scripts/verify_structure.py --plan <confirmed-plan.json> --structure
-  <post-apply-structure.json>` for the deterministic structural comparison.
+  `scripts/verify_structure.py --plan <the last applied plan> --structure
+  <post-apply-structure.json>` for the deterministic structural comparison: run 2's plan
+  for a new site, `approved-plan.json` otherwise.
 - Check every requested locale, page path, navigation target, block order, catalog
   group, and asset URL.
 - Run `xsolla shopbuilder verify-website --slug <slug>`.
 - Enable preview for the visual review (`enable-preview`, `preview-link`); the plan's yes
-  covers it. Return the preview link.
+  covers it, because the plan says anyone with the link can open it. Return the link.
 - Before the first handoff, review desktop and mobile screenshots of every page and fix
   what they show: [visual style](references/visual-style.md#visual-review-before-handoff).
   If the preview doesn't open, say the review wasn't done and why.

@@ -1897,5 +1897,368 @@ class PublisherTemplateSiteTests(unittest.TestCase):
             render_plan.require_own_header(pages, site)
 
 
+WRITE_COMMANDS = {
+    "create-website",
+    "set-landing-type",
+    "add-page",
+    "add-language",
+    "create-block",
+    "add-block",
+    "move-block",
+    "update-block",
+}
+
+
+class OneApprovalTests(unittest.TestCase):
+    """A new site's second run reuses the developer's yes only when the plan is covered."""
+
+    def setUp(self) -> None:
+        self.brief = json.loads(EXAMPLE_BRIEF.read_text(encoding="utf-8"))
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        self.root = Path(directory.name)
+        self.approved = apply_plan.build_plan(self.brief)
+        self.approved_path = self.root / "approved-plan.json"
+        self.approved_path.write_text(json.dumps(self.approved, indent=2), encoding="utf-8")
+        self.cli = FakeShopBuilderCli(self.brief)
+
+    def apply(
+        self, *extra: str, brief: dict | None = None, confirmation_id: str | None = None
+    ) -> tuple[int, dict | None, str, mock.Mock]:
+        brief_path = self.root / "brief.json"
+        brief_path.write_text(json.dumps(brief or self.brief), encoding="utf-8")
+        argv = [
+            "apply_plan.py",
+            str(brief_path),
+            "--approved-plan",
+            str(self.approved_path),
+            "--confirmation-id",
+            confirmation_id or self.approved["confirmation_id"],
+            *extra,
+        ]
+        backup = copy.deepcopy(self.cli.landing)
+
+        def reconciled(slug: str, landing_id: str, page: dict) -> dict:
+            return {
+                "path": page["path"],
+                "page_id": page["page_id"],
+                "blocks": page["blocks"],
+                "removed_blocks": len(page["removals"]),
+                "added_block_ids": [],
+                "hidden_custom_code": [],
+            }
+
+        stdout, stderr = io.StringIO(), io.StringIO()
+        with (
+            mock.patch.dict(apply_plan.RUN_AUTH, {"logged_in": False, "context": None}),
+            mock.patch.object(sys, "argv", argv),
+            mock.patch.object(apply_plan, "run_preflight"),
+            mock.patch.object(apply_plan, "run_json", side_effect=self.cli),
+            mock.patch.object(apply_plan, "verified_backup", return_value=True),
+            mock.patch.object(apply_plan, "backup_structure", return_value=backup),
+            mock.patch.object(
+                apply_plan, "reconcile_page", side_effect=reconciled
+            ) as reconcile,
+            mock.patch.object(apply_plan, "apply_navigation", return_value=[]),
+            mock.patch.object(apply_plan, "wire_catalog_sections", return_value=[]),
+            contextlib.redirect_stdout(stdout),
+            contextlib.redirect_stderr(stderr),
+        ):
+            code = apply_plan.main()
+        report = json.loads(stdout.getvalue()) if code == 0 else None
+        return code, report, stderr.getvalue(), reconcile
+
+    def bootstrap(self) -> Path:
+        code, report, stderr, _ = self.apply()
+        self.assertEqual(0, code, stderr)
+        path = self.root / "run1-report.json"
+        path.write_text(json.dumps(report, indent=2), encoding="utf-8")
+        return path
+
+    def writes(self) -> list[tuple[str, ...]]:
+        return [call for call in self.cli.calls if call[1:2] and call[1] in WRITE_COMMANDS]
+
+    def test_bootstrap_plan_shows_template_removals_and_the_public_preview(self) -> None:
+        home = self.approved["pages"][0]
+        self.assertEqual(
+            [m for m in render_plan.NEW_PAGE_TEMPLATE if m not in home["blocks"]],
+            home["template_removals"],
+        )
+        self.assertIn("faq", home["template_removals"])
+        self.assertEqual("anyone with the link", self.approved["preview"]["access"])
+
+    def test_bootstrap_report_lists_the_blocks_it_created(self) -> None:
+        report = json.loads(self.bootstrap().read_text(encoding="utf-8"))
+        self.assertEqual("bootstrap-complete", report["status"])
+        self.assertEqual(self.approved["confirmation_id"], report["approved_confirmation_id"])
+        self.assertEqual(
+            {"/": ["scaffold-header", "scaffold-footer"]}, report["created_blocks"]
+        )
+
+    def test_second_run_under_the_same_yes_applies_a_covered_plan(self) -> None:
+        run_report = self.bootstrap()
+        code, report, stderr, reconcile = self.apply(
+            "--run-report", str(run_report), "--backup-dir", str(self.root)
+        )
+        self.assertEqual(0, code, stderr)
+        self.assertEqual("implemented-phases-applied", report["status"])
+        self.assertEqual(self.approved["confirmation_id"], report["approved_confirmation_id"])
+        self.assertNotEqual(self.approved["confirmation_id"], report["confirmation_id"])
+        self.assertEqual(1, reconcile.call_count)
+
+    def test_second_run_refuses_to_remove_a_block_the_plan_never_showed(self) -> None:
+        run_report = self.bootstrap()
+        self.cli.landing["pages"][0]["blocks"].insert(
+            1, {"_id": "user-html", "module": "html"}
+        )
+        writes_before = len(self.writes())
+        code, _, stderr, reconcile = self.apply(
+            "--run-report", str(run_report), "--backup-dir", str(self.root)
+        )
+        self.assertEqual(1, code)
+        self.assertIn("removes the html block user-html on /", stderr)
+        self.assertIn("Nothing was written", stderr)
+        reconcile.assert_not_called()
+        self.assertEqual(writes_before, len(self.writes()))
+
+    def test_second_run_without_the_first_runs_report_needs_a_new_yes(self) -> None:
+        self.bootstrap()
+        code, _, stderr, reconcile = self.apply("--backup-dir", str(self.root))
+        self.assertEqual(1, code)
+        self.assertIn("pass the earlier run's report", stderr)
+        reconcile.assert_not_called()
+
+    def test_second_run_with_a_changed_brief_needs_a_new_yes(self) -> None:
+        run_report = self.bootstrap()
+        changed = copy.deepcopy(self.brief)
+        changed["catalog"]["groups"][0]["placement"] = "secondary"
+        code, _, stderr, reconcile = self.apply(
+            "--run-report", str(run_report), "--backup-dir", str(self.root), brief=changed
+        )
+        self.assertEqual(1, code)
+        self.assertIn("the catalog sections changed", stderr)
+        self.assertIn("the shop brief changed", stderr)
+        reconcile.assert_not_called()
+
+    def test_an_edited_approved_plan_is_refused_before_any_call(self) -> None:
+        edited = copy.deepcopy(self.approved)
+        edited["pages"][0]["blocks"].remove("newStore")
+        self.approved_path.write_text(json.dumps(edited), encoding="utf-8")
+        code, _, stderr, _ = self.apply()
+        self.assertEqual(1, code)
+        self.assertIn("changed after it was rendered", stderr)
+        self.assertEqual([], self.cli.calls)
+
+    def test_confirmation_id_must_be_the_approved_plans(self) -> None:
+        code, _, stderr, _ = self.apply(confirmation_id="sha256:000000000000")
+        self.assertEqual(1, code)
+        self.assertIn("does not match the approved plan", stderr)
+        self.assertEqual([], self.writes())
+
+    def test_template_blocks_the_first_run_created_are_removed_not_preserved(self) -> None:
+        site = {
+            "_id": "landing-1",
+            "pages": [
+                {
+                    "_id": "page-1",
+                    "path": "/",
+                    "blocks": [
+                        {"_id": "t-header", "module": "header"},
+                        {"_id": "t-faq", "module": "faq"},
+                        {"_id": "t-footer", "module": "footer"},
+                    ],
+                }
+            ],
+        }
+        preserved = render_plan.build_plan(self.brief, site)["pages"][0]
+        self.assertEqual(["t-faq"], [b["block_id"] for b in preserved["preserved_blocks"]])
+
+        created = frozenset({"t-header", "t-faq", "t-footer"})
+        page = render_plan.build_plan(self.brief, site, created)["pages"][0]
+        self.assertEqual([], page["preserved_blocks"])
+        self.assertNotIn("faq", page["blocks"])
+        self.assertEqual(
+            [
+                {
+                    "block_id": "t-faq",
+                    "module": "faq",
+                    "reason": "template block on a page this assembly created",
+                }
+            ],
+            page["removals"],
+        )
+
+    def test_render_says_whether_the_approval_covers_the_plan(self) -> None:
+        run_report = self.bootstrap()
+        structure_path = self.root / "structure.json"
+
+        def render() -> str:
+            structure_path.write_text(json.dumps(self.cli.landing), encoding="utf-8")
+            argv = [
+                "render_plan.py",
+                str(EXAMPLE_BRIEF),
+                "--structure",
+                str(structure_path),
+                "--approved-plan",
+                str(self.approved_path),
+                "--run-report",
+                str(run_report),
+            ]
+            stderr = io.StringIO()
+            with (
+                mock.patch.object(sys, "argv", argv),
+                contextlib.redirect_stdout(io.StringIO()),
+                contextlib.redirect_stderr(stderr),
+            ):
+                self.assertEqual(0, render_plan.main())
+            return stderr.getvalue()
+
+        self.assertEqual("Covered by the approved plan.\n", render())
+        self.cli.landing["pages"][0]["blocks"].insert(
+            1, {"_id": "user-html", "module": "html"}
+        )
+        self.assertIn("Needs a new yes: it removes the html block user-html on /", render())
+
+
+def load_patch_backgrounds():
+    path = ROOT / "scripts" / "patch_backgrounds.py"
+    spec = importlib.util.spec_from_file_location("patch_backgrounds_for_tests", path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"cannot load {path}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+patch_backgrounds = load_patch_backgrounds()
+
+
+class BackgroundFixTests(unittest.TestCase):
+    """Background fixes after the visual review touch only blocks the assembly created."""
+
+    def setUp(self) -> None:
+        self.brief = json.loads(EXAMPLE_BRIEF.read_text(encoding="utf-8"))
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        self.root = Path(directory.name)
+        approved = apply_plan.build_plan(self.brief)
+        (self.root / "approved-plan.json").write_text(json.dumps(approved), encoding="utf-8")
+        (self.root / "brief.json").write_text(json.dumps(self.brief), encoding="utf-8")
+        report = {
+            "operation_succeeded": True,
+            "approved_confirmation_id": approved["confirmation_id"],
+            "slug": self.brief["site"]["slug"],
+            "landing_id": "landing-1",
+            "created_blocks": {"/": ["new-hero"]},
+        }
+        (self.root / "run1-report.json").write_text(json.dumps(report), encoding="utf-8")
+        background = {"enable": True, "type": "color", "color": "rgba(0, 0, 0, 0)"}
+        self.site = {
+            "_id": "landing-1",
+            "pages": [
+                {
+                    "_id": "page-1",
+                    "path": "/",
+                    "blocks": [
+                        {
+                            "_id": "new-hero",
+                            "module": "leadGameSales",
+                            "values": {"background": dict(background)},
+                        },
+                        {
+                            "_id": "old-faq",
+                            "module": "faq",
+                            "values": {"background": dict(background)},
+                        },
+                    ],
+                }
+            ],
+        }
+        self.calls: list[tuple[str, ...]] = []
+
+    def cli(self, *args: str) -> dict:
+        self.calls.append(args)
+        change = json.loads(args[args.index("--data") + 1])["background"]
+        block = next(
+            block
+            for page in self.site["pages"]
+            for block in page["blocks"]
+            if block["_id"] == change["id"]
+        )
+        for patch in change["patches"]:
+            block["values"]["background"][patch["path"][-1]] = patch["value"]
+        return {"ok": True, "data": {}}
+
+    def run_fixes(self, fixes: list[dict], backup: dict | None = None) -> tuple[int, str]:
+        (self.root / "fixes.json").write_text(json.dumps(fixes), encoding="utf-8")
+        argv = [
+            "patch_backgrounds.py",
+            str(self.root / "brief.json"),
+            "--approved-plan",
+            str(self.root / "approved-plan.json"),
+            "--run-report",
+            str(self.root / "run1-report.json"),
+            "--backup-dir",
+            str(self.root),
+            "--fixes",
+            str(self.root / "fixes.json"),
+        ]
+        saved = copy.deepcopy(self.site if backup is None else backup)
+        stderr = io.StringIO()
+        with (
+            mock.patch.object(sys, "argv", argv),
+            mock.patch.object(patch_backgrounds, "run_preflight"),
+            mock.patch.object(patch_backgrounds, "check_cli_context"),
+            mock.patch.object(patch_backgrounds, "verified_backup", return_value=True),
+            mock.patch.object(patch_backgrounds, "backup_structure", return_value=saved),
+            mock.patch.object(
+                patch_backgrounds, "structure", side_effect=lambda slug: copy.deepcopy(self.site)
+            ),
+            mock.patch.object(patch_backgrounds, "run_json", side_effect=self.cli),
+            contextlib.redirect_stdout(io.StringIO()),
+            contextlib.redirect_stderr(stderr),
+        ):
+            code = patch_backgrounds.main()
+        return code, stderr.getvalue()
+
+    def test_patches_a_background_leaf_on_a_block_the_assembly_created(self) -> None:
+        tint = "rgba(10, 12, 40, 0.6)"
+        code, stderr = self.run_fixes(
+            [{"block_id": "new-hero", "leaf": "color", "value": tint}]
+        )
+        self.assertEqual(0, code, stderr)
+        self.assertEqual(1, len(self.calls))
+        change = json.loads(self.calls[0][self.calls[0].index("--data") + 1])["background"]
+        self.assertEqual(
+            [{"op": "replace", "path": ["values", "background", "color"], "value": tint}],
+            change["patches"],
+        )
+        self.assertEqual(tint, self.site["pages"][0]["blocks"][0]["values"]["background"]["color"])
+
+    def test_refuses_a_block_that_existed_before_the_assembly(self) -> None:
+        code, stderr = self.run_fixes(
+            [{"block_id": "old-faq", "leaf": "color", "value": "#000000"}]
+        )
+        self.assertEqual(1, code)
+        self.assertIn("old-faq existed before this assembly", stderr)
+        self.assertEqual([], self.calls)
+
+    def test_refuses_anything_but_a_background_leaf(self) -> None:
+        code, stderr = self.run_fixes([{"block_id": "new-hero", "leaf": "title", "value": "x"}])
+        self.assertEqual(1, code)
+        self.assertIn("anything else needs a new yes", stderr)
+        self.assertEqual([], self.calls)
+
+    def test_refuses_when_the_site_changed_after_the_backup(self) -> None:
+        older = copy.deepcopy(self.site)
+        older["pages"][0]["blocks"].pop()
+        code, stderr = self.run_fixes(
+            [{"block_id": "new-hero", "leaf": "color", "value": "#000000"}], backup=older
+        )
+        self.assertEqual(1, code)
+        self.assertIn("changed after the backup", stderr)
+        self.assertEqual([], self.calls)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -3,17 +3,13 @@ name: catalog-design
 description: >-
   Configures the Xsolla catalog for a game and wires the full sell-side flow: virtual
   items, virtual currency and its packages, bundles, game key packages, item groups,
-  regional pricing and regional sale restrictions, and the LiveOps mechanics that make a
-  full shop: limited-time and limited-stock offers, per-player purchase limits,
-  first-purchase bonuses, offer chains, daily rewards, loyalty rewards and promo codes.
-  Use when setting up a game's item catalog, adding purchasable goods, configuring
-  virtual currency, creating starter packs or bundles, selling a game via keys, setting
-  local prices per country, building a store catalog on the client, implementing
-  purchase, or confirming purchases — including "set up my Xsolla catalog", "create
-  virtual items / currency / bundles", "sell game keys", "regional prices", "fast
-  purchase by SKU", "cart purchase", "buy for virtual currency", "track order status",
-  "grant items after payment", "limited-time offer", "purchase limit", "first purchase
-  bonus", "offer chain", "daily rewards", "loyalty program", "promo codes".
+  regional pricing and regional sale restrictions, and LiveOps offers. Use when setting
+  up a game's item catalog, adding purchasable goods, configuring virtual currency,
+  creating starter packs or bundles, selling a game via keys, setting local prices per
+  country, building a store catalog on the client, implementing purchase, or confirming
+  purchases — including "set up my Xsolla catalog", "create virtual items / currency / bundles",
+  "sell game keys", "regional prices", "fast purchase by SKU", "cart purchase",
+  "buy for virtual currency", "track order status", "grant items after payment".
 metadata:
   owner: p.sanachev
   domain: catalog
@@ -40,7 +36,8 @@ Use this skill when the developer wants to:
 - Sell a game or DLC via game keys (Steam, Epic, PlayStation, DRM-free, …)
 - Set local prices per country or restrict sales by region
 - Add limited-time or limited-stock offers, purchase limits, promotions, offer chains,
-  daily rewards or loyalty rewards
+  daily rewards or loyalty rewards — "limited-time offer", "purchase limit", "first
+  purchase bonus", "offer chain", "daily rewards", "loyalty program", "promo codes"
 - Build the store catalog UI on the client (game or website)
 - Implement purchase: fast purchase by SKU, cart, purchase for VC, free items
 - Confirm purchases: webhooks on the server or order tracking on the client

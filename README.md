@@ -81,7 +81,7 @@ XSOLLA_PROJECT_API_KEY=<your API key>
 | Skill | Domain | Owner | Status  |
 |-------|--------|-------|---------|
 | `shop-setup` | Entry point — build path, then the flow | @y.klochikhin | Done    |
-| `shop-plan` | Orchestrator — headless or Shop Builder | @s.sadruddin | Draft   |
+| `shop-plan` | Orchestrator — Xsolla-hosted or custom (headless) storefront | @s.sadruddin | Draft   |
 | `description-to-shop` | Description → Shop Builder shop brief | @k.shah | Draft   |
 | `shop-builder-assembly` | Shop Builder site assembly | @k.shah | Draft   |
 | `game-web-portal` | Game Web Portal — PC game home + shop | @a.pyanzin | Draft   |

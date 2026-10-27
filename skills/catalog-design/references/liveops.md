@@ -19,7 +19,7 @@ players see the offer but can't claim it, and per-player limits can't apply.
 | Limited stock | A fixed number of copies across all players | Item `limits.per_item` | No |
 | Per-player limit | N purchases per player, optionally reset daily, weekly or monthly | Item `limits.per_user`, `limits.recurrent_schedule` | Yes |
 | Scheduled sale | A discount or bonus between two dates | `promotion_periods` on a discount or bonus (`create-discount`, `create-bonus`) | No |
-| Offer chain | Free and paid steps that unlock one after another | `xsolla liveops create-offer-chain` | Yes |
+| Offer chain | Free and paid steps that unlock one after another | `xsolla liveops create-offer-chain` | Yes: its client calls take the player's JWT |
 | Daily rewards | A free item for each day the player logs in | `xsolla liveops create-daily-chain` | Yes |
 | Loyalty | Value points for each purchase, rewards at thresholds | `create-value-point`, `update-value-point-rewards`, `create-reward-chain` | Yes |
 | Promo codes | A discount or bonus items at checkout | `create-promo-codes`, then `generate-promo-codes` | No |
@@ -47,8 +47,8 @@ Facts that change the proposal:
 
 1. Read what the project already has: `xsolla liveops list-promotions`, `list-promo-codes`,
    `list-coupons`, `list-offer-chain`, `list-daily-chain`, `list-reward-chain`,
-   `list-value-point`, and the catalog. Reuse what
-   exists; never create a duplicate.
+   `list-value-point`, and the catalog. These lists include inactive entries: only those
+   with `is_enabled: true` are live. Reuse what exists; never create a duplicate.
 2. Propose the set in one message. For each mechanic: what the player gets, why it helps this
    game, and what is still to connect (player login, delivery to the game).
 3. In the same message, ask once for the commercial values that are missing: reward quantities,
@@ -59,7 +59,8 @@ Facts that change the proposal:
    periods → promotions → chains and value points → activation. Read each one back.
 5. Tell the storefront what is live. On the Shop Builder path, `description-to-shop` lists
    it in the shop brief's `catalog.liveops` (`promo_codes` for promo codes or coupons,
-   `reward_chain`, `offer_chain`), so assembly adds the matching blocks. Assembly can't add a daily rewards block yet: say so in the handoff.
+   `reward_chain`, `offer_chain`), counting only entries with `is_enabled: true`, so
+   assembly adds the matching blocks. Assembly can't add a daily rewards block yet: say so in the handoff.
 
 ## Docs
 

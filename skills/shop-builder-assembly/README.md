@@ -32,31 +32,46 @@ from a normalized JSON shop brief.
    python3 scripts/backup_shop.py --brief brief.json --slug my-shop --output-dir ./backups/my-shop
    ```
 
-4. Render the target-bound plan, review removals, and confirm its `confirmation_id`:
+4. Render the target-bound plan, save it as the plan the developer approves, review
+   removals, and apply it with its `confirmation_id`:
 
    ```bash
-   python3 scripts/render_plan.py brief.json --structure ./backups/my-shop/structure.json
-   python3 scripts/apply_plan.py brief.json --confirmation-id <id> \
-     --backup-dir ./backups/my-shop \
+   python3 scripts/render_plan.py brief.json --structure ./backups/my-shop/structure.json \
+     > approved-plan.json
+   python3 scripts/apply_plan.py brief.json --approved-plan approved-plan.json \
+     --confirmation-id <id> --backup-dir ./backups/my-shop \
      --approved-test-projects /path/to/approved-test-projects.json
    ```
 
    For a new slug, render without `--structure` and apply the bootstrap-only plan.
    Bootstrap creates the landing and page paths, then adds a site-level common
    layout if the site has none. It never adds the layout before page/template setup.
-   Then back up generated templates and
-   repeat with `--structure` before removing blocks. Use the same re-backup boundary
-   after adding missing paths to an existing site. The developer's one yes to the plan
-   covers the second run when the re-rendered plan keeps the same pages and sections;
-   `SKILL.md` lists what needs a new yes.
+   Save its report, back up the generated templates, and repeat with `--structure`
+   before removing blocks. Use the same re-backup boundary after adding missing paths to
+   an existing site. The second run reuses the developer's yes only when the plan is
+   covered by it:
+
+   ```bash
+   python3 scripts/apply_plan.py brief.json --approved-plan approved-plan.json \
+     --confirmation-id <id> > run1-report.json
+   python3 scripts/render_plan.py brief.json --structure ./backups/my-shop/structure.json \
+     --approved-plan approved-plan.json --run-report run1-report.json > run2-plan.json
+   python3 scripts/apply_plan.py brief.json --approved-plan approved-plan.json \
+     --run-report run1-report.json --confirmation-id <id> --backup-dir ./backups/my-shop
+   ```
+
+   `render_plan.py` prints "Covered by the approved plan" or "Needs a new yes" with the
+   changes; `apply_plan.py` checks the same and stops before any write.
+   Background fixes after the visual review go through `scripts/patch_backgrounds.py`,
+   which accepts only background leaves on blocks the run reports list as created.
 
 5. Follow the confirmed assembly sequence in `SKILL.md`; verify and preview, but do
-   not publish. Export a fresh post-apply structure and compare it with the exact
-   confirmed plan:
+   not publish. Export a fresh post-apply structure and compare it with the last
+   applied plan (`run2-plan.json` for a new site, `approved-plan.json` otherwise):
 
    ```bash
    python3 scripts/verify_structure.py \
-     --plan ./artifacts/confirmed-plan.json \
+     --plan ./artifacts/run2-plan.json \
      --structure ./artifacts/post-apply/structure.json
    ```
 To sanitize a UI-created export without retaining IDs, copy, account data, or URLs,
