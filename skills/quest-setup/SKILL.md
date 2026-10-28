@@ -4,7 +4,8 @@ description: >-
   Use for Xsolla Quest Platform quests (create, edit, list, activate, pause, delete or debug
   a quest, Web3 rewards, conditions, sending a quest event) and for the Quests block on a
   Shop Builder site: add, move, duplicate, reorder, hide or show it, or change its heading,
-  card count, card titles, descriptions, images, alignment or button style. A request about
+  card count, card titles, descriptions, images, alignment or button style (a card reward is
+  read-only: it comes from the quest). A request about
   "the block cards" or a named quest card means that block, not code, so load this before
   searching files. Also lists the publisher's shops or Shop Builder sites (a read). Removing
   the block gets hide offered (the publisher deletes it in the Site Builder editor). Any
@@ -72,7 +73,7 @@ even to redact them, for any request. Run every command from the publisher's fol
     a plan with it ([reply-format.md](references/reply-format.md#examples)).
 12. **No stray files.** Parse command output in a pipe. The only files you write are the gate's brief and backup, in the one `mktemp -d` folder from [Gate commands](references/quests-block-brief.md#gate-commands); never in the working folder.
 13. **Named sites.** Write only to the site the publisher chose under [Which shop](references/quests-block-flow.md#which-shop). A site they name that is not that choice, or one they say must not be touched, gets no plan and no write.
-14. **Block reward is read-only.** The reward text and image on the Quests block come from the quest and can't be changed on the block. To change them, change the quest's reward ([Editing](references/quest-edit.md#editing)).
+14. **Block reward is read-only.** The reward text and image on a Quests block card come from the quest's reward (not its description) and can't be changed on the block. A request to change a card's reward gets no tool call, no reads and no write, only the reward-change reply in [reply-format.md](references/reply-format.md#examples): bold "The reward on the card comes from the quest, so it can't be changed on the block.", one bullet "To show a different reward, change the quest's reward.", then "Next: want me to draft that quest edit?". A yes goes to [Editing](references/quest-edit.md#editing).
 
 ## Prerequisites
 
