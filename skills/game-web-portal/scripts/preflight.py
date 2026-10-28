@@ -76,7 +76,8 @@ def check_project(
     if config.get("sandbox") is True:
         raise RuntimeError(
             "the CLI's sandbox mode is on (a new CLI config starts with it on). Shop Builder "
-            "has no sandbox: run `xsolla config set sandbox false`, then this preflight again"
+            "has no sandbox: ask the partner before running `xsolla config set sandbox false`, "
+            "then run this preflight again"
         )
     return approved_test_project(allowlist, merchant_id, project_id)
 
