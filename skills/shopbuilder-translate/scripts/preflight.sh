@@ -21,9 +21,11 @@ fi
 
 if [ -n "$XS" ]; then
   echo "== required subcommands =="
-  sb="$("$XS" shopbuilder --help 2>&1 || true)"
+  # Read each command's own usage line. The shopbuilder listing hides deprecated
+  # commands, and an unknown command prints the parent help instead.
   for c in get-structure get-localization update-many-localization add-language get-block; do
-    grep -qE "^\s*$c\b" <<<"$sb" && ok "shopbuilder $c" || bad "shopbuilder $c MISSING"
+    usage="$("$XS" shopbuilder "$c" --help 2>&1 || true)"
+    grep -qE "^\s*xsolla shopbuilder $c( |$)" <<<"$usage" && ok "shopbuilder $c" || bad "shopbuilder $c MISSING"
   done
 fi
 

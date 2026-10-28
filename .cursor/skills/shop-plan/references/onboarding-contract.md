@@ -3,8 +3,9 @@
 One set of statuses, one ledger, one handoff report for the Shop Builder part of onboarding.
 `shop-plan` asks the intake and starts the ledger; the storefront skills that follow this
 contract — `game-web-portal` — record their steps and render the handoff report.
-`description-to-shop` and `shop-builder-assembly` don't follow it yet: on the shop path they ask
-for what they need themselves. `shop-setup` and the skills it runs are not changed by this
+`description-to-shop` reads the confirmed intake on the shop path and asks only for missing
+data or conflicts. It does not write ledger steps; `shop-builder-assembly` does not yet
+write the ledger or render its handoff report. `shop-setup` and the skills it runs are not changed by this
 contract: what they did is read back from the project when a storefront skill starts.
 
 Honest partial completion is correct. Simulated completion is failure.
@@ -25,22 +26,22 @@ The headless path has no ledger: nothing on it reads one.
 ## Intake
 
 The values the Shop Builder part needs are asked in one message: `shop-plan`'s first message,
-together with its criteria. For a portal, nothing in it is asked again; on the shop path,
-`description-to-shop` still asks for what it needs. Skip what the developer already stated, and
-show inferred values back instead of assuming them.
+together with its criteria. `game-web-portal` and `description-to-shop` reuse the recorded
+answers, asking only for missing data or conflicts. Skip what the developer already stated or
+their own store listing states, and show inferred values back instead of assuming them.
 
 | Group | Ledger keys | Used by |
 |---|---|---|
 | Plan | `shop-plan`'s criteria: the path, and on Shop Builder the site kind | `shop-plan` |
-| Game | `game_name`, `platforms`, `description` (approved), `store_url` (optional), `brand_assets` (optional) | `game-web-portal` |
-| Site | `domain` (optional: the site the partner creates from the Multi-page web portal template may not exist yet), `primary_locale`, `locales` | `game-web-portal` |
+| Game | `game_name`, `platforms`, `description` (approved), `store_url` (optional: the developer's own App Store, Google Play or Steam listing, read for the other game values; never found by searching the name), `brand_assets` (optional) | `game-web-portal`, `description-to-shop` |
+| Site | `domain` (optional: the target site may not exist yet), `primary_locale`, `locales` | `game-web-portal`, `description-to-shop` |
 
 The account, catalog, sign-in methods and webhooks are not part of this intake:
 `merchant-setup`, `catalog-design`, `login-setup` and `webhooks-impl` ask for them themselves.
 
 `shop-plan` shows the values with its recommendation, and writes them to the ledger when the
 developer confirms, in the same step that records the path and the site kind. After that,
-`game-web-portal` reads them from the ledger and asks again only for a value that is missing
+`game-web-portal` and `description-to-shop` read them from the ledger and ask again only for a value that is missing
 (such as a domain that didn't exist yet), that conflicts with what a step finds, that a
 destructive change needs, or that is an approval.
 

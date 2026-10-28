@@ -1,14 +1,20 @@
 #!/usr/bin/env python3
-"""Compare a confirmed assembly plan with a read-only Shop Builder structure."""
+"""Compare a confirmed assembly plan with a read-only Shop Builder structure.
+
+get-structure lists site-level blocks by ID only, so the command line reads the
+module of each site layout with read-only `xsolla shopbuilder get-block`.
+"""
 
 from __future__ import annotations
 
 import argparse
 import json
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
-from render_plan import effective_module, page_path, structure_data
+from preflight import LAYOUT_SKIPPED, cli_has_command, site_block_module
+from render_plan import common_layout_id, effective_module, page_path, structure_data
 
 
 def load_object(path: Path, label: str) -> dict:
@@ -28,8 +34,16 @@ def same_identifier(actual: object, expected: object) -> bool:
     return False
 
 
-def verify(plan: dict, structure: object) -> dict:
+def verify(
+    plan: dict,
+    structure: object,
+    module_of: Callable[[str], object] | None = None,
+    layout_required: bool = True,
+) -> dict:
+    """``layout_required`` is False when the CLI has no create-block, so assembly
+    skipped the layout step."""
     errors: list[str] = []
+    warnings: list[str] = []
     current = structure_data(structure)
     target = plan.get("target")
     pages = plan.get("pages")
@@ -46,6 +60,16 @@ def verify(plan: dict, structure: object) -> dict:
         errors.append("landing type is not store")
     if current.get("published") not in (None, False):
         errors.append("test landing is published")
+
+    if plan.get("site_layout"):
+        try:
+            if common_layout_id(current, module_of) is None:
+                if layout_required:
+                    errors.append("site-level common layout is missing")
+                else:
+                    warnings.append(LAYOUT_SKIPPED)
+        except ValueError as exc:
+            errors.append(f"site-level common layout is inconsistent: {exc}")
 
     current_pages = current.get("pages")
     if not isinstance(current_pages, list):
@@ -186,6 +210,7 @@ def verify(plan: dict, structure: object) -> dict:
         "pages": page_results,
         "requested_locales": requested_locales,
         "errors": errors,
+        "warnings": warnings,
         "published": current.get("published") not in (None, False),
     }
 
@@ -196,11 +221,15 @@ def main() -> int:
     parser.add_argument("--structure", required=True, type=Path)
     args = parser.parse_args()
     try:
+        plan = load_object(args.plan, "plan")
+        slug = (plan.get("target") or {}).get("slug")
         result = verify(
-            load_object(args.plan, "plan"),
+            plan,
             load_object(args.structure, "structure"),
+            lambda block_id: site_block_module(slug, block_id),
+            layout_required=cli_has_command("shopbuilder", "create-block"),
         )
-    except ValueError as exc:
+    except (RuntimeError, ValueError) as exc:
         print(f"Structure verification failed: {exc}", file=sys.stderr)
         return 1
     print(json.dumps(result, indent=2))

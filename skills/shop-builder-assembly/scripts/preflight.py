@@ -10,7 +10,13 @@ import subprocess
 import sys
 from pathlib import Path
 
+from render_plan import common_layout_id
 from validate_shop_brief import load_brief, validate
+
+LAYOUT_SKIPPED = (
+    "the common layout needs a newer Xsolla CLI; the site is built without it. A site "
+    "without the common layout won't open in the Editor, Publish or private preview"
+)
 
 
 def run_json(*args: str) -> object:
@@ -46,6 +52,37 @@ def data(value: object) -> object:
     if isinstance(value, dict) and value.get("ok") is True and "data" in value:
         return value["data"]
     return value
+
+
+def cli_has_command(*command: str) -> bool:
+    """Return whether the installed CLI has the command.
+
+    For an unknown subcommand the CLI prints its parent's help and exits 0, so only
+    the usage line tells: it names the command when the command exists.
+    """
+
+    try:
+        result = subprocess.run(
+            ["xsolla", *command, "--help"],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            check=False,
+        )
+    except OSError:
+        return False
+    usage = " ".join(["xsolla", *command])
+    return any(
+        line.strip() == usage or line.strip().startswith(usage + " ")
+        for line in (result.stdout or "").splitlines()
+    )
+
+
+def site_block_module(slug: str, block_id: str) -> object:
+    block = data(
+        run_json("shopbuilder", "get-block", "--slug", slug, "--block-id", block_id)
+    )
+    return block.get("module") if isinstance(block, dict) else None
 
 
 def objects(value: object):
@@ -179,8 +216,27 @@ def main() -> int:
         if not active_publisher_account(accounts):
             raise RuntimeError("no active, unexpired Publisher login is available")
 
+        slug = brief["site"]["slug"]
         websites = run_json("shopbuilder", "list-websites")
-        landing = first_landing(websites, brief["site"]["slug"])
+        landing = first_landing(websites, slug)
+
+        # Assembly adds the common layout after its page writes. A CLI without
+        # create-block cannot add it, so assembly skips that step.
+        layout_id = None
+        if landing is not None:
+            site = data(run_json("shopbuilder", "get-structure", "--slug", slug))
+            if not isinstance(site, dict):
+                raise RuntimeError("get-structure returned an unexpected shape")
+            layout_id = common_layout_id(
+                site, lambda block_id: site_block_module(slug, block_id)
+            )
+        if layout_id is not None:
+            layout_step = "present"
+        elif cli_has_command("shopbuilder", "create-block"):
+            layout_step = "create"
+        else:
+            layout_step = "skip"
+            print(LAYOUT_SKIPPED, file=sys.stderr)
 
         groups = run_json(
             "catalog",
@@ -223,10 +279,12 @@ def main() -> int:
             },
             "auth": {"publisher_account_active": True},
             "target": {
-                "slug": brief["site"]["slug"],
+                "slug": slug,
                 "exists": landing is not None,
                 "landing_id": landing.get("_id") if landing else None,
                 "type": landing.get("type") if landing else None,
+                "common_layout_id": layout_id,
+                "layout_step": layout_step,
             },
             "catalog": {
                 "verified_groups": [

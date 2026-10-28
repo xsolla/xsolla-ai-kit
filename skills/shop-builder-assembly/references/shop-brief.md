@@ -72,6 +72,7 @@ project identity to approval evidence; a self-declared brief is not enough.
 | `site.locales` | Full locale codes such as `en-US`; must include `primary_locale`. |
 | `catalog.groups` | Existing group identifiers or `__all__` to place in `newStore` sections. Each entry uses `type` = `virtual_good`, `bundle`, or `virtual_currency`, plus `placement` = `featured`, `primary`, or `secondary`; placement deterministically selects the card layout. |
 | `catalog.featured_skus` | Optional existing SKUs highlighted by the preset; assembly does not create products. |
+| `catalog.liveops` | Optional LiveOps features already active in the same project: `promo_codes`, `reward_chain`, `offer_chain`. Each one lets the preset add its block (`promocodes`, `rewards`, `sb-offer-chain`); assembly configures none of them. |
 | `brand` | Optional `logo`, `hero_image`, color, radius, and font inputs. Missing values use preset defaults. |
 | `content` | Optional approved copy, page overrides, FAQ, requirements, event copy, and CTA labels. |
 | `sources` | Provenance such as `publisher_answers`, `description`, `external_store`, or `figma`. |

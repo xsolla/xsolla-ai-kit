@@ -30,7 +30,8 @@ automatically when it finds no recorded path — this skill is the only asker.
 Use when the developer wants to **decide which path to build on**, or asks a want/tradeoff
 question that sounds like a build request but is really a planning one — "I want a hosted
 no-code store" and "embed a custom store in my app" are both planning requests, not build
-requests, until a path is recorded.
+requests, until a path is recorded. So are "Xsolla-hosted storefront or my own site" and "do I
+need developers for a web shop".
 
 **Do not use this to build anything.** This skill creates no Xsolla account, project, or
 resource, calls no Xsolla API, and runs no `xsolla` command — not even `--version`; checking the
@@ -45,21 +46,21 @@ before building.
 ## Happy path
 
 "I'm a solo indie dev, no website, need a store live this week" → no path in `.env`, so ask the six
-criteria in one message → show the comparison, recommend Shop Builder and name the criteria that
-drove it → developer says yes → `XSOLLA_BUILD_PATH=shopbuilder` and `XSOLLA_SITE_KIND=shop`
-recorded → stop.
+criteria in one message → show the comparison, recommend the Xsolla-hosted storefront and name
+the criteria that drove it → developer says yes → `XSOLLA_BUILD_PATH=shopbuilder` and
+`XSOLLA_SITE_KIND=shop` recorded → stop.
 
 ## What actually differs
 
-| | **Headless** | **Shop Builder: shop** | **Shop Builder: Game Web Portal** |
+| | **Custom storefront using Xsolla APIs (headless)** | **Xsolla-hosted storefront: shop** | **Xsolla-hosted storefront: Game Web Portal** |
 |---|---|---|---|
-| What it is | A store in the developer's own site/app | A hosted store | A hosted game home — Home, News, Rewards, Community, optional Launcher — around a Web Shop |
-| Who writes the UI | The developer, in their own site/app | Nobody — Xsolla-hosted, no-code | Nobody — Xsolla-hosted, no-code |
-| Where it lives | The developer's own domain | An Xsolla-hosted domain | An Xsolla-hosted domain |
-| Payment layer | Headless Checkout SDK, embedded | Xsolla Pay Station, hosted | Xsolla Pay Station, hosted |
-| Time to a live store | Longer — it's a frontend build | Short | Short for the store; the sections need content |
-| Ceiling on custom design | None | Bounded by the block system | Bounded by the block system |
-| Ongoing maintenance | The developer's own frontend | None — Xsolla maintains the UI | None for the UI; the news and rewards content is the developer's |
+| What it is | A store your developers build into your own site or app | A web shop Xsolla hosts; you edit its design and offers in an editor (Shop Builder) | A game home Xsolla hosts — Home, News, Rewards, Community, optional Launcher — around a web shop |
+| Developers needed | Yes — to build, host and maintain the site, and to deliver purchases to the game | None for the site; delivering purchases to your game needs a webhook on your server | As for the shop; someone also keeps the news and rewards current |
+| Where it lives | Your own domain | An Xsolla domain | An Xsolla domain |
+| Payment | Xsolla's payment form inside your site | Xsolla's hosted payment page | Xsolla's hosted payment page |
+| Time to launch | Longer — your developers build the site first | Short | Short for the shop; the other sections need content |
+| Design freedom | Anything your developers build | The editor's blocks, theme and images | The editor's blocks, theme and images |
+| Maintenance | Your developers maintain the site | Xsolla maintains the site | Xsolla maintains the site; you keep its content current |
 
 **Whichever path, recording the choice is where this skill stops — `shop-setup` does the building.**
 Headless runs `shop-setup` → `catalog-design`, `login-setup`, `headless-checkout-integration`,
@@ -86,7 +87,7 @@ kind is handled like an invalid path, below. Unless the developer explicitly ask
 ("replan", "reconsider", "change the path"), report the decision and stop:
 
 ```
-Already decided: Shop Builder, a Game Web Portal.
+Already decided: an Xsolla-hosted storefront (Shop Builder), a Game Web Portal.
 Say "reconsider" to redo it, or run shop-setup to build.
 ```
 
@@ -96,7 +97,8 @@ here; silently re-asking throws it away. Show the value and ask which they meant
 
 ```
 .env has XSOLLA_BUILD_PATH=Headless, which isn't a value I recognize — it must be exactly
-`headless` or `shopbuilder`. Did you mean headless? I'll correct it if you confirm.
+`headless` (a custom storefront) or `shopbuilder` (an Xsolla-hosted storefront). Did you mean
+headless? I'll correct it if you confirm.
 ```
 
 **`NO_DECISION`** — nothing recorded (or no `.env` at all). Continue to step 2.
@@ -116,12 +118,24 @@ What's still open is how the storefront itself gets built, so six quick question
 
 ### 2. Ask the six criteria — one message
 
+**Short path.** When the developer asked for `game-web-portal` by name (with no path recorded, it
+hands back here through `shop-setup`), skip the six criteria and the table. Naming a portal in
+prose isn't enough. In one message, give this line, ask the
+[intake](references/onboarding-contract.md#intake), list the values to record, then go to step 4:
+"A Game Web Portal is an Xsolla-hosted storefront (Shop Builder): no developers for the site, an
+Xsolla domain, and the editor's blocks and theme; the other option is a custom storefront using
+Xsolla APIs (headless), which your developers build and host." Ask the six criteria instead when
+the request also wants its own domain, an existing site or app, or a custom UI, or when the game
+isn't on PC — say a portal is PC only.
+
 Ask all six in a single message. Unless the request is plainly headless, the same message also
 asks the rest of the [intake](references/onboarding-contract.md#intake) — the game and site
 details the Shop Builder part needs — so the developer answers one round of questions, not two.
 Infer an answer only when the request already states it plainly (e.g. "embed this in my existing
 React app" answers custom UI *and* hosting) — but still show your inference back before moving
-on, so a wrong read gets caught immediately.
+on, so a wrong read gets caught immediately. Ask for a link to the developer's own store listing
+(App Store, Google Play, Steam) unless they gave one: it answers the game questions of the intake,
+so don't ask them separately. Never search for it by the game's name.
 
 1. **Custom UI needs.** Do you already have a frontend/site this plugs into, or do you want one
    built for you?
@@ -138,6 +152,10 @@ on, so a wrong read gets caught immediately.
 
 ### 3. Weigh and recommend — show the trade-offs, name the drivers
 
+Name the options in the developer's words: "Xsolla-hosted storefront" and "custom storefront
+using Xsolla APIs (headless)". Use "Shop Builder" only as the product name once the hosted
+option is explained, and say what "headless" means whenever you use it.
+
 Never silently pick a side and never shortcut to "one question, two options." Show the
 comparison table from "What actually differs" above (or a condensed version of it) **to the
 developer**, then state the recommendation and **which of the criteria drove it**. The first five
@@ -146,13 +164,15 @@ around the store means a Game Web Portal, only a store means a shop. On headless
 the developer builds their own site:
 
 ```
-Recommending Shop Builder: you have no existing frontend, want it live this week, and have
-little dev time to spend on a custom storefront — hosting and custom UI weren't blockers for
-you, and you only need a store. Trade-off: you lose the design ceiling headless gives you.
+I recommend an Xsolla-hosted storefront: Xsolla hosts the shop, and you manage its design and
+offers in an editor (Shop Builder). It fits because you have no existing site, want it live this
+week, have no developer time for a custom storefront, and only need a store. The other option is a
+custom storefront using Xsolla APIs (headless): your developers build, host and maintain the
+site, with more control over its design and behavior.
 
 | ... trade-off table ... |
 
-Go with this, or would you rather build headless?
+Go with the Xsolla-hosted storefront, or would you rather build a custom one?
 ```
 
 On Shop Builder, the same message lists the intake values that will be recorded, so the
@@ -167,8 +187,9 @@ which criteria conflict and ask the developer to break the tie themselves.
 **Nothing is written — no `.env`, no other local file — until the developer has seen the
 trade-offs and the recommendation, and has said yes.** Silence, a topic change, or moving on to
 another question is not confirmation. Neither is a "yes" that arrives before the comparison and
-recommendation were shown: show them first, then ask again. If they push back or ask a follow-up,
-answer it and ask again; don't write on a guess that they've come around.
+recommendation, or the short path's line, were shown: show them first, then ask again. If they
+push back or ask a follow-up, answer it and ask again; don't write on a guess that they've come
+around.
 
 ### 5. Record the choice, then stop
 
@@ -205,13 +226,17 @@ switch to headless, delete the ledger and remove `XSOLLA_SITE_KIND` from `.env`.
 recorded and stop — do not chain into `shop-setup` or any build step:
 
 ```
-Recorded: Shop Builder, a Game Web Portal. Run shop-setup when you're ready to build.
+Recorded: an Xsolla-hosted storefront (Shop Builder), a Game Web Portal. Run shop-setup when
+you're ready to build.
 ```
 
 ## Common pitfalls
 
 - **Asking one question with two options instead of showing the comparison.** The developer
   needs the trade-offs in front of them, not a bare fork.
+- **Naming the options with Xsolla terms.** "Use Shop Builder or go headless?" means nothing to a
+  developer who doesn't know Xsolla. Say what each option is, how long it takes, and whether it
+  needs developers.
 - **Inferring dev capacity or localization needs from unrelated phrasing.** Ask them directly —
   "don't want to write a frontend" is about preference, not capacity.
 - **Writing `.env` before an explicit yes.** A shown recommendation is not a confirmed one.

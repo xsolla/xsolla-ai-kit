@@ -3,11 +3,11 @@ name: catalog-design
 description: >-
   Configures the Xsolla catalog for a game and wires the full sell-side flow: virtual
   items, virtual currency and its packages, bundles, game key packages, item groups,
-  regional pricing and regional sale restrictions. Use when setting up a game's item
-  catalog, adding purchasable goods, configuring virtual currency, creating starter
-  packs or bundles, selling a game via keys, setting local prices per country, building
-  a store catalog on the client, implementing purchase, or confirming purchases —
-  including "set up my Xsolla catalog", "create virtual items / currency / bundles",
+  regional pricing and regional sale restrictions, and LiveOps offers. Use when setting
+  up a game's item catalog, adding purchasable goods, configuring virtual currency,
+  creating starter packs or bundles, selling a game via keys, setting local prices per
+  country, building a store catalog on the client, implementing purchase, or confirming
+  purchases — including "set up my Xsolla catalog", "create virtual items / currency / bundles",
   "sell game keys", "regional prices", "fast purchase by SKU", "cart purchase",
   "buy for virtual currency", "track order status", "grant items after payment".
 metadata:
@@ -24,6 +24,7 @@ Detailed material lives in `references/`:
 - [`references/items.md`](references/items.md) — virtual items, VC, packages, bundles, groups (Admin API)
 - [`references/game-keys.md`](references/game-keys.md) — key packages, platforms, entitlement
 - [`references/pricing.md`](references/pricing.md) — local prices, regional restrictions
+- [`references/liveops.md`](references/liveops.md) — limits, time-limited offers, promotions, chains, loyalty
 - [`references/catalog-client.md`](references/catalog-client.md) — client catalog calls
 - [`references/purchase-and-tracking.md`](references/purchase-and-tracking.md) — purchase flows, order confirmation
 
@@ -34,6 +35,9 @@ Use this skill when the developer wants to:
 - Create virtual items, virtual currency, VC packages, bundles, or item groups
 - Sell a game or DLC via game keys (Steam, Epic, PlayStation, DRM-free, …)
 - Set local prices per country or restrict sales by region
+- Add limited-time or limited-stock offers, purchase limits, promotions, offer chains,
+  daily rewards or loyalty rewards — "limited-time offer", "purchase limit", "first
+  purchase bonus", "offer chain", "daily rewards", "loyalty program", "promo codes"
 - Build the store catalog UI on the client (game or website)
 - Implement purchase: fast purchase by SKU, cart, purchase for VC, free items
 - Confirm purchases: webhooks on the server or order tracking on the client
@@ -50,6 +54,10 @@ export XSOLLA_PROJECT_API_KEY=<your API key>
 ```
 
 - An Xsolla project (run `merchant-setup` first — it sets up these variables).
+- **Check what the project already has.** A new project can come with a demo catalog: a
+  virtual currency, packs, items, a bundle and groups whose SKUs or IDs start with `demo`.
+  List the catalog first; if demo entries exist, ask whether to keep, hide or replace them
+  before adding anything.
 - **Xsolla MCP (strongly recommended).** Connect the official Xsolla MCP server
   (<https://developers.xsolla.com/get-started/ai-assistants/>). Before calling any
   Admin API, verify the current request schema with the `search_xsolla_sources` tool —
@@ -67,30 +75,38 @@ export XSOLLA_PROJECT_API_KEY=<your API key>
    (`XSOLLA_MERCHANT_ID:XSOLLA_PROJECT_API_KEY`); verify each request body via the
    Xsolla MCP first.
 
-2. **Set up pricing.** Recommend regional prices in local currencies for key markets
+2. **Propose a complete shop, not a price list.** For in-game items, propose by default
+   what gives players reasons to buy and to return: bundles and a starter pack, a
+   first-purchase bonus, time-limited and limited-stock offers, per-player limits, an
+   offer chain, daily rewards, loyalty rewards and promo codes — a coherent set for the
+   game, not all of them. Explain each in plain words and ask for every missing
+   commercial value in one message; create nothing before the developer's yes. See
+   `references/liveops.md`.
+
+3. **Set up pricing.** Recommend regional prices in local currencies for key markets
    via the `prices` array; keep the currency list and default currency identical across
    all items. For game keys, optionally add regional sale restrictions (regions →
    `regions` array) — depends on the game. See `references/pricing.md`.
 
-3. **Build the catalog on the client (Catalog API).** Render the store from
+4. **Build the catalog on the client (Catalog API).** Render the store from
    client-side Catalog calls for the specific item types you sell (`Get virtual items
    list`, `Get virtual currency list`, `Get list of bundles`, `Get games list`), called
    **from the client without a `country` parameter** — country, prices, and regional
    availability resolve from the user's IP. Never use Admin calls for the storefront.
    See `references/catalog-client.md`.
 
-4. **Implement purchase.** Default to **fast purchase by SKU**: client-side
+5. **Implement purchase.** Default to **fast purchase by SKU**: client-side
    `Create order with specified item` (user JWT) → returns `order_id` + payment token →
    open Pay Station with the token. Cart, purchase for VC, free items, and game-key
    specifics: `references/purchase-and-tracking.md`. The payment step itself belongs to
    the `headless-checkout-integration` skill.
 
-5. **Confirm the purchase.** Server (recommended): handle `order_paid` /
+6. **Confirm the purchase.** Server (recommended): handle `order_paid` /
    `order_canceled` webhooks — implement with the `webhooks-impl` skill. Client (no
    server): WebSocket order status + short-polling `Get order` fallback. See
    `references/purchase-and-tracking.md`.
 
-6. **Verify end-to-end.** In sandbox (`"sandbox": true`, test cards): fetch the catalog
+7. **Verify end-to-end.** In sandbox (`"sandbox": true`, test cards): fetch the catalog
    via a Catalog call, buy an item, confirm the order reaches `done`, and the
    confirmation path (webhook or socket) fired.
 
@@ -105,6 +121,9 @@ export XSOLLA_PROJECT_API_KEY=<your API key>
   traffic; catalogs are built from Catalog-subsection calls, per item type.
 - **Update wipes fields.** Admin update calls replace, not merge: GET the item first
   and send back everything you want to keep (e.g. omit `limits` → limits deleted).
+- **A permanent unlock sold as a consumable.** Check what each product means, not only its
+  name and price. A one-time unlock such as No Ads is `non_consumable`, the docs' own
+  example, with `limits.per_user` total 1 so it can't be bought twice.
 - **Inconsistent currencies break the catalog.** Different currency sets or default
   currencies across items cause fallback prices or `price: null` on the storefront.
 - **Wrong webhook set.** Accounts registered after 2025-01-22 get combined

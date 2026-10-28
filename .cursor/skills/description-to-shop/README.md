@@ -12,7 +12,8 @@ Turns a plain-language game description into a validated Shop Builder assembly b
 
 ## Happy path
 
-1. Give the agent a plain-language game description.
+1. Give the agent a plain-language game description, or continue after `shop-plan`.
+   Confirmed answers in the project's `.xsolla/onboarding.json` are reused automatically.
 2. Answer one batch of genuinely missing factual questions.
 3. Review the normalized brief.
 4. Continue with `shop-builder-assembly`; confirm its exact plan hash.
@@ -21,6 +22,8 @@ Turns a plain-language game description into a validated Shop Builder assembly b
 ## Known limitations
 
 - Creates no catalog entities and translates no unapproved copy.
+- Reads onboarding intake only; ledger step updates and the SB shop onboarding handoff
+  report are not implemented by this skill.
 - Requests with no standard block are reported, never approximated.
 - Shop Builder assembly, safety and CLI limitations live in `shop-builder-assembly`
   and are not duplicated here.
@@ -33,4 +36,7 @@ SKILL.md                            intake and handoff workflow
 README.md                           this file
 references/intake-schema.md         facts to collect, completeness gate
 references/plan-format.md           normalized handoff example
+references/onboarding-intake.md     reuse, mapping and conflict rules
+scripts/read_onboarding.py          read-only onboarding loader
+tests/test_read_onboarding.py       loader regression tests
 ```

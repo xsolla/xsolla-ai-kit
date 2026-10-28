@@ -244,6 +244,20 @@ class ShopBriefTests(unittest.TestCase):
             validator.validate(brief),
         )
 
+    def test_catalog_liveops_is_validated(self) -> None:
+        brief = copy.deepcopy(self.brief)
+        brief["catalog"]["liveops"] = ["promo_codes", "reward_chain", "offer_chain"]
+        self.assertEqual([], validator.validate(brief))
+        expected = "catalog.liveops must use: offer_chain, promo_codes, reward_chain"
+        for value in (["daily_chain"], "promo_codes", [None]):
+            with self.subTest(value=value):
+                brief["catalog"]["liveops"] = value
+                self.assertIn(expected, validator.validate(brief))
+        brief["catalog"]["liveops"] = ["offer_chain", "offer_chain"]
+        self.assertIn(
+            "catalog.liveops must not contain duplicates", validator.validate(brief)
+        )
+
     def test_preflight_helpers_do_not_expose_account_login(self) -> None:
         accounts = {
             "ok": True,
@@ -365,6 +379,7 @@ class ShopBriefTests(unittest.TestCase):
             mock.patch.object(
                 preflight, "run_json", side_effect=[config, accounts, {}, {}]
             ) as run_json,
+            mock.patch.object(preflight, "cli_has_command", return_value=True),
             contextlib.redirect_stdout(stdout),
         ):
             self.assertEqual(0, preflight.main())

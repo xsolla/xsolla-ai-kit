@@ -125,6 +125,46 @@ class PresetTests(unittest.TestCase):
         self.assertNotIn("newStore", plan["pages"][0]["blocks"])
         self.assertIn("newStore", {item["module"] for item in plan["omissions"]})
 
+    def test_liveops_blocks_need_a_configured_feature(self) -> None:
+        reasons = {
+            "promocodes": "no promo code promotion configured in the project",
+            "rewards": "no reward chain configured in the project",
+            "sb-offer-chain": "no offer chain configured in the project",
+        }
+        for preset in render_plan.PRESET_PAGES:
+            with self.subTest(preset=preset):
+                self.brief["site"]["preset"] = preset
+                plan = render_plan.build_plan(self.brief)
+                planned = {m for page in plan["pages"] for m in page["blocks"]}
+                self.assertEqual(set(), planned & set(reasons))
+                omitted = {
+                    item["module"]: item["reason"]
+                    for item in plan["omissions"]
+                    if item["module"] in reasons
+                }
+                self.assertEqual(reasons, omitted)
+
+    def test_configured_liveops_features_add_their_blocks(self) -> None:
+        self.brief["catalog"]["liveops"] = ["offer_chain", "reward_chain", "promo_codes"]
+        plan = render_plan.build_plan(self.brief)
+        self.assertEqual(
+            [
+                "header",
+                "leadGameSales",
+                "sb-offer-chain",
+                "newStore",
+                "rewards",
+                "promocodes",
+                "footer",
+            ],
+            plan["pages"][0]["blocks"],
+        )
+        self.brief["catalog"]["liveops"] = ["promo_codes"]
+        blocks = render_plan.build_plan(self.brief)["pages"][0]["blocks"]
+        self.assertIn("promocodes", blocks)
+        self.assertNotIn("rewards", blocks)
+        self.assertNotIn("sb-offer-chain", blocks)
+
     def test_catalog_sections_receive_deterministic_layouts(self) -> None:
         self.brief["catalog"]["groups"] = [
             {"external_id": "featured", "type": "bundle", "placement": "featured"},
@@ -138,6 +178,14 @@ class PresetTests(unittest.TestCase):
         )
         self.assertIn("catalog_links", plan["implemented_phases"])
         self.assertNotIn("catalog_links", plan["unsupported_phases"])
+
+    def test_site_layout_follows_page_templates(self) -> None:
+        plan = render_plan.build_plan(self.brief)
+        self.assertEqual("common-layout", plan["site_layout"]["module"])
+        self.assertTrue(plan["site_layout"]["if_missing"])
+        self.assertLess(
+            plan["order"].index("pages"), plan["order"].index("site_layout")
+        )
 
     def test_existing_block_without_replacement_data_is_preserved(self) -> None:
         self.brief["content"].pop("faq", None)

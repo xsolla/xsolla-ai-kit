@@ -258,9 +258,13 @@ echo "== preflight: CLI sandbox =="
 cat > "$TMP/fake-preflight.sh" <<'EOF'
 #!/usr/bin/env bash
 if [ "${1:-}" = "--version" ]; then echo "xsolla version test"; exit 0; fi
-if [ "${1:-} ${2:-}" = "shopbuilder --help" ]; then
-  printf '  get-structure\n  get-localization\n  update-many-localization\n  add-language\n  get-block\n'
-  exit 0
+if [ "${1:-}" = "shopbuilder" ] && [ "${3:-}" = "--help" ]; then
+  case " get-structure get-localization update-many-localization add-language get-block " in
+    *" ${2:-} "*) if [ "$2" != "${FAKE_MISSING_CMD:-}" ]; then
+                    printf 'Usage:\n  xsolla shopbuilder %s [flags]\n' "$2"; exit 0
+                  fi ;;
+  esac
+  printf 'Usage:\n  xsolla shopbuilder [command]\n'; exit 0
 fi
 if [ "${1:-} ${2:-}" = "auth list-account" ]; then echo "one account"; exit 0; fi
 if [ "${1:-} ${2:-}" = "config list" ]; then
@@ -288,5 +292,15 @@ set -e
 chk "sandbox true is refused" "[ $trc -ne 0 ]"
 chk "sandbox true names the flag" "grep -q 'sandbox mode is on' pf-true.out"
 chk "sandbox true does not pass" "! grep -q 'preflight passed' pf-true.out"
+
+echo "== preflight: required subcommands =="
+chk "commands found by their own help" "grep -q 'ok .* shopbuilder get-structure' pf-missing.out"
+set +e
+FAKE_MISSING_CMD=add-language \
+  XSOLLA_CLI="$TMP/fake-preflight.sh" XSOLLA_MERCHANT_ID=1 XSOLLA_PROJECT_ID=2 \
+  bash "$HERE/preflight.sh" > pf-nocmd.out 2>&1; ncrc=$?
+set -e
+chk "a missing command is refused" "[ $ncrc -ne 0 ]"
+chk "a missing command is named" "grep -q 'shopbuilder add-language MISSING' pf-nocmd.out"
 
 echo; echo "$pass passed, $failn failed"; [ "$failn" -eq 0 ]

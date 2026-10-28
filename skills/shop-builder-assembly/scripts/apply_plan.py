@@ -14,11 +14,20 @@ import time
 import uuid
 from pathlib import Path
 
+from preflight import LAYOUT_SKIPPED, cli_has_command
 from render_plan import (
+    COMMON_LAYOUT,
     CUSTOM_CODE_WARNING,
+    approval_changes,
     build_plan,
+    common_layout_id,
+    created_block_ids,
     effective_module,
+    load_approved_plan,
+    load_run_report,
     page_path,
+    require_own_header,
+    site_block_ids,
     structure_data,
     structure_hash,
 )
@@ -197,11 +206,108 @@ def structure(slug: str) -> dict:
     return value
 
 
+def site_block_module(slug: str, block_id: str) -> object:
+    block = data(
+        run_json("shopbuilder", "get-block", "--slug", slug, "--block-id", block_id)
+    )
+    return block.get("module") if isinstance(block, dict) else None
+
+
+def ensure_common_layout(slug: str) -> str | None:
+    """Attach the site layout after pages so template headers/footers survive.
+
+    Returns None when the site has no layout and the CLI has no create-block: the
+    step is skipped and the site is built without it.
+    """
+    layout_id = common_layout_id(
+        structure(slug), lambda block_id: site_block_module(slug, block_id)
+    )
+    if layout_id is not None:
+        return layout_id
+    if not cli_has_command("shopbuilder", "create-block"):
+        print(LAYOUT_SKIPPED, file=sys.stderr)
+        return None
+    created = data(
+        run_json("shopbuilder", "create-block", "--slug", slug, "--block", COMMON_LAYOUT)
+    )
+    block = created.get("block") if isinstance(created, dict) else None
+    block_id = block.get("_id") if isinstance(block, dict) else None
+    if not isinstance(block_id, str):
+        raise RuntimeError("create-block returned no layout block ID")
+    saved = structure(slug)
+    if block_id not in saved.get("layouts", []) or block_id not in site_block_ids(
+        saved.get("blocks")
+    ):
+        raise RuntimeError("created common layout is missing from the saved structure")
+    return block_id
+
+
 def page_for_path(value: dict, path: str) -> dict | None:
     for page in value["pages"]:
         if page_path(page) == path:
             return page
     return None
+
+
+def page_block_ids(value: dict, paths: list[str]) -> dict[str, list[str]]:
+    """Return the block IDs on each page path, for the run report."""
+    result = {}
+    for path in paths:
+        page = page_for_path(value, path) or {}
+        result[path] = [
+            block["_id"]
+            for block in page.get("blocks", [])
+            if isinstance(block, dict) and isinstance(block.get("_id"), str)
+        ]
+    return result
+
+
+def check_cli_context(expected: dict) -> None:
+    """Stop unless the CLI targets the brief's merchant and project outside sandbox."""
+    config = data(run_json("config", "list"))
+    if not isinstance(config, dict):
+        raise RuntimeError("xsolla config list returned an unexpected shape")
+    if config.get("merchant_id") != expected["merchant_id"]:
+        raise RuntimeError("CLI merchant_id does not match the shop brief")
+    if config.get("project_id") != expected["project_id"]:
+        raise RuntimeError("CLI project_id does not match the shop brief")
+    if config.get("sandbox") is True:
+        raise RuntimeError("CLI sandbox must be disabled for Shop Builder")
+    RUN_AUTH["context"] = cli_context(config)
+
+
+def check_approval(
+    args: argparse.Namespace, plan: dict, approved: dict, report: dict | None
+) -> None:
+    """Stop unless the developer's yes to the approved plan covers this run's plan.
+
+    The confirmation ID must be the approved plan's, and a run report must come from a
+    run under that same approval. A different current plan, such as a new site's second
+    run, is covered only when ``approval_changes`` finds nothing.
+    """
+    if args.confirmation_id != approved["confirmation_id"]:
+        raise RuntimeError("confirmation ID does not match the approved plan")
+    if report is not None and report.get("approved_confirmation_id") != approved[
+        "confirmation_id"
+    ]:
+        raise RuntimeError(
+            "the run report belongs to another approval than the approved plan. "
+            "Nothing was written. Show the developer the current plan and ask again"
+        )
+    if plan["confirmation_id"] == approved["confirmation_id"]:
+        return
+    if report is None:
+        raise RuntimeError(
+            "the current plan isn't the approved one; pass the earlier run's report "
+            "with --run-report, or show the developer the new plan and ask again"
+        )
+    changes = approval_changes(approved, plan, report)
+    if changes:
+        raise RuntimeError(
+            "the developer's yes doesn't cover the current plan: "
+            + "; ".join(changes)
+            + ". Nothing was written. Show these changes and ask again"
+        )
 
 
 def verified_backup(path: Path, expected: dict, slug: str) -> bool:
@@ -331,6 +437,7 @@ def reconcile_page(slug: str, landing_id: str, page_plan: dict) -> dict:
             "page_id": page_id,
             "blocks": current_modules,
             "removed_blocks": 0,
+            "added_block_ids": [],
             "hidden_custom_code": [],
         }
     if removals:
@@ -431,6 +538,11 @@ def reconcile_page(slug: str, landing_id: str, page_plan: dict) -> dict:
         "page_id": page_id,
         "blocks": final_modules,
         "removed_blocks": len(removals),
+        "added_block_ids": [
+            block.get("_id")
+            for block in final_page.get("blocks", [])
+            if block.get("_id") not in known_block_ids
+        ],
         "hidden_custom_code": hidden_custom_code,
     }
 
@@ -929,6 +1041,8 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("brief", type=Path)
     parser.add_argument("--confirmation-id", required=True)
+    parser.add_argument("--approved-plan", type=Path, required=True)
+    parser.add_argument("--run-report", type=Path)
     parser.add_argument("--backup-dir", type=Path)
     parser.add_argument("--approved-test-projects", type=Path)
     args = parser.parse_args()
@@ -937,19 +1051,13 @@ def main() -> int:
         errors = validate(brief)
         if errors:
             raise RuntimeError("invalid shop brief: " + "; ".join(errors))
+        approved = load_approved_plan(args.approved_plan)
+        report = load_run_report(args.run_report) if args.run_report else None
+        created = created_block_ids(report) if report else frozenset()
         run_preflight(args.brief, args.approved_test_projects)
 
         expected = brief["project"]
-        config = data(run_json("config", "list"))
-        if not isinstance(config, dict):
-            raise RuntimeError("xsolla config list returned an unexpected shape")
-        if config.get("merchant_id") != expected["merchant_id"]:
-            raise RuntimeError("CLI merchant_id does not match the shop brief")
-        if config.get("project_id") != expected["project_id"]:
-            raise RuntimeError("CLI project_id does not match the shop brief")
-        if config.get("sandbox") is True:
-            raise RuntimeError("CLI sandbox must be disabled for Shop Builder")
-        RUN_AUTH["context"] = cli_context(config)
+        check_cli_context(expected)
 
         slug = brief["site"]["slug"]
         existed = website_exists(run_json("shopbuilder", "list-websites"), slug)
@@ -961,12 +1069,12 @@ def main() -> int:
                     "a complete verified backup created before confirmation is required"
                 )
             saved_structure = backup_structure(args.backup_dir)
-            plan = build_plan(brief, saved_structure)
+            plan = build_plan(brief, saved_structure, created)
         else:
             plan = build_plan(brief)
 
-        if args.confirmation_id != plan["confirmation_id"]:
-            raise RuntimeError("confirmation ID does not match the current plan")
+        check_approval(args, plan, approved, report)
+        approved_id = approved["confirmation_id"]
 
         if existed:
             current = structure(slug)
@@ -981,6 +1089,7 @@ def main() -> int:
                     "target contains pages outside the confirmed plan and the CLI cannot "
                     f"delete pages safely: {paths}"
                 )
+            require_own_header(plan["pages"], current)
         else:
             run_json(
                 "shopbuilder",
@@ -1009,6 +1118,7 @@ def main() -> int:
 
         created_pages = add_missing_pages(slug, plan["pages"])
         locales = ensure_locales(slug, plan["locales"])
+        layout_id = ensure_common_layout(slug)
         if not existed:
             print(
                 json.dumps(
@@ -1017,13 +1127,18 @@ def main() -> int:
                         "assembly_complete": False,
                         "status": "bootstrap-complete",
                         "confirmation_id": plan["confirmation_id"],
+                        "approved_confirmation_id": approved_id,
                         "slug": slug,
                         "landing_id": landing_id,
                         "created_pages": created_pages,
+                        "created_blocks": page_block_ids(structure(slug), created_pages),
+                        "layout_id": layout_id,
                         "locales": locales,
                         "next_action": (
-                            "Back up the generated site, render a target-bound plan, "
-                            "and explicitly confirm its exact removals before reconciliation."
+                            "Save this report, back up the generated site, and render a "
+                            "target-bound plan with --approved-plan and --run-report. "
+                            "Apply it under the same yes only if the render says it is "
+                            "covered; otherwise show the changes and ask again."
                         ),
                         "published": False,
                     },
@@ -1040,13 +1155,18 @@ def main() -> int:
                         "assembly_complete": False,
                         "status": "page-phase-complete",
                         "confirmation_id": plan["confirmation_id"],
+                        "approved_confirmation_id": approved_id,
                         "slug": slug,
                         "landing_id": landing_id,
                         "created_pages": created_pages,
+                        "created_blocks": page_block_ids(structure(slug), created_pages),
+                        "layout_id": layout_id,
                         "locales": locales,
                         "next_action": (
-                            "Back up the changed site, re-render its generated block IDs, "
-                            "and explicitly confirm before block reconciliation."
+                            "Save this report, back up the changed site, and render a "
+                            "target-bound plan with --approved-plan and --run-report. "
+                            "Apply it under the same yes only if the render says it is "
+                            "covered; otherwise show the changes and ask again."
                         ),
                         "published": False,
                     },
@@ -1065,8 +1185,10 @@ def main() -> int:
                     "assembly_complete": not plan["unsupported_phases"],
                     "status": "implemented-phases-applied",
                     "confirmation_id": plan["confirmation_id"],
+                    "approved_confirmation_id": approved_id,
                     "slug": slug,
                     "landing_id": landing_id,
+                    "layout_id": layout_id,
                     "site_existed": existed,
                     "pages": pages,
                     "navigation": navigation,

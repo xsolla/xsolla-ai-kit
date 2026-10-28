@@ -6,17 +6,31 @@ held before the first write; target 100%).
 
 ## How intake works
 
-After reading the description, every field is in one of three states:
+Read the [onboarding intake](onboarding-intake.md) before asking questions. Combine its
+confirmed answers with the conversation; every field is in one of four states:
 
 | State | Meaning | Action |
 |---|---|---|
-| **Stated** | Explicit in the description | Record. Never re-ask. |
+| **Stated** | Explicit in the description, a publisher answer, confirmed onboarding intake, or the publisher's own store listing | Record its source. Never re-ask. |
 | **Inferred** | Derivable with confidence ("mobile gacha RPG" → `mobile`) | Record with provenance; confirm in the plan, not in a turn. |
 | **Missing** | Neither | Ask. |
+| **Conflicting** | Recorded answer disagrees with the request or discovery, without an explicit correction | Ask only which value is intended. |
 
-Only Missing required fields generate questions, and they go in **one batch**, grouped by
+Only Missing required fields and unresolved conflicts generate questions, in **one batch**, grouped by
 section. Optional fields are never asked; they take defaults and the plan says so.
 Confirming inferences in bulk at the plan is what keeps turns-to-approval low.
+
+**Read the publisher's own store listing first.** A link to the game's App Store, Google
+Play or Steam page answers most of section A: name, platforms, developer, description, icon
+and screenshots. Use only the recorded `store_url` or a link the publisher gave; never
+search for the game by name. With no link, ask for one in the batch. In the same batch, ask
+whether the listing is theirs and its art and text may be used on the site; until they say
+yes, use its facts only. Its in-app prices inform a proposal, never the catalog.
+
+**Respect delegation.** After "decide for me" or "you choose", pick the preset, layout,
+visual treatment and draft copy (from stated facts only) yourself and show them in the
+plan. Prices, catalog contents, dates and anything commercial are never delegated by
+default.
 
 **Guessing rule.** Infer structure freely — page count, block choice, layout. Never invent
 **facts**: prices, currency codes, item names, studio name, game content. A wrong price is
@@ -28,10 +42,10 @@ worse than a question.
 |---|---|---|---|---|
 | `game_name` | ✅ | — | none | Feeds landing name, hero copy, slug. |
 | `game_genre` | ✅ | often | none | Drives block selection and tone. |
-| `studio_name` | ⬜ | ✕ | omit from footer | Never invent. |
-| `art_direction` | ⬜ | often | from genre | "dark sci-fi", "cozy pixel". Feeds theme. |
-| `logo_asset` | ⬜ | ✕ | text wordmark | Local file path. |
-| `key_art` | ⬜ | ✕ | flat colour hero | Absence is expected — the premise is publishers with no assets. |
+| `studio_name` | ⬜ | ✕ | developer on the store listing, else omit from footer | Never invent. |
+| `art_direction` | ⬜ | often | from the listing's art, else from genre | "dark sci-fi", "cozy pixel". Feeds theme. |
+| `logo_asset` | ⬜ | ✕ | listing's app icon once the publisher confirmed its use, else text wordmark | Local file path or the icon. |
+| `key_art` | ⬜ | ✕ | listing's screenshots or art once the publisher confirmed their use, else gradients in the game's palette | Never a flat colour hero. |
 
 ## B. Audience and platform
 
@@ -70,6 +84,7 @@ structure. Collect groups first, items only as their contents.
 | `group_order` | ✅ | ✅ | catalog order | Section order down the page. |
 | `featured_group` | ⬜ | ✅ | first group | Gets the `featured` card layout. |
 | `real_currency` | ⬜ | ✕ | read from catalog | Display only; the catalog owns the value. |
+| `liveops` | ⬜ | ✕ | read from the project | Promo codes, reward chains and offer chains with `is_enabled: true`; each adds its block. |
 
 ### Translating a description into groups
 
@@ -91,8 +106,9 @@ thing.
 
 - **Invent prices, item names or currency codes.** Read them from the catalog. A named
   group that does not exist is a Missing field, not a thing to create.
-- **Create catalog entities**, even when convenient. If the catalog is thin, say so and
-  point at the catalog skill.
+- **Create catalog entities**, even when convenient. If the catalog is thin or has no
+  offers, limits, rewards or promo codes, say so and point at `catalog-design`, which
+  proposes them.
 
 ## E. Pages
 
@@ -126,7 +142,7 @@ Part of completeness. Absent → hard stop before any write.
 
 Before handing the brief to `shop-builder-assembly`, all must hold:
 
-1. Every ✅ field is Stated or Inferred — none Missing.
+1. Every ✅ field is Stated or Inferred — none Missing or Conflicting.
 2. Every inferred field is surfaced with its provenance.
 3. `auth_ok` true, `project_id` non-zero.
 4. The normalized brief passes the shared assembly validator.
