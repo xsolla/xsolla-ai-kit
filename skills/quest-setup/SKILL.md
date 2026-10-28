@@ -93,8 +93,8 @@ examples in [reply-format.md](references/reply-format.md#examples), with no tool
 
 When the request is about the publisher's shop, webshop or site (a change, or a question
 about it), run [Which shop](references/quests-block-flow.md#which-shop) before anything
-else. "List my shops" or "list my sites" is answered by that step alone: one
-`xsolla shopbuilder list-websites --json` call, then the Which shop reply (bold question,
+else. "List my shops" or "list my sites" is answered by that step alone, with no reference
+reads: one `xsolla shopbuilder list-websites --json` call, then the Which shop reply (bold question,
 one bullet per site name, a headless storefront bullet, `Next:`), no build-path questions. Pure quest requests (list my quests, why a quest did not complete, create a quest)
 and capability questions skip it.
 
