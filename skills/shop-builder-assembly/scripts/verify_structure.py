@@ -17,6 +17,7 @@ from block_ops import (
     QUESTS_DEV_NAME,
     QUESTS_MODULE,
     QUESTS_VERSION,
+    card_text_ref,
 )
 from preflight import LAYOUT_SKIPPED, cli_has_command, site_block_module
 from render_plan import (
@@ -214,6 +215,16 @@ def verify_block_operations(
         elif kind == "block_visibility":
             if hidden.get(block_id) is not None and block.get("hidden") is not hidden[block_id]:
                 errors.append(f"{block_id} hidden is {block.get('hidden')!r}, expected {hidden[block_id]!r}")
+        elif kind == "block_card_text":
+            for entry in item["texts"]:
+                _, text_id = card_text_ref(block, entry["quest_id"], entry["field"])
+                for locale in item["locales"]:
+                    got = _localized_text(loc, text_id, locale) if text_id else _MISSING
+                    if got != entry["text"]:
+                        errors.append(
+                            f"{block_id} {entry['ref_key']} editor text ({locale}) reads "
+                            f"back {got!r}, expected {entry['text']!r}"
+                        )
         elif kind == "block_localization":
             for locale, texts in item["translations"].items():
                 for key, text in texts.items():

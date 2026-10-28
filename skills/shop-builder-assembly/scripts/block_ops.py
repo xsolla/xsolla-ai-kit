@@ -48,6 +48,15 @@ OVERRIDE_FIELDS = {
 }
 # Product decision (PRD, 26 Oct 2026): the reward text and reward image come from the
 # quest definition. No op may write or reset them.
+# Card text the Site Builder editor seeds as a localized ref the first time it opens
+# (`use-seed-card-texts.ts` in the block). A ref whose resource exists wins over the
+# plain field, so an update writes the new text into the ref as well (latest change
+# wins, PRD open question 14) and a reset removes the ref, as the block's own "Reset to
+# quest content" does.
+CARD_TEXT_REFS = {"title": "titleRef", "description": "descriptionRef"}
+CARD_TEXT_NOTE = (
+    "replaces the text set for this card in the Site Builder editor (all site locales)"
+)
 READ_ONLY_OVERRIDE_FIELDS = frozenset({"rewardText", "rewardImageUrl"})
 READ_ONLY_REWARD_ERROR = (
     "the reward text and reward image come from the quest and can't be changed on "
@@ -453,6 +462,7 @@ def validate_block_operations(brief: dict, structure: dict | None = None) -> lis
     _check_conflicts(operations, errors)
     if current is not None:
         _check_locales(operations, current, errors)
+        _check_card_refs(operations, current, errors)
         _check_indices(operations, current, errors)
     return errors
 
@@ -476,6 +486,63 @@ def _check_locales(operations: list[dict], current: dict, errors: list[str]) -> 
                 errors.append(
                     f"block_operations[{index}].translations locale {locale} is not "
                     "enabled on the site; enabled: " + (", ".join(languages) or "none")
+                )
+
+
+def card_text_ref(block: dict, quest_id: str, field: str) -> tuple[str | None, str | None]:
+    """Return (ref, localization id) of a card's editor text ref for ``field``.
+
+    ``(None, None)`` when the card has no ref or the ref is dangling (its resource was
+    deleted, so the block ignores it). ``(ref, None)`` when the resource exists but
+    Shop Builder has not assigned it a localization id yet.
+    """
+    values = block.get("values") or {}
+    overrides = (values.get("internalBlockValues") or {}).get("overrides") or {}
+    entry = overrides.get(quest_id) if isinstance(overrides, dict) else None
+    ref = entry.get(CARD_TEXT_REFS[field]) if isinstance(entry, dict) else None
+    if not isinstance(ref, str) or not ref.startswith("L:"):
+        return None, None
+    resources = (values.get("resources") or {}).get("localizedValues") or {}
+    if not isinstance(resources, dict) or ref not in resources:
+        return None, None
+    texts = (resources.get(ref) or {}).get("texts")
+    text_id = texts.get("id") if isinstance(texts, dict) else None
+    if not isinstance(text_id, str) or not text_id.startswith("L:"):
+        return ref, None
+    return ref, text_id
+
+
+def _card_text_updates(operation: dict) -> list[tuple[str, str, str, object]]:
+    """(key, quest id, field, text) for every title/description an update sets."""
+    found = []
+    if operation.get("op") != "update":
+        return found
+    for key, value in (operation.get("values") or {}).items():
+        segments = split_key(key)
+        if segments and segments[0] == "overrides" and segments[2] in CARD_TEXT_REFS:
+            found.append((key, segments[1], segments[2], value))
+    return found
+
+
+def _check_card_refs(operations: list[dict], current: dict, errors: list[str]) -> None:
+    """An editor text ref must have a localization id before an update can write it."""
+    for index, operation in enumerate(operations):
+        updates = _card_text_updates(operation)
+        if not updates:
+            continue
+        block = find_block(current, operation["block_id"])[2]
+        for key, quest_id, field, _ in updates:
+            ref, text_id = card_text_ref(block, quest_id, field)
+            if ref is not None and text_id is None:
+                errors.append(
+                    f"block_operations[{index}].values.{key}: the card's editor text "
+                    "is not saved on the site yet; ask the publisher to open the site in "
+                    "the Site Builder editor once, then back up again"
+                )
+            elif ref is not None and not current.get("languages"):
+                errors.append(
+                    f"block_operations[{index}].values.{key}: the site lists no "
+                    "languages, so the card's editor text cannot be rewritten"
                 )
 
 
@@ -642,6 +709,9 @@ def plan_block_operations(brief: dict, structure: dict) -> list[dict]:
                 items.append(
                     _values_item(index, block_id, block_id, page_id, create_parents, patches)
                 )
+                card_texts = _card_text_item(index, block, page_id, operation, current)
+                if card_texts:
+                    items.append(card_texts)
             if operation.get("translations"):
                 items.append(
                     _localization_item(index, block_id, block_id, operation["translations"])
@@ -659,6 +729,19 @@ def plan_block_operations(brief: dict, structure: dict) -> list[dict]:
                         "present": _path_present(internal, segments),
                     }
                 )
+                # Like the block's "Reset to quest content": drop the editor text ref
+                # too, or it keeps winning over the quest's own text.
+                if len(segments) == 3 and segments[2] in CARD_TEXT_REFS:
+                    ref_segments = (*segments[:2], CARD_TEXT_REFS[segments[2]])
+                    if _path_present(internal, ref_segments):
+                        patches.append(
+                            {
+                                "op": "remove",
+                                "key": ".".join(ref_segments),
+                                "path": [*BLOCK_VALUES_ROOT, *ref_segments],
+                                "present": True,
+                            }
+                        )
             items.append(
                 {
                     "type": "block_reset",
@@ -728,6 +811,39 @@ def _values_item(
         "page_id": page_id,
         "create_parents": create_parents,
         "patches": patches,
+    }
+
+
+def _card_text_item(
+    index: int, block: dict, page_id: object, operation: dict, current: dict
+) -> dict | None:
+    """Plan the editor text refs an update must rewrite so the new text shows."""
+    texts = []
+    for key, quest_id, field, value in _card_text_updates(operation):
+        ref, text_id = card_text_ref(block, quest_id, field)
+        if ref is None:
+            continue
+        texts.append(
+            {
+                "key": key,
+                "ref_key": f"overrides.{quest_id}.{CARD_TEXT_REFS[field]}",
+                "quest_id": quest_id,
+                "field": field,
+                "ref": ref,
+                "text_id": text_id,
+                "text": value,
+            }
+        )
+    if not texts:
+        return None
+    return {
+        "type": "block_card_text",
+        "op_index": index,
+        "block_id": operation["block_id"],
+        "page_id": page_id,
+        "locales": list(current.get("languages") or []),
+        "texts": texts,
+        "note": CARD_TEXT_NOTE,
     }
 
 

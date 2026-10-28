@@ -50,7 +50,8 @@ The plan runs against the backup structure and rejects these before confirmation
 |---|---|---|
 | `add` | `add-block --block federated [--index N]`, then `get-structure` for the new id, one `update-block`, one `update-block` for `devName`, optional `move-block` | Created bare, then retargeted to the Quests module from the pinned version's defaults. Index 0 omits the flag. |
 | `update` values | `update-block` with leaf `replace` patches under `["values","internalBlockValues", ...]` | A missing parent object (`layout`, `overrides.<questId>`) is created with `add` of `{}` first, only when it is absent now: a leaf patch under a missing parent answers 200 and is ignored, and an `add` over an existing object would wipe it. Whole `values` are never patched. |
-| `reset` | `update-block` with leaf `remove` patches | Skips leaves already absent. |
+| `update` card title/description over an editor ref | `update-block` for the plain field, then `update-many-localization` per site locale, `{"<scope>":{"L:<id>":{"translation":"..."}}}` | The `L:` id is `values.resources.localizedValues[<overrides.<questId>.titleRef>].texts.id` (or `descriptionRef`); the scope is found as for the heading. |
+| `reset` | `update-block` with leaf `remove` patches | Skips leaves already absent. A title or description reset also removes its `titleRef` / `descriptionRef`. |
 | `update` heading | `update-many-localization --slug <slug> --data '{"locale":"en-US","perScopeValues":{"<pageId>":{"L:<id>":{"translation":"..."}}}}'` | The `L:` id is `values.resources.localizedValues[<translations.heading>].texts.id`; the scope is the namespace of `get-localization` that holds it. The value key must be `translation`. Any other key writes an empty string. |
 | `move` | `move-block --source <live index> --destination <index>` | The source index is looked up from the block id. |
 | `duplicate` | `duplicate-block --blockid <id> [--index N]` | The copy gets its own `L:` texts. The copy id is found by re-reading the page. |
@@ -77,11 +78,19 @@ The plan runs against the backup structure and rejects these before confirmation
   leaves: preflight rejects any `update` or `reset` that names them with "the reward
   text and reward image come from the quest and can't be changed". To change a reward,
   edit the quest itself (`quest-setup`). Card title, description and image stay editable.
-- Text set by double-clicking a card in the Site Builder editor is stored as a localized
-  ref (`overrides.<questId>.titleRef`, `descriptionRef`) and wins over the plain `title`
-  and `description`. The scripts never write the refs; if a
-  card already has one, a plain-field change reads back fine but does not show. Say so
-  and point the publisher to the editor.
+- The Site Builder editor stores card text as a localized ref
+  (`overrides.<questId>.titleRef`, `descriptionRef`), seeded the first time it opens and
+  changed by double-clicking a card. A ref whose resource exists wins over the plain
+  `title` and `description`. The latest change wins (PRD open question 14): when the
+  backup shows a ref for a card whose title or description an `update` sets, the plan
+  adds a `block_card_text` item and a `warnings` line saying the text replaces the one
+  set in the editor. Apply writes the plain field and the same text into the ref's
+  localization for every site locale; verification reads both back. A dangling ref (no
+  resource) is ignored, as the block ignores it. A ref with no localization id yet fails
+  planning: the publisher opens the site in the editor once, then back up again.
+- A `reset` of `overrides.<questId>.title` or `.description` also removes the matching
+  ref, as the block's "Reset to quest content" does; the editor seeds it again from the
+  quest text next time it opens.
 - Quest ids (in `questIds`, in `overrides.<questId>` keys and in reset paths) must be
   Quest Platform quest UUIDs. Preflight rejects any other string before a plan is made.
 - A leaf patch into a missing parent (for example `layout`) returns 200 and is silently

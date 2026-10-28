@@ -104,6 +104,8 @@ Plan: a bold `Plan: ...` line, up to about five bullets (Site, Change, fields ke
 they are such as Card image, "Not published; you publish in Publisher Account", and
 Confirmation). Pack several operations or removals into one Change bullet, separated by
 semicolons. The reward text and reward image come from the quest and are never a Change.
+When the plan `warnings` say a card text replaces the one set in the editor, add
+"(replaces the text set in the Site Builder editor)" to that Change bullet.
 
 ```
 **Plan: change the title of the "Daily Login" card**

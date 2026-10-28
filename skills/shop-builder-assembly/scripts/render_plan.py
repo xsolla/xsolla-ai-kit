@@ -487,7 +487,13 @@ def build_ops_plan(brief: dict, current_structure: object | None) -> dict:
         "brief_sha256": canonical_hash(brief),
         "implemented_phases": ["block_operations"],
         "unsupported_phases": [],
-        "warnings": [],
+        "warnings": [
+            f"block_operations[{item['op_index']}] "
+            + ", ".join(entry["key"] for entry in item["texts"])
+            + f": {item['note']}"
+            for item in items
+            if item["type"] == "block_card_text"
+        ],
     }
     plan["confirmation_id"] = "sha256:" + canonical_hash(plan)[:12]
     return plan

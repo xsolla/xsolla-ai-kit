@@ -120,6 +120,7 @@ class FakeSite:
         self.noop_patches = 0
         self.fail_update = False
         self.double_add = False
+        self.languages = ["en-US"]
 
     # --- reads -----------------------------------------------------------------
     def structure_value(self) -> dict:
@@ -132,7 +133,7 @@ class FakeSite:
             "_id": LANDING,
             "domain": SLUG,
             "type": "topup",
-            "languages": ["en-US"],
+            "languages": list(self.languages),
             "blocks": list(self.landing_blocks),
             "pages": [{"_id": PAGE, "name": "Main", "path": "/", "blocks": blocks}],
         }
@@ -492,6 +493,106 @@ class BlockOpsApplyTests(BlockOpsApplyBase):
         overrides = self.site.find("q1")["values"]["internalBlockValues"]["overrides"]
         self.assertEqual({QUEST_A: {"title": "T"}}, overrides)
         self.assertEqual(0, self.site.noop_patches)
+        self.assertEqual([], self.verify(plan, refs))
+
+
+TITLE_TEXT_ID = "L:00000000-0000-0000-0000-0000000000a1"
+
+
+class CardTextRefTests(BlockOpsApplyBase):
+    """A ref the editor seeded wins over the plain field, so an update rewrites it too."""
+
+    def seed_title_ref(self, text_id: str | None = TITLE_TEXT_ID) -> None:
+        values = self.site.find("q1")["values"]
+        values["internalBlockValues"]["overrides"] = {
+            QUEST_A: {"title": "Old plain", "titleRef": "L:card-title"}
+        }
+        texts = {"enable": True, "id": text_id} if text_id else {
+            "__type": "localized-value-descriptor",
+            "localizedString": {"en-US": "Seeded"},
+            "enable": True,
+            "tag": "quest-title",
+        }
+        values["resources"]["localizedValues"]["L:card-title"] = {"texts": texts}
+        if text_id:
+            self.site.texts[text_id] = {
+                "description": "quest-title",
+                "translations": {locale: "Editor title" for locale in self.site.languages},
+            }
+
+    UPDATE = [{"op": "update", "block_id": "q1", "values": {f"overrides.{QUEST_A}.title": "New title"}}]
+
+    def localization_writes(self) -> list[dict]:
+        return [
+            json.loads(call[call.index("--data") + 1])
+            for call in self.site.write_calls()
+            if call[1] == "update-many-localization"
+        ]
+
+    def test_update_with_a_ref_writes_the_ref_text_and_the_plain_field(self) -> None:
+        self.site.languages = ["en-US", "de-DE"]
+        self.seed_title_ref()
+        plan = self.plan_for(self.UPDATE)
+        self.assertEqual(
+            ["block_values", "block_card_text"], [item["type"] for item in plan["block_operations"]]
+        )
+        self.assertTrue(any("Site Builder editor" in warning for warning in plan["warnings"]))
+        plan, refs = self.apply(self.UPDATE, plan)
+        overrides = self.site.find("q1")["values"]["internalBlockValues"]["overrides"]
+        self.assertEqual("New title", overrides[QUEST_A]["title"])
+        self.assertEqual("L:card-title", overrides[QUEST_A]["titleRef"])
+        self.assertEqual(
+            [
+                {"locale": locale, "perScopeValues": {PAGE: {TITLE_TEXT_ID: {"translation": "New title"}}}}
+                for locale in ("en-US", "de-DE")
+            ],
+            self.localization_writes(),
+        )
+        self.assertEqual(
+            {"en-US": "New title", "de-DE": "New title"},
+            self.site.texts[TITLE_TEXT_ID]["translations"],
+        )
+        self.assertEqual([], self.verify(plan, refs))
+
+    def test_update_without_a_ref_writes_only_the_plain_field(self) -> None:
+        plan, refs = self.apply(self.UPDATE)
+        self.assertEqual(["block_values"], [item["type"] for item in plan["block_operations"]])
+        self.assertEqual([], plan["warnings"])
+        self.assertEqual([], self.localization_writes())
+        overrides = self.site.find("q1")["values"]["internalBlockValues"]["overrides"]
+        self.assertEqual({QUEST_A: {"title": "New title"}}, overrides)
+        self.assertEqual([], self.verify(plan, refs))
+
+    def test_a_dangling_ref_is_ignored_like_the_block_does(self) -> None:
+        self.seed_title_ref()
+        del self.site.find("q1")["values"]["resources"]["localizedValues"]["L:card-title"]
+        plan = self.plan_for(self.UPDATE)
+        self.assertEqual(["block_values"], [item["type"] for item in plan["block_operations"]])
+
+    def test_verify_fails_when_the_ref_text_did_not_change(self) -> None:
+        self.seed_title_ref()
+        plan, refs = self.apply(self.UPDATE)
+        self.site.texts[TITLE_TEXT_ID]["translations"]["en-US"] = "Editor title"
+        errors = self.verify(plan, refs)
+        self.assertTrue(
+            any("titleRef" in error and "Editor title" in error for error in errors), errors
+        )
+
+    def test_a_ref_without_a_localization_id_is_rejected_before_any_write(self) -> None:
+        self.seed_title_ref(text_id=None)
+        with self.assertRaisesRegex(ValueError, "not saved on the site yet"):
+            self.plan_for(self.UPDATE)
+        self.assertEqual([], self.site.write_calls())
+
+    def test_reset_title_also_removes_the_ref(self) -> None:
+        self.seed_title_ref()
+        self.site.find("q1")["values"]["internalBlockValues"]["overrides"][QUEST_A][
+            "imageUrl"
+        ] = "https://example.com/a.png"
+        reset = [{"op": "reset", "block_id": "q1", "paths": [f"overrides.{QUEST_A}.title"]}]
+        plan, refs = self.apply(reset)
+        overrides = self.site.find("q1")["values"]["internalBlockValues"]["overrides"]
+        self.assertEqual({QUEST_A: {"imageUrl": "https://example.com/a.png"}}, overrides)
         self.assertEqual([], self.verify(plan, refs))
 
 

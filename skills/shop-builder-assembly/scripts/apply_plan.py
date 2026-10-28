@@ -35,6 +35,7 @@ from block_ops import (
     QUESTS_DEV_NAME,
     QUESTS_MODULE,
     QUESTS_VERSION,
+    card_text_ref,
     find_block,
     has_object,
     has_leaf,
@@ -516,6 +517,7 @@ OPS_APPLY_SUPPORTED = {
     "block_duplicate",
     "block_visibility",
     "block_localization",
+    "block_card_text",
 }
 CDN_TIMEOUT_SECONDS = 20
 
@@ -849,6 +851,43 @@ def apply_localization(item: dict, ctx: ApplyContext) -> dict:
     return {"block_id": block_id}
 
 
+def apply_card_text(item: dict, ctx: ApplyContext) -> dict:
+    """Write a card's new title/description into the editor text ref behind it.
+
+    The ref (``overrides.<questId>.titleRef`` / ``descriptionRef``) wins over the plain
+    field, so the same text goes to every site locale through the same
+    `update-many-localization` shape the heading uses.
+    """
+    block_id = item["block_id"]
+    current = structure(ctx.slug)
+    found = find_block(current, block_id)
+    if found is None:
+        raise RuntimeError(f"block {block_id} is no longer on the site")
+    page, _, block = found
+    languages = current.get("languages") or []
+    localization = run_json("shopbuilder", "get-localization", "--slug", ctx.slug)
+    per_scope: dict[str, dict] = {}
+    for entry in item["texts"]:
+        _, text_id = card_text_ref(block, entry["quest_id"], entry["field"])
+        if text_id is None:
+            raise RuntimeError(f"{block_id} {entry['ref_key']} has no localization id")
+        scope = localization_scope(localization, text_id, page["_id"])
+        per_scope.setdefault(scope, {})[text_id] = {"translation": entry["text"]}
+    for locale in item["locales"]:
+        if locale not in languages:
+            raise RuntimeError(f"locale {locale} is not enabled on {ctx.slug}")
+        payload = {"locale": locale, "perScopeValues": per_scope}
+        run_json(
+            "shopbuilder",
+            "update-many-localization",
+            "--slug",
+            ctx.slug,
+            "--data",
+            json.dumps(payload, sort_keys=True, separators=(",", ":")),
+        )
+    return {"block_id": block_id}
+
+
 def apply_block_operation(item: dict, ctx: ApplyContext) -> dict:
     """Run one confirmed plan item against the CLI and report what it touched."""
     kind = item["type"]
@@ -868,6 +907,8 @@ def apply_block_operation(item: dict, ctx: ApplyContext) -> dict:
         done = {"block_id": item["block_id"]}
     elif kind == "block_localization":
         done = apply_localization(item, ctx)
+    elif kind == "block_card_text":
+        done = apply_card_text(item, ctx)
     else:
         raise RuntimeError(f"unknown block operation {kind}")
     return {"type": kind, "op_index": item["op_index"], **done}
