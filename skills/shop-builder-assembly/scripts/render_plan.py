@@ -11,6 +11,8 @@ import sys
 from collections.abc import Callable
 from pathlib import Path
 
+sys.dont_write_bytecode = True  # keep the installed skill folder clean
+
 from block_ops import block_fingerprints, plan_block_operations
 from validate_shop_brief import load_brief, validate
 

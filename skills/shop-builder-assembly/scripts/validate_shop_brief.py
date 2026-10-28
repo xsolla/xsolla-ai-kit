@@ -9,6 +9,8 @@ import re
 import sys
 from pathlib import Path
 
+sys.dont_write_bytecode = True  # keep the installed skill folder clean
+
 from block_ops import OPS_BLOCK_MODULES, validate_block_operations
 
 PRESETS = {"auto", "mobile-single-page", "pc-multi-page", "live-service-events"}

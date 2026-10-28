@@ -16,6 +16,8 @@ import urllib.request
 import uuid
 from pathlib import Path
 
+sys.dont_write_bytecode = True  # keep the installed skill folder clean
+
 import cli_environment
 from preflight import LAYOUT_SKIPPED, cli_has_command
 from render_plan import (

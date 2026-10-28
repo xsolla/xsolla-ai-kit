@@ -13,6 +13,8 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
+sys.dont_write_bytecode = True  # keep the installed skill folder clean
+
 import cli_environment
 from validate_shop_brief import load_brief, validate
 

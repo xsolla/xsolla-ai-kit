@@ -13,6 +13,8 @@ import sys
 from collections.abc import Callable
 from pathlib import Path
 
+sys.dont_write_bytecode = True  # keep the installed skill folder clean
+
 from block_ops import (
     QUESTS_DEV_NAME,
     QUESTS_MODULE,
