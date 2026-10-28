@@ -8,7 +8,8 @@ credential in the working folder belongs to the site's project, the quest names.
 Usage:
     python3 quests_block_summary.py --slug <slug> [--environment <name>]
 
-Output: one JSON object on stdout. Exit codes: 0 read ok, 1 a site read failed.
+Output: one JSON object on stdout. The ids (merchant, project, block, quest) are for a
+block_operations brief only, never for a reply. Exit codes: 0 read ok, 1 a site read failed.
 Python 3.9+, standard library only.
 """
 from __future__ import annotations
@@ -111,6 +112,7 @@ def summarize(structure: Dict[str, Any], localization: Dict[str, Any],
                 quest = (quests or {}).get(quest_id)
                 card = {
                     "position": position,
+                    "quest_id": quest_id,
                     "quest_name": quest.get("name") if quest else None,
                     "card_title": text(override.get("titleRef")) if override.get("titleRef") else None,
                     "overridden": sorted(k[:-3] if k.endswith("Ref") else k for k in override),
@@ -122,6 +124,7 @@ def summarize(structure: Dict[str, Any], localization: Dict[str, Any],
             layout = ibv.get("layout") or {}
             heading_ref = (ibv.get("translations") or {}).get("heading")
             blocks_out.append({
+                "block_id": block.get("_id"),
                 "page": page.get("name"),
                 "position": index,
                 "blocks_on_page": len(blocks),
@@ -152,6 +155,8 @@ def main(argv: Optional[List[str]] = None, runner: Runner = run_cli,
     result = {
         "ok": True,
         "site": args.slug,
+        "merchant_id": str(site.get("merchantId")),
+        "project_id": str(site.get("projectId")),
         "quest_names": "resolved" if quests is not None else "unavailable",
         "blocks": summarize(site, localization.get("data") or {} if localization.get("ok") else {}, quests),
     }

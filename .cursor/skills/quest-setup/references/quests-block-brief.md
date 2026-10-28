@@ -119,6 +119,28 @@ Move, duplicate, hide, show:
 {"op": "show", "block_id": "<block-id>"}
 ```
 
+## Gate commands
+
+Run these exactly, each from the publisher's folder (never `cd` into a skill folder: the
+Quest Platform credential is read from the working folder). No `--help`, no reading the
+gate's scripts or docs. `G` is `<skill base dir>/../shop-builder-assembly/scripts`; `A` is
+the approval list, `$HOME/.config/xsolla/approved-test-projects.json` (pass it, never read it).
+
+1. Ids: run the block summary from [Describe the block](quests-block-flow.md#describe-the-block).
+   It gives `merchant_id`, `project_id`, each block's `block_id` and each card's
+   `quest_id`, in block order. Never show these ids to the publisher.
+2. Run `mktemp -d` once and reuse the printed path `W`. Write the brief to `W/brief.json`.
+3. `python3 "G/preflight.py" "W/brief.json" --approved-test-projects "A"`
+4. `python3 "G/backup_shop.py" --brief "W/brief.json" --slug <slug> --output-dir "W/backup"`
+5. `python3 "G/render_plan.py" "W/brief.json" --structure "W/backup/structure.json"`.
+   Show its `confirmation_id` in the one plan and end the turn.
+6. After "yes": `python3 "G/apply_plan.py" "W/brief.json" --confirmation-id <id> --backup-dir "W/backup" --approved-test-projects "A"`.
+   It verifies the result itself and prints the `editor_url`.
+
+If apply says the target structure changed after backup, someone edited the site
+meanwhile and nothing was written: run steps 4 and 5 again with a new backup folder, say
+the site changed in the meantime, and show the new plan for a new "yes".
+
 ### Rules for every operation
 
 - Keys not in the settings table are rejected by the gate. Never invent one. Never set

@@ -18,6 +18,7 @@ PAGE_ID = "page-1"
 
 def structure(hidden: bool = False) -> dict:
     quests_block = {
+        "_id": "block-q",
         "hidden": hidden,
         "module": "federated",
         "values": {
@@ -67,6 +68,11 @@ class SummarizeTest(unittest.TestCase):
         self.assertFalse(block["quests"][0]["public"])
         self.assertFalse(block["quests"][2]["found"])
 
+    def test_ids_for_the_brief(self) -> None:
+        [block] = qbs.summarize(structure(), LOCALIZATION, QUESTS)
+        self.assertEqual(block["block_id"], "block-q")
+        self.assertEqual([q["quest_id"] for q in block["quests"]], ["q-b", "q-a", "q-x"])
+
     def test_hidden_and_no_quest_access(self) -> None:
         [block] = qbs.summarize(structure(hidden=True), {}, None)
         self.assertTrue(block["hidden"])
@@ -101,6 +107,7 @@ class MainTest(unittest.TestCase):
         self.assertTrue(all(c[-2:] == ["--environment", "test"] for c in calls))
         self.assertEqual(seen, [("1", "2")])
         self.assertEqual(result["quest_names"], "resolved")
+        self.assertEqual((result["merchant_id"], result["project_id"]), ("1", "2"))
         self.assertEqual(result["blocks"][0]["heading"], "Daily quests")
 
     def test_structure_failure(self) -> None:

@@ -159,7 +159,7 @@ or to the page's current block count when there is no footer. Read both from the
 backup. Never omit `index`, because an `add` without it puts the block first.
 
 Do not ask for IDs, hosts or slugs you can read from the CLI. Existing block ids come
-from the structure in the gate's backup, never from a guess.
+from the block summary or the gate's backup, never from a guess.
 
 ## Quest public view
 
@@ -212,11 +212,13 @@ into the title or description as a workaround.
    The brief never sets the reward text or image: they come from the quest. If the
    publisher asks to change them, say they can't be changed on the block and offer to
    change the quest's reward through the edit flow instead.
-   For an existing block, take its id from the structure in the gate's backup. Check
+   For an existing block, take its `block_id` and the `quest_id`s from the block
+   summary (see [Gate commands](quests-block-brief.md#gate-commands)). Check
    every key against the [settings table](quests-block-brief.md#block-settings) and
    the brief against the [rules](quests-block-brief.md#rules-for-every-operation).
-4. **Hand it to the gate.** Run the preflight, back up the target site, and render the
-   plan from that backup, all before showing anything. There is no draft plan. The plan
+4. **Hand it to the gate.** With the exact [Gate commands](quests-block-brief.md#gate-commands),
+   run the preflight, back up the target site, and render the plan from that backup,
+   all before showing anything. There is no draft plan. The plan
    must show exactly the requested operations with their leaf paths and values, and any
    parent objects it creates. Show the one plan in the Plan shape from
    [reply-format.md](reply-format.md): a bold `Plan:` line, bullets for Site, Change
@@ -225,7 +227,7 @@ into the title or description as a workaround.
    `Confirmation: <confirmation_id>`, then `Next: reply "yes" to apply this exact plan.`
    End the turn there; apply nothing until the publisher confirms. One yes applies it.
 5. **Apply.** After confirmation, apply exactly the confirmed plan with the gate's
-   apply script, which reads the result back. On a partial failure, do not rerun it;
+   apply command, which reads the result back. On a partial failure, do not rerun it;
    take a fresh backup and plan first.
 6. **Read back.** Compare the gate's verification to the confirmed plan: settings and
    heading of each touched block, block order of each touched page, every other block
