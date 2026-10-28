@@ -44,6 +44,8 @@ to copy.
 - Line 1: a bold `Plan: ...` line.
 - Then up to about five bullets, for example Site, Change, defaults such as Card image,
   "Not published; you publish in Publisher Account", and Confirmation.
+- Several changes share one Change bullet, a few words each, separated by semicolons
+  (for example `Change: show 3 cards (was 4); heading → "Daily quests"`).
 - When the plan `warnings` say a card text replaces the one set in the editor, add
   "(replaces the text set in the Site Builder editor)" to that Change bullet.
 - Add the gate preflight's `plan_notes` line as it is, for example "Using the CLI test

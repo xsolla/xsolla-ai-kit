@@ -7,6 +7,11 @@ credential in the working folder belongs to the site's project, the quest names.
 
 Usage:
     python3 quests_block_summary.py --slug <slug> [--environment <name>]
+    python3 quests_block_summary.py [--environment <name>]
+
+Without --slug it lists the sites and reads each structure. `sites` gives every site with
+its count of visible Quests blocks; when exactly one site has a visible Quests block, `site`
+is that site and the output also carries its full summary (else `site` is null).
 
 Output: one JSON object on stdout. The ids (merchant, project, block, quest) are for a
 block_operations brief only, never for a reply. Exit codes: 0 read ok, 1 a site read failed.
@@ -137,29 +142,63 @@ def summarize(structure: Dict[str, Any], localization: Dict[str, Any],
     return blocks_out
 
 
-def main(argv: Optional[List[str]] = None, runner: Runner = run_cli,
-         fetcher: QuestFetcher = fetch_quests) -> int:
-    parser = argparse.ArgumentParser(prog="quests_block_summary.py")
-    parser.add_argument("--slug", required=True)
-    parser.add_argument("--environment", default=None)
-    args = parser.parse_args(argv)
-    env = ["--environment", args.environment] if args.environment else []
-
-    structure = runner(["get-structure", "--slug", args.slug, "--json", *env])
-    if not structure.get("ok"):
-        print(json.dumps({"ok": False, "error": "structure_read_failed"}))
-        return 1
-    localization = runner(["get-localization", "--slug", args.slug, "--json", *env])
+def site_summary(runner: Runner, fetcher: QuestFetcher, slug: str, env: List[str],
+                 structure: Dict[str, Any]) -> Dict[str, Any]:
+    localization = runner(["get-localization", "--slug", slug, "--json", *env])
     site = structure.get("data") or {}
     quests = fetcher(str(site.get("merchantId")), str(site.get("projectId")))
-    result = {
+    return {
         "ok": True,
-        "site": args.slug,
+        "site": slug,
         "merchant_id": str(site.get("merchantId")),
         "project_id": str(site.get("projectId")),
         "quest_names": "resolved" if quests is not None else "unavailable",
         "blocks": summarize(site, localization.get("data") or {} if localization.get("ok") else {}, quests),
     }
+
+
+def find_site(runner: Runner, fetcher: QuestFetcher, env: List[str]) -> Dict[str, Any]:
+    """Pick the one site with a visible Quests block, reading every site's structure."""
+    listing = runner(["list-websites", "--json", *env])
+    if not listing.get("ok"):
+        return {"ok": False, "error": "site_list_failed"}
+    sites, structures = [], {}
+    for entry in listing.get("data") or []:
+        slug = entry.get("domain")
+        if not slug:
+            continue
+        structure = runner(["get-structure", "--slug", slug, "--json", *env])
+        visible = None
+        if structure.get("ok"):
+            blocks = summarize(structure.get("data") or {}, {}, None)
+            visible = sum(1 for block in blocks if not block["hidden"])
+            structures[slug] = structure
+        sites.append({"site": slug, "visible_quests_blocks": visible})
+    with_block = [s["site"] for s in sites if s["visible_quests_blocks"]]
+    if len(with_block) != 1:
+        return {"ok": True, "site": None, "sites": sites}
+    result = site_summary(runner, fetcher, with_block[0], env, structures[with_block[0]])
+    result["sites"] = sites
+    return result
+
+
+def main(argv: Optional[List[str]] = None, runner: Runner = run_cli,
+         fetcher: QuestFetcher = fetch_quests) -> int:
+    parser = argparse.ArgumentParser(prog="quests_block_summary.py")
+    parser.add_argument("--slug", default=None)
+    parser.add_argument("--environment", default=None)
+    args = parser.parse_args(argv)
+    env = ["--environment", args.environment] if args.environment else []
+
+    if args.slug is None:
+        result = find_site(runner, fetcher, env)
+        print(json.dumps(result, ensure_ascii=False, indent=1))
+        return 0 if result["ok"] else 1
+    structure = runner(["get-structure", "--slug", args.slug, "--json", *env])
+    if not structure.get("ok"):
+        print(json.dumps({"ok": False, "error": "structure_read_failed"}))
+        return 1
+    result = site_summary(runner, fetcher, args.slug, env, structure)
     print(json.dumps(result, ensure_ascii=False, indent=1))
     return 0
 

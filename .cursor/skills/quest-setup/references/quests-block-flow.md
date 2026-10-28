@@ -71,6 +71,12 @@ publisher has not said whether the shop is a Shop Builder site or a headless
 storefront. Pure quest requests (list my quests, why a quest did not complete, create
 a quest) never trigger it.
 
+0. A change to the Quests block with no site named ("show only 3 cards", "change the
+   quests heading"): run `python3 "<skill base dir>/scripts/quests_block_summary.py"`
+   (no `--slug`, read-only). When its `site` is set, that is the only site with a
+   visible Quests block: use it without asking, name it in the plan's Site bullet, and
+   use the same output as the block summary (no second read). When `site` is null, go
+   on with step 2 using the `sites` names; the site list is already read.
 1. Always run the read-only list, `xsolla shopbuilder list-websites --json`, before
    replying. Never say the list is unavailable without running it.
 2. If the command succeeds, reply in the Which shop shape: the bold question, one bullet

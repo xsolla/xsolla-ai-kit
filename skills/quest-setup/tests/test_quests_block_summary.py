@@ -125,5 +125,63 @@ class MainTest(unittest.TestCase):
         self.assertIsNone(result["blocks"][0]["heading"])
 
 
+class FindSiteTest(unittest.TestCase):
+    """No --slug: pick the one site with a visible Quests block."""
+
+    def run_find(self, structures: dict, listing_ok: bool = True) -> tuple:
+        calls = []
+
+        def runner(args):
+            calls.append(args)
+            if args[0] == "list-websites":
+                if not listing_ok:
+                    return {"ok": False}
+                return {"ok": True, "data": [{"domain": slug} for slug in structures]}
+            if args[0] == "get-structure":
+                found = structures[args[2]]
+                return {"ok": True, "data": found} if found is not None else {"ok": False}
+            return {"ok": True, "data": LOCALIZATION}
+
+        out = io.StringIO()
+        with redirect_stdout(out):
+            code = qbs.main([], runner=runner, fetcher=lambda m, p: QUESTS)
+        return code, json.loads(out.getvalue()), calls
+
+    def test_one_site_with_a_visible_block_is_picked(self) -> None:
+        no_block = {"pages": [{"_id": "p", "name": "Main", "blocks": [{"values": {"host": "other"}}]}]}
+        code, result, calls = self.run_find({
+            "other-site": no_block,
+            "my-test-site": structure(),
+            "spare-site": structure(hidden=True),
+        })
+        self.assertEqual(code, 0)
+        self.assertEqual(result["site"], "my-test-site")
+        self.assertEqual(result["blocks"][0]["heading"], "Daily quests")
+        self.assertEqual(
+            [s["visible_quests_blocks"] for s in result["sites"]], [0, 1, 0]
+        )
+        # Read-only: one localization read, for the picked site only.
+        self.assertEqual(
+            {c[0] for c in calls}, {"list-websites", "get-structure", "get-localization"}
+        )
+        self.assertEqual([c[2] for c in calls if c[0] == "get-localization"], ["my-test-site"])
+
+    def test_two_sites_with_a_block_pick_none(self) -> None:
+        code, result, _ = self.run_find({"site-a": structure(), "site-b": structure()})
+        self.assertEqual(code, 0)
+        self.assertIsNone(result["site"])
+        self.assertNotIn("blocks", result)
+
+    def test_unreadable_site_is_not_counted(self) -> None:
+        code, result, _ = self.run_find({"site-a": None, "my-test-site": structure()})
+        self.assertEqual(result["site"], "my-test-site")
+        self.assertIsNone(result["sites"][0]["visible_quests_blocks"])
+
+    def test_list_failure(self) -> None:
+        code, result, _ = self.run_find({}, listing_ok=False)
+        self.assertEqual(code, 1)
+        self.assertEqual(result, {"ok": False, "error": "site_list_failed"})
+
+
 if __name__ == "__main__":
     unittest.main()
