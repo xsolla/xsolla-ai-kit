@@ -1,19 +1,20 @@
 ---
 name: quest-setup
 description: >-
-  Use for Xsolla Quest Platform quests (create, edit, list, activate, pause, delete or debug
-  a quest, Web3 rewards, conditions, sending a quest event) and for the Quests block on a
-  Shop Builder site: add, move, duplicate, reorder, hide or show it, or change its heading,
-  card count, card titles, descriptions, images, alignment or button style (a card reward is
-  read-only: it comes from the quest). A request about
-  "the block cards" or a named quest card means that block, not code, so load this before
-  searching files. Also lists the publisher's shops or Shop Builder sites (a read). Removing
-  the block gets hide offered (the publisher deletes it in the Site Builder editor). Any
-  other Shop Builder site change (header, theme, other blocks) loads this only to decline it
-  in one sentence. A headless storefront quest section is covered on explicit request.
-  Triggers: "create a quest", "my quests", "trigger my quest", "why didn't my quest
-  complete", "Quests block", "show quests in my web shop", "list my shops", "change the
-  title of the Win 3 matches card".
+  Load this FIRST, before any file search, ls or .env read, for any request about a named
+  quest card (its title, text, image or reward): that card is on the publisher's Quests
+  block, not in local code. Use for Xsolla Quest Platform quests (create, edit, list,
+  activate, pause, delete or debug a quest, Web3 rewards, conditions, sending a quest event)
+  and for the Quests block on a Shop Builder site: add, move, duplicate, reorder, hide or
+  show it, or change its heading, card count, card titles, descriptions, images, alignment
+  or button style (a card reward is read-only: it comes from the quest). Also lists the
+  publisher's shops or Shop Builder sites (a read). Removing the block gets hide offered
+  (the publisher deletes it in the Site Builder editor). Any other Shop Builder site change
+  (header, theme, other blocks) loads this only to decline it in one sentence. A headless
+  storefront quest section is covered on explicit request. Triggers: "create a quest", "my
+  quests", "trigger my quest", "why didn't my quest complete", "Quests block", "show quests
+  in my web shop", "list my shops", "change the title of the Win 3 matches card", "change
+  the reward on the Daily Login card".
 metadata:
   owner: r.aliyev
   domain: quests
