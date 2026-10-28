@@ -5,9 +5,9 @@ from a normalized JSON shop brief.
 
 ## Prerequisites
 
-- Xsolla CLI 1.9.4 or newer. A site without a common layout, including every new
-  site, also needs a CLI with `shopbuilder create-block` and the Shop Builder API
-  support for it; preflight stops before any write when the command is missing
+- Xsolla CLI 1.9.4 or newer. Adding the common layout to a site without one, including
+  every new site, needs a CLI with `shopbuilder create-block` and the Shop Builder API
+  support for it; without the command, assembly skips the layout step and says so
 - `xsolla auth login` completed for a Publisher account
 - An acknowledged dedicated test project with CLI sandbox mode disabled
 - Existing catalog group IDs for any `newStore` sections
@@ -92,8 +92,10 @@ catalog. Federated wrappers use their effective `values.blockId` module.
 - The CLI has no page-deletion command. Application stops before writes when an
   existing target contains pages outside the confirmed plan.
 - Bare `create-website` still leaves a blank site without a layout; this skill adds
-  one after pages. Editor/Publish/private-preview checks require the API change to
-  be deployed and a fresh test-project run; neither is implied by unit tests.
+  one after pages when the CLI has `create-block`. A site without the common layout
+  won't open in the Editor, Publish or private preview. Editor/Publish/private-preview
+  checks require the API change to be deployed and a fresh test-project run; neither
+  is implied by unit tests.
 - The official block inventory is fully documented, and every observed official
   module has a UI-created exported contract. Subscriptions is documented but absent
   from the observed palette/export, while five palette entries are absent from the

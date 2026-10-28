@@ -9,7 +9,7 @@ project overrides after preflight.
 | Discover | `xsolla config list --json` | Local profile | Merchant and project match; sandbox mode is off |
 | Discover | `xsolla auth list-account --json` | Credential store | Active Publisher login state |
 | Safety | `preflight.py --approved-test-projects <file>` | Separate local approval record | Exact test-project identity is allowlisted |
-| Safety | `shopbuilder create-block --help`, only when the site has no common layout | Installed CLI | The usage line names `create-block`; otherwise stop before any write |
+| Safety | `shopbuilder create-block --help`, only when the site has no common layout | Installed CLI | The usage line names `create-block`; otherwise the layout step is skipped |
 | Discover | `xsolla shopbuilder list-websites --json` | Project context | Slug, landing ID, type |
 | Backup | `get-landing`, `get-structure`, `get-localization`, `list-assets`, `list-versions` | Existing slug | Restorable configuration evidence |
 | Bootstrap | `create-website --type topup` | Name, slug | Empty landing with `type:null` |

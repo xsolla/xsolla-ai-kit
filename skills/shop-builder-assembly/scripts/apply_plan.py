@@ -14,6 +14,7 @@ import time
 import uuid
 from pathlib import Path
 
+from preflight import LAYOUT_SKIPPED, cli_has_command
 from render_plan import (
     COMMON_LAYOUT,
     CUSTOM_CODE_WARNING,
@@ -212,13 +213,20 @@ def site_block_module(slug: str, block_id: str) -> object:
     return block.get("module") if isinstance(block, dict) else None
 
 
-def ensure_common_layout(slug: str) -> str:
-    """Attach the site layout after pages so template headers/footers survive."""
+def ensure_common_layout(slug: str) -> str | None:
+    """Attach the site layout after pages so template headers/footers survive.
+
+    Returns None when the site has no layout and the CLI has no create-block: the
+    step is skipped and the site is built without it.
+    """
     layout_id = common_layout_id(
         structure(slug), lambda block_id: site_block_module(slug, block_id)
     )
     if layout_id is not None:
         return layout_id
+    if not cli_has_command("shopbuilder", "create-block"):
+        print(LAYOUT_SKIPPED, file=sys.stderr)
+        return None
     created = data(
         run_json("shopbuilder", "create-block", "--slug", slug, "--block", COMMON_LAYOUT)
     )

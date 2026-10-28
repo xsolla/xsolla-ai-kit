@@ -13,7 +13,7 @@ import sys
 from collections.abc import Callable
 from pathlib import Path
 
-from preflight import site_block_module
+from preflight import LAYOUT_SKIPPED, cli_has_command, site_block_module
 from render_plan import common_layout_id, effective_module, page_path, structure_data
 
 
@@ -35,9 +35,15 @@ def same_identifier(actual: object, expected: object) -> bool:
 
 
 def verify(
-    plan: dict, structure: object, module_of: Callable[[str], object] | None = None
+    plan: dict,
+    structure: object,
+    module_of: Callable[[str], object] | None = None,
+    layout_required: bool = True,
 ) -> dict:
+    """``layout_required`` is False when the CLI has no create-block, so assembly
+    skipped the layout step."""
     errors: list[str] = []
+    warnings: list[str] = []
     current = structure_data(structure)
     target = plan.get("target")
     pages = plan.get("pages")
@@ -58,7 +64,10 @@ def verify(
     if plan.get("site_layout"):
         try:
             if common_layout_id(current, module_of) is None:
-                errors.append("site-level common layout is missing")
+                if layout_required:
+                    errors.append("site-level common layout is missing")
+                else:
+                    warnings.append(LAYOUT_SKIPPED)
         except ValueError as exc:
             errors.append(f"site-level common layout is inconsistent: {exc}")
 
@@ -201,6 +210,7 @@ def verify(
         "pages": page_results,
         "requested_locales": requested_locales,
         "errors": errors,
+        "warnings": warnings,
         "published": current.get("published") not in (None, False),
     }
 
@@ -217,6 +227,7 @@ def main() -> int:
             plan,
             load_object(args.structure, "structure"),
             lambda block_id: site_block_module(slug, block_id),
+            layout_required=cli_has_command("shopbuilder", "create-block"),
         )
     except (RuntimeError, ValueError) as exc:
         print(f"Structure verification failed: {exc}", file=sys.stderr)

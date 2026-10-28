@@ -184,6 +184,7 @@ class ApplyPlanTests(unittest.TestCase):
         }
         with (
             mock.patch.object(apply_plan, "structure", side_effect=[before, after]),
+            mock.patch.object(apply_plan, "cli_has_command", return_value=True),
             mock.patch.object(
                 apply_plan,
                 "run_json",
@@ -193,6 +194,26 @@ class ApplyPlanTests(unittest.TestCase):
             self.assertEqual("layout-id", apply_plan.ensure_common_layout("shop"))
         run_json.assert_called_once_with(
             "shopbuilder", "create-block", "--slug", "shop", "--block", "common-layout"
+        )
+
+    def test_common_layout_step_is_skipped_without_create_block(self) -> None:
+        stderr = io.StringIO()
+        with (
+            mock.patch.object(
+                apply_plan,
+                "structure",
+                return_value={"pages": [], "layouts": [], "blocks": []},
+            ),
+            mock.patch.object(apply_plan, "cli_has_command", return_value=False),
+            mock.patch.object(apply_plan, "run_json") as run_json,
+            contextlib.redirect_stderr(stderr),
+        ):
+            self.assertIsNone(apply_plan.ensure_common_layout("shop"))
+        run_json.assert_not_called()
+        self.assertIn(
+            "the common layout needs a newer Xsolla CLI; the site is built without it. A site "
+            "without the common layout won't open in the Editor, Publish or private preview",
+            stderr.getvalue(),
         )
 
     def test_common_layout_reuses_existing_layout(self) -> None:
@@ -250,6 +271,7 @@ class ApplyPlanTests(unittest.TestCase):
 
         with (
             mock.patch.object(apply_plan, "structure", side_effect=[before, after]),
+            mock.patch.object(apply_plan, "cli_has_command", return_value=True),
             mock.patch.object(apply_plan, "run_json", side_effect=cli),
         ):
             self.assertEqual("common-id", apply_plan.ensure_common_layout("shop"))
@@ -265,6 +287,7 @@ class ApplyPlanTests(unittest.TestCase):
                     {"pages": [], "layouts": [], "blocks": []},
                 ],
             ),
+            mock.patch.object(apply_plan, "cli_has_command", return_value=True),
             mock.patch.object(
                 apply_plan, "run_json", return_value={"block": {"_id": "missing"}}
             ),
@@ -1140,6 +1163,17 @@ class ApplyPlanTests(unittest.TestCase):
         }
         modules = {"side-id": "side-by-side-layout", "layout-id": "common-layout"}
         self.assertFalse(verify_structure.verify(plan, structure, modules.get)["ok"])
+        skipped = verify_structure.verify(
+            plan, structure, modules.get, layout_required=False
+        )
+        self.assertTrue(skipped["ok"], skipped["errors"])
+        self.assertEqual(
+            [
+                "the common layout needs a newer Xsolla CLI; the site is built without it. A site "
+                "without the common layout won't open in the Editor, Publish or private preview"
+            ],
+            skipped["warnings"],
+        )
         structure["layouts"] = ["side-id"]
         structure["blocks"] = ["side-id"]
         self.assertEqual(
@@ -1307,6 +1341,7 @@ class ObjectPagePathTests(unittest.TestCase):
                 mock.patch.dict(apply_plan.RUN_AUTH, {"logged_in": False, "context": None}),
                 mock.patch.object(sys, "argv", argv),
                 mock.patch.object(apply_plan, "run_preflight"),
+                mock.patch.object(apply_plan, "cli_has_command", return_value=True),
                 mock.patch.object(apply_plan, "run_json", side_effect=cli),
                 contextlib.redirect_stdout(stdout),
                 contextlib.redirect_stderr(stderr),
@@ -1476,6 +1511,7 @@ class CustomCodeReportTests(unittest.TestCase):
                 mock.patch.dict(apply_plan.RUN_AUTH, {"logged_in": False, "context": None}),
                 mock.patch.object(sys, "argv", argv),
                 mock.patch.object(apply_plan, "run_preflight"),
+                mock.patch.object(apply_plan, "cli_has_command", return_value=True),
                 mock.patch.object(apply_plan, "run_json", side_effect=cli),
                 mock.patch.object(apply_plan, "verified_backup", return_value=True),
                 mock.patch.object(apply_plan, "backup_structure", return_value=saved),
@@ -1656,16 +1692,16 @@ class CommonLayoutPreflightTests(unittest.TestCase):
             code = preflight.main()
         return code, stdout.getvalue(), stderr.getvalue(), has_command
 
-    def test_new_site_on_cli_without_create_block_stops_before_any_write(self) -> None:
+    def test_new_site_on_cli_without_create_block_skips_the_layout_step(self) -> None:
         cli = FakePreflightCli()
-        code, _, stderr, has_command = self.run_preflight(cli, has_create_block=False)
-        self.assertEqual(1, code)
-        self.assertIn("this step needs a newer Xsolla CLI", stderr)
-        self.assertIn("nothing was written", stderr)
-        self.assertEqual(
-            [("config", "list"), ("auth", "list-account"), ("shopbuilder", "list-websites")],
-            cli.calls,
+        code, stdout, stderr, has_command = self.run_preflight(cli, has_create_block=False)
+        self.assertEqual(0, code, stderr)
+        self.assertIn(
+            "the common layout needs a newer Xsolla CLI; the site is built without it. A site "
+            "without the common layout won't open in the Editor, Publish or private preview",
+            stderr,
         )
+        self.assertEqual("skip", json.loads(stdout)["target"]["layout_step"])
         has_command.assert_called_once_with("shopbuilder", "create-block")
 
     def test_new_site_on_cli_with_create_block_passes(self) -> None:
@@ -1673,14 +1709,16 @@ class CommonLayoutPreflightTests(unittest.TestCase):
             FakePreflightCli(), has_create_block=True
         )
         self.assertEqual(0, code, stderr)
-        self.assertIsNone(json.loads(stdout)["target"]["common_layout_id"])
+        target = json.loads(stdout)["target"]
+        self.assertIsNone(target["common_layout_id"])
+        self.assertEqual("create", target["layout_step"])
 
-    def test_existing_site_without_common_layout_needs_create_block(self) -> None:
+    def test_existing_site_without_common_layout_skips_without_create_block(self) -> None:
         site = {"pages": [], "layouts": ["side-id"], "blocks": ["side-id"]}
         cli = FakePreflightCli(site, {"side-id": "side-by-side-layout"})
-        code, _, stderr, _ = self.run_preflight(cli, has_create_block=False)
-        self.assertEqual(1, code)
-        self.assertIn("this step needs a newer Xsolla CLI", stderr)
+        code, stdout, stderr, _ = self.run_preflight(cli, has_create_block=False)
+        self.assertEqual(0, code, stderr)
+        self.assertEqual("skip", json.loads(stdout)["target"]["layout_step"])
 
     def test_partner_site_with_common_layout_passes_without_create_block(self) -> None:
         site = {
@@ -1695,7 +1733,9 @@ class CommonLayoutPreflightTests(unittest.TestCase):
             cli, has_create_block=False
         )
         self.assertEqual(0, code, stderr)
-        self.assertEqual("common-id", json.loads(stdout)["target"]["common_layout_id"])
+        target = json.loads(stdout)["target"]
+        self.assertEqual("common-id", target["common_layout_id"])
+        self.assertEqual("present", target["layout_step"])
         has_command.assert_not_called()
         self.assertNotIn("create-block", [call[1] for call in cli.calls])
 
@@ -1717,13 +1757,13 @@ class CommonLayoutPreflightTests(unittest.TestCase):
             mock.patch.object(
                 apply_plan,
                 "run_preflight",
-                side_effect=RuntimeError(preflight.NEWER_CLI_FOR_LAYOUT),
+                side_effect=RuntimeError("CLI sandbox must be disabled for Shop Builder"),
             ),
             mock.patch.object(apply_plan, "run_json") as run_json,
             contextlib.redirect_stderr(stderr),
         ):
             self.assertEqual(1, apply_plan.main())
-        self.assertIn("this step needs a newer Xsolla CLI", stderr.getvalue())
+        self.assertIn("CLI sandbox must be disabled", stderr.getvalue())
         run_json.assert_not_called()
 
     def test_cli_has_command_reads_the_usage_line(self) -> None:
@@ -1978,6 +2018,7 @@ class OneApprovalTests(unittest.TestCase):
             mock.patch.dict(apply_plan.RUN_AUTH, {"logged_in": False, "context": None}),
             mock.patch.object(sys, "argv", argv),
             mock.patch.object(apply_plan, "run_preflight"),
+            mock.patch.object(apply_plan, "cli_has_command", return_value=True),
             mock.patch.object(apply_plan, "run_json", side_effect=self.cli),
             mock.patch.object(apply_plan, "verified_backup", return_value=True),
             mock.patch.object(apply_plan, "backup_structure", return_value=backup),
