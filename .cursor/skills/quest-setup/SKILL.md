@@ -1,18 +1,18 @@
 ---
 name: quest-setup
 description: >-
-  Use when the publisher wants to create, edit, list, activate, pause, delete or debug an
-  Xsolla Quest Platform quest, including Web3 rewards, conditions and sending a quest
-  event, or to add, reorder, retext, hide or show the Quests block on a Shop Builder site
-  or change its card limit, heading or card texts, even when the request only says "cards"
-  (a request to remove it gets hide offered; the publisher deletes it in the Site Builder
-  editor), and to list the publisher's shops or Shop Builder sites (a read, not a build).
-  Any other change to a Shop Builder site (header, theme, other blocks)
-  also loads this skill, only to decline it in one sentence. A headless storefront quest
-  section is covered on explicit request. Key triggers: "create a quest", "my quests",
-  "trigger my quest", "add a Web3 reward", "why didn't my quest complete", "Quests block",
-  "remove the Quests block", "show quests in my web shop", "list my shops", "my sites", "show only 3 cards", "change the heading to Daily quests", "change the title of the Daily login card".
-  Load it before searching the working folder.
+  Use when the publisher names a quest card or asks to change one (title, description,
+  order, how many show), e.g. "change the title of the Win 3 matches card": that is the
+  Quests block on their Shop Builder site, not code, so load this before searching files.
+  Also to create, edit, list, activate, pause, delete or debug an Xsolla Quest Platform
+  quest, including Web3 rewards, conditions and sending a quest event, or to add, reorder,
+  retext, hide or show the Quests block or change its heading (a request to remove it gets
+  hide offered; the publisher deletes it in the Site Builder editor), and to list the
+  publisher's shops or Shop Builder sites (a read, not a build). Any other change to a
+  Shop Builder site (header, theme, other blocks) also loads this skill, only to decline it
+  in one sentence. A headless storefront quest section is covered on explicit request. Key
+  triggers: "create a quest", "my quests", "trigger my quest", "add a Web3 reward", "why
+  didn't my quest complete", "Quests block", "remove the Quests block", "show quests in my web shop", "list my shops", "my sites", "show only 3 cards", "change the heading to Daily quests".
 metadata:
   owner: r.aliyev
   domain: quests
