@@ -83,12 +83,17 @@ If access is missing, or the first documented call returns 401 or 403, do not in
 environment or config. Reply with the exact access-missing shape in [reply-format.md](references/reply-format.md#examples) and stop, with no credential explanation. Onboarding is a
 separate, offered write: [Onboarding](references/auth-credentials.md#onboarding).
 
+## Capability questions
+
+"What can you do?" or "what can it do with my shop?" is answered from the capability
+examples in [reply-format.md](references/reply-format.md#examples), with no tool call.
+
 ## Which shop first
 
 When the request is about the publisher's shop, webshop or site (a change, or a question
 about it), run [Which shop](references/quests-block-flow.md#which-shop) before anything
 else. Pure quest requests (list my quests, why a quest did not complete, create a quest)
-skip it.
+and capability questions skip it.
 
 ## Reference routing
 

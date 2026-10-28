@@ -91,15 +91,11 @@ Show site names only, never IDs or hosts.
 
 ### Discovery answer
 
-For a question such as "what can quests do on my Shop Builder site", run step 1 first,
-then reply in the Which shop shape (bold question, one bullet per site, headless bullet,
-`Next:`). Describe the block only after the publisher picks a site: cards show a title,
-description, image and the quest's reward, under a heading; the skill can choose and
-order the cards, set their title, description and image, and move, hide or show the
-block. The reward on a card comes from the quest and can't be changed on the block.
-Changes stay a draft until the publisher publishes them in Publisher Account. Use the
-shape from [reply-format.md](reply-format.md), with at most four bullets. When the list
-read fails (step 3), give the same capability bullets (at most three) in the Discovery
+A capability question with no change asked for ("what can it do with my shop?", "what
+can quests do on my Shop Builder site?") gets the second capability example in
+[reply-format.md](reply-format.md#examples), with no tool call and no site list. Run the
+site list only when the publisher wants to look at or change a site. When the list read
+fails (step 3), give the same capability bullets (at most three) in the Discovery
 failure shape, then the one `Next:`.
 
 ## Describe the block
