@@ -22,6 +22,7 @@ import sys
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
+sys.dont_write_bytecode = True  # keep the installed skill folder clean
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import qp_request  # noqa: E402
