@@ -118,6 +118,16 @@ What's still open is how the storefront itself gets built, so six quick question
 
 ### 2. Ask the six criteria — one message
 
+**Short path.** When the developer asked for `game-web-portal` by name (with no path recorded, it
+hands back here through `shop-setup`), skip the six criteria and the table. Naming a portal in
+prose isn't enough. In one message, give this line, ask the
+[intake](references/onboarding-contract.md#intake), list the values to record, then go to step 4:
+"A Game Web Portal is an Xsolla-hosted storefront (Shop Builder): no developers for the site, an
+Xsolla domain, and the editor's blocks and theme; the other option is a custom storefront using
+Xsolla APIs (headless), which your developers build and host." Ask the six criteria instead when
+the request also wants its own domain, an existing site or app, or a custom UI, or when the game
+isn't on PC — say a portal is PC only.
+
 Ask all six in a single message. Unless the request is plainly headless, the same message also
 asks the rest of the [intake](references/onboarding-contract.md#intake) — the game and site
 details the Shop Builder part needs — so the developer answers one round of questions, not two.
@@ -177,8 +187,9 @@ which criteria conflict and ask the developer to break the tie themselves.
 **Nothing is written — no `.env`, no other local file — until the developer has seen the
 trade-offs and the recommendation, and has said yes.** Silence, a topic change, or moving on to
 another question is not confirmation. Neither is a "yes" that arrives before the comparison and
-recommendation were shown: show them first, then ask again. If they push back or ask a follow-up,
-answer it and ask again; don't write on a guess that they've come around.
+recommendation, or the short path's line, were shown: show them first, then ask again. If they
+push back or ask a follow-up, answer it and ask again; don't write on a guess that they've come
+around.
 
 ### 5. Record the choice, then stop
 

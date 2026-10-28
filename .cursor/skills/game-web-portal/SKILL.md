@@ -34,10 +34,10 @@ when the recorded site kind is `portal` — the partner needs a game home around
 Entry conditions:
 
 - `XSOLLA_BUILD_PATH=shopbuilder` and `XSOLLA_SITE_KIND=portal` are recorded in `.env` (see
-  [the build-path contract](../shop-plan/references/build-path-contract.md)). With no path
-  recorded, hand back to `shop-setup`. With the site kind absent or `shop`, the recorded site
-  is a shop: stop and say so, since only `shop-plan` changes it. Any other path or kind:
-  stop and say so.
+  [the build-path contract](../shop-plan/references/build-path-contract.md)). Check this
+  first. With no path recorded, hand back to `shop-setup` before any other message or
+  question. With the site kind absent or `shop`, the recorded site is a shop: stop and say
+  so, since only `shop-plan` changes it. Any other path or kind: stop and say so.
 - The title ships on PC. A Steam URL is optional and may be skipped.
 - If a store URL is supplied, its host must be exactly `store.steampowered.com`.
   Mobile, unknown, invalid, or spoofed supplied URLs return `needs_input`.
@@ -92,8 +92,9 @@ Intake → Preflight → Discover → Back up → Plan and confirm → Draft →
 Verify (read-back) → Human review → Handoff
 ```
 
-1. **Intake** — the first message, before any question, tells the partner to create the
-   site first if they haven't (Storefronts → Websites → Multi-page web portal → Manual), and
+1. **Intake** — once `.env` passes the path and site-kind check in Entry conditions, the
+   first message, before any question, tells the partner to create the site first if they
+   haven't (Storefronts → Websites → Multi-page web portal → Manual), and
    [what the run can change](references/portal-api.md#what-the-run-can-change) and what stays
    an Editor step for them. The same message collects the required input above; with a
    Steam URL, it asks whether the page is theirs and its art and text may be used. Resolve
