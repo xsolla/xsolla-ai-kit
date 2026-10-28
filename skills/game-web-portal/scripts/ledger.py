@@ -47,6 +47,7 @@ def problems(ledger: dict) -> list[str]:
     if not isinstance(ledger.get("steps"), list):
         return ["the ledger has no steps list"]
     found = []
+    first: dict[str, int] = {}
     for index, step in checked_steps(ledger):
         name = step_name(step, index)
         if not isinstance(step, dict):
@@ -59,6 +60,14 @@ def problems(ledger: dict) -> list[str]:
                 f"{name}: is not a contract step ({', '.join(STEPS)}); put a gap in the "
                 f"evidence of the contract step it belongs to"
             )
+        elif step["id"] in first:
+            # The contract's ledger holds one entry per step; a resume reads only one of them
+            found.append(
+                f"{name}: is in the ledger more than once (steps[{first[step['id']]}] and "
+                f"steps[{index}]); update the existing entry instead of adding another"
+            )
+        else:
+            first[step["id"]] = index
         if "status" in step and step["status"] not in STATUSES:
             found.append(
                 f"{name}: status {json.dumps(step['status'])} is not a contract status "

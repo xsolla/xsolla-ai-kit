@@ -104,6 +104,25 @@ class LedgerCheckTest(unittest.TestCase):
     def test_a_skipped_step_with_a_non_contract_status_passes(self):
         self.assertEqual(ledger.problems({"steps": [step(id="plan", status="partial")]}), [])
 
+    def test_a_repeated_step_fails_and_names_it(self):
+        # one storefront entry failed and a later one completed: a resume reads only one of them
+        found = ledger.problems({"steps": [step(status="failed"), step(id="verify"),
+                                           step(status="completed")]})
+        self.assertEqual(len(found), 1)
+        self.assertIn("step 'storefront': is in the ledger more than once (steps[0] and steps[2])",
+                      found[0])
+        self.assertIn("update the existing entry", found[0])
+        code, out, err = run({"steps": [step(), step()]})
+        self.assertEqual((code, out), (1, ""))
+        self.assertIn("more than once", err)
+
+    def test_one_storefront_and_one_verify_pass(self):
+        self.assertEqual(ledger.problems({"steps": [step(), step(id="verify")]}), [])
+
+    def test_a_repeated_skipped_step_passes(self):
+        # intake and plan are shop-plan's, so the check skips them, repeats included
+        self.assertEqual(ledger.problems({"steps": [step(id="intake"), step(id="intake")]}), [])
+
     def test_a_step_under_way_without_status_passes(self):
         self.assertEqual(ledger.problems({"steps": [step(status=...)]}), [])
 
