@@ -43,8 +43,9 @@ Shop Builder has no sandbox, so a Shop Builder request implies CLI sandbox mode 
 3. Otherwise preflight runs `xsolla config set sandbox false` in the directory of the
    config file in use.
 
-Either way preflight adds "CLI sandbox mode switched off for Shop Builder" to
-`plan_notes`, shown as one plan bullet. Backup, apply and verification reuse the choice
+Preflight adds one line to `plan_notes`, shown as one plan bullet: "Using the CLI test
+environment (sandbox off)" on path 2 (no config written), "CLI sandbox mode switched off
+for Shop Builder" on path 3, nothing on path 1. Backup, apply and verification reuse the choice
 and never change the config. The CLI 1.9.4 reads `./.xsolla.json` when the working
 directory has one, else `~/.xsolla.json`, and `config set` writes `./.xsolla.json`,
 creating a stub without merchant or project when there is none. So never run

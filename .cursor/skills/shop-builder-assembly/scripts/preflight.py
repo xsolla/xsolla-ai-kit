@@ -272,11 +272,7 @@ def main() -> int:
         result = {
             "ok": True,
             # Plan lines the agent shows as they are.
-            "plan_notes": (
-                [cli_environment.SANDBOX_SWITCHED_OFF]
-                if cli["sandbox_switched_off"]
-                else []
-            ),
+            "plan_notes": cli_environment.plan_notes(cli),
             "context": {
                 "merchant_id": expected["merchant_id"],
                 "project_id": expected["project_id"],

@@ -28,6 +28,7 @@ from typing import Callable
 
 CONFIG_NAME = ".xsolla.json"
 SANDBOX_SWITCHED_OFF = "CLI sandbox mode switched off for Shop Builder"
+ENVIRONMENT_NOTE = "Using the CLI {name} environment (sandbox off)"
 SANDBOX_STILL_ON = (
     "CLI sandbox mode is on and was not switched off; run preflight again, it "
     "switches sandbox mode off for Shop Builder"
@@ -94,6 +95,19 @@ def candidate_environments(path: Path, expected: dict) -> list[str]:
     return sorted(names, key=lambda name: (name != preferred, name))
 
 
+def plan_notes(report: dict) -> list[str]:
+    """Return the plan line that says how this run reached sandbox off, if any.
+
+    Each path gets its own line: reusing another environment writes no config,
+    so it must not claim sandbox mode was switched off.
+    """
+    if report.get("environment"):
+        return [ENVIRONMENT_NOTE.format(name=report["environment"])]
+    if report.get("sandbox_switched_off"):
+        return [SANDBOX_SWITCHED_OFF]
+    return []
+
+
 def select(
     expected: dict,
     run_json: Callable[..., object],
@@ -130,10 +144,11 @@ def select(
             and candidate.get("project_id") == expected.get("project_id")
         ):
             ENVIRONMENT_ARGS[:] = ["--environment", name]
+            # No config is changed on this path, so sandbox is not "switched off".
             return {
                 "config": candidate,
                 "environment": name,
-                "sandbox_switched_off": True,
+                "sandbox_switched_off": False,
             }
 
     if not switch:

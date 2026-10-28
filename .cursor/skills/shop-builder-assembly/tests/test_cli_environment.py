@@ -205,10 +205,10 @@ class SandboxModeTests(unittest.TestCase):
         self.assertEqual(0, result.returncode, result.stderr)
         report = json.loads(result.stdout)
         self.assertEqual("test", report["context"]["cli_environment"])
-        self.assertTrue(report["context"]["sandbox_switched_off"])
+        self.assertFalse(report["context"]["sandbox_switched_off"])
         self.assertTrue(report["context"]["test_project_acknowledged"])
         self.assertEqual(
-            ["CLI sandbox mode switched off for Shop Builder"], report["plan_notes"]
+            ["Using the CLI test environment (sandbox off)"], report["plan_notes"]
         )
         self.assertEqual([], self.config_set_calls())
         self.assertEqual(before, home_config.read_bytes())
@@ -256,6 +256,7 @@ class SandboxModeTests(unittest.TestCase):
         self.assertEqual(0, result.returncode, result.stderr)
         report = json.loads(result.stdout)
         self.assertIsNone(report["context"]["cli_environment"])
+        self.assertTrue(report["context"]["sandbox_switched_off"])
         self.assertEqual(
             ["CLI sandbox mode switched off for Shop Builder"], report["plan_notes"]
         )
@@ -374,6 +375,27 @@ class ConfigInUseTests(unittest.TestCase):
                 ["test", "alpha"],
                 cli_environment.candidate_environments(path, expected),
             )
+
+
+class PlanNotesTests(unittest.TestCase):
+    def test_other_environment_says_which_one_and_not_switched_off(self) -> None:
+        notes = cli_environment.plan_notes(
+            {"environment": "test", "sandbox_switched_off": False}
+        )
+        self.assertEqual(["Using the CLI test environment (sandbox off)"], notes)
+        self.assertNotIn("switched off", notes[0])
+
+    def test_config_change_says_switched_off(self) -> None:
+        self.assertEqual(
+            ["CLI sandbox mode switched off for Shop Builder"],
+            cli_environment.plan_notes({"environment": None, "sandbox_switched_off": True}),
+        )
+
+    def test_sandbox_already_off_adds_no_line(self) -> None:
+        self.assertEqual(
+            [],
+            cli_environment.plan_notes({"environment": None, "sandbox_switched_off": False}),
+        )
 
 
 if __name__ == "__main__":

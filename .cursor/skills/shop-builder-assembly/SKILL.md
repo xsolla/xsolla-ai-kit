@@ -32,8 +32,8 @@ read-only steps 1 to 4 first, then show one plan; there is no draft plan before 
    edit, or suggest changing it. Read back the matched merchant ID, project ID,
    environment, approval reference, active Publisher login, target site, and catalog
    groups. Preflight also switches CLI sandbox mode off, without asking: a Shop Builder
-   request implies it. Show each line of its `plan_notes` (for example "CLI sandbox mode
-   switched off for Shop Builder") as a plan bullet. When preflight reports a
+   request implies it. Show each line of its `plan_notes` as it is (for example "Using the
+   CLI test environment (sandbox off)") as a plan bullet. When preflight reports a
    `cli_environment`, add `--environment <name>` to every `xsolla` command you run
    yourself. When the site needs a common layout (a new site, or one without it) and the
    CLI has no `shopbuilder create-block`, preflight prints "the common layout needs a
@@ -118,7 +118,7 @@ When the plan `warnings` say a card text replaces the one set in the editor, add
 - Site: my-test-site, Quests block on Main
 - Change: card title → "Log in every day"
 - Card image: unchanged
-- CLI sandbox mode switched off for Shop Builder
+- Using the CLI test environment (sandbox off)
 - Not published; you publish in Publisher Account
 - Confirmation: sha256:ab12cd34
 
