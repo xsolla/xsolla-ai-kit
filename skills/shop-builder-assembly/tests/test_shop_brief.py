@@ -32,6 +32,11 @@ render_plan = load_module("render_plan", ROOT / "scripts" / "render_plan.py")
 preflight = load_module("preflight", ROOT / "scripts" / "preflight.py")
 backup_shop = load_module("backup_shop", ROOT / "scripts" / "backup_shop.py")
 
+LAYOUT_WARNING = (
+    "The common layout needs a newer Xsolla CLI, so the site is built without it. A "
+    "site without the common layout won't open in the Editor, Publish or private preview."
+)
+
 
 class ShopBriefTests(unittest.TestCase):
     def setUp(self) -> None:
@@ -108,6 +113,34 @@ class ShopBriefTests(unittest.TestCase):
             ]
         }
         self.assertNotIn(warning, render_plan.build_plan(brief, already_there)["warnings"])
+
+    def test_new_site_on_cli_without_create_block_warns_in_the_plan(self) -> None:
+        plan = render_plan.build_plan(self.brief, has_create_block=False)
+        self.assertIn(LAYOUT_WARNING, plan["warnings"])
+        self.assertNotEqual(
+            render_plan.build_plan(self.brief, has_create_block=True)["confirmation_id"],
+            plan["confirmation_id"],
+        )
+
+    def test_new_site_on_cli_with_create_block_has_no_layout_warning(self) -> None:
+        plan = render_plan.build_plan(self.brief, has_create_block=True)
+        self.assertNotIn(LAYOUT_WARNING, plan["warnings"])
+
+    def test_existing_site_with_common_layout_has_no_layout_warning(self) -> None:
+        site = {
+            "pages": [],
+            "layouts": ["side-id", "common-id"],
+            "blocks": ["side-id", "common-id"],
+        }
+        modules = {"side-id": "side-by-side-layout", "common-id": "common-layout"}
+        plan = render_plan.build_plan(self.brief, site, False, modules.get)
+        self.assertNotIn(LAYOUT_WARNING, plan["warnings"])
+
+    def test_existing_site_without_common_layout_warns_in_the_plan(self) -> None:
+        site = {"pages": [], "layouts": ["side-id"], "blocks": ["side-id"]}
+        modules = {"side-id": "side-by-side-layout"}
+        plan = render_plan.build_plan(self.brief, site, False, modules.get)
+        self.assertIn(LAYOUT_WARNING, plan["warnings"])
 
     def test_unmapped_subscription_module_is_rejected(self) -> None:
         brief = copy.deepcopy(self.brief)
