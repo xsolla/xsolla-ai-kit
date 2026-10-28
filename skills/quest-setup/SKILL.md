@@ -23,7 +23,7 @@ metadata:
 Quests and the Quests block on a Shop Builder site. Every reply follows
 [reply-format.md](references/reply-format.md): one bold line, up to four bullets, one `Next:` ask. The bold line comes first, with no text before it. Never name environment variables, file paths, tokens, routes, tools, tickets
 or other skills in a reply. Never open `.env`, environment variables or config folders,
-even to redact them, for any request.
+even to redact them, for any request. Run every command from the publisher's folder; never `cd` into a skill folder (credentials are read from the working folder).
 
 ## Hard rules
 
@@ -93,7 +93,7 @@ examples in [reply-format.md](references/reply-format.md#examples), with no tool
 
 ## Which shop first
 
-When the request is about the publisher's shop, webshop or site (a change, or a question
+When the request is about the publisher's shop, webshop, site or a Quests block card (a change, or a question
 about it), run [Which shop](references/quests-block-flow.md#which-shop) before anything
 else (its step 0 picks the site for a Quests block change that names none). Pure quest
 requests (list my quests, why a quest did not complete, create a quest) and capability
