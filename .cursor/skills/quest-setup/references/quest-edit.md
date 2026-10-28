@@ -20,6 +20,13 @@ to report as a change. A `$schema` link may be present; drop it before the
 server does not assign node ids, and existing node ids stay unchanged. Show the
 before/after diff of the changed fields before sending.
 
+Dates on edit: a `PUT` with `status: active` re-runs the date rules even when it
+changes only `is_public` or a text. Before the proposal, check the read: if
+`start_date` is more than 24 hours old, include a start at apply time, and if
+`end_date` has passed, an end 7 days later, in the same before/after diff (rule:
+[quest-authoring.md](quest-authoring.md#fields)). Say the old window ended; ask
+for approval of that edit, not for a date.
+
 An edit to an active quest applies to the next events after the production
 configuration propagation window. Repeat the activation confirmations
 for the changed part when the edit touches any of: an action's subtype or

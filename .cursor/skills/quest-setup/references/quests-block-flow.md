@@ -214,7 +214,9 @@ into the title or description as a workaround.
 2. **Make them public.** For each chosen quest that is not public (`is_public` is not
    `true`), set `is_public` per [Quest public view](#quest-public-view): one proposal,
    one approval. A missing `public_view` alone is not a reason to edit or stop. Stop if
-   a quest is not found or the read-back does not show `is_public: true`.
+   a quest is not found or the read-back does not show `is_public: true`. An `active`
+   quest's `PUT` re-checks its dates ([dates on edit](quest-edit.md#editing)); put any
+   date move in this same proposal, never a plan the server will reject.
 3. **Build the brief.** Turn the agreed settings and defaults into `block_operations`.
    The brief never sets the reward text or image: they come from the quest. If the
    publisher asks to change them, say they can't be changed on the block and offer to
