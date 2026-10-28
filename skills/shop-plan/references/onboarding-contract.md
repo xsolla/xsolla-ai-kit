@@ -127,11 +127,12 @@ ledger. The storefront skill records them when it starts, from the project's act
 }
 ```
 
-Update a step's entry after every step, including a `failed` or `needs_*` one, with the
-reason in `evidence`. `ids` holds what later steps and a resume need: project, Login
-project, catalog groups, and on the storefront step the merchant, project, site domain and
-landing `_id` it worked on, with every page the agent created. `game-web-portal` records each
-page — its path and seeded blocks — with
+Every step has an `id`, an `evidence` list, an `ids` object (`{}` when the step created
+nothing) and `updated_at`, and gets a `status` when it finishes. Update a step's entry after
+every step, including a `failed` or `needs_*` one, with the reason in `evidence`. `ids` holds
+what later steps and a resume need: project, Login project, catalog groups, and on the
+storefront step the merchant, project, site domain and landing `_id` it worked on, with every
+page the agent created. `game-web-portal` records each page — its path and seeded blocks — with
 [`scripts/seeded_blocks.py record`](../../game-web-portal/scripts/seeded_blocks.py) right after
 it creates it, and updates the entry after hiding its seeded blocks.
 

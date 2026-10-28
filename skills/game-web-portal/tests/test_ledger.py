@@ -3,6 +3,7 @@ from __future__ import annotations
 import contextlib
 import io
 import json
+import re
 import sys
 import tempfile
 import unittest
@@ -52,6 +53,17 @@ class LedgerCheckTest(unittest.TestCase):
         text = contract.read_text(encoding="utf-8")
         table = text.split("## Steps and their evidence", 1)[1].split("##", 1)[0]
         return [line.split("|") for line in table.splitlines() if line.startswith("| `")]
+
+    def test_the_contract_states_the_step_shape_this_check_requires(self):
+        contract = (ROOT.parent / "shop-plan" / "references" / "onboarding-contract.md")
+        text = contract.read_text(encoding="utf-8")
+        section = text.split("## The ledger", 1)[1].split("\n## ", 1)[0]
+        prose = " ".join(part for i, part in enumerate(section.split("```")) if i % 2 == 0)
+        shape = re.findall(r"Every step has [^.]*\.", " ".join(prose.split()))
+        self.assertEqual(len(shape), 1)
+        for field in ("`id`", "`evidence` list", "`ids` object", "`updated_at`"):
+            with self.subTest(field=field):
+                self.assertIn(field, shape[0])
 
     def test_the_contract_defines_exactly_these_steps(self):
         self.assertEqual([row[1].strip(" `") for row in self.steps_table()], list(ledger.STEPS))
