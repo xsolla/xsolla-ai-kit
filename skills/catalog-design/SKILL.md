@@ -50,6 +50,10 @@ export XSOLLA_PROJECT_API_KEY=<your API key>
 ```
 
 - An Xsolla project (run `merchant-setup` first — it sets up these variables).
+- **Check what the project already has.** A new project can come with a demo catalog: a
+  virtual currency, packs, items, a bundle and groups whose SKUs or IDs start with `demo`.
+  List the catalog first; if demo entries exist, ask whether to keep, hide or replace them
+  before adding anything.
 - **Xsolla MCP (strongly recommended).** Connect the official Xsolla MCP server
   (<https://developers.xsolla.com/get-started/ai-assistants/>). Before calling any
   Admin API, verify the current request schema with the `search_xsolla_sources` tool —

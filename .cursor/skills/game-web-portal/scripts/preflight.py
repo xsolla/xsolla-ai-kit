@@ -74,7 +74,10 @@ def check_project(
     if config.get("merchant_id") != merchant_id or config.get("project_id") != project_id:
         raise RuntimeError("the CLI's configured merchant/project does not match the target")
     if config.get("sandbox") is True:
-        raise RuntimeError("the CLI's sandbox mode is on: Shop Builder has no sandbox, turn it off")
+        raise RuntimeError(
+            "the CLI's sandbox mode is on (a new CLI config starts with it on). Shop Builder "
+            "has no sandbox: run `xsolla config set sandbox false`, then this preflight again"
+        )
     return approved_test_project(allowlist, merchant_id, project_id)
 
 

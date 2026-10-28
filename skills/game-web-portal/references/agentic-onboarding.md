@@ -15,20 +15,26 @@ game_name:
 primary_locale:
 ```
 
-Optional: `store_url` (Steam), approved game description and brand assets,
-analytics IDs, and locales. A Steam URL is a reference, not a production
-dependency, and may be skipped. Metadata and assets come from the partner either
-way, because Steam pages are not imported. Never invent or reuse partner
-identifiers, credentials, content, prices, assets, or URLs.
+Optional: `store_url` (Steam) with `steam_assets_approved` (yes or no), approved game
+description and brand assets, analytics IDs, and locales. A Steam URL may be skipped. With
+it, the partner confirms the page is their own game's and says whether its art and text may
+be used; only a yes makes it a source ([Steam content](portal-api.md#steam-content)). Never
+invent content, and never use identifiers, credentials, content, prices, assets, or URLs the
+partner hasn't approved.
 
 ### Acceptance scenarios
 
 1. **Platform:** GIVEN no store URL, WHEN the title is confirmed as PC and
    approved metadata/assets are supplied, THEN continue without Steam parsing.
    GIVEN a store URL, its exact host must be `store.steampowered.com`; Mobile,
-   unknown, invalid, or spoofed supplied URLs return `needs_input`.
-2. **The partner's site:** GIVEN the partner created the site from the Multi-page web
-   portal template, WHEN onboarding starts, THEN inspect it and add only the missing
+   unknown, invalid, or spoofed supplied URLs return `needs_input`. GIVEN a Steam URL and
+   `steam_assets_approved: yes`, THEN the plan uses its app details' art and facts, with
+   the copy shown word for word; GIVEN `no` or no answer, THEN nothing from the page is used
+   and the intake says the draft keeps the template's art.
+2. **The partner's site:** WHEN onboarding starts, THEN the first message, before any
+   question, says to create the site from the template if it doesn't exist yet, and what the
+   run changes versus what stays an Editor step. GIVEN the partner created the site from the
+   Multi-page web portal template, THEN inspect it and add only the missing
    sections, without duplicates; ambiguous matches require selection. GIVEN no site at
    the domain, THEN return `needs_human`: the agent never creates a site. GIVEN a site
    without `/news`, `/rewards` or `/store`, THEN return `needs_input`: it wasn't made from
@@ -46,6 +52,9 @@ identifiers, credentials, content, prices, assets, or URLs.
 7. **Handoff:** GIVEN the run ends, WHEN reporting, THEN repeat merchant ID,
    project ID, domain, locale, and Steam URL only if supplied, with evidence for
    every Completed item.
+8. **What the partner sees:** GIVEN any progress message or the handoff, THEN it links the
+   Editor and says the public URL loads only after the first publish. GIVEN a section
+   reads back right, WHEN its page wasn't looked at in the Editor, THEN it isn't Completed.
 
 ## Design
 
@@ -99,9 +108,13 @@ Never recreate discovered existing entities.
 
 ### 1. Context
 
+- First message, before any question: create the site from the template if it doesn't exist
+  yet, and [what the run can change](portal-api.md#what-the-run-can-change).
 - Confirm merchant/project, the partner's site domain, and locale.
-- Confirm PC scope. Validate the exact Steam host only when `store_url` is supplied.
-- If `store_url` is omitted, confirm approved metadata and assets are available.
+- Confirm PC scope. Validate the exact Steam host only when `store_url` is supplied, and
+  ask whether the page is theirs and its art and text may be used.
+- Without approved Steam content, confirm approved metadata and assets are available, or
+  say the draft keeps the template's art.
 - Resolve ambiguity and disclose unsupported/human gates.
 
 ### 2. Preflight
@@ -113,6 +126,8 @@ Never recreate discovered existing entities.
 
 - List websites and read the target structure.
 - Confirm the site has the template's `/news`, `/rewards` and `/store` pages.
+- Report the Web Shop's catalog groups (a test or demo group means sample items) and how the
+  site signs buyers in.
 - Capture landing, page, and block IDs.
 - Compare existing and desired state.
 - Resume at the first incomplete item.
@@ -148,6 +163,7 @@ download.
 ### 7. Verify
 
 - Read back changed entities and compare them with the confirmed plan.
+- Look at each changed page in the Editor, or hand the visual check to the partner.
 - Update the ledger.
 - Keep unverified items out of **Completed**.
 
@@ -168,13 +184,17 @@ The portal fills its **Storefront** section with:
 
 ```markdown
 - Steam URL (include only if supplied):
+- Editor: https://publisher.xsolla.com/<merchant_id>/projects/<project_id>/site-builder/<domain>/editor
+- The public URL loads only after the first publish.
 
 | Section | Page ID | Route | Status | Evidence |
 |---|---|---|---|---|
 
 Before publishing, in Publisher Account:
 - Reload the Editor before checking the portal: it doesn't refresh after CLI writes yet
-- Add the pages the agent added to the sidebar menu
+- Recalculate the theme, if the run changed it, and check every page uses the global theme
+- In the layout: the logo, the menu (add the pages the agent added), store buttons, social
+  links and the footer
 - Run the readiness check and open the preview
 - Publish the main page first, then confirm the public URL
 ```

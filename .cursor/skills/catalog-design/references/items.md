@@ -57,6 +57,9 @@ Update calls **replace** the item state, they do not merge. The set of fields re
 GET differs from the set you must send on update: fetch the item first, then send back all
 returned objects you want to keep plus your changes. Example from the docs: if you update
 only the price and omit the `limits` object, the item's limit configuration is deleted.
+A bundle update without `is_show_in_store: true` hides the bundle: send it back, or show the
+bundle again after every update. The storefront can take about a minute to reflect a show or
+hide change, so re-read it with a short backoff before calling an item missing.
 Source: [Automate catalog creation and updates](https://developers.xsolla.com/items-catalog/catalog-management/automate-catalog/#catalog_management_automate_catalog_items).
 
 ## Bundle limitations

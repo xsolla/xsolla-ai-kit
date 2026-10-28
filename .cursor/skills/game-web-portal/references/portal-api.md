@@ -9,6 +9,7 @@ Catalog and Login stay delegated, and checkout is the Web Shop's hosted Pay Stat
 
 - `xsolla auth login`, `xsolla config list` (through `scripts/preflight.py`) and
   `xsolla publisher list-projects`.
+- `xsolla config set sandbox false`, only when preflight stops on sandbox mode.
 - Read: `xsolla shopbuilder` `list-websites`, `get-landing`, `get-structure`, `list-pages`,
   `get-page`, `get-localization`, `list-assets`, `list-agreements`.
 - Write: `xsolla shopbuilder` `add-page`, `add-block`, `move-block`, `update-block`,
@@ -33,7 +34,10 @@ Every other command is out of bounds, even when the partner asks for it: among t
   at the intended merchant and project with its sandbox mode off, and that project is listed in
   the approved test-project allowlist.
 - **No sandbox:** Shop Builder writes always reach the project itself, and `--sandbox` gives
-  no isolation. Never pass it.
+  no isolation. Never pass it. A new CLI config starts with sandbox mode on, and preflight
+  refuses it: run `xsolla config set sandbox false` once, rerun preflight, and say in the
+  handoff that it is off (`xsolla config set sandbox true` turns it back on for sandbox
+  payment tests).
 - **No `--force`:** never pass, offer or suggest it, even if the partner changes the plan.
   Seeded blocks the CLI won't remove go to the partner as `needs_human`.
 
@@ -60,6 +64,63 @@ during Discover and reuse it.
 
 Discover is mandatory before any mutation: it supplies `landingId`, page IDs, block IDs,
 and current ordering, and it is how resume avoids building a duplicate portal.
+
+Discover also reads what the template already set up, and the plan reports it:
+
+- **The Web Shop's catalog.** Each `newStore` block shows a group:
+  `components[].section.item.group`. A test or demo group, such as `__test__/virtual_good` or a
+  group starting with `demo`, means the Web Shop shows sample items. Say so, and leave the catalog
+  to `catalog-design`.
+- **Sign-in.** `auth` in `get-structure` says how the site signs buyers in. With
+  `auth.type: "user-id"`, buyers already sign in with a user ID and can buy; say that before
+  proposing any Login work, which stays with `login-setup`.
+
+## Show the partner the site
+
+The public URL, `https://<domain>.xsolla.site`, doesn't load until the first publish; say so
+whenever the partner might open it. Link the Editor instead, in every progress message and in
+the handoff:
+
+- Main page: `https://publisher.xsolla.com/<merchant_id>/projects/<project_id>/site-builder/<domain>/editor`
+- Another page: `…/site-builder/<domain>/<path without the leading slash>/editor`, for example
+  `…/<domain>/community/editor`
+
+The Editor doesn't refresh after CLI writes: reload it before looking.
+
+## What the run can change
+
+Tell the partner this in the first message, before any work:
+
+| Change | How |
+|---|---|
+| Pages, blocks (add, move, hide), copy and locales | The agent, through the CLI |
+| Images in blocks, on/off switches, store buttons | The agent, with `update-block` (see the table below) |
+| Theme colors | The agent sets them; the partner recalculates them in the Editor ([Theme](#theme)) |
+| The sidebar (logo, menu, store badges, social links) and the footer | The partner, in the Editor ([Layout](#the-layout-sidebar-and-footer)) |
+| Deleting the seeded blocks the agent hid | The partner, in the Editor |
+
+Without art from the partner or approved Steam content, the draft keeps the template's art.
+
+## Steam content
+
+A Steam URL is a source of content only after the partner confirms it is their own game's page
+and approves using its art and text (`steam_assets_approved: yes`). Then read Steam's public app
+details for the app ID in the URL: `https://store.steampowered.com/api/appdetails?appids=<appId>`.
+It needs no key and no parser; Shop Builder's own store-page parser, which rejects Steam links, is
+a different thing. Under `<appId>.data`:
+
+| Field | Use |
+|---|---|
+| `header_image` | lead and hero art |
+| `background_raw` | page and section backgrounds |
+| `screenshots[].path_full` | gallery, card and description images (1920×1080) |
+| `short_description`, `genres`, `developers` | facts for the copy |
+
+Download only the images the plan uses, upload each with `upload-asset`, and put the CDN URL it
+returns in the block; never point a block at Steam's own image host. Copy written from these
+facts is new copy: show it word for word in the plan, so the partner's yes covers it. With
+`steam_assets_approved: no`, or no answer, nothing from the page is used, and the intake says the
+draft keeps the template's art and text unless the partner supplies their own.
 
 ## Draft — build on the partner's site
 
@@ -91,9 +152,18 @@ from this template: stop with `needs_input` instead of building those sections.
 
 On this template, `add-page` seeds a new page with 11 game-sales blocks — `leadGameSales`,
 `description`, `packs` ×3, `bento-grid` ×3, `gallery`, `requirements`, `faq` — and no header or
-footer, which come from the site layout. The page gets no page type and no sidebar link. For
-Community, add `lead` (`--index 0`) and `embed` (`--index 1`), then hide the 11 seeded blocks; the
-partner deletes them in the builder.
+footer, which come from the site layout. The page gets no page type and no sidebar link, and it
+starts with its own theme ("Use global theme" off): set `["theme","enabled"]` to `false` on it
+(see the table below). For Community, add `lead` (`--index 0`) and `embed` (`--index 1`), then
+hide the 11 seeded blocks; the partner deletes them in the builder.
+
+Added blocks bring content of their own. Read each one after adding it:
+
+- `lead` comes with four store feature cards ("Official store", "Secure payments", "Fast
+  delivery", "Exclusive offers") and an empty logo placeholder. Switch off what the plan doesn't
+  keep where it has an `enable` flag; list the rest for the partner.
+- `embed` shows a channel that only the Editor sets: the partner adds it, as `needs_human`, with
+  the channel URL they supplied.
 Module names come from the `shop-builder-assembly` [block
 catalog](../../shop-builder-assembly/references/block-catalog.md).
 
@@ -114,7 +184,8 @@ locale change: a changed string marks its block `changed`. Hiding changes the bl
 `hidden: true` is already done. Update the page's ledger entry after hiding. Never hide a block on
 any other page, and never pass `--force`.
 
-The agent never deletes a block. The plan says upfront that the hidden seeded blocks stay on the
+The agent never deletes a block: `delete-block` asks for a confirmation that only `--force`
+skips. The plan says upfront that the hidden seeded blocks stay on the
 page for the partner to delete in the builder, and the handoff lists them, by page and module, as
 `needs_human`. Hidden blocks don't show on the site, so the draft is reviewable before they go.
 
@@ -128,7 +199,7 @@ it, with its blocks, as `needs_human`.
 |---|---|
 | Add a page | `add-page` — `--name` (1–80 chars), `--path` (lowercase `a–z`, `0–9`, hyphen, slash; max 80) |
 | Add / move a block | `add-block` / `move-block` |
-| Hide or show a block, or patch the site theme | `update-block` |
+| Hide a block, set its images, switches and store buttons, or patch the theme | `update-block` |
 
 `add-block` takes a **module template name** (`--block`), not a block ID, plus the landing
 `_id`, the page `_id`, and always `--index`: without it the block is appended to the end of the
@@ -141,22 +212,56 @@ page (CLI 1.9.4), not placed where the layout needs it. Use only the modules in 
         "patches": [{"op": "replace", "path": ["hidden"], "value": true}]}}
 ```
 
-- `type` is `block` (its `hidden` flag) or `site` (the theme); `id` is the block `_id` or
-  the `landingId`. Page and site settings are the partner's.
-- `path` is a segment array. `op` is `add` | `remove` | `replace`.
+- `type` is `block`, `page` or `site`; `id` is the block `_id`, the page `_id` or the
+  `landingId`.
+- `path` is a segment array, and a list index works as a segment (`["components",0,…]`).
+  `op` is `add` | `remove` | `replace`.
 - Protected, never patched: `_id`, `module`, `blockVersion`.
+
+The agent patches only these. Read the block first and use `replace` on a leaf that exists:
+
+| Target | Path | Value |
+|---|---|---|
+| A block | `["hidden"]` | `true`, for a seeded block (see above) |
+| A block | a path ending in `img` or `src`, for example `["values","background","img"]`, `["values","grid","<cellId>","background","img"]`, `["values","components","<compId>","value","img"]`, `["components",0,"section","background","img"]`, `["values","chains",0,"background","img"]`, `["values","logo","img"]` | a CDN URL `upload-asset` returned for this site |
+| A block | a path ending in `enable`, for example `["values","background","enable"]` | `true` or `false` |
+| A block | `["values","platforms","items"]` | the store buttons: the list read from the block, sent back whole with each item's `{enable, id, platform, url}`; `platform` is a store such as `steam`, `epic`, `microsoft`, `playstation`, `xbox`, `app_store` or `google` |
+| A page the agent added | `["theme","enabled"]` | `false`: the page uses the site theme |
+| The site | `["theme","input",<key>]` | see [Theme](#theme) |
+
 - **Never patch block text.** Patching a text value such as `["values","title"]` deletes the
   string and all its translations, and still returns `200`. Copy goes through
   `update-localization` — see below.
+- Never replace a federated block's wrapper (one whose `values.blockId` names the module it
+  shows) as a whole, and don't patch a `src` inside it.
+- Read `get-localization` before and after each `update-block` call. If it changed, a patch hit a
+  string: stop and report it.
 
-The theme is a `site` patch:
+### Theme
+
+Read the site's `theme` in `get-structure` before patching it. On the Multi-page web portal
+template, the colors are in `theme.input` — `bg`, `overlay`, `border`, `primary`, `secondary`,
+`text`, `isDark`, `isWCAG` — with `calculationType: "xds-theme"`. There is no `mainColors` there.
+Patch only keys that exist, in the format their current value has:
 
 ```json
 {"t": {"type": "site", "id": "<landingId>",
-       "patches": [{"op": "replace",
-                    "path": ["theme", "mainColors", "accentColor"],
-                    "value": "rgba(53,224,255,1)"}]}}
+       "patches": [{"op": "replace", "path": ["theme", "input", "primary"],
+                    "value": "<same format as the current value>"}]}}
 ```
+
+- The patch is stored, but `theme.calculatedTheme`, which the pages render from, isn't
+  recalculated (CLI 1.9.4). The site keeps its old colors until the partner recalculates them.
+- Every page has its own copy of the theme with an `enabled` flag. `true` means the page uses its
+  own copy ("Use global theme" is off) and ignores the site theme. Switching "Use global theme"
+  recalculates nothing. Changing a font in the Editor turns it off for that page.
+- What the partner does in the Editor, handed over as `needs_human` with the Editor link and the
+  colors: change one color by one step and back, click **Save as global theme**, then turn
+  **Use global theme** back on. Warn them: with "Use global theme" off, **Save as global theme**
+  saves the page's own copy over the site theme, old colors included, so they check the colors in
+  the panel before saving.
+- Afterwards, read `get-structure` again: `calculatedTheme` has changed, and every page has
+  `theme.enabled == false`. List any page still at `true` for the partner.
 
 ## Draft — assets
 
@@ -165,7 +270,8 @@ The theme is a `site` patch:
 | List assets | `list-assets --landing-id <landingId>` |
 | Upload an asset | `upload-asset` |
 
-Upload only partner-approved assets.
+Upload only partner-approved assets, including approved [Steam content](#steam-content). The
+Editor's media picker caches the asset list: a CLI upload shows up there after an Editor reload.
 
 ## Draft — copy and localization
 
@@ -186,6 +292,14 @@ Block text lives in the localization store, not on the block: blocks reference a
   A missing `translation` writes an **empty** string for that locale — destructive. Other
   locales on the same string are preserved.
 
+### Which string a block shows
+
+A block can reference strings the template's layout doesn't show. On this template's Card grid
+(`bento-grid`), the visible text is each cell's `values.gridComponents.<id>.text.id` and its
+button labels; the grid's own title and description aren't shown. For any other block, find the
+shown string before writing: the text the Editor shows appears in `get-localization`, under the
+`L:` id to write. After a copy change, look at the page in the Editor.
+
 ## Analytics and access
 
 | Intent | Command |
@@ -203,7 +317,13 @@ succeeding; both must be verified.
 
 Re-read the structure (`get-structure`) and localization (`get-localization`) after every
 change group and compare them with the confirmed plan; a mutation response alone is not
-evidence. That read-back is the agent's whole Verify step.
+evidence.
+
+A read-back shows what is stored, not what renders: the theme and some block text can read back
+right and still look wrong. Before calling a section done, look at its page in the Editor (reload
+it first) and compare it with the plan. Use the Editor only to look: a synthetic click inside the
+page can fire the page's own handlers, such as copying text to the clipboard. Without a browser,
+the visual check goes to the partner as `needs_human`, with the Editor link.
 
 ## Done by the partner in Publisher Account
 
@@ -225,12 +345,28 @@ The agent never does these. Each one is reported as `needs_human`, with what to 
 **Not yet available from the CLI — the partner does them in the builder:**
 
 - Rename, duplicate, or delete a page; link a page under a parent in the navigation.
-- Add each page the agent added (such as Community) to the sidebar menu.
-- On a PC portal, hide the template's App Store and Google Play badges in the sidebar.
-- Page and site settings, and site feature toggles.
+- Everything in the layout: see below.
+- Page and site settings, and site feature toggles, except the global-theme switch on a page the
+  agent added.
+- Recalculate the theme ([Theme](#theme)).
 - Show a store component (such as subscriptions) on the Web Shop.
 - Launcher news articles. The News section is `placeholder` while its articles are `Draft`.
 - Update an existing asset; rename the domain; move the site to another project.
+
+### The layout: sidebar and footer
+
+`get-structure` and `get-landing` list layouts by ID only, so the agent can't read or change
+them. Much of what makes the portal look like the game is there. Give the partner these steps,
+with the Editor link:
+
+- **Sidebar → Layout → Logo image:** the game's logo.
+- **Sidebar → Menu:** switch items on or off; **Add menu item** (pick the page, enter a name) for
+  each page the agent added, such as Community.
+- **Sidebar → Store buttons:** on a PC portal, switch off App Store and Google Play.
+- **Sidebar → Social networks:** each network needs its URL; the Editor checks it per network.
+- **Footer:** the "Use social network settings from sidebar" switch, and the Game icon image.
+- **Images:** click the current thumbnail to open the site's asset library. **Add new asset**
+  opens the computer's file picker.
 
 ## Launcher
 
