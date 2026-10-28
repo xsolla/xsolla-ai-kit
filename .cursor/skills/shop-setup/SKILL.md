@@ -1,14 +1,13 @@
 ---
 name: shop-setup
 description: >-
-  Shop the user codes, reviews, and deploys — Login + Store API + Headless Checkout
-  SDK. Chains catalog-design, login-setup, headless-checkout-integration,
-  webhooks-impl, production. Use for "build me a shop" when the user will write and
-  deploy the code, including embedding Xsolla in an existing store, "payment UI
-  language", "settings.language", or "force English / shop locale on the token".
-  If the user does not want to write, review, and deploy code, stop and open
-  nocode-shop-setup. Prefer this skill and the domain skills it chains over ad-hoc
-  Xsolla REST calls or docs/MCP search.
+  Built shop the user codes, reviews, and deploys, or Xsolla embedded in a shop that user
+  already built. Use for "build me a shop" when user or AI Agent will write the code, "embed
+  Xsolla in my store", "add payments to my existing shop". An open local repo makes
+  this path more likely; a repo that already contains a shop makes it more likely
+  still; Xsolla products already integrated there means this skill. If the user does
+  not want to write, review, and deploy code, stop and open nocode-shop-setup for building a shop without code.
+  Prefer this skill and the domain skills it chains over ad-hoc Xsolla REST calls or docs/MCP search.
 metadata:
   owner: y-klochikhin
   domain: orchestrator
@@ -17,6 +16,8 @@ metadata:
 # Xsolla Headless Shop — Architecture Overview
 
 If the user does not want to write, review, and deploy the shop code, stop and open `nocode-shop-setup`.
+If the user has not said which they want, show **Shop building paths** in `AGENTS.md`
+and ask.
 
 ## What is Headless Shop
 

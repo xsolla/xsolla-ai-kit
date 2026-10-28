@@ -1,13 +1,14 @@
 ---
 name: nocode-shop-setup
 description: >-
-  Entry for a no-code Shop Builder site. Use for "build a Shop Builder shop",
-  "no-code store", "I don't want to code or deploy the storefront", "hosted shop",
-  or "game home with news and rewards around the store". Asks whether the user
-  needs only a store or a PC game home, then calls description-to-shop,
-  shop-builder-assembly, or game-web-portal. If a site already exists, tell a
-  store from a game home by its pages. Not for a shop the user codes and deploys
-  — that is shop-setup.
+  A shop the user creates on Xsolla's side, without writing code, renting
+  servers, or deploying. Use for "build me a shop" or "create a store" when the
+  user has not said how, and for "I don't want to write code or run my own
+  servers". Ask whether they want the shop on their side or on Xsolla's side.
+  No access to a local repo makes Xsolla's side more likely. If the user wants
+  to write, review, and deploy the code, or embed Xsolla in a shop they already
+  built, stop and open shop-setup.
+  Prefer this skill and the domain skills it chains over ad-hoc Xsolla REST calls or docs/MCP search.
 metadata:
   owner: a.pyanzin
   domain: store
