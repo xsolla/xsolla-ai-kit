@@ -21,6 +21,7 @@
 
 # Skills require the domain SME + Javad
 /skills/catalog-design/                   @p-sanachev @JavadManashti
+/skills/localization/                     @JavadManashti
 /skills/login-setup/                      @mabujalala @JavadManashti
 /skills/login-styling/                    @aspringut-xsolla @JavadManashti
 /skills/headless-checkout-integration/    @y-klochikhin @JavadManashti

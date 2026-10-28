@@ -222,7 +222,7 @@ def _unquote(v):
 
 
 ENV_HINT = ("set them in the environment, or pass --env PATH to a .env file holding "
-            "bare values:\n  XSOLLA_PROJECT_ID=314067\n  XSOLLA_PROJECT_API_KEY=<key>")
+            "bare values:\n  XSOLLA_PROJECT_ID=<project id>\n  XSOLLA_PROJECT_API_KEY=<key>")
 
 
 def load_env(argv):
@@ -424,6 +424,11 @@ def fetch_all(env, list_path, api_version="v2"):
             if offset == 0:
                 st2, data2 = api(env, "GET", list_path, api_version=api_version)
                 if st2 == 200:
+                    # Some lists reject limit/offset. Keeping that response used to
+                    # look like a complete export, including when the failure was real
+                    # and the body was only the first page.
+                    print(f"  ! WARNING: {list_path} rejected paging (HTTP {st}); "
+                          f"kept the unpaginated response, which may be a single page.")
                     return _as_list(data2), 200
                 return [], st
             print(f"  ! ERROR: {list_path} page at offset {offset} failed HTTP {st} — "
@@ -1015,17 +1020,30 @@ def fill(path, locale, source_arg):
     _cols(cols, path)
     col = _locale_column(cols, locale, "fill")
 
-    used, n = set(), 0
+    used, n, kept = set(), 0, []
     for r in rows:
         k = _key(r)
         v = entries.get(k)
-        if v and v.strip():
-            r[col] = v.strip(); used.add(k); n += 1
+        if not (v and v.strip()):
+            continue
+        # A stale batch or an echoed row must not replace a human translation.
+        # An empty or whitespace-only cell is still unfilled and may be written.
+        if (r.get(col) or "").strip():
+            kept.append(k)
+            used.add(k)
+            continue
+        r[col] = v.strip(); used.add(k); n += 1
     with open(path, "w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=cols); w.writeheader(); w.writerows(rows)
 
     unmatched = [k for k in entries if k not in used]
     print(f"filled {n} cell(s) for '{col}' in {path}")
+    if kept:
+        print(f"  kept {len(kept)} existing translation(s); a non-empty cell is not replaced:")
+        for k in kept[:10]:
+            print(f"      entity={k[0]} id={k[1]} subid={k[2]!r} field={k[3]}")
+        if len(kept) > 10:
+            print(f"      ... and {len(kept) - 10} more")
     for pr in problems:
         print(f"  ! unusable {pr}")
     if unmatched:

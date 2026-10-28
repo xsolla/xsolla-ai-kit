@@ -170,12 +170,10 @@ used; an identical repeat dedupes quietly) are listed individually and the comma
 non-zero.
 Cells that did fill are still saved, so re-sending only the discarded ones is safe.
 
-What `fill` does **not** do is protect an existing value: it writes whatever address it
-is handed, with no fill-only guard. That is safe in the normal loop only because
-`batch` lists rows *missing* the locale, so a filled cell is never in a batch. The
-consequence is an ordering rule when a partner CSV is also in play — `merge` first,
-then `batch`, then `fill`. Filling a batch that was taken before the merge replaces the
-partner's human translations with machine output, silently.
+`fill` is fill-only. A cell that already has a translation is left as it is and reported
+as kept, including when the JSON comes from a stale batch or repeats a row. `batch` still
+lists only rows missing that locale. When a partner CSV is also in play, `merge` first,
+then `batch`, then `fill`, so the batch is taken after the human translations are in the file.
 
 ## Loading a partner's CSV
 

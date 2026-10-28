@@ -635,6 +635,22 @@ def _():
     assert len(objs) == 50, len(objs)
 
 
+@case("a failed first page warns when the unpaginated response is kept")
+def _():
+    def api(env, method, path, body=None, api_version="v2", **kw):
+        if "limit=" in path:
+            return 400, "no paging"
+        return 200, {"items": [{"sku": "s0"}]}
+    ci.api = api
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        objs, st = ci.fetch_all(ENV, "/admin/promocode")
+    out = buf.getvalue()
+    assert st == 200, (st, out)
+    assert len(objs) == 1, objs
+    assert "WARNING" in out and "single page" in out, out
+
+
 @case("batch de-DE reads the de column and does not reopen filled cells")
 def _():
     with tempfile.TemporaryDirectory() as d:
@@ -676,6 +692,30 @@ def _():
             rows = list(csv.DictReader(f))
         assert rows[0]["de"] == "Bogen", rows
         assert "de-DE" not in rows[0], rows[0]
+
+
+@case("fill keeps a cell that already has a translation")
+def _():
+    with tempfile.TemporaryDirectory() as d:
+        p = write_csv(os.path.join(d, "t.csv"),
+                      [["items", "x", "", "name", "", "Sword", "Schwert (human)"],
+                       ["items", "y", "", "name", "", "Bow", ""]],
+                      header=["entity", "id", "subid", "field", "context", "en", "de"])
+        src = os.path.join(d, "in.json")
+        with open(src, "w", encoding="utf-8") as f:
+            json.dump([
+                {"entity": "items", "id": "x", "subid": "", "field": "name",
+                 "translation": "Schwert (AI)"},
+                {"entity": "items", "id": "y", "subid": "", "field": "name",
+                 "translation": "Bogen"},
+            ], f)
+        rc, out = run(ci.fill, p, "de", src)
+        assert rc == 0, out
+        assert "kept 1" in out, out
+        with open(p, encoding="utf-8") as f:
+            rows = list(csv.DictReader(f))
+        assert rows[0]["de"] == "Schwert (human)", rows
+        assert rows[1]["de"] == "Bogen", rows
 
 
 @case("discover says when the attribute list fails")
