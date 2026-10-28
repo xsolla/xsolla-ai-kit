@@ -1199,6 +1199,26 @@ def object_path(path: str) -> dict:
     return {"pathSegment": path, "type": "static"}
 
 
+class EditorUrlTests(unittest.TestCase):
+    def test_builds_the_site_builder_editor_link(self) -> None:
+        self.assertEqual(
+            "https://publisher.xsolla.com/1/projects/2/site-builder/my-test-site/editor",
+            apply_plan.editor_url(1, 2, "my-test-site"),
+        )
+
+    def test_rejects_unverified_ids_and_bad_slugs(self) -> None:
+        for merchant_id, project_id, slug in (
+            ("1", 2, "shop"),
+            (1, 0, "shop"),
+            (True, 2, "shop"),
+            (1, 2, ""),
+            (1, 2, "a/b"),
+            (1, 2, None),
+        ):
+            with self.assertRaises(ValueError, msg=(merchant_id, project_id, slug)):
+                apply_plan.editor_url(merchant_id, project_id, slug)
+
+
 class FakeShopBuilderCli:
     """In-memory `xsolla` stand-in whose get-structure returns object page paths.
 

@@ -247,7 +247,7 @@ def main() -> int:
         available_group_ids = group_external_ids(groups)
         requested_groups = {
             (group["external_id"], group["type"])
-            for group in brief["catalog"]["groups"]
+            for group in brief.get("catalog", {}).get("groups", [])
             if group["external_id"] != "__all__"
         }
         missing_groups = sorted(

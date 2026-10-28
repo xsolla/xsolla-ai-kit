@@ -8,7 +8,8 @@ from committed evidence.
 
 - `create-website`, `set-landing-type --type store`, `add-page`, `add-block`,
   `delete-block`, `move-block`, `update-block`, and `update-many-localization` wrote
-  successfully through Xsolla CLI 1.9.4.
+  successfully through Xsolla CLI 1.9.4. `delete-block` wrote only with `--force`, which
+  the skill never passes, so no script deletes a block.
 - A new store page is scaffolded with `header`, `leadGameSales`, `description`,
   `packs`, `bento-grid`, `gallery`, `requirements`, `faq`, and `footer` modules.
 - `add-block --block newStore` succeeds and creates Shop Builder test-catalog

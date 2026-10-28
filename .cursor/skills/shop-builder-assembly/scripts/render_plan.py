@@ -11,6 +11,7 @@ import sys
 from collections.abc import Callable
 from pathlib import Path
 
+from block_ops import block_fingerprints, plan_block_operations
 from validate_shop_brief import load_brief, validate
 
 PRESET_PAGES = {
@@ -231,6 +232,35 @@ def require_own_header(pages: list[dict], structure: object) -> None:
             raise ValueError(NO_OWN_HEADER.format(path=page_plan["path"]))
 
 
+def header_check_pages(plan: dict, structure: object) -> list[dict]:
+    """Pages ``require_own_header`` checks for a plan.
+
+    A build checks its planned pages. A ``block_operations`` plan has no planned pages,
+    so it checks every site page that holds a block the plan targets or adds to.
+    """
+
+    if plan.get("mode") != "block_operations":
+        return plan["pages"]
+    page_ids = set()
+    block_ids = set()
+    for item in plan.get("block_operations") or []:
+        if item.get("page_id") is not None:
+            page_ids.add(item["page_id"])
+        if isinstance(item.get("block_id"), str):
+            block_ids.add(item["block_id"])
+    pages = []
+    for page in structure_data(structure).get("pages") or []:
+        if not isinstance(page, dict):
+            continue
+        blocks = page.get("blocks") if isinstance(page.get("blocks"), list) else []
+        holds_target = any(
+            isinstance(block, dict) and block.get("_id") in block_ids for block in blocks
+        )
+        if page.get("_id") in page_ids or holds_target:
+            pages.append({"path": page_path(page)})
+    return pages
+
+
 def custom_code_warnings(pages: list[dict]) -> list[str]:
     """Warn when the plan adds a Custom code block.
 
@@ -427,7 +457,61 @@ def bind_current_state(
     }
 
 
+def build_ops_plan(brief: dict, current_structure: object | None) -> dict:
+    """Plan block operations only: no page, navigation, locale or catalog phases."""
+    if current_structure is None:
+        raise ValueError(
+            "block operations need the backup structure (--structure) to resolve "
+            "pages and block IDs"
+        )
+    current = structure_data(current_structure)
+    items = plan_block_operations(brief, current)
+    block_digests, block_order = block_fingerprints(current)
+    plan = {
+        "version": 1,
+        "mode": "block_operations",
+        "target": {
+            "merchant_id": brief["project"]["merchant_id"],
+            "project_id": brief["project"]["project_id"],
+            "environment": brief["project"]["environment"],
+            "test_project_acknowledged": brief["project"].get(
+                "test_project_acknowledged", False
+            ),
+            "slug": brief["site"]["slug"],
+        },
+        "requires_confirmation": True,
+        "publication": "forbidden",
+        "order": ["backup", "block_operations", "verify"],
+        "pages": [],
+        "navigation": [],
+        "locales": [],
+        "catalog_sections": [],
+        "block_operations": items,
+        # Block operations never remove a block; see DELETE_REFUSAL in block_ops.
+        "removals": [],
+        "omissions": [],
+        "current_state": {
+            "status": "captured",
+            "application_mode": "block-operations",
+            "landing_id": current.get("_id"),
+            # Volatile component IDs are ignored so apply can compare a fresh read.
+            "structure_sha256": structure_hash(current),
+            "block_sha256": block_digests,
+            "block_order": block_order,
+            "extra_pages": [],
+        },
+        "brief_sha256": canonical_hash(brief),
+        "implemented_phases": ["block_operations"],
+        "unsupported_phases": [],
+        "warnings": [],
+    }
+    plan["confirmation_id"] = "sha256:" + canonical_hash(plan)[:12]
+    return plan
+
+
 def build_plan(brief: dict, current_structure: object | None = None) -> dict:
+    if "block_operations" in brief:
+        return build_ops_plan(brief, current_structure)
     preset = choose_preset(brief)
     catalog_groups = catalog_sections(brief, preset)
     pages, omissions = omit_unwritable_blocks(selected_pages(brief, preset), brief)
@@ -535,7 +619,7 @@ def main() -> int:
     try:
         plan = build_plan(brief, structure)
         if structure is not None:
-            require_own_header(plan["pages"], structure)
+            require_own_header(header_check_pages(plan, structure), structure)
     except ValueError as exc:
         print(str(exc), file=sys.stderr)
         return 1
