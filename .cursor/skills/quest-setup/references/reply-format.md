@@ -50,9 +50,10 @@ to copy.
   (for example `Change: show 3 cards (was 4); heading → "Daily quests"`).
 - When the plan `warnings` say a card text replaces the one set in the editor, add
   "(replaces the text set in the Site Builder editor)" to that Change bullet.
-- Add the gate preflight's `plan_notes` line as it is, for example "Using the CLI test
-  environment (sandbox off)" or "CLI sandbox mode switched off for Shop Builder". Never
-  write a sandbox line preflight did not report, and never ask about sandbox mode.
+- When the gate preflight returns a `plan_notes` line, add it as it is, for example "Using
+  the CLI test environment (sandbox off)" or "CLI sandbox mode switched off for Shop
+  Builder". When `plan_notes` is empty, add no sandbox or environment line (the examples
+  below show one only because their preflight returned it). Never ask about sandbox mode.
 - Last line: `Next: reply "yes" to apply this exact plan.`
 - Show one plan, after preflight, backup and render. Never show a draft plan first, and
   never ask the publisher to confirm a dedicated test project. One yes applies the plan.
