@@ -683,11 +683,11 @@ NO_OWN_HEADER = (
 
 
 class PublisherTemplateSiteTests(unittest.TestCase):
-    """A block-operations brief on a Publisher Account template site stops like a build.
+    """A block-operations brief on a Publisher Account template site goes ahead.
 
     Such a site keeps its header in the common layout, so the Quests block's page has
-    no header block of its own. Render refuses the plan, and apply stops after the
-    backup and confirmation checks, before its first write.
+    no header block of its own. Block operations never touch the header, so the
+    template-header stop that guards a build does not apply to them.
     """
 
     OPERATIONS = [{"op": "update", "block_id": "q1", "values": {"maxQuests": 4}}]
@@ -771,23 +771,21 @@ class PublisherTemplateSiteTests(unittest.TestCase):
         reads = {"list", "list-websites", "get-structure", "get-localization", "get-block"}
         return [call for call in site.calls if call[1] not in reads]
 
-    def test_render_refuses_an_ops_brief_on_a_template_site(self) -> None:
+    def test_render_accepts_an_ops_brief_on_a_template_site(self) -> None:
         code, stdout, stderr = self.run_render(self.site(own_header=False))
-        self.assertEqual(1, code)
-        self.assertEqual("", stdout)
-        self.assertEqual(NO_OWN_HEADER + "\n", stderr)
+        self.assertEqual(0, code, stderr)
+        self.assertEqual("block_operations", json.loads(stdout)["mode"])
 
-    def test_apply_stops_an_ops_brief_on_a_template_site_before_any_write(self) -> None:
+    def test_apply_runs_an_ops_brief_on_a_template_site(self) -> None:
         site = self.site(own_header=False)
-        before = copy.deepcopy(site.blocks)
-        code, stdout, stderr, defaults = self.run_apply(site)
-        self.assertEqual(1, code)
-        self.assertEqual("", stdout)
-        self.assertEqual(f"Apply failed: {NO_OWN_HEADER}\n", stderr)
-        self.assertIn(("shopbuilder", "get-structure", "--slug", SLUG), site.calls)
-        self.assertEqual([], self.writes(site))
-        self.assertEqual(before, site.blocks)
-        defaults.assert_not_called()
+        code, stdout, stderr, _ = self.run_apply(site)
+        self.assertEqual(0, code, stderr)
+        self.assertEqual("block-operations-applied", json.loads(stdout)["status"])
+        self.assertEqual(4, site.find("q1")["values"]["internalBlockValues"]["maxQuests"])
+        self.assertFalse(
+            any(b["module"] in ("header", "footer") for b in site.blocks),
+            "block operations must not add a header or footer to a template site",
+        )
 
     def test_ops_brief_on_a_page_with_its_own_header_renders_and_applies(self) -> None:
         site = self.site(own_header=True)
@@ -804,16 +802,10 @@ class PublisherTemplateSiteTests(unittest.TestCase):
         )
         self.assertEqual(4, site.find("q1")["values"]["internalBlockValues"]["maxQuests"])
 
-    def test_only_pages_the_ops_touch_are_checked(self) -> None:
-        site = self.site(own_header=False)
-        structure = site.structure_value()
-        structure["pages"].append(
-            {"_id": "page-2", "name": "Other", "path": "/other", "blocks": []}
-        )
+    def test_ops_plans_check_no_pages_for_a_header(self) -> None:
+        structure = self.site(own_header=False).structure_value()
         plan = render_plan.build_plan(ops_brief(self.OPERATIONS), self.site(True).structure_value())
-        self.assertEqual(
-            [{"path": "/"}], render_plan.header_check_pages(plan, structure)
-        )
+        self.assertEqual([], render_plan.header_check_pages(plan, structure))
 
 
 if __name__ == "__main__":

@@ -12,10 +12,9 @@ the listed blocks. Brief fields are in [shop brief](shop-brief.md).
 first write it compares the live structure with the backup (volatile component IDs
 ignored) and stops if they differ.
 
-A page that holds a targeted block and has no header block of its own (a site created
-from a Publisher Account template keeps the header in the common layout) stops the run
-the same way a build stops: render refuses the plan, and apply stops before its first
-write. See Known limitations in [SKILL.md](../SKILL.md).
+Block operations run on sites created from a Publisher Account template too (the header
+lives in the common layout). They never touch the header, so the template-header stop
+that guards a build does not apply. See Known limitations in [SKILL.md](../SKILL.md).
 
 Verification runs automatically at the end of an apply and reads every planned leaf back.
 

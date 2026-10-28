@@ -86,7 +86,8 @@ continues.
 ## Known limitations
 
 - Sites created from a Publisher Account template keep the header in the common layout;
-  render and apply stop on them before any write, for a build and for block operations.
+  a build stops on them before any write. Quests block operations are not affected: they
+  never touch the header, so they run on template sites too.
   Report the stop and suggest nothing else: not another site, not manual edits, no other
   workaround.
 

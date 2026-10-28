@@ -235,30 +235,14 @@ def require_own_header(pages: list[dict], structure: object) -> None:
 def header_check_pages(plan: dict, structure: object) -> list[dict]:
     """Pages ``require_own_header`` checks for a plan.
 
-    A build checks its planned pages. A ``block_operations`` plan has no planned pages,
-    so it checks every site page that holds a block the plan targets or adds to.
+    A build checks its planned pages. A ``block_operations`` plan checks none: it only
+    adds or changes Quests blocks and never touches the header or navigation, so a site
+    created from a Publisher Account template (header in the common layout) is fine.
     """
 
-    if plan.get("mode") != "block_operations":
-        return plan["pages"]
-    page_ids = set()
-    block_ids = set()
-    for item in plan.get("block_operations") or []:
-        if item.get("page_id") is not None:
-            page_ids.add(item["page_id"])
-        if isinstance(item.get("block_id"), str):
-            block_ids.add(item["block_id"])
-    pages = []
-    for page in structure_data(structure).get("pages") or []:
-        if not isinstance(page, dict):
-            continue
-        blocks = page.get("blocks") if isinstance(page.get("blocks"), list) else []
-        holds_target = any(
-            isinstance(block, dict) and block.get("_id") in block_ids for block in blocks
-        )
-        if page.get("_id") in page_ids or holds_target:
-            pages.append({"path": page_path(page)})
-    return pages
+    if plan.get("mode") == "block_operations":
+        return []
+    return plan["pages"]
 
 
 def custom_code_warnings(pages: list[dict]) -> list[str]:
