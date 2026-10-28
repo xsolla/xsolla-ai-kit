@@ -5,11 +5,12 @@ description: >-
   Xsolla Quest Platform quest, including Web3 rewards, conditions and sending a quest
   event, or to add, reorder, retext, hide or show the Quests block on a Shop Builder site
   (a request to remove it gets hide offered; the publisher deletes it in the Site Builder
-  editor). Any other change to a Shop Builder site (header, theme, other blocks)
+  editor), and to list the publisher's shops or Shop Builder sites (a read, not a build).
+  Any other change to a Shop Builder site (header, theme, other blocks)
   also loads this skill, only to decline it in one sentence. A headless storefront quest
   section is covered on explicit request. Key triggers: "create a quest", "my quests",
   "trigger my quest", "add a Web3 reward", "why didn't my quest complete", "Quests block",
-  "remove the Quests block", "show quests in my web shop".
+  "remove the Quests block", "show quests in my web shop", "list my shops", "my sites".
 metadata:
   owner: r.aliyev
   domain: quests
@@ -92,7 +93,9 @@ examples in [reply-format.md](references/reply-format.md#examples), with no tool
 
 When the request is about the publisher's shop, webshop or site (a change, or a question
 about it), run [Which shop](references/quests-block-flow.md#which-shop) before anything
-else. Pure quest requests (list my quests, why a quest did not complete, create a quest)
+else. "List my shops" or "list my sites" is answered by that step alone: one
+`xsolla shopbuilder list-websites --json` call, then the Which shop reply (bold question,
+one bullet per site name, a headless storefront bullet, `Next:`), no build-path questions. Pure quest requests (list my quests, why a quest did not complete, create a quest)
 and capability questions skip it.
 
 ## List quests
