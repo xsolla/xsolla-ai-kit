@@ -44,6 +44,8 @@ to copy.
 - Line 1: a bold `Plan: ...` line.
 - Then up to about five bullets, for example Site, Change, defaults such as Card image,
   "Not published; you publish in Publisher Account", and Confirmation.
+- When the plan `warnings` say a card text replaces the one set in the editor, add
+  "(replaces the text set in the Site Builder editor)" to that Change bullet.
 - Last line: `Next: reply "yes" to apply this exact plan.`
 
 ### Draft plan before confirmation

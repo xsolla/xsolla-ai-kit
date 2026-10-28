@@ -33,6 +33,12 @@ Notes:
 - Overrides are plain strings, are not localized, and win over the quest's own view.
   Prefer fixing the quest's `public_view`. Overrides stay on the block when a quest
   is removed from `questIds`.
+- The latest change wins. If the card's title or description was already set in the
+  Site Builder editor (the editor also seeds it the first time it opens), an `update`
+  of `overrides.<questId>.title` or `.description` replaces that text: the gate writes
+  the new text there for every site locale and reads it back. The rendered plan's
+  `warnings` say so. A `reset` of the title or description also clears the editor text,
+  so the card shows the quest's own text again.
 - The heading goes in `translations` of the operation, never in `values`. Only the
   key `heading` is accepted.
 - The reward text and reward image on a card are not block settings. They come from
