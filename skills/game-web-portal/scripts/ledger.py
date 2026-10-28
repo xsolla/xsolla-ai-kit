@@ -13,8 +13,13 @@ from pathlib import Path
 STATUSES = ("completed", "placeholder", "needs_input", "needs_access", "needs_human",
             "blocked_capability", "failed")
 
-# Steps shop-plan writes (the contract's "Steps and their evidence" table, "Done by"). They are
-# not this skill's to fix, so the check skips them.
+# The contract's steps ("Steps and their evidence"). A gap goes in a step's evidence, never in
+# a step of its own.
+STEPS = ("intake", "plan", "merchant", "catalog", "login", "storefront", "verify", "review",
+         "handoff")
+
+# Steps shop-plan writes (the same table, "Done by"). They are not this skill's to fix, so the
+# check skips them.
 SKIPPED = ("intake", "plan")
 
 
@@ -49,6 +54,11 @@ def problems(ledger: dict) -> list[str]:
             continue
         if not isinstance(step.get("id"), str) or not step["id"]:
             found.append(f"{name}: needs an id")
+        elif step["id"] not in STEPS:
+            found.append(
+                f"{name}: is not a contract step ({', '.join(STEPS)}); put a gap in the "
+                f"evidence of the contract step it belongs to"
+            )
         if "status" in step and step["status"] not in STATUSES:
             found.append(
                 f"{name}: status {json.dumps(step['status'])} is not a contract status "

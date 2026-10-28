@@ -47,13 +47,33 @@ class LedgerCheckTest(unittest.TestCase):
         listed = [line.split("`")[1] for line in table.splitlines() if line.startswith("| `")]
         self.assertEqual(listed, list(ledger.STATUSES))
 
-    def test_the_skipped_steps_are_the_ones_shop_plan_writes(self):
+    def steps_table(self) -> list[list[str]]:
         contract = (ROOT.parent / "shop-plan" / "references" / "onboarding-contract.md")
         text = contract.read_text(encoding="utf-8")
         table = text.split("## Steps and their evidence", 1)[1].split("##", 1)[0]
-        rows = [line.split("|") for line in table.splitlines() if line.startswith("| `")]
-        by_shop_plan = [row[1].strip(" `") for row in rows if row[2].strip() == "`shop-plan`"]
+        return [line.split("|") for line in table.splitlines() if line.startswith("| `")]
+
+    def test_the_contract_defines_exactly_these_steps(self):
+        self.assertEqual([row[1].strip(" `") for row in self.steps_table()], list(ledger.STEPS))
+
+    def test_the_skipped_steps_are_the_ones_shop_plan_writes(self):
+        by_shop_plan = [row[1].strip(" `") for row in self.steps_table()
+                        if row[2].strip() == "`shop-plan`"]
         self.assertEqual(by_shop_plan, list(ledger.SKIPPED))
+
+    def test_each_contract_step_passes(self):
+        for step_id in ledger.STEPS:
+            with self.subTest(step=step_id):
+                self.assertEqual(ledger.problems({"steps": [step(id=step_id)]}), [])
+
+    def test_an_invented_step_fails_and_names_it(self):
+        # 2026-10-28 B-3 put the storefront gaps in a step of its own
+        gaps = step(id="community_gaps", status="needs_human")
+        found = ledger.problems({"steps": [step(), gaps]})
+        self.assertEqual(len(found), 1)
+        self.assertIn("step 'community_gaps': is not a contract step", found[0])
+        self.assertIn("storefront", found[0])
+        self.assertIn("evidence", found[0])
 
     def test_shop_plan_steps_without_ids_evidence_or_updated_at_pass(self):
         # shop-plan's own instructions never name these fields

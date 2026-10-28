@@ -105,21 +105,19 @@ Verify (read-back) → Human review → Handoff
    stop before any write. If `store_url` is supplied, validate the exact Steam host. Use
    only partner-approved metadata and assets; never substitute invented game metadata.
 3. **Discover** — find the partner's site at `domain` and read its structure
-   (`xsolla shopbuilder list-websites`, `get-landing`, `get-structure`). Capture the
-   landing `_id`, page IDs, and block IDs before any mutation — block and theme calls
-   are keyed by landing `_id`, not the domain. Confirm the site has the template's `/news`,
-   `/rewards` and `/store` pages. Never recreate a discovered existing entity; resume at
-   the first incomplete item.
+   (`xsolla shopbuilder list-websites`, `get-landing`, `get-structure`). Capture the landing
+   `_id`, page IDs, and block IDs before any mutation — block and theme calls are keyed by
+   landing `_id`, not the domain. Confirm the site has the template's `/news`, `/rewards` and
+   `/store` pages. Never recreate a discovered existing entity; resume at the first incomplete item.
 4. **Back up** — before the first write, export the site: `get-landing`,
    `get-structure` and `get-localization` for the slug, and `list-assets` for the
    landing `_id`, saved to a new `.xsolla/backup-<timestamp>/` directory. Add `.xsolla/` to
    `.gitignore` first if it isn't there: a site export can hold a preview token. A failed
    export stops the run before any write.
-5. **Plan and confirm** — show the ordered change groups (sections, pages, blocks,
-   theme, copy, catalog links) and the seeded blocks it will hide, and say upfront that
-   the partner deletes those in the builder; then wait for an explicit yes.
-   Earlier permission to "set up my portal" is not confirmation of a plan. Re-confirm
-   if the plan changes.
+5. **Plan and confirm** — show the ordered change groups (sections, pages, blocks, theme, copy,
+   catalog links) and the seeded blocks it will hide, and say upfront that the partner deletes
+   those in the builder; then wait for an explicit yes. Earlier permission to "set up my
+   portal" is not confirmation of a plan. Re-confirm if the plan changes.
 6. **Draft** — map each section to the template's page by path, then build only the missing
    ones: `add-page`, its blocks with `add-block --index`, and `update-block` to hide the
    seeded blocks it doesn't keep, following the portal layout in
@@ -143,7 +141,9 @@ Verify (read-back) → Human review → Handoff
    label.
 7. **Verify (read-back)** — read back every changed entity (`get-structure`,
    `get-localization`, page and block reads) and compare it with the confirmed plan.
-   A mutation response is not evidence. Keep unverified items out of **Completed**.
+   A mutation response is not evidence. `storefront` is `completed` only when every planned
+   change reads back; one that didn't land (no CLI field, a failed write) makes it
+   `needs_human`, `needs_input`, `blocked_capability` or `failed`, with the gap in its `evidence`.
 8. **Human review** — present completed items, placeholders, blockers, and failures.
    The draft is ready for review only with correct ownership, domain, type, and locale,
    no duplicate routes, read-back-verified content, disclosed placeholders, and explicit

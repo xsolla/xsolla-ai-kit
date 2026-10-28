@@ -149,7 +149,10 @@ download.
 
 - Read back changed entities and compare them with the confirmed plan.
 - Update the ledger, then run `scripts/ledger.py check`.
-- Keep unverified items out of **Completed**.
+- `storefront` is `completed` only when every change in the confirmed plan reads back. A planned
+  change that didn't land, because the CLI can't set it or a write failed, makes the step
+  `needs_human`, `needs_input`, `blocked_capability` or `failed`, with the gap in its `evidence`,
+  not in a step of its own.
 
 ### 8. Draft gate, review and hand over
 
