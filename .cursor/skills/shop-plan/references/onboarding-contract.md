@@ -27,13 +27,13 @@ The headless path has no ledger: nothing on it reads one.
 
 The values the Shop Builder part needs are asked in one message: `shop-plan`'s first message,
 together with its criteria. `game-web-portal` and `description-to-shop` reuse the recorded
-answers, asking only for missing data or conflicts. Skip what the developer already stated, and
-show inferred values back instead of assuming them.
+answers, asking only for missing data or conflicts. Skip what the developer already stated or
+their own store listing states, and show inferred values back instead of assuming them.
 
 | Group | Ledger keys | Used by |
 |---|---|---|
 | Plan | `shop-plan`'s criteria: the path, and on Shop Builder the site kind | `shop-plan` |
-| Game | `game_name`, `platforms`, `description` (approved), `store_url` (optional), `brand_assets` (optional) | `game-web-portal`, `description-to-shop` |
+| Game | `game_name`, `platforms`, `description` (approved), `store_url` (optional: the developer's own App Store, Google Play or Steam listing, read for the other game values; never found by searching the name), `brand_assets` (optional) | `game-web-portal`, `description-to-shop` |
 | Site | `domain` (optional: the target site may not exist yet), `primary_locale`, `locales` | `game-web-portal`, `description-to-shop` |
 
 The account, catalog, sign-in methods and webhooks are not part of this intake:

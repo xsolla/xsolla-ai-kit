@@ -14,6 +14,7 @@ PLATFORMS = {"mobile", "pc", "console", "web"}
 LIFECYCLES = {"launch", "evergreen", "live-service"}
 GROUP_TYPES = {"virtual_good", "bundle", "virtual_currency"}
 PLACEMENTS = {"primary", "featured", "secondary"}
+LIVEOPS_FEATURES = {"promo_codes", "reward_chain", "offer_chain"}
 VERIFIED_BLOCK_MODULES = {
     "header",
     "leadGameSales",
@@ -184,6 +185,16 @@ def validate(brief: dict) -> list[str]:
         not isinstance(sku, str) or not sku.strip() for sku in featured_skus
     ):
         errors.append("catalog.featured_skus must be a list of non-empty strings")
+
+    liveops = catalog.get("liveops", [])
+    if (
+        not isinstance(liveops, list)
+        or any(not isinstance(feature, str) for feature in liveops)
+        or not set(liveops) <= LIVEOPS_FEATURES
+    ):
+        errors.append(f"catalog.liveops must use: {', '.join(sorted(LIVEOPS_FEATURES))}")
+    elif len(liveops) != len(set(liveops)):
+        errors.append("catalog.liveops must not contain duplicates")
 
     page_overrides = content.get("page_overrides")
     if page_overrides is not None:

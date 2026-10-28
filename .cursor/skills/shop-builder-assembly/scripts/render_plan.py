@@ -18,7 +18,16 @@ PRESET_PAGES = {
         {
             "name": "Home",
             "path": "/",
-            "blocks": ["header", "leadGameSales", "newStore", "faq", "footer"],
+            "blocks": [
+                "header",
+                "leadGameSales",
+                "sb-offer-chain",
+                "newStore",
+                "rewards",
+                "promocodes",
+                "faq",
+                "footer",
+            ],
         }
     ],
     "pc-multi-page": [
@@ -30,7 +39,15 @@ PRESET_PAGES = {
         {
             "name": "Store",
             "path": "/store",
-            "blocks": ["header", "newStore", "faq", "footer"],
+            "blocks": [
+                "header",
+                "sb-offer-chain",
+                "newStore",
+                "rewards",
+                "promocodes",
+                "faq",
+                "footer",
+            ],
         },
         {
             "name": "About",
@@ -45,6 +62,7 @@ PRESET_PAGES = {
             "blocks": [
                 "header",
                 "leadGameSales",
+                "sb-offer-chain",
                 "newStore",
                 "gallery",
                 "faq",
@@ -54,7 +72,7 @@ PRESET_PAGES = {
         {
             "name": "Store",
             "path": "/store",
-            "blocks": ["header", "newStore", "faq", "footer"],
+            "blocks": ["header", "newStore", "rewards", "promocodes", "faq", "footer"],
         },
         {
             "name": "Events",
@@ -71,7 +89,40 @@ LAYOUT_WARNING = (
     "The common layout needs a newer Xsolla CLI, so the site is built without it. A "
     "site without the common layout won't open in the Editor, Publish or private preview."
 )
+LIVEOPS_BLOCKS = {
+    "promocodes": ("promo_codes", "no promo code promotion configured in the project"),
+    "rewards": ("reward_chain", "no reward chain configured in the project"),
+    "sb-offer-chain": ("offer_chain", "no offer chain configured in the project"),
+}
 COMMON_LAYOUT = "common-layout"
+# The blocks `add-page` puts on a new store page with CLI 1.9.4 (test-findings.md).
+NEW_PAGE_TEMPLATE = [
+    "header",
+    "leadGameSales",
+    "description",
+    "packs",
+    "bento-grid",
+    "gallery",
+    "requirements",
+    "faq",
+    "footer",
+]
+PREVIEW = {"when": "after assembly, for the visual review", "access": "anyone with the link"}
+# What the developer's yes to a plan covers. A later plan for the same assembly, such as
+# a new site's second run, must keep these unchanged to reuse that yes.
+APPROVAL_SCOPE = (
+    ("target", "the target site or project"),
+    ("preset", "the preset"),
+    ("locales", "the locales"),
+    ("primary_locale", "the primary locale"),
+    ("catalog_sections", "the catalog sections"),
+    ("featured_skus", "the featured products"),
+    ("brand", "the brand"),
+    ("content", "the content"),
+    ("sources", "the sources"),
+    ("preview", "the preview"),
+    ("brief_sha256", "the shop brief"),
+)
 NO_OWN_HEADER = (
     "Page {path} has no header block of its own. Sites created from a Publisher "
     "Account template keep the header in the common layout, and assembly can't build "
@@ -292,6 +343,10 @@ def missing_data_reason(module: str, brief: dict) -> str | None:
         return "no approved feature cards supplied"
     if module == "packs" and not (catalog["groups"] or catalog.get("featured_skus")):
         return "no catalog groups or featured SKUs supplied"
+    if module in LIVEOPS_BLOCKS:
+        feature, reason = LIVEOPS_BLOCKS[module]
+        if feature not in catalog.get("liveops", []):
+            return reason
     return None
 
 
@@ -338,15 +393,29 @@ def omit_unwritable_blocks(
     return pages, omissions
 
 
+def template_removals(page: dict) -> list[str]:
+    """Return the template blocks a page created by this plan comes with but won't keep."""
+    return [module for module in NEW_PAGE_TEMPLATE if module not in page["blocks"]]
+
+
 def bind_current_state(
-    pages: list[dict], omissions: list[dict], structure: object | None
+    pages: list[dict],
+    omissions: list[dict],
+    structure: object | None,
+    created_block_ids: frozenset = frozenset(),
 ) -> dict:
+    """Bind the plan to the current site.
+
+    Blocks in ``created_block_ids`` were created by this assembly's earlier run, so they
+    hold template content, not the publisher's configuration, and are never preserved.
+    """
     if structure is None:
         for page in pages:
             page["page_id"] = None
             page["current_blocks"] = []
             page["preserved_blocks"] = []
             page["removals"] = []
+            page["template_removals"] = template_removals(page)
         return {
             "status": "not-supplied",
             "application_mode": "bootstrap-only",
@@ -382,8 +451,10 @@ def bind_current_state(
         page_plan["current_blocks"] = []
         page_plan["preserved_blocks"] = []
         page_plan["removals"] = []
+        page_plan["template_removals"] = []
         current_page = by_path.get(page_plan["path"])
         if current_page is None:
+            page_plan["template_removals"] = template_removals(page_plan)
             continue
         page_plan["page_id"] = current_page.get("_id")
         blocks = current_page.get("blocks", [])
@@ -402,6 +473,7 @@ def bind_current_state(
             effective_module(block)
             for block in blocks
             if isinstance(effective_module(block), str)
+            and block.get("_id") not in created_block_ids
         }
         preserved_modules = set(omitted_on_page) & current_modules
         if preserved_modules:
@@ -420,7 +492,11 @@ def bind_current_state(
                     "every current block must have string _id and module fields"
                 )
             page_plan["current_blocks"].append({"block_id": block_id, "module": module})
-            if module in preserved_modules and module not in kept:
+            if (
+                module in preserved_modules
+                and module not in kept
+                and block_id not in created_block_ids
+            ):
                 page_plan["preserved_blocks"].append(
                     {
                         "block_id": block_id,
@@ -433,11 +509,12 @@ def bind_current_state(
             if module in desired and module not in kept:
                 kept.add(module)
             else:
-                reason = (
-                    "duplicate module"
-                    if module in kept
-                    else "not in confirmed page plan"
-                )
+                if module in kept:
+                    reason = "duplicate module"
+                elif block_id in created_block_ids:
+                    reason = "template block on a page this assembly created"
+                else:
+                    reason = "not in confirmed page plan"
                 page_plan["removals"].append(
                     {"block_id": block_id, "module": module, "reason": reason}
                 )
@@ -454,13 +531,16 @@ def bind_current_state(
 def build_plan(
     brief: dict,
     current_structure: object | None = None,
+    created_block_ids: frozenset = frozenset(),
     has_create_block: bool = True,
     module_of: Callable[[str], object] | None = None,
 ) -> dict:
     preset = choose_preset(brief)
     catalog_groups = catalog_sections(brief, preset)
     pages, omissions = omit_unwritable_blocks(selected_pages(brief, preset), brief)
-    current_state = bind_current_state(pages, omissions, current_structure)
+    current_state = bind_current_state(
+        pages, omissions, current_structure, created_block_ids
+    )
     warnings = []
     brand = brief.get("brand", {})
     if not brand.get("logo"):
@@ -518,6 +598,7 @@ def build_plan(
         "content": brief.get("content", {}),
         "sources": brief["sources"],
         "omissions": omissions,
+        "preview": PREVIEW,
         "current_state": current_state,
         "brief_sha256": canonical_hash(brief),
         "implemented_phases": [
@@ -540,6 +621,88 @@ def build_plan(
     return plan
 
 
+def load_approved_plan(path: Path) -> dict:
+    """Load the rendered plan the developer approved, refusing an edited copy."""
+    plan = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(plan, dict) or not isinstance(plan.get("confirmation_id"), str):
+        raise ValueError("the approved plan has no confirmation_id")
+    rendered = {key: value for key, value in plan.items() if key != "confirmation_id"}
+    if plan["confirmation_id"] != "sha256:" + canonical_hash(rendered)[:12]:
+        raise ValueError("the approved plan file was changed after it was rendered")
+    return plan
+
+
+def load_run_report(path: Path) -> dict:
+    report = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(report, dict) or report.get("operation_succeeded") is not True:
+        raise ValueError(f"{path} is not the report of a successful apply_plan.py run")
+    return report
+
+
+def created_block_ids(report: dict) -> frozenset:
+    """Return the IDs of the blocks an apply run created, from its report."""
+    ids: set = set()
+    created = report.get("created_blocks")
+    for block_ids in created.values() if isinstance(created, dict) else []:
+        if isinstance(block_ids, list):
+            ids.update(block_id for block_id in block_ids if isinstance(block_id, str))
+    for page in report.get("pages", []):
+        if isinstance(page, dict) and isinstance(page.get("added_block_ids"), list):
+            ids.update(
+                block_id for block_id in page["added_block_ids"] if isinstance(block_id, str)
+            )
+    return frozenset(ids)
+
+
+def page_outline(plan: dict) -> list:
+    return [(page["name"], page["path"], page["blocks"]) for page in plan.get("pages", [])]
+
+
+def approval_changes(approved: dict, plan: dict, run_report: dict) -> list[str]:
+    """Return what the developer's yes to ``approved`` doesn't cover in ``plan``.
+
+    ``run_report`` is the report of the earlier run under that yes, such as a new
+    site's bootstrap. The yes covers ``plan`` only when it keeps the approved pages,
+    sections, catalog, locales, brand and content, and removes only blocks that the
+    earlier run created or that the approved plan listed by ID.
+    """
+    changes = []
+    if run_report.get("approved_confirmation_id") != approved.get("confirmation_id"):
+        changes.append("the run report belongs to another approval")
+    if run_report.get("slug") != plan["target"]["slug"] or run_report.get(
+        "landing_id"
+    ) != plan["current_state"].get("landing_id"):
+        changes.append("the site isn't the one the earlier run built")
+    for key, label in APPROVAL_SCOPE:
+        if approved.get(key) != plan.get(key):
+            changes.append(f"{label} changed")
+    if page_outline(approved) != page_outline(plan):
+        changes.append("the pages or their sections changed")
+    extra_pages = plan["current_state"].get("extra_pages", [])
+    if extra_pages:
+        changes.append(
+            "the site has pages outside the plan: "
+            + ", ".join(page["path"] for page in extra_pages)
+        )
+    created = created_block_ids(run_report)
+    approved_removals = {
+        (page["path"], removal.get("block_id"))
+        for page in approved.get("pages", [])
+        for removal in page.get("removals", [])
+    }
+    for page in plan["pages"]:
+        for removal in page["removals"]:
+            if (
+                removal["block_id"] not in created
+                and (page["path"], removal["block_id"]) not in approved_removals
+            ):
+                changes.append(
+                    f"it removes the {removal['module']} block {removal['block_id']} "
+                    f"on {page['path']}, which the approved plan didn't show"
+                )
+    return changes
+
+
 def main() -> int:
     # preflight imports this module, so a top-level import would be circular.
     from preflight import cli_has_command, site_block_module
@@ -551,12 +714,26 @@ def main() -> int:
         type=Path,
         help="get-structure JSON from the verified backup of an existing target",
     )
+    parser.add_argument(
+        "--approved-plan",
+        type=Path,
+        help="the plan the developer approved; says whether that yes covers this plan",
+    )
+    parser.add_argument(
+        "--run-report",
+        type=Path,
+        help="report of the earlier apply run under the same yes, such as the bootstrap",
+    )
     args = parser.parse_args()
     try:
         brief = load_brief(args.brief)
         structure = None
         if args.structure is not None:
             structure = json.loads(args.structure.read_text(encoding="utf-8"))
+        approved = (
+            load_approved_plan(args.approved_plan) if args.approved_plan else None
+        )
+        report = load_run_report(args.run_report) if args.run_report else None
     except (OSError, json.JSONDecodeError, ValueError) as exc:
         print(str(exc), file=sys.stderr)
         return 1
@@ -570,6 +747,7 @@ def main() -> int:
         plan = build_plan(
             brief,
             structure,
+            created_block_ids(report) if report else frozenset(),
             cli_has_command("shopbuilder", "create-block"),
             lambda block_id: site_block_module(slug, block_id),
         )
@@ -579,6 +757,23 @@ def main() -> int:
         print(str(exc), file=sys.stderr)
         return 1
     print(json.dumps(plan, indent=2))
+    if approved is not None:
+        if report is not None and report.get("approved_confirmation_id") != approved.get(
+            "confirmation_id"
+        ):
+            changes = ["the run report belongs to another approval"]
+        elif plan["confirmation_id"] == approved["confirmation_id"]:
+            changes = []
+        elif report is None:
+            changes = ["this isn't the approved plan, and no earlier run report was given"]
+        else:
+            changes = approval_changes(approved, plan, report)
+        print(
+            "Covered by the approved plan."
+            if not changes
+            else "Needs a new yes: " + "; ".join(changes),
+            file=sys.stderr,
+        )
     return 0
 
 

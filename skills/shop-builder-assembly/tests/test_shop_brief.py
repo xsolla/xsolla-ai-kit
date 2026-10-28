@@ -133,13 +133,17 @@ class ShopBriefTests(unittest.TestCase):
             "blocks": ["side-id", "common-id"],
         }
         modules = {"side-id": "side-by-side-layout", "common-id": "common-layout"}
-        plan = render_plan.build_plan(self.brief, site, False, modules.get)
+        plan = render_plan.build_plan(
+            self.brief, site, has_create_block=False, module_of=modules.get
+        )
         self.assertNotIn(LAYOUT_WARNING, plan["warnings"])
 
     def test_existing_site_without_common_layout_warns_in_the_plan(self) -> None:
         site = {"pages": [], "layouts": ["side-id"], "blocks": ["side-id"]}
         modules = {"side-id": "side-by-side-layout"}
-        plan = render_plan.build_plan(self.brief, site, False, modules.get)
+        plan = render_plan.build_plan(
+            self.brief, site, has_create_block=False, module_of=modules.get
+        )
         self.assertIn(LAYOUT_WARNING, plan["warnings"])
 
     def test_unmapped_subscription_module_is_rejected(self) -> None:
@@ -275,6 +279,20 @@ class ShopBriefTests(unittest.TestCase):
         self.assertIn(
             "catalog.groups[0].placement must use: featured, primary, secondary",
             validator.validate(brief),
+        )
+
+    def test_catalog_liveops_is_validated(self) -> None:
+        brief = copy.deepcopy(self.brief)
+        brief["catalog"]["liveops"] = ["promo_codes", "reward_chain", "offer_chain"]
+        self.assertEqual([], validator.validate(brief))
+        expected = "catalog.liveops must use: offer_chain, promo_codes, reward_chain"
+        for value in (["daily_chain"], "promo_codes", [None]):
+            with self.subTest(value=value):
+                brief["catalog"]["liveops"] = value
+                self.assertIn(expected, validator.validate(brief))
+        brief["catalog"]["liveops"] = ["offer_chain", "offer_chain"]
+        self.assertIn(
+            "catalog.liveops must not contain duplicates", validator.validate(brief)
         )
 
     def test_preflight_helpers_do_not_expose_account_login(self) -> None:
