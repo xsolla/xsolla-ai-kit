@@ -46,8 +46,9 @@ to copy.
   "Not published; you publish in Publisher Account", and Confirmation.
 - When the plan `warnings` say a card text replaces the one set in the editor, add
   "(replaces the text set in the Site Builder editor)" to that Change bullet.
-- When the gate's preflight switched CLI sandbox mode off, add its one line, "CLI sandbox
-  mode switched off for Shop Builder". Never ask about sandbox mode.
+- Add the gate preflight's `plan_notes` line as it is, for example "Using the CLI test
+  environment (sandbox off)" or "CLI sandbox mode switched off for Shop Builder". Never
+  write a sandbox line preflight did not report, and never ask about sandbox mode.
 - Last line: `Next: reply "yes" to apply this exact plan.`
 - Show one plan, after preflight, backup and render. Never show a draft plan first, and
   never ask the publisher to confirm a dedicated test project. One yes applies the plan.
@@ -111,7 +112,7 @@ Plan:
 - Site: my-test-site, Quests block on Main
 - Change: card title → "Daily challenge"
 - Card image: quest image (unchanged)
-- CLI sandbox mode switched off for Shop Builder
+- Using the CLI test environment (sandbox off)
 - Not published; you publish in Publisher Account
 - Confirmation: sha256:ab12cd34
 

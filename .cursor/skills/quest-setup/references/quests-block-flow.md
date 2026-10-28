@@ -43,8 +43,8 @@ Loaded for a Quests block request on a Shop Builder site. Settings and the opera
    anything else on the site, say: "That's outside the Quests block; change it in the
    Shop Builder editor." Offer no site-wide change and give no steps or menu names.
 7. **Sandbox mode is implied.** A Shop Builder change means the CLI's sandbox mode is
-   off. The gate's preflight switches it off itself and reports a plan line, "CLI sandbox
-   mode switched off for Shop Builder". Never ask the publisher about sandbox mode, and
+   off. The gate's preflight settles it itself and reports the plan line to show
+   (its `plan_notes`, for example "Using the CLI test environment (sandbox off)"). Never ask the publisher about sandbox mode, and
    never run `xsolla config set` or edit a CLI config yourself. When preflight reports a
    `cli_environment`, add `--environment <name>` to the read-only `xsolla shopbuilder`
    commands you run yourself.
