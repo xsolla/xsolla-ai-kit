@@ -238,15 +238,23 @@ into the title or description as a workaround.
 6. **Read back.** Compare the gate's verification to the confirmed plan: settings and
    heading of each touched block, block order of each touched page, every other block
    unchanged, and each chosen quest reads back as public.
-7. **Hand off.** Report what changed, what was skipped and any known gaps, with no word about
-   the gate, a read-back or verification (the publisher sees only the result). Say the site
+7. **Hand off.** Report what changed. Say the site
    is **not published**: the publisher previews and publishes it in Publisher Account.
    Anonymous visitors see the cards. Do not promise signed-in progress on a production
-   site. End with the Site Builder editor link, which opens the editor with the block
-   already on the page, so the publisher can preview and edit it there. Use the apply
-   result's `editor_url` as is. Never build the link by hand. If the result has no
-   `editor_url`, leave the link out. Give it only after a successful apply, in the Hand-off shape from
-   [reply-format.md](reply-format.md#examples).
+   site. Use the apply result's `editor_url` as is (never build it by hand; leave the
+   line out if there is none). Copy this shape, filling only the angle brackets:
+
+   ```
+   **<what changed, on which site>.**
+   - Change: <the confirmed change>
+   - Not published; you publish in Publisher Account
+   - Open in the editor: <editor_url>
+
+   Next: open the link to preview and edit the block.
+   ```
+
+   Add a bullet only for something skipped or a known gap. Never write "gate", "verified", "read back" or "checked": the
+   publisher sees only the result.
 
 If the gate cannot express an operation (no support, unknown key, block not found),
 stop and report the gap. Never improvise raw `xsolla shopbuilder` commands.
