@@ -1,15 +1,9 @@
 ---
 name: localization
 description: >-
-  Translates an Xsolla catalog and LiveOps into more languages. Use when a developer
-  wants to "localize / translate the shop or catalog", "translate item names /
-  descriptions", "translate promotions / promo codes / reward chains", "add a language /
-  another locale", "make the store multi-language", "catalog i18n / localisation",
-  "export/import translations (CSV)", "bulk translate", hands over a translation file,
-  or mentions a locale code (`ru-RU`, `pt-BR`); also when a name shows the wrong
-  language or a write returns "404 Locale not found". Offer it when a catalog exists
-  in one language only. Not for creating the shop (shop-setup), prices
-  (catalog-design), payment UI or Login language, or Shop Builder page copy
+  Translates an Xsolla catalog and LiveOps into more languages. Use for "localize /
+  translate the catalog", "translate item names", "translate promotions / promo codes /
+  reward chains", "add a language", or a translation CSV. Not Shop Builder page copy
   (shopbuilder-translate).
 metadata:
   owner: u.filipau
@@ -91,10 +85,10 @@ once per session. A deliberately single-language shop is a valid answer.
    fails, and warns when a listing is shorter than the server total. `exported 0 rows` from
    a failed read is indistinguishable from a catalog that is already fully translated.
 5. **Choose the path:** the agent translates, a publisher fills the CSV, or the user already
-   has one (`merge`). Combining them is fine. **The order is fixed: `merge` first, then
-   `batch` what is still empty, then `fill`.** `batch` lists only rows missing that locale,
-   which is the only reason the model cannot overwrite a human translation. `fill` writes
-   whatever it is handed.
+   has one (`merge`). Combining them is fine.    **The order is fixed: `merge` first, then
+   `batch` what is still empty, then `fill`.** `batch` lists only rows missing that locale.
+   `fill` skips a cell that already has a translation and reports it as kept, so a stale
+   batch or an echoed row cannot replace a human translation.
 6. **Glossary**, on the AI path, before the first batch. Derive it from the data and pass it
    as a constraint, not a post-hoc filter. Re-run when new ids enter.
    [glossary.md](references/glossary.md).
@@ -175,9 +169,9 @@ concern, not a catalog write.
   `step_name`. The table in [coverage-matrix.md](references/coverage-matrix.md) says which
   entity has which. Never translate `sku`, `external_id`, `id`, promo codes, `prices`,
   `image_url`, flags, dates, or structure. A `null` field produces no CSV row.
-- **Fill-only by default.** Enforced by `merge` and `import`, not by `fill` (step 5).
-  `merge` keeps an existing cell unless `--overwrite`. Never hand-edit a partner file into
-  place, and never feed it to `import` directly.
+- **Fill-only by default.** `fill` and `import` keep a non-empty cell. `merge` keeps an
+  existing cell unless `--overwrite`. Never hand-edit a partner file into place, and never
+  feed it to `import` directly.
 - **Write only after a preview.** `import` previews unless `--write` is passed.
 - **Placeholders survive:** `{name}`, `%s`, `{{brand}}`, and ICU argument names. `check`
   compares ICU by argument name.
@@ -199,7 +193,6 @@ concern, not a catalog write.
 - An item's `inventory_options` or `groups` vanishing. That takes an allowlist body, or
   `--allow-field-loss`.
 - Sending both `en` and `en-US` for one field. Last wins.
-- Filling a batch taken before `merge`. That replaces human translations.
 - Reading `(list failed HTTP n)` as "that type does not exist".
 - Reporting a blocked chain as localized.
 

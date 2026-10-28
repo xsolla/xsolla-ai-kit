@@ -97,6 +97,8 @@ straight through from the read, so their state is preserved exactly. (`promocode
 in their `derived` list, so it is stripped from the body and the server keeps whatever it
 had.)
 
+**v3 promotions return the 2-letter locale key.** A promotion `name` comes back as `de`, not `de-DE`. The API accepts either form on write; the read is the 2-letter key, same as the rest of the catalog (writing `pt-BR` is stored as `pt` — [supported-languages.md](supported-languages.md)). Fill-only comparison looks up that returned key, so a `de` cell matches `name.de` and is kept.
+
 Null values are otherwise omitted (the API rejects nulls on many fields), so the
 required-even-when-null exceptions live per entity in `always_send`.
 

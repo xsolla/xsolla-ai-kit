@@ -70,7 +70,7 @@ Integrate payments into my game
 
 Translate my catalog / localize item names / translate promotions / add a language
 → triggers: localization
-   (catalog + LiveOps content — payment UI language is shop-setup, Login is login-styling)
+   (catalog + LiveOps content — payment UI language is shop-setup, Login is login-setup)
 
 Go live / leave sandbox
 → triggers: production
