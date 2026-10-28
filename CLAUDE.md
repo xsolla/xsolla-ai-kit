@@ -25,7 +25,7 @@ On the headless path, skills call **Xsolla REST APIs directly**. The Shop Builde
 | `login-styling`                 | Applies a custom visual style / theme / brand to the Login UI (pairs with `login-setup`) |
 | `headless-checkout-integration` | Payments via Headless Checkout                                                           |
 | `webhooks-impl`                 | Generates webhook handler code for order/payment events                                  |
-| `quest-setup`                   | Creates and manages Quest Platform quests, events, rewards and optional Web Shop quest sections |
+| `quest-setup`                   | Creates and manages Quest Platform quests, events, rewards and optional Web Shop quest sections and Shop Builder Quests block operations |
 | `production`                    | Sandbox → live: contract, flip flags, deploy, developer live-payment checklist           |
 | `description-to-shop`           | Prose → shop brief for shop-builder-assembly — reached via shop-setup, not directly      |
 | `shopbuilder-translate`         | Translates Shop Builder page copy. Catalog and LiveOps text are out of scope             |

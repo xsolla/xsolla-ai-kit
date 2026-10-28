@@ -22,6 +22,10 @@ internal key to force read-back.
 The shapes below summarize the versioned contract. Do not call a route the
 contract marks unavailable to the publisher key.
 
+## Why a quest did not complete
+
+Do not list likely causes. Say what you would check, such as the execution read for that player when read-back is usable, or the quest's settings and the event gate otherwise, then ask. Keep to the limits in [reply-format.md](reply-format.md#rules).
+
 ## What comes back
 
 An execution read may include a status, event identifier, quest identifier,
