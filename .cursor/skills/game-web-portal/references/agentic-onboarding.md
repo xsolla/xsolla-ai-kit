@@ -153,8 +153,8 @@ download.
 
 ### 8. Draft gate, review and hand over
 
-- `draft_ready` requires correct ownership/domain/type/locale, no duplicate routes,
-  read-back-verified content, disclosed placeholders, and explicit Login/commerce status.
+- The draft is ready for review only with correct ownership/domain/type/locale, no duplicate
+  routes, read-back-verified content, disclosed placeholders, and explicit Login/commerce status.
 - Present Completed, placeholders, blockers, and failures.
 - Hand the human, as `needs_human`: the readiness check, the preview, publication
   (per page, main page first), live verification, and any rollback.

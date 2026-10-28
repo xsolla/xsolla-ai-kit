@@ -47,6 +47,31 @@ class LedgerCheckTest(unittest.TestCase):
         listed = [line.split("`")[1] for line in table.splitlines() if line.startswith("| `")]
         self.assertEqual(listed, list(ledger.STATUSES))
 
+    def test_the_skipped_steps_are_the_ones_shop_plan_writes(self):
+        contract = (ROOT.parent / "shop-plan" / "references" / "onboarding-contract.md")
+        text = contract.read_text(encoding="utf-8")
+        table = text.split("## Steps and their evidence", 1)[1].split("##", 1)[0]
+        rows = [line.split("|") for line in table.splitlines() if line.startswith("| `")]
+        by_shop_plan = [row[1].strip(" `") for row in rows if row[2].strip() == "`shop-plan`"]
+        self.assertEqual(by_shop_plan, list(ledger.SKIPPED))
+
+    def test_shop_plan_steps_without_ids_evidence_or_updated_at_pass(self):
+        # shop-plan's own instructions never name these fields
+        for skipped in ledger.SKIPPED:
+            with self.subTest(step=skipped):
+                bare = step(id=skipped, ids=..., evidence=..., updated_at=...)
+                self.assertEqual(ledger.problems({"steps": [bare]}), [])
+
+    def test_the_same_gaps_on_a_step_this_skill_writes_still_fail(self):
+        bare = step(ids=..., evidence=..., updated_at=...)
+        self.assertEqual(ledger.problems({"steps": [step(id="intake", ids=...), bare]}),
+                         ["step 'storefront': evidence must be a list",
+                          "step 'storefront': ids must be an object",
+                          "step 'storefront': needs updated_at"])
+
+    def test_a_skipped_step_with_a_non_contract_status_passes(self):
+        self.assertEqual(ledger.problems({"steps": [step(id="plan", status="partial")]}), [])
+
     def test_a_step_under_way_without_status_passes(self):
         self.assertEqual(ledger.problems({"steps": [step(status=...)]}), [])
 
@@ -82,9 +107,11 @@ class LedgerCheckTest(unittest.TestCase):
                          ["steps[0]: must be an object"])
 
     def test_cli_exit_codes(self):
-        code, out, err = run({"version": 1, "steps": [step(id="intake"), step(status=...)]})
+        # the success line counts only the checked steps
+        code, out, err = run({"version": 1, "steps": [step(id="intake"), step(id="plan"),
+                                                      step(id="verify"), step(status=...)]})
         self.assertEqual((code, err), (0, ""))
-        self.assertIn("2 steps match the contract", out)
+        self.assertIn(": 2 steps match the contract", out)
         code, out, err = run({"steps": [step(status="partial")]})
         self.assertEqual((code, out), (1, ""))
         self.assertIn("step 'storefront'", err)

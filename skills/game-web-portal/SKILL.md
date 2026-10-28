@@ -145,9 +145,9 @@ Verify (read-back) → Human review → Handoff
    `get-localization`, page and block reads) and compare it with the confirmed plan.
    A mutation response is not evidence. Keep unverified items out of **Completed**.
 8. **Human review** — present completed items, placeholders, blockers, and failures.
-   `draft_ready` requires correct ownership, domain, type, and locale, no duplicate
-   routes, read-back-verified content, disclosed placeholders, and explicit Login and
-   commerce status. Then hand over, as `needs_human`, the steps the agent never runs:
+   The draft is ready for review only with correct ownership, domain, type, and locale,
+   no duplicate routes, read-back-verified content, disclosed placeholders, and explicit
+   Login and commerce status. Then hand over, as `needs_human`, the steps the agent never runs:
    the readiness check, the preview, publication (per page — the main page first),
    live verification, and any rollback to a saved version — all in Publisher Account.
 9. **Handoff** — repeat merchant ID, project ID, domain, locale, and Steam URL only

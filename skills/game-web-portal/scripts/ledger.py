@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check the onboarding ledger: every step has the contract's shape and only its statuses."""
+"""Check the ledger steps this skill writes: the contract's shape and only its statuses."""
 
 from __future__ import annotations
 
@@ -12,6 +12,10 @@ from pathlib import Path
 # that is under way has no status key at all.
 STATUSES = ("completed", "placeholder", "needs_input", "needs_access", "needs_human",
             "blocked_capability", "failed")
+
+# Steps shop-plan writes (the contract's "Steps and their evidence" table, "Done by"). They are
+# not this skill's to fix, so the check skips them.
+SKIPPED = ("intake", "plan")
 
 
 def load(path: Path) -> dict:
@@ -27,13 +31,18 @@ def step_name(step: object, index: int) -> str:
     return f"steps[{index}]"
 
 
+def checked_steps(ledger: dict) -> list[tuple[int, object]]:
+    """The steps with their indexes, without the ones shop-plan writes."""
+    return [(index, step) for index, step in enumerate(ledger["steps"])
+            if not (isinstance(step, dict) and step.get("id") in SKIPPED)]
+
+
 def problems(ledger: dict) -> list[str]:
-    """Every way the ledger's steps break the contract, each naming its step."""
-    steps = ledger.get("steps")
-    if not isinstance(steps, list):
+    """Every way the steps this skill writes break the contract, each naming its step."""
+    if not isinstance(ledger.get("steps"), list):
         return ["the ledger has no steps list"]
     found = []
-    for index, step in enumerate(steps):
+    for index, step in checked_steps(ledger):
         name = step_name(step, index)
         if not isinstance(step, dict):
             found.append(f"{name}: must be an object")
@@ -68,7 +77,7 @@ def main(argv: list[str] | None = None) -> int:
     if found:
         print("\n".join(found), file=sys.stderr)
         return 1
-    print(f"{args.ledger}: {len(ledger['steps'])} steps match the contract")
+    print(f"{args.ledger}: {len(checked_steps(ledger))} steps match the contract")
     return 0
 
 
