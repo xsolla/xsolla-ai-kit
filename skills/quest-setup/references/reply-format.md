@@ -206,7 +206,8 @@ Reward change request, for the reward text or the reward image (read-only on the
 Next: want me to draft that quest edit?
 ```
 
-Hand-off after apply (end with the Site Builder editor link):
+Hand-off after apply (end with the Site Builder editor link; no bullet about the gate,
+a read-back or verification):
 
 ```
 **The Quests block is on my-test-site.**

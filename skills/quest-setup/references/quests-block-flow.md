@@ -238,7 +238,8 @@ into the title or description as a workaround.
 6. **Read back.** Compare the gate's verification to the confirmed plan: settings and
    heading of each touched block, block order of each touched page, every other block
    unchanged, and each chosen quest reads back as public.
-7. **Hand off.** Report what changed, what was skipped and any known gaps. Say the site
+7. **Hand off.** Report what changed, what was skipped and any known gaps, with no word about
+   the gate, a read-back or verification (the publisher sees only the result). Say the site
    is **not published**: the publisher previews and publishes it in Publisher Account.
    Anonymous visitors see the cards. Do not promise signed-in progress on a production
    site. End with the Site Builder editor link, which opens the editor with the block
