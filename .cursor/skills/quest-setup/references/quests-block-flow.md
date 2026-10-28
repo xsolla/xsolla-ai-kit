@@ -20,10 +20,14 @@ Loaded for a Quests block request on a Shop Builder site. Settings and the opera
    identity. If the Quest Platform project and the test site belong to different
    environments, or the mapping between them is unclear, ask the publisher once to
    confirm that making these quests public and showing them on a test site is
-   intended. Never proceed on assumption. The agent never reads the approval list and
-   never sets `test_project_acknowledged`; only the gate's preflight reads the list, and
-   the flag is set only when the publisher says in this conversation that the project is a
-   dedicated test project (the `shop-builder-assembly` shop brief describes the flag). Before the publisher has said in this conversation that the project is a dedicated test project, do not run preflight, backup or render, and do not read the approval list. Reply with the draft plan in [reply-format.md](reply-format.md#draft-plan-before-confirmation), and make `Next:` the single ask: "Confirm this is a dedicated test project, and I'll give you the final plan to approve." After the publisher confirms in a later message, run the gate and show the final Plan with its Confirmation line, asking for yes. Never set the flag without that statement. A site other than the one the publisher chose under Which shop, or one they say must not be touched, gets no plan and no write: say so and ask which site to use.
+   intended. Never proceed on assumption. The gate's approval list is the
+   dedicated-test-project acknowledgement: only the gate's preflight reads it, the agent
+   never reads it, and the agent never asks the publisher to confirm a test project. A
+   project on the list is acknowledged; for one that is not, preflight stops and you reply
+   `needs_human` in the Not approved shape in [reply-format.md](reply-format.md) (a
+   maintainer adds it to the list). The brief has no acknowledgement flag. A site other
+   than the one the publisher chose under Which shop, or one they say must not be
+   touched, gets no plan and no write: say so and ask which site to use.
 3. **Never publish.** Do not apply a saved version, attach a domain or enable live
    payments. For a publish request, say: "The skill doesn't publish; you publish in
    Publisher Account when ready. The site stays unpublished."
@@ -38,6 +42,12 @@ Loaded for a Quests block request on a Shop Builder site. Settings and the opera
 6. **Quests block only.** For the header, theme, other blocks, site language or
    anything else on the site, say: "That's outside the Quests block; change it in the
    Shop Builder editor." Offer no site-wide change and give no steps or menu names.
+7. **Sandbox mode is implied.** A Shop Builder change means the CLI's sandbox mode is
+   off. The gate's preflight switches it off itself and reports a plan line, "CLI sandbox
+   mode switched off for Shop Builder". Never ask the publisher about sandbox mode, and
+   never run `xsolla config set` or edit a CLI config yourself. When preflight reports a
+   `cli_environment`, add `--environment <name>` to the read-only `xsolla shopbuilder`
+   commands you run yourself.
 
 ## Prerequisites
 
@@ -212,14 +222,15 @@ into the title or description as a workaround.
    For an existing block, take its id from the structure in the gate's backup. Check
    every key against the [settings table](quests-block-brief.md#block-settings) and
    the brief against the [rules](quests-block-brief.md#rules-for-every-operation).
-4. **Hand it to the gate.** After the dedicated-test confirmation in Hard rule 2, run the preflight, back up the target site, and render the
-   plan from that backup. The plan must show exactly the requested operations with
-   their leaf paths and values, and any parent objects it creates. Show
-   the plan in the Plan shape from [reply-format.md](reply-format.md): a bold
-   `Plan:` line, bullets for Site, Change (each operation), the defaults used,
-   "Not published; you publish in Publisher Account", and `Confirmation: <confirmation_id>`,
-   then `Next: reply "yes" to apply this exact plan.` End the turn there; apply nothing
-   until the publisher confirms.
+4. **Hand it to the gate.** Run the preflight, back up the target site, and render the
+   plan from that backup, all before showing anything. There is no draft plan. The plan
+   must show exactly the requested operations with their leaf paths and values, and any
+   parent objects it creates. Show the one plan in the Plan shape from
+   [reply-format.md](reply-format.md): a bold `Plan:` line, bullets for Site, Change
+   (each operation), the defaults used, preflight's plan line when it switched sandbox
+   mode off, "Not published; you publish in Publisher Account", and
+   `Confirmation: <confirmation_id>`, then `Next: reply "yes" to apply this exact plan.`
+   End the turn there; apply nothing until the publisher confirms. One yes applies it.
 5. **Apply.** After confirmation, apply exactly the confirmed plan with the gate's
    apply script, which reads the result back. On a partial failure, do not rerun it;
    take a fresh backup and plan first.
@@ -246,14 +257,14 @@ a block: `delete-block` needs `--force`, which no script passes, and a brief wit
 [reply-format.md](reply-format.md): the publisher deletes the block in the Site Builder
 editor, and the skill offers to hide it. Run no gate step and draft no plan for the delete
 itself. If the publisher wants it hidden, that is a `hide` operation through the full
-[Flow](#flow) (dedicated-test confirmation, backup, plan, yes).
+[Flow](#flow) (preflight, backup, plan, yes).
 
 ## Stop conditions
 
 Stop before any write when: the gate is unavailable or lacks `block_operations`; the
 mapping between the Quest Platform project and the test site is unclear, or the
 environments differ without the publisher's explicit confirmation; the project is not
-an approved `environment: test` project; backup failed; the plan was not confirmed; the request is to delete a block
+an approved `environment: test` project (`needs_human`, see Hard rule 2); backup failed; the plan was not confirmed; the request is to delete a block
 (`needs_human`, see [Removing the block](#removing-the-block)); a chosen quest is not found or not public; a setting is not in the table or out of
 range; or an image URL is not `https`. Keep completed safe work and state the smallest
 action to continue.

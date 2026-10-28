@@ -46,11 +46,11 @@ to copy.
   "Not published; you publish in Publisher Account", and Confirmation.
 - When the plan `warnings` say a card text replaces the one set in the editor, add
   "(replaces the text set in the Site Builder editor)" to that Change bullet.
+- When the gate's preflight switched CLI sandbox mode off, add its one line, "CLI sandbox
+  mode switched off for Shop Builder". Never ask about sandbox mode.
 - Last line: `Next: reply "yes" to apply this exact plan.`
-
-### Draft plan before confirmation
-
-Until the publisher has said in this conversation that the project is a dedicated test project, use the draft form instead: a bold `Draft plan: ...` line, the change bullets, "Not published; you publish in Publisher Account", no Confirmation line, and `Next: Confirm this is a dedicated test project, and I'll give you the final plan to approve.` as the only ask. Do not run preflight, backup or render first.
+- Show one plan, after preflight, backup and render. Never show a draft plan first, and
+  never ask the publisher to confirm a dedicated test project. One yes applies the plan.
 
 For a quest create or edit, the bullets are the labelled lines in
 [quest-publish.md](quest-publish.md#proposal-format).
@@ -88,21 +88,22 @@ Plan:
 - Site: my-test-site, Quests block on Main
 - Change: card title → "Daily challenge"
 - Card image: quest image (unchanged)
+- CLI sandbox mode switched off for Shop Builder
 - Not published; you publish in Publisher Account
 - Confirmation: sha256:ab12cd34
 
 Next: reply "yes" to apply this exact plan.
 ```
 
-Draft plan before confirmation:
+Not approved, when the gate's preflight stops because the project is not on the approved
+test projects (`needs_human`):
 
 ```
-**Draft plan: change the title on card 2 of the Quests block**
-- Site: my-test-site, Quests block on Main
-- Change: card title → "Daily challenge"
-- Not published; you publish in Publisher Account
+**This project isn't approved for test writes yet.**
+- Site: my-test-site, nothing changed
+- A maintainer needs to add project 2 to the approved test projects
 
-Next: Confirm this is a dedicated test project, and I'll give you the final plan to approve.
+Next: ask your maintainer to approve it, then tell me to retry.
 ```
 
 Refusal, outside the Quests block:

@@ -50,20 +50,18 @@ Notes:
 ## Operations
 
 Operations go in the brief's `block_operations` list and run in order. The brief
-needs `version`, `project` (`environment: test`, `test_project_acknowledged: true`,
-`merchant_id`, `project_id`), `site.slug` and `block_operations`. Nothing else is
+needs `version`, `project` (`environment: test`, `merchant_id`, `project_id`),
+`site.slug` and `block_operations`. Nothing else is
 allowed: the gate rejects any other top-level key (`game`, `catalog`, `content`,
 `brand`, `sources`), any other `project` key and any `site` key but `slug`. Fill real
-values from the conversation and the backup, never from memory. Set
-`test_project_acknowledged` only when the publisher said in this conversation that the
-project is a dedicated test project (see Hard rule 2 in
-[quests-block-flow.md](quests-block-flow.md)).
+values from the conversation and the backup, never from memory. There is no
+acknowledgement flag: the gate's approval list is the dedicated-test-project
+acknowledgement (see Hard rule 2 in [quests-block-flow.md](quests-block-flow.md)).
 
 ```json
 {
   "version": 1,
-  "project": {"environment": "test", "test_project_acknowledged": true,
-              "merchant_id": 1, "project_id": 2},
+  "project": {"environment": "test", "merchant_id": 1, "project_id": 2},
   "site": {"slug": "<site-slug>"},
   "block_operations": [ ...operations below... ]
 }
