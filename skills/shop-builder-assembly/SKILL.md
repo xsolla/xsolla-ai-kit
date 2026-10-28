@@ -32,8 +32,9 @@ read-only steps 1 to 4 first, then show one plan; there is no draft plan before 
    edit, or suggest changing it. Read back the matched merchant ID, project ID,
    environment, approval reference, active Publisher login, target site, and catalog
    groups. Preflight also switches CLI sandbox mode off, without asking: a Shop Builder
-   request implies it. Show each line of its `plan_notes` as it is (for example "Using the
-   CLI test environment (sandbox off)") as a plan bullet. When preflight reports a
+   request implies it. Show its `plan_notes` line as it is (for example "Using the CLI
+   test environment (sandbox off)") as a plan bullet exactly when preflight returns one;
+   an empty `plan_notes` means no sandbox line. When preflight reports a
    `cli_environment`, add `--environment <name>` to every `xsolla` command you run
    yourself. When the site needs a common layout (a new site, or one without it) and the
    CLI has no `shopbuilder create-block`, preflight prints "the common layout needs a
@@ -107,7 +108,7 @@ Never include environment variable names, file paths, tokens, or internal codena
 example, D2a) in a reply. Never give the approval list's location or offer to change it.
 
 Plan: a bold `Plan: ...` line, up to about five bullets (Site, Change, fields kept as
-they are such as Card image, preflight's `plan_notes` lines, "Not published; you publish
+they are such as Card image, preflight's `plan_notes` line if it returned one, "Not published; you publish
 in Publisher Account", and Confirmation). Pack several operations or removals into one
 Change bullet, separated by semicolons. The reward text and reward image come from the quest and are never a Change.
 When the plan `warnings` say a card text replaces the one set in the editor, add
