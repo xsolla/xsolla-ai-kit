@@ -95,6 +95,14 @@ about it), run [Which shop](references/quests-block-flow.md#which-shop) before a
 else. Pure quest requests (list my quests, why a quest did not complete, create a quest)
 and capability questions skip it.
 
+## List quests
+
+"List my quests" is two calls and no reference reads. Run `python3 "<skill base dir>/scripts/qp_request.py" whoami`,
+then `python3 "<skill base dir>/scripts/qp_request.py" GET /api/v2/merchants/<merchant_id>/projects/<project_id>/quests --query page=1 --query limit=50`
+(next page only while `total` is larger). No project preflight for a read. Reply: bold count line, then
+`Public:` and `Not public:` bullets from `is_public` (note any non-`active` status), then `Next:` with one ask
+and no "or" (for example "Next: which quest do you want to open?"). A 401, 403 or 404 follows Prerequisites.
+
 ## Reference routing
 
 Routes and envelopes come from the contract
