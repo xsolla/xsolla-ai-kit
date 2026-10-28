@@ -10,7 +10,7 @@ Loaded for a Quests block request on a Shop Builder site. Settings and the opera
    backup of the target site, rendered plan, then an explicit publisher confirmation
    of the plan's `confirmation_id` right before the first remote write. The only
    `xsolla shopbuilder` commands you run directly are the read-only `list-websites`,
-   `get-structure` and `get-localization` used below. Never run write commands by hand, make
+   `get-structure` and `get-localization` (the block summary script below runs the last two). Never run write commands by hand, make
    direct HTTP calls, or reuse browser cookies or tokens. An earlier "add quests to
    my site" is not that confirmation. If the Shop Builder block tooling or its
    `block_operations` support is missing, stop and reply in the refusal shape, without
@@ -101,31 +101,27 @@ failure shape, then the one `Next:`.
 ## Describe the block
 
 Use when the site is known (chosen in [Which shop](#which-shop)) and the publisher asks
-about quests on it, for example "tell me about quests on my webshop" after naming the
-site. This is a read, so it needs no gate and no backup.
+about quests on it, for example "show me the Quests block on my-test-site" or "tell me about
+quests on my webshop" after naming the site. This is a read, so it needs no gate and no backup.
 
-1. Read the structure once, read-only: `xsolla shopbuilder get-structure --slug <slug> --json`.
-   Pipe it into one `python3` step (not repeated greps) that finds the Quests block: a
-   block under `pages[].blocks[]` whose `values.host` contains
-   `_quest-platform_quests-block`, or whose `module` is that id when `values.host` is
-   absent. The step prints only: the page it is on, its 1-based position on that page,
-   `values.internalBlockValues.maxQuests`, the length of
-   `values.internalBlockValues.questIds`, and the cards that have an entry in
-   `values.internalBlockValues.overrides` (with which fields each one sets).
-2. Heading: `values.internalBlockValues.translations.heading` holds an `L:` id. Read its
-   text with `xsolla shopbuilder get-localization --slug <slug> --json`, which only
-   retrieves the localization store, then look up that id's `en-US` text in one
-   `python3` step. If the command or the lookup fails, say "heading is set" and move on.
-3. Reply in the Describe-the-block shape from [reply-format.md](reply-format.md): a
-   bold line naming the site and that it has a Quests block (or, if there is none, that
-   it has no Quests block, with `Next:` offering to add one). Then bullets, in order:
-   Where (page X, position N); Quests (N selected, limit M); Heading (the heading text, or
-   "heading is set"); Card overrides (which cards, or "none"). Add no layout or style
-   details, JSON, ids, or draft and publishing notes unless the publisher asks.
-4. If Quest Platform access is not configured, add a bullet: "Quest names: I can show
-   them once Quest Platform access is set up." Never say the block cannot be confirmed
-   when get-structure works.
-5. The `Next:` line is one question, for example "want to change anything on it?"
+1. Run one command, read-only, from the publisher's folder (add `--environment <name>`
+   when the site needs it): `python3 "<skill base dir>/scripts/quests_block_summary.py" --slug <slug>`.
+   It reads the structure, the localization and the quest list itself and prints JSON:
+   per Quests block its page, position, `hidden`, `max_quests`, `heading`, and `quests` in
+   block order (`quest_name`, `card_title`, `overridden`, `public`). No other reads, no
+   `--help`, no own parsing.
+2. Reply in the Describe-the-block shape from [reply-format.md](reply-format.md): a bold
+   line naming the site and that it has a Quests block (if `blocks` is empty: it has no
+   Quests block, with `Next:` offering to add one). Then bullets, in order: Where (page,
+   position N of M, visible or hidden); Quests (limit M), then every quest name in block
+   order (the `card_title` when it differs from or replaces `quest_name`; mark a quest
+   that is not public); Heading (the text in quotes, or "heading is set" when null);
+   Card overrides (which cards and fields, or "none"). Several Quests blocks: one Where
+   and Quests bullet each. No layout, style, JSON, ids, or draft and publishing notes.
+3. If `quest_names` is `unavailable` and no `card_title` is set, say in the Quests bullet:
+   "names show once Quest Platform access is set up." Never say the block cannot be
+   confirmed when the read works.
+4. The `Next:` line is one question, for example "want to change anything on it?"
 
 If the read itself fails, reply with a bold line that the site structure couldn't be read,
 and a `Next:` asking the publisher to log in to the Xsolla CLI if needed.

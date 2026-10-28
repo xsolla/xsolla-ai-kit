@@ -96,8 +96,8 @@ Describe the block:
 
 ```
 **my-test-site has a Quests block.**
-- Where: Main page, last block, visible
-- Quests: 6 selected, limit 6
+- Where: Main page, block 4 of 4, visible
+- Quests (limit 3): Win 3 matches, Collect 10 crystals, Daily login (not public)
 - Heading: "Quests"
 - Card overrides: none
 
