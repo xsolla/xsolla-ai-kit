@@ -9,6 +9,8 @@ to copy.
 - No `##` headings, and no Summary, Proposed setup or Need from you sections.
 - `Next:` holds exactly one question or action, never two and never an "or" offer. At most
   one question per message.
+- `Next:` is the last line. Nothing comes after it, not even a note or apology about an
+  earlier step.
 - Which-shop replies list the site names as bullets, then the question. No capability or
   explanation sentence comes before the question.
 - No unrequested safety, environment, backup or out-of-scope lectures, and no narration of

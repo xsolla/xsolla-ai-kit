@@ -11,8 +11,8 @@ description: >-
   also loads this skill, only to decline it in one sentence. A headless storefront quest
   section is covered on explicit request. Key triggers: "create a quest", "my quests",
   "trigger my quest", "add a Web3 reward", "why didn't my quest complete", "Quests block",
-  "remove the Quests block", "show quests in my web shop", "list my shops", "my sites",
-  "show only 3 cards", "change the heading to Daily quests".
+  "remove the Quests block", "show quests in my web shop", "list my shops", "my sites", "show only 3 cards", "change the heading to Daily quests", "change the title of the Daily login card".
+  Load it before searching the working folder.
 metadata:
   owner: r.aliyev
   domain: quests
