@@ -4,13 +4,15 @@ description: >-
   Use when the publisher wants to create, edit, list, activate, pause, delete or debug an
   Xsolla Quest Platform quest, including Web3 rewards, conditions and sending a quest
   event, or to add, reorder, retext, hide or show the Quests block on a Shop Builder site
+  or change its card limit, heading or card texts, even when the request only says "cards"
   (a request to remove it gets hide offered; the publisher deletes it in the Site Builder
   editor), and to list the publisher's shops or Shop Builder sites (a read, not a build).
   Any other change to a Shop Builder site (header, theme, other blocks)
   also loads this skill, only to decline it in one sentence. A headless storefront quest
   section is covered on explicit request. Key triggers: "create a quest", "my quests",
   "trigger my quest", "add a Web3 reward", "why didn't my quest complete", "Quests block",
-  "remove the Quests block", "show quests in my web shop", "list my shops", "my sites".
+  "remove the Quests block", "show quests in my web shop", "list my shops", "my sites",
+  "show only 3 cards", "change the heading to Daily quests".
 metadata:
   owner: r.aliyev
   domain: quests
