@@ -23,19 +23,25 @@ for `portal`, hand off to `game-web-portal` and stop; an invalid value halts. A 
 
 ## Safety gate
 
-Run these steps in order before any remote write. Writes need a valid shop brief. Until the publisher has said in this conversation that the project is a dedicated test project, skip these steps and reply with the draft plan under Replies.
+Run these steps in order before any remote write. Writes need a valid shop brief. Do the
+read-only steps 1 to 4 first, then show one plan; there is no draft plan before it.
 
 1. Run `scripts/preflight.py <brief.json>` and pass the approval-list path from
    [shop brief](references/shop-brief.md) as `--approved-test-projects` (expand `~`
    first). Only the scripts read that list: never read, search for, stat, list, create,
    edit, or suggest changing it. Read back the matched merchant ID, project ID,
    environment, approval reference, active Publisher login, target site, and catalog
-   groups. When the site needs a common layout (a new site, or one without it) and the
+   groups. Preflight also switches CLI sandbox mode off, without asking: a Shop Builder
+   request implies it. Show each line of its `plan_notes` (for example "CLI sandbox mode
+   switched off for Shop Builder") as a plan bullet. When preflight reports a
+   `cli_environment`, add `--environment <name>` to every `xsolla` command you run
+   yourself. When the site needs a common layout (a new site, or one without it) and the
    CLI has no `shopbuilder create-block`, preflight prints "the common layout needs a
    newer Xsolla CLI; the site is built without it". Tell the user in the plan, before
    any write: a site without the common layout won't open in the Editor, Publish or
    private preview. If preflight refuses, reply in the blocked shape.
-2. If CLI context differs, switch it and rerun preflight. Never override later commands.
+2. If the CLI merchant or project differs from the brief, stop and ask which project the
+   publisher means. Never change the CLI config yourself or override later commands.
 3. If the target site exists, export it before the first write:
    `scripts/backup_shop.py --brief <brief.json> --slug <slug> --output-dir <dir>`.
 4. Render with `scripts/render_plan.py <brief.json> --structure <backup-dir>/structure.json`
@@ -45,15 +51,16 @@ Run these steps in order before any remote write. Writes need a valid shop brief
    first remote write. Earlier permission to "build a shop" is not confirmation. Re-render
    and reconfirm if the brief or plan changes.
 
-The target must be an acknowledged dedicated test project. It must match the approval
-list exactly (IDs, approver, approval reference), or preflight refuses. Set
-`project.test_project_acknowledged` to `true` only when the publisher explicitly says in
-this conversation that the project is a dedicated test project. Never set it yourself or
-infer it from the name, a test site, an earlier yes, or the list.
+The target must be a dedicated test project on the approval list. The list is the
+acknowledgement: a merchant and project on it (exact IDs, approver, approval reference)
+are acknowledged, and preflight refuses any other. Never ask the publisher to confirm a
+test project. For a project not on the list, stop with `needs_human` in the blocked
+shape: a human maintainer adds it to the list.
 
-Never use sandbox as a Shop Builder target or use a partner project. Never publish,
-attach a production domain, enable live payments, or apply a saved version. For a
-publish request, use the publish shape under Replies.
+Never ask about CLI sandbox mode and never change the CLI config yourself; preflight
+does it. Never use sandbox as a Shop Builder target or use a partner project. Never
+publish, attach a production domain, enable live payments, or apply a saved version. For
+a publish request, use the publish shape under Replies.
 
 A new site has generated blocks whose IDs do not exist before creation. Confirm the
 bootstrap, then export, re-render, and reconfirm before removing any generated block
@@ -78,9 +85,8 @@ shape under Replies.
 ## Stop conditions
 
 Stop before writes when project identity is ambiguous, backup fails, confirmation is
-missing, the target is not an acknowledged dedicated test project, the test project is
-not on the approved list, catalog or project IDs do not match, or the plan needs an
-unverified block module. Keep completed safe work and name the smallest action that
+missing, the test project is not on the approved list, catalog or project IDs do not
+match, or the plan needs an unverified block module. Keep completed safe work and name the smallest action that
 continues.
 
 ## Known limitations
@@ -98,12 +104,12 @@ Every reply uses one compact shape: a bold one-line answer, then 0 to 4 short bu
 may be only the bold line and `Next:`. Ask one question at a time.
 
 Never include environment variable names, file paths, tokens, or internal codenames (for
-example, D2a) in a reply. Never mention the approval list or its location in a reply.
+example, D2a) in a reply. Never give the approval list's location or offer to change it.
 
 Plan: a bold `Plan: ...` line, up to about five bullets (Site, Change, fields kept as
-they are such as Card image, "Not published; you publish in Publisher Account", and
-Confirmation). Pack several operations or removals into one Change bullet, separated by
-semicolons. The reward text and reward image come from the quest and are never a Change.
+they are such as Card image, preflight's `plan_notes` lines, "Not published; you publish
+in Publisher Account", and Confirmation). Pack several operations or removals into one
+Change bullet, separated by semicolons. The reward text and reward image come from the quest and are never a Change.
 When the plan `warnings` say a card text replaces the one set in the editor, add
 "(replaces the text set in the Site Builder editor)" to that Change bullet.
 
@@ -112,22 +118,14 @@ When the plan `warnings` say a card text replaces the one set in the editor, add
 - Site: my-test-site, Quests block on Main
 - Change: card title → "Log in every day"
 - Card image: unchanged
+- CLI sandbox mode switched off for Shop Builder
 - Not published; you publish in Publisher Account
 - Confirmation: sha256:ab12cd34
 
 Next: reply "yes" to apply this exact plan.
 ```
 
-Draft plan, before the publisher confirms the dedicated test project: a bold `Draft plan: ...` line, the change bullets, "Not published; you publish in Publisher Account", no Confirmation line, and `Next: Confirm this is a dedicated test project, and I'll give you the final plan to approve.` as the only ask. The draft is text only, so it needs no preflight, backup or `confirmation_id`. Once the publisher confirms, run the gate and show the final Plan.
-
-```
-**Draft plan: change the title of the "Daily Login" card**
-- Site: my-test-site, Quests block on Main
-- Change: card title → "Log in every day"
-- Not published; you publish in Publisher Account
-
-Next: Confirm this is a dedicated test project, and I'll give you the final plan to approve.
-```
+One "yes" to that plan applies it. Never show a draft plan first.
 
 Applied, after apply adds or changes the Quests block: give the `editor_url` from the
 apply output as the editor link. Never build the link by hand.
@@ -149,14 +147,15 @@ Reward change request: the reward text and image come from the quest, so no plan
 Next: want to change the card title, description or image instead?
 ```
 
-Blocked, when preflight refuses or a gate stops the write (the project is not approved, the
-brief is not acknowledged, the target does not match):
+Blocked, when preflight refuses or a gate stops the write. A project that is not approved
+is `needs_human`; never ask the publisher to confirm it instead:
 
 ```
-**This project can't take test writes yet.**
+**This project isn't approved for test writes yet.**
 - Site: my-test-site, nothing changed
+- A maintainer needs to add project 2 to the approved test projects
 
-Next: confirm the project is the dedicated test project you intended.
+Next: ask your maintainer to approve it, then tell me to retry.
 ```
 
 Refusal, for anything outside the Quests block in a block-operations request:

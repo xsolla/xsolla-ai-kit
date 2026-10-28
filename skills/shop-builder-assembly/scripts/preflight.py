@@ -10,6 +10,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+import cli_environment
 from render_plan import common_layout_id
 from validate_shop_brief import load_brief, validate
 
@@ -25,7 +26,7 @@ def run_json(*args: str) -> object:
     # The CLI writes UTF-8; without an explicit encoding Windows decodes with the
     # ANSI code page and loses the output.
     result = subprocess.run(
-        ["xsolla", *args, "--json"],
+        cli_environment.command(*args, "--json"),
         capture_output=True,
         text=True,
         encoding="utf-8",
@@ -63,7 +64,7 @@ def cli_has_command(*command: str) -> bool:
 
     try:
         result = subprocess.run(
-            ["xsolla", *command, "--help"],
+            cli_environment.command(*command, "--help"),
             capture_output=True,
             text=True,
             encoding="utf-8",
@@ -132,7 +133,11 @@ def group_external_ids(value: object) -> set[str]:
 
 
 def approved_test_project(path: Path | None, expected: dict) -> dict:
-    """Return the separate approval record for a dedicated test project."""
+    """Return the approval record for a dedicated test project.
+
+    The allowlist is the acknowledgement that the project is a dedicated test
+    project; nobody is asked to confirm it in chat.
+    """
     if expected["environment"] != "test":
         raise RuntimeError("Shop Builder assembly requires a dedicated test project")
     if path is None:
@@ -179,7 +184,10 @@ def approved_test_project(path: Path | None, expected: dict) -> dict:
         if (merchant_id, project_id) == target:
             return project
     raise RuntimeError(
-        "configured merchant_id/project_id is not in the approved test-project allowlist"
+        f"needs_human: merchant {expected['merchant_id']} / project "
+        f"{expected['project_id']} is not in the approved test-project allowlist. A "
+        "human maintainer adds it to the allowlist; the agent never asks the "
+        "publisher to confirm a test project instead"
     )
 
 
@@ -198,19 +206,16 @@ def main() -> int:
         if errors:
             raise RuntimeError("invalid shop brief: " + "; ".join(errors))
 
-        config = data(run_json("config", "list"))
-        if not isinstance(config, dict):
-            raise RuntimeError("xsolla config list returned an unexpected shape")
         expected = brief["project"]
+        # The allowlist is the dedicated-test-project acknowledgement: a project
+        # on it is acknowledged, one missing from it stops here, before any CLI
+        # call or config change.
         test_project_approval = approved_test_project(
             args.approved_test_projects, expected
         )
-        if config.get("sandbox") is True:
-            raise RuntimeError("CLI sandbox must be disabled for Shop Builder")
-        if config.get("merchant_id") != expected["merchant_id"]:
-            raise RuntimeError("CLI merchant_id does not match the shop brief")
-        if config.get("project_id") != expected["project_id"]:
-            raise RuntimeError("CLI project_id does not match the shop brief")
+        # Shop Builder has no sandbox, so a Shop Builder request implies sandbox
+        # mode off: preflight settles it without asking (see cli_environment).
+        cli = cli_environment.select(expected, run_json, switch=True)
 
         accounts = run_json("auth", "list-account")
         if not active_publisher_account(accounts):
@@ -266,14 +271,20 @@ def main() -> int:
 
         result = {
             "ok": True,
+            # Plan lines the agent shows as they are.
+            "plan_notes": (
+                [cli_environment.SANDBOX_SWITCHED_OFF]
+                if cli["sandbox_switched_off"]
+                else []
+            ),
             "context": {
                 "merchant_id": expected["merchant_id"],
                 "project_id": expected["project_id"],
                 "environment": expected["environment"],
                 "sandbox": False,
-                "test_project_acknowledged": expected.get(
-                    "test_project_acknowledged", False
-                ),
+                "cli_environment": cli["environment"],
+                "sandbox_switched_off": cli["sandbox_switched_off"],
+                "test_project_acknowledged": True,
                 "test_project_allowlisted": True,
                 "approval_reference": test_project_approval["approval_reference"],
             },

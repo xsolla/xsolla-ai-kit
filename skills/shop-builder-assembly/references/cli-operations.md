@@ -6,7 +6,7 @@ preflight.
 
 | Phase | Command | Consumes | Produces / unlocks |
 |---|---|---|---|
-| Discover | `xsolla config list --json` | Local profile | Merchant and project match; sandbox mode is off |
+| Discover | `xsolla config list --json` | Local profile | Merchant and project match; sandbox mode is off (see [Sandbox mode](#sandbox-mode)) |
 | Discover | `xsolla auth list-account --json` | Credential store | Active Publisher login state |
 | Safety | `preflight.py --approved-test-projects <fixed path>` | Approval list read by scripts only (see [shop brief](shop-brief.md)) | Exact test-project identity is allowlisted |
 | Safety | `shopbuilder create-block --help`, only when the site has no common layout | Installed CLI | The usage line names `create-block`; otherwise the layout step is skipped |
@@ -29,6 +29,26 @@ preflight.
 run, then retry). The agent never runs `auth login` and never supplies a token. Block operations are in [block-operations.md](block-operations.md).
 No script passes `--force`; an operation that requires it stops for review. That includes
 `delete-block`, so no script deletes a block.
+
+## Sandbox mode
+
+Shop Builder has no sandbox, so a Shop Builder request implies CLI sandbox mode off.
+`preflight.py` settles it without asking (`scripts/cli_environment.py`):
+
+1. Sandbox already off in the active environment: nothing changes.
+2. Another environment of the config file in use has sandbox off and the brief's merchant
+   and project (`test` first): every script call gets `--environment <name>` and no
+   config file is written. Preflight reports the name as `cli_environment`; add the same
+   flag to any `xsolla` command you run yourself.
+3. Otherwise preflight runs `xsolla config set sandbox false` in the directory of the
+   config file in use.
+
+Either way preflight adds "CLI sandbox mode switched off for Shop Builder" to
+`plan_notes`, shown as one plan bullet. Backup, apply and verification reuse the choice
+and never change the config. The CLI 1.9.4 reads `./.xsolla.json` when the working
+directory has one, else `~/.xsolla.json`, and `config set` writes `./.xsolla.json`,
+creating a stub without merchant or project when there is none. So never run
+`xsolla config set` yourself, and never from the working folder.
 
 ## ID dependencies
 

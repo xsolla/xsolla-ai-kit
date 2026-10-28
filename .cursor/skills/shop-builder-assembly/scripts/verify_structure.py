@@ -19,7 +19,8 @@ from block_ops import (
     QUESTS_VERSION,
     card_text_ref,
 )
-from preflight import LAYOUT_SKIPPED, cli_has_command, site_block_module
+import cli_environment
+from preflight import LAYOUT_SKIPPED, cli_has_command, run_json, site_block_module
 from render_plan import (
     canonical_hash,
     common_layout_id,
@@ -451,7 +452,10 @@ def main() -> int:
     args = parser.parse_args()
     try:
         plan = load_object(args.plan, "plan")
-        slug = (plan.get("target") or {}).get("slug")
+        target = plan.get("target") or {}
+        slug = target.get("slug")
+        # The CLI reads below use the sandbox-off environment preflight settled.
+        cli_environment.select(target, run_json, switch=False)
         result = verify(
             plan,
             load_object(args.structure, "structure"),

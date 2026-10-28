@@ -11,8 +11,7 @@ values, but must preserve `sources` so the user can see where decisions came fro
   "project": {
     "merchant_id": 12345,
     "project_id": 67890,
-    "environment": "test",
-    "test_project_acknowledged": true
+    "environment": "test"
   },
   "game": {
     "name": "Space Legends",
@@ -40,15 +39,15 @@ values, but must preserve `sources` so the user can see where decisions came fro
 
 Allowed presets: `auto`, `mobile-single-page`, `pc-multi-page`, and
 `live-service-events`. Allowed catalog group types: `virtual_good`, `bundle`, and
-`virtual_currency`. `project.environment` must be `test`, and the `project` object must
-contain `"test_project_acknowledged": true`. Set it only when the publisher explicitly
-states in this conversation that the project is a dedicated test project. The agent never
-sets it on its own or infers it from the project name, a test site, an earlier yes, or
-the approval list.
+`virtual_currency`. `project.environment` must be `test`.
 
 Before a write, `preflight.py` and `apply_plan.py` require a separate local approval list
 at the fixed path below (expand `~` before passing it to the scripts). Only the scripts
-read it; the agent never reads, stats, lists or checks it.
+read it; the agent never reads, stats, lists or checks it. The list is the
+dedicated-test-project acknowledgement: preflight treats a merchant and project on it as
+acknowledged and stops with `needs_human` for any other, so the agent never asks the
+publisher to confirm a test project. Older briefs may still carry
+`"test_project_acknowledged": true`; validation accepts and ignores it.
 
 ```
 ~/.config/xsolla/approved-test-projects.json
@@ -77,7 +76,7 @@ evidence; a self-declared brief is not enough.
 
 | Field | Purpose |
 |---|---|
-| `project.*` | Hard safety boundary. IDs must match, CLI sandbox mode must be off, and a dedicated-test-project acknowledgement that the publisher gave in this conversation is required; the agent never sets it. |
+| `project.*` | Hard safety boundary. IDs must match the CLI and the approval list (the list is the acknowledgement). Preflight switches CLI sandbox mode off itself (see [CLI operations](cli-operations.md#sandbox-mode)). |
 | `game.platforms` | Any of `mobile`, `pc`, `console`, `web`; drives automatic preset selection. |
 | `game.lifecycle` | `launch`, `evergreen`, or `live-service`; drives event and offer defaults. |
 | `site.slug` | Existing target or requested new Xsolla domain slug. Never guess it for an existing site. |
@@ -110,12 +109,13 @@ before planning or writes.
 
 A brief with `block_operations` edits individual Quests blocks on an existing site and
 cannot be combined with `content.page_overrides`. Required: `version`, `project`
-(`environment`, `merchant_id`, `project_id`, `test_project_acknowledged`), `site.slug` and
+(`environment`, `merchant_id`, `project_id`), `site.slug` and
 `block_operations`. Nothing else is allowed: validation rejects any other top-level key
 (`game`, `catalog`, `content`, `brand`, `sources`), any other `site` key (`name`, `pages`)
 and any other `project` key, because the plan would silently ignore them. Operations write
 only to an approved `environment: test` project (`sandbox` is rejected). The approval
-list, backup and `test_project_acknowledged` rules above all apply.
+list and backup rules above all apply; an old `test_project_acknowledged` flag is
+accepted and ignored.
 
 ```json
 "block_operations": [

@@ -13,6 +13,7 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
+import cli_environment
 from validate_shop_brief import load_brief, validate
 
 SESSION_BOOTSTRAP_RETRY_DELAYS = (5, 10, 20)
@@ -39,7 +40,7 @@ def refresh_supported_login() -> None:
         try:
             # Login messages go to stderr so stdout stays the script's result.
             result = subprocess.run(
-                ["xsolla", "auth", "login"],
+                cli_environment.command("auth", "login"),
                 check=False,
                 stdout=sys.stderr,
                 timeout=LOGIN_TIMEOUT_SECONDS,
@@ -110,7 +111,7 @@ def login_once(detail: str) -> None:
 def run_json(*args: str) -> object:
     if any(arg == "--force" or arg.startswith("--force=") for arg in args):
         raise RuntimeError("--force is prohibited in Shop Builder assembly")
-    command = ["xsolla", *args, "--json"]
+    command = cli_environment.command(*args, "--json")
     rate_limit_attempt = 0
     while True:
         # The CLI writes UTF-8; without an explicit encoding Windows decodes with
@@ -195,16 +196,9 @@ def main() -> int:
         if errors:
             raise RuntimeError("invalid shop brief: " + "; ".join(errors))
         expected = brief["project"]
-        config = run_json("config", "list")
-        config_data = data(config)
-        if not isinstance(config_data, dict):
-            raise RuntimeError("xsolla config list returned an unexpected shape")
-        if config_data.get("merchant_id") != expected["merchant_id"]:
-            raise RuntimeError("CLI merchant_id does not match the shop brief")
-        if config_data.get("project_id") != expected["project_id"]:
-            raise RuntimeError("CLI project_id does not match the shop brief")
-        if config_data.get("sandbox") is True:
-            raise RuntimeError("CLI sandbox must be disabled for Shop Builder")
+        # Reuses the sandbox-off environment preflight settled; never changes config.
+        config_data = cli_environment.select(expected, run_json, switch=False)["config"]
+        config = {"ok": True, "data": config_data}
         RUN_AUTH["context"] = cli_context(config_data)
 
         websites = run_json("shopbuilder", "list-websites")

@@ -458,9 +458,6 @@ def build_ops_plan(brief: dict, current_structure: object | None) -> dict:
             "merchant_id": brief["project"]["merchant_id"],
             "project_id": brief["project"]["project_id"],
             "environment": brief["project"]["environment"],
-            "test_project_acknowledged": brief["project"].get(
-                "test_project_acknowledged", False
-            ),
             "slug": brief["site"]["slug"],
         },
         "requires_confirmation": True,
@@ -523,9 +520,6 @@ def build_plan(brief: dict, current_structure: object | None = None) -> dict:
             "merchant_id": brief["project"]["merchant_id"],
             "project_id": brief["project"]["project_id"],
             "environment": brief["project"]["environment"],
-            "test_project_acknowledged": brief["project"].get(
-                "test_project_acknowledged", False
-            ),
             "site_name": brief["site"]["name"],
             "slug": brief["site"]["slug"],
         },

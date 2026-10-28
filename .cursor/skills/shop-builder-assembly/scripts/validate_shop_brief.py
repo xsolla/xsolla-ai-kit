@@ -118,10 +118,7 @@ def validate(brief: dict) -> list[str]:
     environment = project.get("environment")
     if environment != "test":
         errors.append("project.environment must be test")
-    if environment == "test" and project.get("test_project_acknowledged") is not True:
-        errors.append(
-            "project.test_project_acknowledged must be true for a dedicated test project"
-        )
+    errors.extend(legacy_acknowledgement_errors(project))
 
     if not isinstance(game.get("name"), str) or not game["name"].strip():
         errors.append("game.name is required")
@@ -243,6 +240,20 @@ def validate(brief: dict) -> list[str]:
     return errors
 
 
+def legacy_acknowledgement_errors(project: dict) -> list[str]:
+    """Accept the retired `test_project_acknowledged` flag of older briefs.
+
+    The approved test-project allowlist is the acknowledgement now: preflight
+    treats a project on it as acknowledged and stops for one that is not. Older
+    briefs may still carry the flag; it is ignored, but must stay a boolean.
+    """
+    if "test_project_acknowledged" in project and not isinstance(
+        project["test_project_acknowledged"], bool
+    ):
+        return ["project.test_project_acknowledged, when present, must be a boolean"]
+    return []
+
+
 # An operations brief carries only these keys. Anything else (catalog, site.pages,
 # content, game) would be silently ignored by the plan, so it is rejected instead.
 OPS_TOP_LEVEL_KEYS = {"version", "project", "site", "block_operations"}
@@ -278,10 +289,7 @@ def validate_ops_mode(brief: dict) -> list[str]:
     # Block operations write only to an allowlisted dedicated test project.
     if environment != "test":
         errors.append("project.environment must be test for block operations")
-    if environment == "test" and project.get("test_project_acknowledged") is not True:
-        errors.append(
-            "project.test_project_acknowledged must be true for a dedicated test project"
-        )
+    errors.extend(legacy_acknowledgement_errors(project))
     if not isinstance(site.get("slug"), str) or not SLUG_RE.fullmatch(site["slug"]):
         errors.append("site.slug must be lowercase kebab-case")
     return errors + validate_block_operations(brief)

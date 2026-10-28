@@ -9,7 +9,9 @@ from a normalized JSON shop brief.
   every new site, needs a CLI with `shopbuilder create-block` and the Shop Builder API
   support for it; without the command, assembly skips the layout step and says so
 - `xsolla auth login` completed for a Publisher account
-- An acknowledged dedicated test project with CLI sandbox mode disabled
+- A dedicated test project on the approval allowlist below (the allowlist is the
+  acknowledgement). Preflight switches CLI sandbox mode off itself, preferring an
+  existing sandbox-off environment such as `test` (`--environment`) over a config write
 - Existing catalog group IDs for any `newStore` sections
 - A separate local approval allowlist containing the exact merchant/project identity and
   the mentor or lead's approval reference, kept at

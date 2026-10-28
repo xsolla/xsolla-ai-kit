@@ -16,6 +16,7 @@ import urllib.request
 import uuid
 from pathlib import Path
 
+import cli_environment
 from preflight import LAYOUT_SKIPPED, cli_has_command
 from render_plan import (
     COMMON_LAYOUT,
@@ -76,7 +77,7 @@ def refresh_supported_login() -> None:
         try:
             # Login messages go to stderr so stdout stays the JSON report.
             result = subprocess.run(
-                ["xsolla", "auth", "login"],
+                cli_environment.command("auth", "login"),
                 check=False,
                 stdout=sys.stderr,
                 timeout=LOGIN_TIMEOUT_SECONDS,
@@ -147,7 +148,7 @@ def login_once(detail: str) -> None:
 def run_json(*args: str) -> object:
     if any(arg == "--force" or arg.startswith("--force=") for arg in args):
         raise RuntimeError("--force is prohibited in Shop Builder assembly")
-    command = ["xsolla", *args, "--json"]
+    command = cli_environment.command(*args, "--json")
     rate_limit_attempt = 0
     while True:
         # The CLI writes UTF-8; without an explicit encoding Windows decodes with
@@ -1469,15 +1470,8 @@ def main() -> int:
         run_preflight(args.brief, args.approved_test_projects)
 
         expected = brief["project"]
-        config = data(run_json("config", "list"))
-        if not isinstance(config, dict):
-            raise RuntimeError("xsolla config list returned an unexpected shape")
-        if config.get("merchant_id") != expected["merchant_id"]:
-            raise RuntimeError("CLI merchant_id does not match the shop brief")
-        if config.get("project_id") != expected["project_id"]:
-            raise RuntimeError("CLI project_id does not match the shop brief")
-        if config.get("sandbox") is True:
-            raise RuntimeError("CLI sandbox must be disabled for Shop Builder")
+        # Preflight (above) settled sandbox mode; reuse its environment.
+        config = cli_environment.select(expected, run_json, switch=False)["config"]
         RUN_AUTH["context"] = cli_context(config)
 
         slug = brief["site"]["slug"]
