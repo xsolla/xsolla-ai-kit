@@ -3,7 +3,9 @@
 
 The developer's yes to the plan covers only `values.background` leaves on blocks that
 this assembly created, as its run reports record them. Site and page themes, wording,
-and blocks that existed before the run need a new yes, so this script refuses them.
+and blocks that existed before the run need a new yes, so this script refuses them. An
+image must be one uploaded to this site, and a gradient must have the shape of one
+already on the site.
 """
 
 from __future__ import annotations
@@ -71,8 +73,41 @@ def page_blocks(value: dict) -> dict[str, dict]:
     }
 
 
-def refused_fixes(fixes: list[dict], blocks: dict[str, dict], created: frozenset) -> list[str]:
+def asset_urls(backup_dir: Path) -> set[str]:
+    """Return the URLs in the backup's asset list, where `upload-asset` adds each upload."""
+    urls: set[str] = set()
+    pending = [json.loads((backup_dir / "assets.json").read_text(encoding="utf-8"))]
+    while pending:
+        node = pending.pop()
+        if isinstance(node, dict):
+            pending.extend(node.values())
+        elif isinstance(node, list):
+            pending.extend(node)
+        elif isinstance(node, str) and node.startswith("https://"):
+            urls.add(node)
+    return urls
+
+
+def gradient_shape(value: object) -> object:
+    """Return a gradient's shape: its type, and for an object its keys."""
+    return tuple(sorted(value)) if isinstance(value, dict) else type(value).__name__
+
+
+def site_gradient_shapes(blocks: dict[str, dict]) -> set:
+    shapes = set()
+    for block in blocks.values():
+        background = (block.get("values") or {}).get("background")
+        gradient = background.get("gradient") if isinstance(background, dict) else None
+        if gradient:
+            shapes.add(gradient_shape(gradient))
+    return shapes
+
+
+def refused_fixes(
+    fixes: list[dict], blocks: dict[str, dict], created: frozenset, assets: set[str]
+) -> list[str]:
     errors = []
+    gradients = site_gradient_shapes(blocks)
     for fix in fixes:
         block_id = fix["block_id"]
         values = blocks.get(block_id, {}).get("values")
@@ -82,6 +117,16 @@ def refused_fixes(fixes: list[dict], blocks: dict[str, dict], created: frozenset
             errors.append(f"{block_id} is not on the site")
         elif not isinstance(values, dict) or not isinstance(values.get("background"), dict):
             errors.append(f"{block_id} has no values.background to patch")
+        elif fix["leaf"] == "img" and fix["value"] and fix["value"] not in assets:
+            errors.append(
+                f"{block_id} img is not an asset of this site; upload it with upload-asset "
+                "and back up again"
+            )
+        elif fix["leaf"] == "gradient" and gradient_shape(fix["value"]) not in gradients:
+            errors.append(
+                f"{block_id} gradient doesn't match the shape of a gradient on the site; "
+                "leave gradients to the Site Builder editor"
+            )
     return errors
 
 
@@ -127,7 +172,7 @@ def main() -> int:
 
         created = frozenset().union(*(created_block_ids(report) for report in reports))
         blocks = page_blocks(current)
-        refused = refused_fixes(fixes, blocks, created)
+        refused = refused_fixes(fixes, blocks, created, asset_urls(args.backup_dir))
         if refused:
             raise RuntimeError("; ".join(refused) + ". Nothing was written")
 

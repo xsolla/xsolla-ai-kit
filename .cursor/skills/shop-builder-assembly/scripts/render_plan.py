@@ -723,7 +723,11 @@ def main() -> int:
         return 1
     print(json.dumps(plan, indent=2))
     if approved is not None:
-        if plan["confirmation_id"] == approved["confirmation_id"]:
+        if report is not None and report.get("approved_confirmation_id") != approved.get(
+            "confirmation_id"
+        ):
+            changes = ["the run report belongs to another approval"]
+        elif plan["confirmation_id"] == approved["confirmation_id"]:
             changes = []
         elif report is None:
             changes = ["this isn't the approved plan, and no earlier run report was given"]

@@ -9,7 +9,6 @@ description: >-
   should I use", "headless or Shop Builder", "should I use Shop Builder or build my own", "what's
   fastest to launch a store", "I want a hosted no-code store", "I want to embed a custom store in
   my app", "compare headless vs Shop Builder", "help me decide between headless and Shop Builder",
-  "Xsolla-hosted storefront or my own site", "do I need developers for a web shop",
   "do I need a Game Web Portal or just a shop", "gather requirements for my shop", or any request
   to decide the build path before building. Runs with zero Xsolla credentials — `shop-setup`
   invokes this automatically when no path is recorded in `.env`. Creates no Xsolla resources and
@@ -31,7 +30,8 @@ automatically when it finds no recorded path — this skill is the only asker.
 Use when the developer wants to **decide which path to build on**, or asks a want/tradeoff
 question that sounds like a build request but is really a planning one — "I want a hosted
 no-code store" and "embed a custom store in my app" are both planning requests, not build
-requests, until a path is recorded.
+requests, until a path is recorded. So are "Xsolla-hosted storefront or my own site" and "do I
+need developers for a web shop".
 
 **Do not use this to build anything.** This skill creates no Xsolla account, project, or
 resource, calls no Xsolla API, and runs no `xsolla` command — not even `--version`; checking the

@@ -89,7 +89,8 @@ or the approved plan listed. `apply_plan.py` checks this again and stops before 
 
 The yes also covers background fixes after the visual review: `values.background` leaves
 (color, gradient, image, position, size) on blocks this assembly created, applied with
-`scripts/patch_backgrounds.py` after a fresh export. It refuses anything else.
+`scripts/patch_backgrounds.py` after a fresh export. It refuses anything else, an image
+not uploaded to the site, and a gradient unlike the ones already on it.
 
 Ask again, showing what changed, before anything else: a render that "Needs a new yes",
 the site or page theme, fonts, wording, a block or page that existed before this run, any

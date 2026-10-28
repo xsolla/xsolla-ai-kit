@@ -14,7 +14,8 @@ colors, placeholder art and hard section edges read as unfinished.
 - Without key art, build section backgrounds as gradients in that palette, not one flat
   color.
 - Upload images with `upload-asset` and use the returned CDN URL. Never hotlink a store page.
-- Every product and pack gets its own artwork before the first handoff, consistent in style.
+- Products and packs need artwork in one consistent style. It's the catalog items' images,
+  which `catalog-design` sets; list the missing ones in the handoff.
 
 ## Section backgrounds
 
@@ -57,8 +58,10 @@ width and look at screenshots of every page. Fix what they show, then look again
   only when more exists.
 
 The developer's yes to the plan covers only background fixes on blocks this assembly
-created, applied with `scripts/patch_backgrounds.py` (see `SKILL.md`). Show anything else
-the review finds, such as theme, font, wording or layout fixes, and ask before changing it.
+created, applied with `scripts/patch_backgrounds.py` (see `SKILL.md`). An image must be one
+uploaded to the site with `upload-asset`, and a gradient must have the shape of one already
+on the site. Show anything else the review finds, such as theme, font, wording or layout
+fixes, and ask before changing it.
 If the preview can't be opened, say the visual review wasn't done and why: the CLI preview
 permission error in [test-findings.md](test-findings.md), or a site without the common
 layout, which private preview doesn't open. Don't report the site as reviewed.

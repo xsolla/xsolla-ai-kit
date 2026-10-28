@@ -269,20 +269,23 @@ def check_cli_context(expected: dict) -> None:
 
 
 def check_approval(
-    args: argparse.Namespace, plan: dict, approved: dict | None, report: dict | None
+    args: argparse.Namespace, plan: dict, approved: dict, report: dict | None
 ) -> None:
-    """Stop unless the developer's yes covers the plan this run would apply.
+    """Stop unless the developer's yes to the approved plan covers this run's plan.
 
-    Without ``--approved-plan`` the confirmation ID must be the current plan's. With it,
-    the ID must be the approved plan's, and a different current plan, such as a new
-    site's second run, is covered only when ``approval_changes`` finds nothing.
+    The confirmation ID must be the approved plan's, and a run report must come from a
+    run under that same approval. A different current plan, such as a new site's second
+    run, is covered only when ``approval_changes`` finds nothing.
     """
-    if approved is None:
-        if args.confirmation_id != plan["confirmation_id"]:
-            raise RuntimeError("confirmation ID does not match the current plan")
-        return
     if args.confirmation_id != approved["confirmation_id"]:
         raise RuntimeError("confirmation ID does not match the approved plan")
+    if report is not None and report.get("approved_confirmation_id") != approved[
+        "confirmation_id"
+    ]:
+        raise RuntimeError(
+            "the run report belongs to another approval than the approved plan. "
+            "Nothing was written. Show the developer the current plan and ask again"
+        )
     if plan["confirmation_id"] == approved["confirmation_id"]:
         return
     if report is None:
@@ -1030,7 +1033,7 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("brief", type=Path)
     parser.add_argument("--confirmation-id", required=True)
-    parser.add_argument("--approved-plan", type=Path)
+    parser.add_argument("--approved-plan", type=Path, required=True)
     parser.add_argument("--run-report", type=Path)
     parser.add_argument("--backup-dir", type=Path)
     parser.add_argument("--approved-test-projects", type=Path)
@@ -1040,7 +1043,7 @@ def main() -> int:
         errors = validate(brief)
         if errors:
             raise RuntimeError("invalid shop brief: " + "; ".join(errors))
-        approved = load_approved_plan(args.approved_plan) if args.approved_plan else None
+        approved = load_approved_plan(args.approved_plan)
         report = load_run_report(args.run_report) if args.run_report else None
         created = created_block_ids(report) if report else frozenset()
         run_preflight(args.brief, args.approved_test_projects)
@@ -1063,7 +1066,7 @@ def main() -> int:
             plan = build_plan(brief)
 
         check_approval(args, plan, approved, report)
-        approved_id = approved["confirmation_id"] if approved else plan["confirmation_id"]
+        approved_id = approved["confirmation_id"]
 
         if existed:
             current = structure(slug)

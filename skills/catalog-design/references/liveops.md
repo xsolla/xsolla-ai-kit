@@ -19,7 +19,7 @@ players see the offer but can't claim it, and per-player limits can't apply.
 | Limited stock | A fixed number of copies across all players | Item `limits.per_item` | No |
 | Per-player limit | N purchases per player, optionally reset daily, weekly or monthly | Item `limits.per_user`, `limits.recurrent_schedule` | Yes |
 | Scheduled sale | A discount or bonus between two dates | `promotion_periods` on a discount or bonus (`create-discount`, `create-bonus`) | No |
-| Offer chain | Free and paid steps that unlock one after another | `xsolla liveops create-offer-chain` | Yes: its client calls take the player's JWT |
+| Offer chain | Free and paid steps that unlock one after another | `xsolla liveops create-offer-chain` | To claim or buy a step and see progress; anyone can see the chain |
 | Daily rewards | A free item for each day the player logs in | `xsolla liveops create-daily-chain` | Yes |
 | Loyalty | Value points for each purchase, rewards at thresholds | `create-value-point`, `update-value-point-rewards`, `create-reward-chain` | Yes |
 | Promo codes | A discount or bonus items at checkout | `create-promo-codes`, then `generate-promo-codes` | No |

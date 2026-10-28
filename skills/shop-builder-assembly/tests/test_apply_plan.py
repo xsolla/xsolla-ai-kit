@@ -1161,6 +1161,13 @@ class ApplyPlanTests(unittest.TestCase):
 EXAMPLE_BRIEF = ROOT / "examples" / "mobile-single-page.json"
 
 
+def approved_plan_file(directory: str | Path, plan: dict) -> str:
+    """Save ``plan`` as the plan the developer approved; apply_plan.py requires one."""
+    path = Path(directory) / "approved-plan.json"
+    path.write_text(json.dumps(plan), encoding="utf-8")
+    return str(path)
+
+
 def object_path(path: str) -> dict:
     return {"pathSegment": path, "type": "static"}
 
@@ -1285,19 +1292,27 @@ class ObjectPagePathTests(unittest.TestCase):
     def setUp(self) -> None:
         self.brief = json.loads(EXAMPLE_BRIEF.read_text(encoding="utf-8"))
 
-    def run_apply(self, cli: FakeShopBuilderCli, confirmation_id: str) -> tuple[int, str, str]:
-        argv = ["apply_plan.py", str(EXAMPLE_BRIEF), "--confirmation-id", confirmation_id]
+    def run_apply(self, cli: FakeShopBuilderCli, plan: dict) -> tuple[int, str, str]:
         stdout, stderr = io.StringIO(), io.StringIO()
-        with (
-            mock.patch.dict(apply_plan.RUN_AUTH, {"logged_in": False, "context": None}),
-            mock.patch.object(sys, "argv", argv),
-            mock.patch.object(apply_plan, "run_preflight"),
-            mock.patch.object(apply_plan, "run_json", side_effect=cli),
-            contextlib.redirect_stdout(stdout),
-            contextlib.redirect_stderr(stderr),
-        ):
-            code = apply_plan.main()
-            self.recorded_context = apply_plan.RUN_AUTH["context"]
+        with tempfile.TemporaryDirectory() as directory:
+            argv = [
+                "apply_plan.py",
+                str(EXAMPLE_BRIEF),
+                "--approved-plan",
+                approved_plan_file(directory, plan),
+                "--confirmation-id",
+                plan["confirmation_id"],
+            ]
+            with (
+                mock.patch.dict(apply_plan.RUN_AUTH, {"logged_in": False, "context": None}),
+                mock.patch.object(sys, "argv", argv),
+                mock.patch.object(apply_plan, "run_preflight"),
+                mock.patch.object(apply_plan, "run_json", side_effect=cli),
+                contextlib.redirect_stdout(stdout),
+                contextlib.redirect_stderr(stderr),
+            ):
+                code = apply_plan.main()
+                self.recorded_context = apply_plan.RUN_AUTH["context"]
         return code, stdout.getvalue(), stderr.getvalue()
 
     def test_page_path_accepts_string_and_object_shapes(self) -> None:
@@ -1358,9 +1373,7 @@ class ObjectPagePathTests(unittest.TestCase):
 
     def test_new_landing_resolves_object_path_after_add_page(self) -> None:
         cli = FakeShopBuilderCli(self.brief)
-        code, stdout, stderr = self.run_apply(
-            cli, apply_plan.build_plan(self.brief)["confirmation_id"]
-        )
+        code, stdout, stderr = self.run_apply(cli, apply_plan.build_plan(self.brief))
         self.assertEqual(0, code, stderr)
         report = json.loads(stdout)
         self.assertEqual("bootstrap-complete", report["status"])
@@ -1380,9 +1393,7 @@ class ObjectPagePathTests(unittest.TestCase):
 
     def test_rerun_on_object_path_landing_passes_plan_and_verify(self) -> None:
         cli = FakeShopBuilderCli(self.brief)
-        code, _, stderr = self.run_apply(
-            cli, apply_plan.build_plan(self.brief)["confirmation_id"]
-        )
+        code, _, stderr = self.run_apply(cli, apply_plan.build_plan(self.brief))
         self.assertEqual(0, code, stderr)
 
         plan = apply_plan.build_plan(self.brief, {"ok": True, "data": cli.landing})
@@ -1436,7 +1447,7 @@ class CustomCodeReportTests(unittest.TestCase):
         cli("shopbuilder", "set-landing-type", "--slug", slug, "--type", "store")
         cli("shopbuilder", "add-page", "--slug", slug, "--name", "Home", "--path", "/")
         saved = copy.deepcopy(cli.landing)
-        confirmation_id = apply_plan.build_plan(brief, saved)["confirmation_id"]
+        plan = apply_plan.build_plan(brief, saved)
 
         def reconciled(slug: str, landing_id: str, page: dict) -> dict:
             return {
@@ -1454,8 +1465,10 @@ class CustomCodeReportTests(unittest.TestCase):
             argv = [
                 "apply_plan.py",
                 str(brief_path),
+                "--approved-plan",
+                approved_plan_file(directory, plan),
                 "--confirmation-id",
-                confirmation_id,
+                plan["confirmation_id"],
                 "--backup-dir",
                 directory,
             ]
@@ -1688,7 +1701,17 @@ class CommonLayoutPreflightTests(unittest.TestCase):
 
     def test_apply_stops_before_any_write_when_preflight_fails(self) -> None:
         stderr = io.StringIO()
-        argv = ["apply_plan.py", str(EXAMPLE_BRIEF), "--confirmation-id", "any"]
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        plan = apply_plan.build_plan(json.loads(EXAMPLE_BRIEF.read_text(encoding="utf-8")))
+        argv = [
+            "apply_plan.py",
+            str(EXAMPLE_BRIEF),
+            "--approved-plan",
+            approved_plan_file(directory.name, plan),
+            "--confirmation-id",
+            plan["confirmation_id"],
+        ]
         with (
             mock.patch.object(sys, "argv", argv),
             mock.patch.object(
@@ -1816,7 +1839,7 @@ class PublisherTemplateSiteTests(unittest.TestCase):
 
     def run_apply(self, cli: FakeShopBuilderCli) -> tuple[int, str, str, mock.Mock]:
         saved = copy.deepcopy(cli.landing)
-        confirmation_id = apply_plan.build_plan(self.brief, saved)["confirmation_id"]
+        plan = apply_plan.build_plan(self.brief, saved)
 
         def reconciled(slug: str, landing_id: str, page: dict) -> dict:
             return {
@@ -1832,8 +1855,10 @@ class PublisherTemplateSiteTests(unittest.TestCase):
             argv = [
                 "apply_plan.py",
                 str(EXAMPLE_BRIEF),
+                "--approved-plan",
+                approved_plan_file(directory, plan),
                 "--confirmation-id",
-                confirmation_id,
+                plan["confirmation_id"],
                 "--backup-dir",
                 directory,
             ]
@@ -2021,6 +2046,47 @@ class OneApprovalTests(unittest.TestCase):
         reconcile.assert_not_called()
         self.assertEqual(writes_before, len(self.writes()))
 
+    def test_apply_requires_the_approved_plan(self) -> None:
+        argv = [
+            "apply_plan.py",
+            str(EXAMPLE_BRIEF),
+            "--confirmation-id",
+            self.approved["confirmation_id"],
+        ]
+        with (
+            mock.patch.object(sys, "argv", argv),
+            mock.patch.object(apply_plan, "run_json", side_effect=self.cli),
+            contextlib.redirect_stderr(io.StringIO()) as stderr,
+            self.assertRaises(SystemExit),
+        ):
+            apply_plan.main()
+        self.assertIn("--approved-plan", stderr.getvalue())
+        self.assertEqual([], self.cli.calls)
+
+    def test_a_re_rendered_plan_saved_as_the_approved_one_is_refused(self) -> None:
+        run_report = self.bootstrap()
+        self.cli.landing["pages"][0]["blocks"].insert(
+            1, {"_id": "user-html", "module": "html"}
+        )
+        report = json.loads(run_report.read_text(encoding="utf-8"))
+        rerendered = render_plan.build_plan(
+            self.brief, self.cli.landing, render_plan.created_block_ids(report)
+        )
+        self.assertIn("user-html", [r["block_id"] for r in rerendered["pages"][0]["removals"]])
+        self.approved_path.write_text(json.dumps(rerendered), encoding="utf-8")
+        writes_before = len(self.writes())
+        code, _, stderr, reconcile = self.apply(
+            "--run-report",
+            str(run_report),
+            "--backup-dir",
+            str(self.root),
+            confirmation_id=rerendered["confirmation_id"],
+        )
+        self.assertEqual(1, code)
+        self.assertIn("the run report belongs to another approval", stderr)
+        reconcile.assert_not_called()
+        self.assertEqual(writes_before, len(self.writes()))
+
     def test_second_run_without_the_first_runs_report_needs_a_new_yes(self) -> None:
         self.bootstrap()
         code, _, stderr, reconcile = self.apply("--backup-dir", str(self.root))
@@ -2119,6 +2185,15 @@ class OneApprovalTests(unittest.TestCase):
         )
         self.assertIn("Needs a new yes: it removes the html block user-html on /", render())
 
+        report = json.loads(run_report.read_text(encoding="utf-8"))
+        rerendered = render_plan.build_plan(
+            self.brief, self.cli.landing, render_plan.created_block_ids(report)
+        )
+        self.approved_path.write_text(json.dumps(rerendered), encoding="utf-8")
+        self.assertEqual(
+            "Needs a new yes: the run report belongs to another approval\n", render()
+        )
+
 
 def load_patch_backgrounds():
     path = ROOT / "scripts" / "patch_backgrounds.py"
@@ -2152,6 +2227,11 @@ class BackgroundFixTests(unittest.TestCase):
             "created_blocks": {"/": ["new-hero"]},
         }
         (self.root / "run1-report.json").write_text(json.dumps(report), encoding="utf-8")
+        self.uploaded = "https://cdn.example/landing-1/hero.webp"
+        (self.root / "assets.json").write_text(
+            json.dumps({"ok": True, "data": [{"url": self.uploaded, "type": "image"}]}),
+            encoding="utf-8",
+        )
         background = {"enable": True, "type": "color", "color": "rgba(0, 0, 0, 0)"}
         self.site = {
             "_id": "landing-1",
@@ -2168,7 +2248,12 @@ class BackgroundFixTests(unittest.TestCase):
                         {
                             "_id": "old-faq",
                             "module": "faq",
-                            "values": {"background": dict(background)},
+                            "values": {
+                                "background": {
+                                    **background,
+                                    "gradient": {"angle": 180, "from": "#000", "to": "#222"},
+                                }
+                            },
                         },
                     ],
                 }
@@ -2248,6 +2333,39 @@ class BackgroundFixTests(unittest.TestCase):
         self.assertEqual(1, code)
         self.assertIn("anything else needs a new yes", stderr)
         self.assertEqual([], self.calls)
+
+    def test_an_image_must_be_uploaded_to_the_site(self) -> None:
+        code, stderr = self.run_fixes(
+            [{"block_id": "new-hero", "leaf": "img", "value": "https://elsewhere.example/a.png"}]
+        )
+        self.assertEqual(1, code)
+        self.assertIn("img is not an asset of this site", stderr)
+        self.assertEqual([], self.calls)
+
+        code, stderr = self.run_fixes(
+            [{"block_id": "new-hero", "leaf": "img", "value": self.uploaded}]
+        )
+        self.assertEqual(0, code, stderr)
+        self.assertEqual(
+            self.uploaded, self.site["pages"][0]["blocks"][0]["values"]["background"]["img"]
+        )
+
+    def test_a_gradient_must_have_the_shape_of_one_on_the_site(self) -> None:
+        code, stderr = self.run_fixes(
+            [{"block_id": "new-hero", "leaf": "gradient", "value": {"css": "linear-gradient()"}}]
+        )
+        self.assertEqual(1, code)
+        self.assertIn("gradient doesn't match the shape", stderr)
+        self.assertEqual([], self.calls)
+
+        fade = {"angle": 180, "from": "#101030", "to": "rgba(16, 16, 48, 0)"}
+        code, stderr = self.run_fixes([{"block_id": "new-hero", "leaf": "gradient", "value": fade}])
+        self.assertEqual(0, code, stderr)
+        change = json.loads(self.calls[0][self.calls[0].index("--data") + 1])["background"]
+        self.assertEqual(
+            [{"op": "add", "path": ["values", "background", "gradient"], "value": fade}],
+            change["patches"],
+        )
 
     def test_refuses_when_the_site_changed_after_the_backup(self) -> None:
         older = copy.deepcopy(self.site)
