@@ -133,7 +133,9 @@ the approval list, `$HOME/.config/xsolla/approved-test-projects.json` (pass it, 
 3. `python3 "G/preflight.py" "W/brief.json" --approved-test-projects "A"`
 4. `python3 "G/backup_shop.py" --brief "W/brief.json" --slug <slug> --output-dir "W/backup"`
 5. `python3 "G/render_plan.py" "W/brief.json" --structure "W/backup/structure.json"`.
-   Show its `confirmation_id` in the one plan and end the turn.
+   Show its `confirmation_id` in the one plan (Plan shape in [reply-format.md](reply-format.md))
+   and end the turn. If step 3 returned a `plan_notes` line, it is a plan bullet, word for
+   word; if `plan_notes` is empty, the plan has no sandbox line.
 6. After "yes": `python3 "G/apply_plan.py" "W/brief.json" --confirmation-id <id> --backup-dir "W/backup" --approved-test-projects "A"`.
    It verifies the result itself and prints the `editor_url`.
 
