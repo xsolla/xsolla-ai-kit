@@ -220,7 +220,10 @@ into the title or description as a workaround.
    publisher asks to change them, say they can't be changed on the block and offer to
    change the quest's reward through the edit flow instead.
    For an existing block, take its `block_id` and the `quest_id`s from the block
-   summary (see [Gate commands](quests-block-brief.md#gate-commands)). Check
+   summary (see [Gate commands](quests-block-brief.md#gate-commands)). With several
+   Quests blocks on the site, "the Quests block" is the only visible one; target a
+   hidden block only when the publisher points at it ("the copy", "the hidden one", a
+   position), and ask which one only when several are visible. Check
    every key against the [settings table](quests-block-brief.md#block-settings) and
    the brief against the [rules](quests-block-brief.md#rules-for-every-operation).
 4. **Hand it to the gate.** With the exact [Gate commands](quests-block-brief.md#gate-commands),
@@ -229,8 +232,8 @@ into the title or description as a workaround.
    must show exactly the requested operations with their leaf paths and values, and any
    parent objects it creates. Show the one plan in the Plan shape from
    [reply-format.md](reply-format.md): a bold `Plan:` line, bullets for Site, Change
-   (each operation), the defaults used, preflight's plan line when it switched sandbox
-   mode off, "Not published; you publish in Publisher Account", and
+   (each operation), the defaults used, preflight's `plan_notes` line exactly when it
+   returned one, "Not published; you publish in Publisher Account", and
    `Confirmation: <confirmation_id>`, then `Next: reply "yes" to apply this exact plan.`
    End the turn there; apply nothing until the publisher confirms. One yes applies it.
 5. **Apply.** After confirmation, apply exactly the confirmed plan with the gate's
