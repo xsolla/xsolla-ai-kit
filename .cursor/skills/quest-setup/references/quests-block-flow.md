@@ -116,8 +116,9 @@ quests on my webshop" after naming the site. This is a read, so it needs no gate
    position N of M, visible or hidden); Quests (limit M), then every quest name in block
    order (the `card_title` when it differs from or replaces `quest_name`; mark a quest
    that is not public); Heading (the text in quotes, or "heading is set" when null);
-   Card overrides (which cards and fields, or "none"). Several Quests blocks: one Where
-   and Quests bullet each. No layout, style, JSON, ids, or draft and publishing notes.
+   Card overrides in a few words ("all 4 cards: title, description, reward", or "none"),
+   with no comment on rewards or matching names. Several Quests blocks: one Where and
+   Quests bullet each. No layout, style, JSON, ids, or draft and publishing notes.
 3. If `quest_names` is `unavailable` and no `card_title` is set, say in the Quests bullet:
    "names show once Quest Platform access is set up." Never say the block cannot be
    confirmed when the read works.
