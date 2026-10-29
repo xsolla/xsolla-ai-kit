@@ -4,9 +4,9 @@ description: >-
   A shop the user creates on Xsolla's side, without writing code, renting
   servers, or deploying. Use for "build me a shop" when the user has not said
   how, and for "I don't want to write code or run my own servers". Ask whether
-  the shop should live on their side or on Xsolla's side. No local repo makes
-  Xsolla's side more likely. If they will write and deploy the code, open
-  shop-setup.
+  the shop should live on the user's side or on Xsolla's side. No local repo
+  makes Xsolla's side more likely. If the user will write and deploy the code,
+  open shop-setup.
 metadata:
   owner: a.pyanzin
   domain: store

@@ -1,11 +1,11 @@
 ---
 name: shop-setup
 description: >-
-  A shop the user codes, reviews, and deploys, or Xsolla embedded in a shop they
-  already built. Use for "build me a shop" when they or the agent will write the
-  code, "embed Xsolla in my store", "payment UI language", or "settings.language".
-  A local repo makes this more likely; a shop in it, more still; Xsolla already
-  there means this skill. If they will not write and deploy, open nocode-shop-setup.
+  A shop the user codes, reviews, and deploys, or Xsolla embedded in a shop the
+  user already built. Use for "build me a shop" when the user or the agent will
+  write the code, or "embed Xsolla in my store". A local repo makes this more
+  likely; a shop in it, more still; Xsolla already there means this skill. If
+  the user will not write and deploy, open nocode-shop-setup.
 metadata:
   owner: y-klochikhin
   domain: orchestrator
