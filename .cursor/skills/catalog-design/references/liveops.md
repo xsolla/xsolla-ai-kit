@@ -16,12 +16,11 @@ players see the offer but can't claim it, and per-player limits can't apply.
 | Starter pack | A bundle sold once per player | Bundle with `limits.per_user` total 1 | Yes |
 | First-purchase bonus | Extra items with their first paid order | Bonus promotion with `attribute_conditions` `has_purchase` `eq` `0` and `limits.per_user` 1 (`xsolla liveops create-bonus`) | Yes |
 | Time-limited offer | An item shown only between two dates | Item `periods` (ISO 8601) | No |
-| Limited stock | A fixed number of copies across all players | Item `limits.per_item` | No |
 | Per-player limit | N purchases per player, optionally reset daily, weekly or monthly | Item `limits.per_user`, `limits.recurrent_schedule` | Yes |
 | Scheduled sale | A discount or bonus between two dates | `promotion_periods` on a discount or bonus (`create-discount`, `create-bonus`) | No |
 | Offer chain | Free and paid steps that unlock one after another | `xsolla liveops create-offer-chain` | To claim or buy a step and see progress; anyone can see the chain |
 | Daily rewards | A free item for each day the player logs in | `xsolla liveops create-daily-chain` | Yes |
-| Loyalty | Value points for each purchase, rewards at thresholds | `create-value-point`, `update-value-point-rewards`, `create-reward-chain` | Yes |
+| Reward system | Value points for each purchase, rewards at thresholds | `create-value-point`, `update-value-point-rewards`, `create-reward-chain` | Yes |
 | Promo codes | A discount or bonus items at checkout | `create-promo-codes`, then `generate-promo-codes` | No |
 
 Facts that change the proposal:
@@ -40,7 +39,7 @@ Facts that change the proposal:
   `xsolla liveops activate-promotions`. Promo code promotions also start with no codes:
   `generate-promo-codes`. Chains take `is_enabled: true` or `toggle-*`. An active promotion or
   chain can't be edited; deactivate it first.
-- **Loyalty points.** Use separate value points for separate reward chains; chains that share
+- **Value points.** Use separate value points for separate reward chains; chains that share
   them share one balance, and a reset clears it everywhere.
 
 ## How to propose it
@@ -49,10 +48,11 @@ Facts that change the proposal:
    `list-coupons`, `list-offer-chain`, `list-daily-chain`, `list-reward-chain`,
    `list-value-point`, and the catalog. These lists include inactive entries: only those
    with `is_enabled: true` are live. Reuse what exists; never create a duplicate.
-2. Propose the set in one message. For each mechanic: what the player gets, why it helps this
-   game, and what is still to connect (player login, delivery to the game).
+2. Propose the set in one message. Call each mechanic by its name in the table above, as the
+   Xsolla docs do: the Reward system, not a loyalty program. For each mechanic: what the player
+   gets, why it helps this game, and what is still to connect (player login, delivery to the game).
 3. In the same message, ask once for the commercial values that are missing: reward quantities,
-   stock limits, campaign dates and time zone, who is eligible, and how items reach the game.
+   purchase limits, campaign dates and time zone, who is eligible, and how items reach the game.
    Show every value as proposed or confirmed. Never write a proposed value as if the developer
    had set it.
 4. After the developer's yes, create in dependency order: items and bundles → their limits and

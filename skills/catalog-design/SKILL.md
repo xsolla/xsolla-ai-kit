@@ -24,7 +24,7 @@ Detailed material lives in `references/`:
 - [`references/items.md`](references/items.md) — virtual items, VC, packages, bundles, groups (Admin API)
 - [`references/game-keys.md`](references/game-keys.md) — key packages, platforms, entitlement
 - [`references/pricing.md`](references/pricing.md) — local prices, regional restrictions
-- [`references/liveops.md`](references/liveops.md) — limits, time-limited offers, promotions, chains, loyalty
+- [`references/liveops.md`](references/liveops.md) — limits, time-limited offers, promotions, chains, reward system
 - [`references/catalog-client.md`](references/catalog-client.md) — client catalog calls
 - [`references/purchase-and-tracking.md`](references/purchase-and-tracking.md) — purchase flows, order confirmation
 
@@ -35,9 +35,9 @@ Use this skill when the developer wants to:
 - Create virtual items, virtual currency, VC packages, bundles, or item groups
 - Sell a game or DLC via game keys (Steam, Epic, PlayStation, DRM-free, …)
 - Set local prices per country or restrict sales by region
-- Add limited-time or limited-stock offers, purchase limits, promotions, offer chains,
-  daily rewards or loyalty rewards — "limited-time offer", "purchase limit", "first
-  purchase bonus", "offer chain", "daily rewards", "loyalty program", "promo codes"
+- Add limited-time offers, purchase limits, promotions, offer chains, daily rewards or a
+  reward system — "limited-time offer", "purchase limit", "first purchase bonus", "offer
+  chain", "daily rewards", "reward system", "loyalty program", "promo codes"
 - Build the store catalog UI on the client (game or website)
 - Implement purchase: fast purchase by SKU, cart, purchase for VC, free items
 - Confirm purchases: webhooks on the server or order tracking on the client
@@ -77,8 +77,8 @@ export XSOLLA_PROJECT_API_KEY=<your API key>
 
 2. **Propose a complete shop, not a price list.** For in-game items, propose by default
    what gives players reasons to buy and to return: bundles and a starter pack, a
-   first-purchase bonus, time-limited and limited-stock offers, per-player limits, an
-   offer chain, daily rewards, loyalty rewards and promo codes — a coherent set for the
+   first-purchase bonus, time-limited offers, per-player limits, an offer chain, daily
+   rewards, a reward system and promo codes — a coherent set for the
    game, not all of them. Explain each in plain words and ask for every missing
    commercial value in one message; create nothing before the developer's yes. See
    `references/liveops.md`.
