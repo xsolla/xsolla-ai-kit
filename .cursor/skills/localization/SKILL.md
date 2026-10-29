@@ -1,10 +1,11 @@
 ---
 name: localization
 description: >-
-  Translates an Xsolla catalog and LiveOps into more languages. Use for "localize /
-  translate the catalog", "translate item names", "translate promotions / promo codes /
-  reward chains", "add a language", or a translation CSV. Not Shop Builder page copy
-  (shopbuilder-translate).
+  Translates an Xsolla catalog and LiveOps into more languages. Use for "translate the
+  shop", "translate my shop", "localize / translate the catalog", "make the store
+  multi-language", "translate item names", "translate promotions", "add a language", a
+  translation CSV, or "404 Locale not found". Offer it when a catalog exists in one
+  language only. Not Shop Builder page copy (shopbuilder-translate).
 metadata:
   owner: u.filipau
   domain: catalog
@@ -45,6 +46,11 @@ language → `login-setup`; prices and regional availability → `catalog-design
 page copy → `shopbuilder-translate`. Not covered at all: `upsell` and subscription plans.
 Check the target against [coverage-matrix.md](references/coverage-matrix.md). Offer at most
 once per session. A deliberately single-language shop is a valid answer.
+
+A general "translate my shop" or "translate the shop" is both halves. This skill translates
+the catalog and LiveOps, then hands Shop Builder page copy to `shopbuilder-translate`.
+Do not report the shop as finished after the catalog. Say which half is done and which is
+still open.
 
 ## Prerequisites
 

@@ -72,6 +72,11 @@ Translate my catalog / localize item names / translate promotions / add a langua
 → triggers: localization
    (catalog + LiveOps content — payment UI language is shop-setup, Login is login-setup)
 
+Translate my shop / translate the shop / make the store multi-language
+→ triggers: localization and shopbuilder-translate
+   (both run; localization does the catalog and LiveOps, shopbuilder-translate does page
+   copy, and each one says which half is still open)
+
 Go live / leave sandbox
 → triggers: production
 
