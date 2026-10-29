@@ -6,7 +6,7 @@ Each subdirectory contains a `SKILL.md` — a structured workflow file for an Xs
 
 | Skill                                                                     | Domain                                  | Owner               | Status |
 |---------------------------------------------------------------------------|-----------------------------------------|---------------------|--------|
-| [`shop-setup`](shop-setup/SKILL.md)                                       | Entry point — build path, then the flow | @y.klochikhin       | Done   |
+| [`shop-setup`](shop-setup/SKILL.md)                                       | Coded shop — the user writes and deploys | @y.klochikhin       | Done   |
 | [`nocode-shop-setup`](nocode-shop-setup/SKILL.md)                         | Shop Builder entry — store or game home | @a.pyanzin          | Draft  |
 | [`shop-builder-assembly`](shop-builder-assembly/SKILL.md)                 | Shop Builder site assembly              | @k.shah             | Draft  |
 | [`description-to-shop`](description-to-shop/SKILL.md)                     | Description → Shop Builder shop brief   | @k.shah             | Draft  |

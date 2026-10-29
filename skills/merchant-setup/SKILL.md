@@ -28,7 +28,13 @@ cat .env 2>/dev/null | grep -E "XSOLLA_MERCHANT_ID|XSOLLA_PROJECT_ID|XSOLLA_PROJ
    XSOLLA_PROJECT_API_KEY=****  (set)
 ```
 
-**If the file is missing or any variable is absent** — walk the user through the steps below, then write the credentials to `.env` at the end ([Step 5](#step-5-write-credentials-to-env)).
+**If the file is missing or any variable is absent** — walk the user through the steps below.
+
+**Where the key lives:**
+
+- A shop the user codes (`shop-setup`) has a project directory. Write the merchant id, project id, and project API key to `.env` ([Step 5](#step-5-write-credentials-to-env)). That file is for the application.
+- A shop on Xsolla's side with no project directory (`nocode-shop-setup`) has nowhere to put `.env`. Do not create one. Ask the user to generate a **separate** project API key for this chat, paste it here, and **delete that key** in Publisher Account when setup is finished. Do not reuse the key a live project already uses. Hold it in the conversation for the calls, and do not write it to a file.
+- Pasting a key into chat is a stopgap. The durable replacement is an Xsolla MCP that acts as the signed-in user. It is not available for these calls yet. When the agent can run the Xsolla CLI, Shop Builder calls use `xsolla auth login` instead of a pasted project key. Never ask the user to paste a session token.
 
 ---
 

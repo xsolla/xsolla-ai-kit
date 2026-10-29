@@ -3,8 +3,8 @@ name: description-to-shop
 description: >-
   Turn a plain-language game description into the normalized, source-attributed shop
   brief consumed by shop-builder-assembly. Not the entry point for "build me a shop" —
-  that is shop-setup, which routes here once the build path is Shop Builder and the only
-  input is prose. Use when a publisher has no design, brief or written specification and
+  that is nocode-shop-setup, which routes here once the shop is created on Xsolla's side
+  and the only input is prose. Use when a publisher has no design, brief or written specification and
   asks to build a Shop Builder site, webshop, top-up page, PC portal, or live-service
   store from a description. This skill owns intake and inference; shop-builder-assembly
   owns presets, confirmation, backups, CLI writes, verification, and preview. Do not use

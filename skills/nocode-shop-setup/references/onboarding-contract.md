@@ -1,46 +1,48 @@
 # The onboarding contract
 
-One set of statuses, one ledger, one handoff report for the Shop Builder part of onboarding.
-`shop-plan` asks the intake and starts the ledger; the storefront skills that follow this
+One set of statuses, one ledger, one handoff report for the shop created on Xsolla's side.
+`nocode-shop-setup` confirms that path and whether the site is a store or a game home, and
+starts the ledger when a project directory exists. The storefront skills that follow this
 contract — `game-web-portal` — record their steps and render the handoff report.
-`description-to-shop` reads the confirmed intake on the shop path and asks only for missing
+`description-to-shop` reads the confirmed intake on the store path and asks only for missing
 data or conflicts. It does not write ledger steps; `shop-builder-assembly` does not yet
-write the ledger or render its handoff report. `shop-setup` and the skills it runs are not changed by this
-contract: what they did is read back from the project when a storefront skill starts.
+write the ledger or render its handoff report. `shop-setup`, the shop the user codes, has no
+ledger: what those skills did is read back from the project when a storefront skill starts.
 
 Honest partial completion is correct. Simulated completion is failure.
 
 ## The flow
 
 ```text
-shop-plan (intake, path, site kind)
-→ shop-setup: merchant-setup → catalog-design → login-setup
-→ storefront: description-to-shop / shop-builder-assembly, or game-web-portal for a portal
+nocode-shop-setup (store or game home)
+→ merchant-setup → catalog-design → login-setup
+→ storefront: description-to-shop / shop-builder-assembly, or game-web-portal for a game home
 → game-web-portal only: verify → human review → handoff report
-→ shop-setup continues: webhooks-impl → production
+→ webhooks-impl
 ```
 
-The path and the site kind are defined in [the build-path contract](build-path-contract.md).
-The headless path has no ledger: nothing on it reads one.
+`site_kind` is `shop` or `portal`. It lives in the ledger when a project directory exists.
+It is not written to `.env`. The shop the user codes (`shop-setup`) has no ledger.
 
 ## Intake
 
-The values the Shop Builder part needs are asked in one message: `shop-plan`'s first message,
-together with its criteria. `game-web-portal` and `description-to-shop` reuse the recorded
-answers, asking only for missing data or conflicts. Skip what the developer already stated or
-their own store listing states, and show inferred values back instead of assuming them.
+The values the Xsolla-hosted shop needs are asked once. `game-web-portal` and
+`description-to-shop` reuse the recorded answers, asking only for missing data or conflicts.
+Skip what the developer already stated or their own store listing states, and show inferred
+values back instead of assuming them.
 
 | Group | Ledger keys | Used by |
 |---|---|---|
-| Plan | `shop-plan`'s criteria: the path, and on Shop Builder the site kind | `shop-plan` |
+| Plan | `site_kind`: `shop` or `portal`. Not a build path in `.env` | `nocode-shop-setup` |
 | Game | `game_name`, `platforms`, `description` (approved), `store_url` (optional: the developer's own App Store, Google Play or Steam listing, read for the other game values; never found by searching the name), `brand_assets` (optional) | `game-web-portal`, `description-to-shop` |
 | Site | `domain` (optional: the target site may not exist yet), `primary_locale`, `locales` | `game-web-portal`, `description-to-shop` |
 
 The account, catalog, sign-in methods and webhooks are not part of this intake:
 `merchant-setup`, `catalog-design`, `login-setup` and `webhooks-impl` ask for them themselves.
 
-`shop-plan` shows the values with its recommendation, and writes them to the ledger when the
-developer confirms, in the same step that records the path and the site kind. After that,
+`nocode-shop-setup` records `site_kind` and any intake already known when a project directory
+exists, and only after the user confirms the shop is on Xsolla's side. With no project
+directory, the answers stay in the conversation. After that,
 `game-web-portal` and `description-to-shop` read them from the ledger and ask again only for a value that is missing
 (such as a domain that didn't exist yet), that conflicts with what a step finds, that a
 destructive change needs, or that is an approval.
@@ -68,9 +70,9 @@ verified stays out of `completed`. A step that is under way has no `status` key 
 
 | Step | Done by | `completed` when | Re-read on resume |
 |---|---|---|---|
-| `intake` | `shop-plan` | Every required intake value is in the ledger | The ledger |
-| `plan` | `shop-plan` | `XSOLLA_BUILD_PATH` is `shopbuilder` and `XSOLLA_SITE_KIND` is valid | The build-path contract's checks |
-| `merchant` | `merchant-setup` | `XSOLLA_MERCHANT_ID`, `XSOLLA_PROJECT_ID`, `XSOLLA_PROJECT_API_KEY` are in `.env` and the project answers an authenticated read | The same read |
+| `intake` | `nocode-shop-setup` | Every required intake value is in the ledger, or was given in the conversation when there is no project directory | The ledger, or the conversation |
+| `plan` | `nocode-shop-setup` | The user confirmed the shop is created on Xsolla's side, and `site_kind` is `shop` or `portal` | The ledger when it exists; otherwise the conversation |
+| `merchant` | `merchant-setup` | Merchant id, project id, and project API key are known — in `.env` for a shop the user codes, or in the chat for a shop with no repo — and the project answers an authenticated read | The same read |
 | `catalog` | `catalog-design` | Every catalog group the site uses reads back from the project | Read each group |
 | `login` | `login-setup` | `XSOLLA_LOGIN_PROJECT_ID` is set and the Login project reads back | Read the Login project |
 | `storefront` | the storefront skill | Its read-back matches the confirmed plan | The same read-back |
@@ -78,9 +80,9 @@ verified stays out of `completed`. A step that is under way has no `status` key 
 | `review` | the developer | The developer approved the draft, with every placeholder and gap disclosed | The ledger |
 | `handoff` | the storefront skill | The report below was rendered from the ledger | — |
 
-`merchant`, `catalog` and `login` are done by `shop-setup`'s skills, which don't write the
-ledger. The storefront skill records them when it starts, from the project's actual state
-(Resume, rule 4).
+`merchant`, `catalog` and `login` are done by the skills `nocode-shop-setup` runs, which don't
+write the ledger. The storefront skill records them when it starts, from the project's actual
+state (Resume, rule 4).
 
 ## The ledger
 
@@ -88,13 +90,12 @@ ledger. The storefront skill records them when it starts, from the project's act
 |---|---|
 | **File** | `.xsolla/onboarding.json` in the project root |
 | **Git** | Ignored: add `.xsolla/` to the project's `.gitignore` before the first write |
-| **Written by** | `shop-plan` first — the intake, path and site kind, when the developer confirms the plan — then the storefront skills, for their steps and the steps they discover |
-| **Holds** | The intake values, the path, the site kind, and one entry per step. Never a secret — API keys, the webhook secret, and session values stay in `.env` and are referred to by name |
+| **Written by** | `nocode-shop-setup` first, when a project directory exists — `site_kind` and intake, after the user confirms — then the storefront skills, for their steps and the steps they discover |
+| **Holds** | The intake values, the site kind, and one entry per step. Never a secret, and never the build path. API keys stay in `.env` when the shop has a repo, or in the chat when it does not |
 
 ```json
 {
   "version": 1,
-  "path": "shopbuilder",
   "site_kind": "portal",
   "intake": { "game_name": "…", "domain": "my-game", "primary_locale": "en-US" },
   "steps": [
@@ -141,14 +142,15 @@ it creates it, and updates the entry after hiding its seeded blocks.
 
 On every start of a storefront skill that follows this contract, before any write:
 
-1. **Read the ledger.** If its `path` or `site_kind` differs from `.env`, stop, show both, and
-   ask the developer to rerun `shop-plan` — never pick one.
+1. **Read the ledger.** `site_kind` comes from the ledger, not from `.env`. If the user now
+   wants the other kind, stop and ask — `nocode-shop-setup` confirms it. Never pick one, and
+   never read `XSOLLA_BUILD_PATH` or `XSOLLA_SITE_KIND`.
 2. **Re-read every `completed` step** using the last column of the evidence table. If the
    evidence no longer holds, downgrade the step to `failed` (or `needs_access` on
    `401/403`) and say why.
 3. **Continue from the first step that is not `completed`.** Never repeat a completed step's
    writes.
-4. **A step with no entry, but Xsolla state that shows it** (credentials in `.env`, a Login
+4. **A step with no entry, but Xsolla state that shows it** (credentials in `.env` or given in this chat, a Login
    project, an existing site at the domain): discover it, record the step if its evidence
    verifies, then continue as in 3.
 5. **A seeded block is hidden, never deleted,** only on a page the agent created and

@@ -80,7 +80,7 @@ XSOLLA_PROJECT_API_KEY=<your API key>
 
 | Skill | Domain | Owner | Status  |
 |-------|--------|-------|---------|
-| `shop-setup` | Entry point — build path, then the flow | @y.klochikhin | Done    |
+| `shop-setup` | Coded shop — the user writes and deploys | @y.klochikhin | Done    |
 | `nocode-shop-setup` | Shop Builder entry — store or game home | @a.pyanzin | Draft   |
 | `description-to-shop` | Description → Shop Builder shop brief | @k.shah | Draft   |
 | `shop-builder-assembly` | Shop Builder site assembly | @k.shah | Draft   |

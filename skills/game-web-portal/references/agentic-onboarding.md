@@ -4,7 +4,7 @@
 
 ### Input
 
-Collect missing required values in one question; values `shop-plan`'s intake recorded in the
+Collect missing required values in one question; values recorded in the
 ledger are not asked again:
 
 ```yaml
@@ -78,7 +78,7 @@ handoff and belong to the human, in Publisher Account.
 ### Status, ledger, resume
 
 Statuses, the ledger, resume, and the handoff report are the
-[onboarding contract](../../shop-plan/references/onboarding-contract.md). This file adds
+[onboarding contract](../../nocode-shop-setup/references/onboarding-contract.md). This file adds
 the portal's own states and evidence.
 
 ### Evidence contract
@@ -182,7 +182,7 @@ download.
 ### 9. Handoff
 
 The handoff is the onboarding report in the
-[onboarding contract](../../shop-plan/references/onboarding-contract.md#handoff-report).
+[onboarding contract](../../nocode-shop-setup/references/onboarding-contract.md#handoff-report).
 The portal fills its **Storefront** section with:
 
 ```markdown

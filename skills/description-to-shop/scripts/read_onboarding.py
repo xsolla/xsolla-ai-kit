@@ -16,42 +16,29 @@ INTAKE_KEYS = (
 
 
 def read_onboarding(project_root: Path) -> dict:
-    """Check the recorded route and return only intake, not step history or secrets."""
-    env_path = project_root / ".env"
-    decisions = {}
-    if env_path.exists():
-        for line in env_path.read_text(encoding="utf-8").splitlines():
-            key, separator, value = line.partition("=")
-            if separator and key in ("XSOLLA_BUILD_PATH", "XSOLLA_SITE_KIND"):
-                decisions[key] = value
-    build_path = decisions.get("XSOLLA_BUILD_PATH", "")
-    if not build_path:
-        raise ValueError("No build path recorded. Run shop-plan before intake.")
-    if build_path not in ("headless", "shopbuilder"):
-        raise ValueError("Invalid XSOLLA_BUILD_PATH in .env. Resolve it with shop-plan.")
-    if build_path == "headless":
-        raise ValueError("The recorded path is headless. Return to shop-setup; do not collect SB intake.")
-    site_kind = decisions.get("XSOLLA_SITE_KIND", "") or "shop"
-    if site_kind not in ("shop", "portal"):
-        raise ValueError("Invalid XSOLLA_SITE_KIND in .env. Resolve it with shop-plan.")
-
+    """Return intake from the ledger. Do not read a build path from .env."""
     path = project_root / ".xsolla" / "onboarding.json"
-    result = {"status": "absent", "site_kind": site_kind, "intake": {}}
     if not path.exists():
-        return result
+        return {"status": "absent", "site_kind": "shop", "intake": {}}
     try:
         ledger = json.loads(path.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, UnicodeError) as exc:
         raise ValueError("Cannot parse .xsolla/onboarding.json; repair it before intake.") from exc
     if not isinstance(ledger, dict) or type(ledger.get("version")) is not int or ledger["version"] != 1:
         raise ValueError("Expected a version 1 onboarding object; do not discard existing answers.")
-    if ledger.get("path") != build_path or ledger.get("site_kind") != site_kind:
-        raise ValueError("Onboarding path/site_kind conflicts with .env. Rerun shop-plan; do not choose one.")
+    if ledger.get("path") == "headless":
+        raise ValueError("This onboarding ledger is for a shop the user codes. Open shop-setup.")
+    site_kind = ledger.get("site_kind", "") or "shop"
+    if site_kind not in ("shop", "portal"):
+        raise ValueError("Invalid site_kind in .xsolla/onboarding.json. It must be shop or portal.")
     intake = ledger.get("intake", {})
     if not isinstance(intake, dict):
         raise ValueError("Onboarding intake must be an object; repair it before intake.")
-    result.update(status="loaded", intake={key: intake[key] for key in INTAKE_KEYS if key in intake})
-    return result
+    return {
+        "status": "loaded",
+        "site_kind": site_kind,
+        "intake": {key: intake[key] for key in INTAKE_KEYS if key in intake},
+    }
 
 
 def main(argv: list[str] | None = None) -> int:

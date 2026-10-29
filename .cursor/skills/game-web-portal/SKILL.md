@@ -62,7 +62,7 @@ Entry conditions:
 - Approved content and brand assets: the partner's own, or approved Steam content. Never
   invent content or use anything the partner hasn't approved.
 - Required input, collected in a single question rather than one at a time. Read what is
-  already known instead of asking again: `shop-plan`'s intake from the ledger, the merchant
+  already known instead of asking again: intake from the ledger, the merchant
   and project from `.env`:
 
 ```yaml
@@ -160,7 +160,7 @@ Verify (read-back) → Human review → Handoff
    when one was supplied, with evidence for every completed item.
 
 Statuses, the ledger, resume, and the handoff report follow the
-[onboarding contract](../shop-plan/references/onboarding-contract.md). Two more references,
+[onboarding contract](../nocode-shop-setup/references/onboarding-contract.md). Two more references,
 both loaded before issuing changes:
 
 - [references/agentic-onboarding.md](references/agentic-onboarding.md) — the portal

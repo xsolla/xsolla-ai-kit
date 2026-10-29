@@ -8,7 +8,7 @@ import json
 import sys
 from pathlib import Path
 
-# The onboarding contract's statuses (shop-plan/references/onboarding-contract.md). A step
+# The onboarding contract's statuses (nocode-shop-setup/references/onboarding-contract.md). A step
 # that is under way has no status key at all.
 STATUSES = ("completed", "placeholder", "needs_input", "needs_access", "needs_human",
             "blocked_capability", "failed")
@@ -18,7 +18,7 @@ STATUSES = ("completed", "placeholder", "needs_input", "needs_access", "needs_hu
 STEPS = ("intake", "plan", "merchant", "catalog", "login", "storefront", "verify", "review",
          "handoff")
 
-# Steps shop-plan writes (the same table, "Done by"). They are not this skill's to fix, so the
+# Steps nocode-shop-setup writes (the same table, "Done by"). They are not this skill's to fix, so the
 # check skips them.
 SKIPPED = ("intake", "plan")
 
@@ -37,7 +37,7 @@ def step_name(step: object, index: int) -> str:
 
 
 def checked_steps(ledger: dict) -> list[tuple[int, object]]:
-    """The steps with their indexes, without the ones shop-plan writes."""
+    """The steps with their indexes, without the ones nocode-shop-setup writes."""
     return [(index, step) for index, step in enumerate(ledger["steps"])
             if not (isinstance(step, dict) and step.get("id") in SKIPPED)]
 

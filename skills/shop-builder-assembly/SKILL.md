@@ -4,8 +4,8 @@ description: >-
   Assemble a complete Xsolla Shop Builder storefront from a structured shop brief,
   working top-down from theme and pages through navigation, standard blocks,
   localization, and catalog links. Not the entry point for "build me a shop" — that is
-  shop-setup, which routes here once the build path is Shop Builder and a validated
-  brief exists (from description-to-shop). Use for AI-built Shop Builder sites, full
+  nocode-shop-setup, which routes here once the shop is created on Xsolla's side and a
+  validated brief exists (from description-to-shop). Use for AI-built Shop Builder sites, full
   website or webshop assembly,
   game-type storefront presets, mobile single-page shops, PC multi-page shops, and
   live-service stores with bundles or events. Prefer this skill over creating isolated
