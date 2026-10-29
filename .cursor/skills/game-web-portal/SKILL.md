@@ -34,17 +34,16 @@ when the recorded site kind is `portal` — the partner needs a game home around
 Entry conditions:
 
 - `XSOLLA_BUILD_PATH=shopbuilder` and `XSOLLA_SITE_KIND=portal` are recorded in `.env` (see
-  [the build-path contract](../shop-plan/references/build-path-contract.md)). With no path
-  recorded, hand back to `shop-setup`. With the site kind absent or `shop`, the recorded site
-  is a shop: stop and say so, since only `shop-plan` changes it. Any other path or kind:
-  stop and say so.
+  [the build-path contract](../shop-plan/references/build-path-contract.md)). Check this
+  first. With no path recorded, hand back to `shop-setup` before any other message or
+  question. With the site kind absent or `shop`, the recorded site is a shop: stop and say
+  so, since only `shop-plan` changes it. Any other path or kind: stop and say so.
 - The title ships on PC. A Steam URL is optional and may be skipped.
 - If a store URL is supplied, its host must be exactly `store.steampowered.com`.
   Mobile, unknown, invalid, or spoofed supplied URLs return `needs_input`.
-- A Steam URL is a source of art and facts once the partner confirms it is their own game's
-  page and approves using it (`steam_assets_approved: yes`); see
-  [Steam content](references/portal-api.md#steam-content). Otherwise use only the supplied
-  `game_name` and partner-approved metadata, copy, and assets. Never invent missing content.
+- A Steam page is a source of art and facts only with `steam_assets_approved: yes`
+  ([Steam content](references/portal-api.md#steam-content)). Otherwise use only `game_name`
+  and partner-approved metadata, copy, and assets. Never invent missing content.
 - A merchant/project pair is confirmed and the target is a dedicated test project on the
   approved test-project allowlist — never a partner's live project. Shop Builder has no
   sandbox: every write reaches the project itself.
@@ -64,8 +63,7 @@ Entry conditions:
   the browser. Treat `401/403` as `needs_access`, never as a capability block.
 - Shop Builder enabled for the target project.
 - Approved content and brand assets: the partner's own, or approved Steam content. Never
-  invent content, and never use identifiers, credentials, content, prices, assets, or URLs
-  the partner hasn't approved.
+  invent content or use anything the partner hasn't approved.
 - Required input, collected in a single question rather than one at a time. Read what is
   already known instead of asking again: `shop-plan`'s intake from the ledger, the merchant
   and project from `.env`:
@@ -87,13 +85,19 @@ additional locales; analytics IDs; an existing Launcher and build.
 The run is a state flow. Every mutation is preceded by an existing-vs-desired-state
 check and followed by read-back and a ledger update.
 
+After every write to `.xsolla/onboarding.json`, run [`scripts/ledger.py`](scripts/ledger.py)
+`check --ledger .xsolla/onboarding.json`; if it fails, fix the step it names before going on.
+A step still under way has no `status` key (never `partial`, `in_progress` or another word)
+until it ends with one of the contract's seven statuses.
+
 ```text
 Intake → Preflight → Discover → Back up → Plan and confirm → Draft →
 Verify (read-back) → Human review → Handoff
 ```
 
-1. **Intake** — the first message, before any question, tells the partner to create the
-   site first if they haven't (Storefronts → Websites → Multi-page web portal → Manual), and
+1. **Intake** — once `.env` passes the path and site-kind check in Entry conditions, the
+   first message, before any question, tells the partner to create the site first if they
+   haven't (Storefronts → Websites → Multi-page web portal → Manual), and
    [what the run can change](references/portal-api.md#what-the-run-can-change) and what stays
    an Editor step for them. The same message collects the required input above; with a
    Steam URL, it asks whether the page is theirs and its art and text may be used. Resolve
@@ -104,26 +108,22 @@ Verify (read-back) → Human review → Handoff
    project with its sandbox mode off, and that the project is listed in the approved
    test-project allowlist (the same file format as `shop-builder-assembly`). If it fails,
    stop before any write. If `store_url` is supplied, validate the exact Steam host, and
-   with `steam_assets_approved: yes` read its app details. Use only partner-approved
-   metadata and assets; never substitute invented game metadata.
+   with `steam_assets_approved: yes` read its app details.
 3. **Discover** — find the partner's site at `domain` and read its structure
-   (`xsolla shopbuilder list-websites`, `get-landing`, `get-structure`). Capture the
-   landing `_id`, page IDs, and block IDs before any mutation — block and theme calls
-   are keyed by landing `_id`, not the domain. Confirm the site has the template's `/news`,
-   `/rewards` and `/store` pages, and read what the template set up: the Web Shop's catalog
-   groups and how the site signs buyers in ([Discover](references/portal-api.md#discover)).
+   (`xsolla shopbuilder list-websites`, `get-landing`, `get-structure`). Capture the landing
+   `_id`, page IDs, and block IDs before any mutation — block and theme calls are keyed by
+   landing `_id`, not the domain. Confirm the template's `/news`, `/rewards` and `/store`
+   pages, and read its catalog groups and sign-in ([Discover](references/portal-api.md#discover)).
    Never recreate a discovered existing entity; resume at the first incomplete item.
 4. **Back up** — before the first write, export the site: `get-landing`,
    `get-structure` and `get-localization` for the slug, and `list-assets` for the
    landing `_id`, saved to a new `.xsolla/backup-<timestamp>/` directory. Add `.xsolla/` to
    `.gitignore` first if it isn't there: a site export can hold a preview token. A failed
    export stops the run before any write.
-5. **Plan and confirm** — show the ordered change groups (sections, pages, blocks,
-   theme, copy, catalog links) and the seeded blocks it will hide, and say upfront that
-   the partner deletes those in the builder. Show the copy word for word and the images by
-   source, Steam included; then wait for an explicit yes.
-   Earlier permission to "set up my portal" is not confirmation of a plan. Re-confirm
-   if the plan changes.
+5. **Plan and confirm** — show the ordered change groups (sections, pages, blocks, theme, copy
+   word for word, images by source, catalog links) and the seeded blocks it will hide, which
+   the partner then deletes in the builder; wait for an explicit yes. Earlier permission to
+   "set up my portal" is not confirmation of a plan. Re-confirm if the plan changes.
 6. **Draft** — map each section to the template's page by path, then build only the missing
    ones: `add-page`, its blocks with `add-block --index`, and `update-block` to hide the
    seeded blocks it doesn't keep, following the portal layout in
@@ -135,8 +135,7 @@ Verify (read-back) → Human review → Handoff
    preflight passed, reports it `untouched`; hide before any copy or locale change, which
    would mark its block `changed`. The agent never deletes a block: the hidden seeded blocks
    go to the partner to delete, as `needs_human`. Everything else uses CLI commands too:
-   `move-block`, `update-block` (only the patches portal-api.md lists: `hidden`, block
-   images, switches and store buttons, the theme), `upload-asset`,
+   `move-block`, `update-block` (only the patches portal-api.md lists), `upload-asset`,
    `add-language`, `update-localization`, `update-many-localization`, and `add-connector` or
    `update-restrictions` when the plan lists them. A change with no CLI command is
    `needs_human`: say what to do in Publisher Account and record it. Apply one change group
@@ -148,14 +147,16 @@ Verify (read-back) → Human review → Handoff
    label.
 7. **Verify (read-back)** — read back every changed entity (`get-structure`,
    `get-localization`, page and block reads) and compare it with the confirmed plan.
-   A mutation response is not evidence. Then look at each changed page in the Editor: a
-   read-back shows what is stored, not what renders. Keep unverified items out of
-   **Completed**. Every progress message links the Editor and says the public URL loads only
-   after the first publish ([Show the partner the site](references/portal-api.md#show-the-partner-the-site)).
+   A mutation response is not evidence, and a read-back isn't what renders: look at each
+   changed page in the Editor too. `storefront` is `completed` only when every planned
+   change reads back; one that didn't land (no CLI field, a failed write) makes it
+   `needs_human`, `needs_input`, `blocked_capability` or `failed`, with the gap in its `evidence`.
+   Every progress message links the Editor and says the public URL loads only after the first
+   publish ([Show the partner the site](references/portal-api.md#show-the-partner-the-site)).
 8. **Human review** — present completed items, placeholders, blockers, and failures.
-   `draft_ready` requires correct ownership, domain, type, and locale, no duplicate
-   routes, read-back-verified content, disclosed placeholders, and explicit Login and
-   commerce status. Then hand over, as `needs_human`, the steps the agent never runs:
+   The draft is ready for review only with correct ownership, domain, type, and locale,
+   no duplicate routes, read-back-verified content, disclosed placeholders, and explicit
+   Login and commerce status. Then hand over, as `needs_human`, the steps the agent never runs:
    the readiness check, the preview, publication (per page — the main page first),
    live verification, and any rollback to a saved version — all in Publisher Account.
 9. **Handoff** — repeat merchant ID, project ID, domain, locale, and Steam URL only
@@ -215,10 +216,7 @@ go to the partner as `needs_human`.
 - **PC only.** App Store and Google Play titles return `needs_input` until the mobile
   path ships.
 - **Steam content needs the partner's yes.** Shop Builder's store-page parser rejects Steam
-  links, so the agent reads Steam's public app details itself, and uses them only with
-  `steam_assets_approved: yes`.
-- **The theme and the layout need the Editor.** A CLI theme patch isn't recalculated until
-  the partner does one Editor step, and the sidebar and footer aren't reachable from the CLI.
+  links, so the agent reads Steam's app details itself, only with `steam_assets_approved: yes`.
 - **Community needs the partner's channel.** Its `embed` block shows a social channel the
   partner supplies; without one the section is `needs_input`, not a guessed layout.
 - **The partner creates the site.** Until a site created through the CLI gets a layout,

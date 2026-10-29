@@ -9,7 +9,8 @@ Catalog and Login stay delegated, and checkout is the Web Shop's hosted Pay Stat
 
 - `xsolla auth login`, `xsolla config list` (through `scripts/preflight.py`) and
   `xsolla publisher list-projects`.
-- `xsolla config set sandbox false`, only when preflight stops on sandbox mode.
+- `xsolla config set sandbox false`, only when preflight stops on sandbox mode and the
+  partner says yes to it.
 - Read: `xsolla shopbuilder` `list-websites`, `get-landing`, `get-structure`, `list-pages`,
   `get-page`, `get-localization`, `list-assets`, `list-agreements`.
 - Write: `xsolla shopbuilder` `add-page`, `add-block`, `move-block`, `update-block`,
@@ -35,9 +36,10 @@ Every other command is out of bounds, even when the partner asks for it: among t
   the approved test-project allowlist.
 - **No sandbox:** Shop Builder writes always reach the project itself, and `--sandbox` gives
   no isolation. Never pass it. A new CLI config starts with sandbox mode on, and preflight
-  refuses it: run `xsolla config set sandbox false` once, rerun preflight, and say in the
-  handoff that it is off (`xsolla config set sandbox true` turns it back on for sandbox
-  payment tests).
+  refuses it. Show the partner the exact command, `xsolla config set sandbox false`, and say
+  that every later `xsolla` command with this config then reaches live, payments and refunds
+  included. Run it only on a yes, then rerun preflight. The handoff says it is off and that
+  `xsolla config set sandbox true` turns it back on.
 - **No `--force`:** never pass, offer or suggest it, even if the partner changes the plan.
   Seeded blocks the CLI won't remove go to the partner as `needs_human`.
 

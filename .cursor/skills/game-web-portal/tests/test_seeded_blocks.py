@@ -86,6 +86,14 @@ class SeededBlocksTest(unittest.TestCase):
             [b["_id"] for b in seeded_blocks.check(self.structure, self.localization,
                                                    entry)["untouched"]], ["b1", "b2", "b3"])
 
+    def test_a_changed_page_link_is_kept(self):
+        self.blocks()[1]["values"]["button"] = {"action": {"pageId": "p-news"}}
+        entry = seeded_blocks.record(self.structure, self.localization, PAGE)
+        self.blocks()[1]["values"]["button"]["action"]["pageId"] = "p-rewards"
+        self.assertEqual(
+            [b["_id"] for b in seeded_blocks.check(self.structure, self.localization,
+                                                   entry)["changed"]], ["b2"])
+
     def test_a_block_added_after_record_is_never_removable(self):
         self.blocks().append({"_id": "b4", "module": "embed", "values": {}})
         result = self.check()

@@ -164,13 +164,16 @@ download.
 
 - Read back changed entities and compare them with the confirmed plan.
 - Look at each changed page in the Editor, or hand the visual check to the partner.
-- Update the ledger.
-- Keep unverified items out of **Completed**.
+- Update the ledger, then run `scripts/ledger.py check`.
+- `storefront` is `completed` only when every change in the confirmed plan reads back. A planned
+  change that didn't land, because the CLI can't set it or a write failed, makes the step
+  `needs_human`, `needs_input`, `blocked_capability` or `failed`, with the gap in its `evidence`,
+  not in a step of its own.
 
 ### 8. Draft gate, review and hand over
 
-- `draft_ready` requires correct ownership/domain/type/locale, no duplicate routes,
-  read-back-verified content, disclosed placeholders, and explicit Login/commerce status.
+- The draft is ready for review only with correct ownership/domain/type/locale, no duplicate
+  routes, read-back-verified content, disclosed placeholders, and explicit Login/commerce status.
 - Present Completed, placeholders, blockers, and failures.
 - Hand the human, as `needs_human`: the readiness check, the preview, publication
   (per page, main page first), live verification, and any rollback.
