@@ -34,7 +34,6 @@ Entry conditions:
 
 - The user asked for a game home, or the existing site has `/news`, `/rewards`, and
   `/store`. A site without those pages is a store: stop and point at `nocode-shop-setup`.
-  Do not read or write `XSOLLA_BUILD_PATH` or `XSOLLA_SITE_KIND`.
 - The title ships on PC. A Steam URL is optional and may be skipped.
 - If a store URL is supplied, its host must be exactly `store.steampowered.com`.
   Mobile, unknown, invalid, or spoofed supplied URLs return `needs_input`.

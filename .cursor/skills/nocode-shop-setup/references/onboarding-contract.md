@@ -143,8 +143,7 @@ it creates it, and updates the entry after hiding its seeded blocks.
 On every start of a storefront skill that follows this contract, before any write:
 
 1. **Read the ledger.** `site_kind` comes from the ledger, not from `.env`. If the user now
-   wants the other kind, stop and ask — `nocode-shop-setup` confirms it. Never pick one, and
-   never read `XSOLLA_BUILD_PATH` or `XSOLLA_SITE_KIND`.
+   wants the other kind, stop and ask — `nocode-shop-setup` confirms it. Never pick one.
 2. **Re-read every `completed` step** using the last column of the evidence table. If the
    evidence no longer holds, downgrade the step to `failed` (or `needs_access` on
    `401/403`) and say why.

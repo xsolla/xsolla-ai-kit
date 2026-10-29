@@ -28,8 +28,7 @@ Run these before the storefront. Do not run Headless Checkout or the headless lo
 widget: this site renders its own checkout and login.
 
 1. `merchant-setup` — Publisher Account, project, and API key. With no local repo, follow
-   that skill's rule for a key pasted into chat. Do not write `XSOLLA_BUILD_PATH` or
-   `XSOLLA_SITE_KIND`.
+   that skill's rule for a key pasted into chat.
 2. `catalog-design` — the items the site will sell. If the project already has that
    catalog, do not rebuild it.
 3. `login-setup` — how the player signs in.
