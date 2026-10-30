@@ -31,12 +31,14 @@ read-only steps 1 to 4 first, then show one plan; there is no draft plan before 
    first). Only the scripts read that list: never read, search for, stat, list, create,
    edit, or suggest changing it. Read back the matched merchant ID, project ID,
    environment, approval reference, active Publisher login, target site, and catalog
-   groups. Preflight also switches CLI sandbox mode off, without asking: a Shop Builder
-   request implies it. Show its `plan_notes` line as it is (for example "Using the CLI
-   test environment (sandbox off)") as a plan bullet exactly when preflight returns one;
-   an empty `plan_notes` means no sandbox line. When preflight reports a
-   `cli_environment`, add `--environment <name>` to every `xsolla` command you run
-   yourself. When the site needs a common layout (a new site, or one without it) and the
+   groups. A Shop Builder request needs CLI sandbox mode off. If preflight stops with
+   "needs confirmation" because it is on, show the Confirm shape under Replies with the
+   exact command it names (`xsolla config set sandbox false`), and stop. Only after the
+   user's yes, run preflight again with `--confirm-sandbox-off`. Show its `plan_notes`
+   line as it is (for example "Using the CLI test environment (sandbox off)") as a plan
+   bullet exactly when preflight returns one; an empty `plan_notes` means no sandbox
+   line. When preflight reports a `cli_environment`, add `--environment <name>` to every
+   `xsolla` command you run yourself. When the site needs a common layout (a new site, or one without it) and the
    CLI has no `shopbuilder create-block`, preflight prints "the common layout needs a
    newer Xsolla CLI; the site is built without it". Tell the user in the plan, before
    any write: a site without the common layout won't open in the Editor, Publish or
@@ -58,8 +60,8 @@ are acknowledged, and preflight refuses any other. Never ask the publisher to co
 test project. For a project not on the list, stop with `needs_human` in the blocked
 shape: a human maintainer adds it to the list.
 
-Never ask about CLI sandbox mode and never change the CLI config yourself; preflight
-does it. Never use sandbox as a Shop Builder target or use a partner project. Never
+Ask about CLI sandbox mode only as step 1 describes, with the exact command, and never
+change the CLI config yourself; preflight makes the change after the user's yes. Never use sandbox as a Shop Builder target or use a partner project. Never
 publish, attach a production domain, enable live payments, or apply a saved version. For
 a publish request, use the publish shape under Replies.
 
@@ -82,6 +84,14 @@ with the same gate. No script deletes a block: deleting needs `--force`, which n
 passes. For a delete request, answer `needs_human` in the delete shape under Replies and
 offer `hide`. For any change outside the Quests block in such a request, use the refusal
 shape under Replies.
+
+## Run end
+
+A run that used `preflight.py --confirm-sandbox-off` ends with `scripts/restore_sandbox.py`:
+after apply and verification, and also when the run stopped, failed, or the user did not
+confirm the plan. It puts CLI sandbox mode back on, and does nothing when this run did not
+switch it off. Say in the reply that sandbox mode is back on. If it fails, say so and give
+the user the command `xsolla config set sandbox true`; never retry it silently.
 
 ## Stop conditions
 
@@ -146,6 +156,16 @@ Reward change request: the reward text and image come from the quest, so no plan
 - Change the reward in the quest itself, and the card shows it.
 
 Next: want to change the card title, description or image instead?
+```
+
+Confirm, when preflight needs the CLI sandbox switch confirmed. Ask only this, and wait:
+
+```
+**Confirm: switch CLI sandbox mode off for Shop Builder.**
+- Command: `xsolla config set sandbox false`
+- Switched back on when this run ends
+
+Next: reply "yes" to switch it off for this run.
 ```
 
 Blocked, when preflight refuses or a gate stops the write. A project that is not approved

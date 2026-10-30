@@ -170,13 +170,22 @@ class SandboxModeTests(unittest.TestCase):
             check=False,
         )
 
-    def preflight(self) -> subprocess.CompletedProcess:
-        return self.run_script(
+    def preflight(self, *, confirm: bool = False) -> subprocess.CompletedProcess:
+        args = [
             str(SCRIPTS / "preflight.py"),
             str(self.brief),
             "--approved-test-projects",
             str(self.approved),
-        )
+        ]
+        if confirm:
+            args.append("--confirm-sandbox-off")
+        return self.run_script(*args)
+
+    def restore(self) -> subprocess.CompletedProcess:
+        return self.run_script(str(SCRIPTS / "restore_sandbox.py"))
+
+    def restore_record(self) -> Path:
+        return self.home / cli_environment.RESTORE_NAME
 
     def calls(self) -> list[dict]:
         return [
@@ -245,20 +254,39 @@ class SandboxModeTests(unittest.TestCase):
         self.assertEqual([], self.config_set_calls())
         self.assertFalse((self.folder / ".xsolla.json").exists())
 
+    def test_sandbox_switch_stops_for_confirmation_and_writes_nothing(self) -> None:
+        home_config = self.write_config(
+            self.home,
+            cli_config(dev={"merchant_id": 1, "project_id": 2, "sandbox": True}),
+        )
+        before = home_config.read_bytes()
+
+        result = self.preflight()
+
+        self.assertEqual(1, result.returncode)
+        self.assertIn("Preflight needs confirmation", result.stderr)
+        self.assertIn("xsolla config set sandbox false", result.stderr)
+        self.assertEqual([], self.config_set_calls())
+        self.assertEqual(before, home_config.read_bytes())
+        self.assertFalse(self.restore_record().exists())
+        self.assertFalse((self.folder / ".xsolla.json").exists())
+        self.assertEqual([["config", "list", "--json"]], [c["argv"] for c in self.calls()])
+
     def test_sandbox_is_switched_off_in_the_home_config_without_a_new_file(self) -> None:
         home_config = self.write_config(
             self.home,
             cli_config(dev={"merchant_id": 1, "project_id": 2, "sandbox": True}),
         )
 
-        result = self.preflight()
+        result = self.preflight(confirm=True)
 
         self.assertEqual(0, result.returncode, result.stderr)
         report = json.loads(result.stdout)
         self.assertIsNone(report["context"]["cli_environment"])
         self.assertTrue(report["context"]["sandbox_switched_off"])
         self.assertEqual(
-            ["CLI sandbox mode switched off for Shop Builder"], report["plan_notes"]
+            ["CLI sandbox mode switched off for Shop Builder; it is switched back on when the run ends"],
+            report["plan_notes"],
         )
         sets = self.config_set_calls()
         self.assertEqual(1, len(sets))
@@ -266,6 +294,7 @@ class SandboxModeTests(unittest.TestCase):
         self.assertNotIn("sandbox", json.loads(home_config.read_text())["environments"]["dev"])
         self.assertEqual(1, json.loads(home_config.read_text())["environments"]["dev"]["merchant_id"])
         self.assertFalse((self.folder / ".xsolla.json").exists())
+        self.assertTrue(self.restore_record().is_file())
         for call in self.calls():
             self.assertNotIn("--environment", call["argv"])
 
@@ -279,7 +308,7 @@ class SandboxModeTests(unittest.TestCase):
             cli_config(dev={"merchant_id": 1, "project_id": 2, "sandbox": True}),
         )
 
-        result = self.preflight()
+        result = self.preflight(confirm=True)
 
         self.assertEqual(0, result.returncode, result.stderr)
         sets = self.config_set_calls()
@@ -301,6 +330,39 @@ class SandboxModeTests(unittest.TestCase):
         self.assertFalse(report["context"]["sandbox_switched_off"])
         self.assertEqual([], self.config_set_calls())
         self.assertFalse((self.folder / ".xsolla.json").exists())
+
+    def test_restore_after_the_run_puts_sandbox_back_on(self) -> None:
+        home_config = self.write_config(
+            self.home,
+            cli_config(dev={"merchant_id": 1, "project_id": 2, "sandbox": True}),
+        )
+        self.assertEqual(0, self.preflight(confirm=True).returncode)
+        self.assertNotIn("sandbox", json.loads(home_config.read_text())["environments"]["dev"])
+        self.assertTrue(self.restore_record().is_file())
+
+        result = self.restore()
+
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual({"restored": True, "directory": str(self.home)}, json.loads(result.stdout))
+        self.assertTrue(json.loads(home_config.read_text())["environments"]["dev"]["sandbox"])
+        self.assertFalse(self.restore_record().exists())
+        restores = [c for c in self.config_set_calls() if c["argv"][-3:-1] == ["sandbox", "true"]]
+        self.assertEqual(1, len(restores))
+        self.assertEqual(os.path.realpath(self.home), os.path.realpath(restores[0]["cwd"]))
+        self.assertFalse((self.folder / ".xsolla.json").exists())
+
+    def test_restore_without_a_switch_changes_nothing(self) -> None:
+        home_config = self.write_config(
+            self.home, cli_config(dev={"merchant_id": 1, "project_id": 2})
+        )
+        before = home_config.read_bytes()
+
+        result = self.restore()
+
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual({"restored": False}, json.loads(result.stdout))
+        self.assertEqual([], self.config_set_calls())
+        self.assertEqual(before, home_config.read_bytes())
 
     def test_other_scripts_never_switch_sandbox_off(self) -> None:
         home_config = self.write_config(
@@ -385,9 +447,9 @@ class PlanNotesTests(unittest.TestCase):
         self.assertEqual(["Using the CLI test environment (sandbox off)"], notes)
         self.assertNotIn("switched off", notes[0])
 
-    def test_config_change_says_switched_off(self) -> None:
+    def test_config_change_says_switched_off_until_the_run_ends(self) -> None:
         self.assertEqual(
-            ["CLI sandbox mode switched off for Shop Builder"],
+            ["CLI sandbox mode switched off for Shop Builder; it is switched back on when the run ends"],
             cli_environment.plan_notes({"environment": None, "sandbox_switched_off": True}),
         )
 

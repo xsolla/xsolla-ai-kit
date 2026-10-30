@@ -76,7 +76,7 @@ evidence; a self-declared brief is not enough.
 
 | Field | Purpose |
 |---|---|
-| `project.*` | Hard safety boundary. IDs must match the CLI and the approval list (the list is the acknowledgement). Preflight switches CLI sandbox mode off itself (see [CLI operations](cli-operations.md#sandbox-mode)). |
+| `project.*` | Hard safety boundary. IDs must match the CLI and the approval list (the list is the acknowledgement). Preflight asks the user before it switches CLI sandbox mode off (see [CLI operations](cli-operations.md#sandbox-mode)). |
 | `game.platforms` | Any of `mobile`, `pc`, `console`, `web`; drives automatic preset selection. |
 | `game.lifecycle` | `launch`, `evergreen`, or `live-service`; drives event and offer defaults. |
 | `site.slug` | Existing target or requested new Xsolla domain slug. Never guess it for an existing site. |

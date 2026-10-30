@@ -3,7 +3,8 @@
 Use this for a `block_operations` brief: single Quests blocks on an existing Shop Builder
 site. The gate in [SKILL.md](../SKILL.md) applies: preflight, backup, plan, the plan's
 `confirmation_id`, then `scripts/apply_plan.py`, which verifies on exit and touches only
-the listed blocks. Brief fields are in [shop brief](shop-brief.md).
+the listed blocks. Its last step is `scripts/restore_sandbox.py` (SKILL.md, Run end).
+Brief fields are in [shop brief](shop-brief.md).
 
 ## Apply behaviour
 

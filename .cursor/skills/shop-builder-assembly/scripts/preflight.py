@@ -197,6 +197,11 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("brief", type=Path)
     parser.add_argument("--approved-test-projects", type=Path)
+    parser.add_argument(
+        "--confirm-sandbox-off",
+        action="store_true",
+        help="the user said yes to running the sandbox switch command shown in the stop message",
+    )
     args = parser.parse_args()
 
     if shutil.which("xsolla") is None:
@@ -216,8 +221,11 @@ def main() -> int:
             args.approved_test_projects, expected
         )
         # Shop Builder has no sandbox, so a Shop Builder request implies sandbox
-        # mode off: preflight settles it without asking (see cli_environment).
-        cli = cli_environment.select(expected, run_json, switch=True)
+        # mode off. Preflight switches it only after the user confirms the exact
+        # command (see cli_environment); without a confirmation it stops here.
+        cli = cli_environment.select(
+            expected, run_json, switch=True, confirmed=args.confirm_sandbox_off
+        )
 
         accounts = run_json("auth", "list-account")
         if not active_publisher_account(accounts):
@@ -304,6 +312,10 @@ def main() -> int:
         }
         print(json.dumps(result, indent=2))
         return 0
+    except cli_environment.SandboxConfirmationNeeded as exc:
+        # Not a failure: nothing was written. The agent asks the user first.
+        print(f"Preflight needs confirmation: {exc}", file=sys.stderr)
+        return 1
     except (OSError, RuntimeError, ValueError) as exc:
         print(f"Preflight failed: {exc}", file=sys.stderr)
         return 1

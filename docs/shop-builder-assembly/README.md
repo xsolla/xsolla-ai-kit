@@ -10,8 +10,9 @@ from a normalized JSON shop brief.
   support for it; without the command, assembly skips the layout step and says so
 - `xsolla auth login` completed for a Publisher account
 - A dedicated test project on the approval allowlist below (the allowlist is the
-  acknowledgement). Preflight switches CLI sandbox mode off itself, preferring an
-  existing sandbox-off environment such as `test` (`--environment`) over a config write
+  acknowledgement). Preflight asks before it switches CLI sandbox mode off, and prefers an
+  existing sandbox-off environment such as `test` (`--environment`) over a config write;
+  the last step of a run switches sandbox mode back on
 - Existing catalog group IDs for any `newStore` sections
 - A separate local approval allowlist containing the exact merchant/project identity and
   the mentor or lead's approval reference, kept at
