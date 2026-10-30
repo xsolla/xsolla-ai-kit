@@ -47,7 +47,7 @@ production quest.
 
 There is no partial update route in this contract. Create the quest with
 `status: inactive`, then activate it in a later full-document `PUT`, after a fresh
-`GET` and the confirmations in [The quest document](quest-document.md).
+`GET` and the confirmations in [The quest document](quest-authoring.md).
 
 ## Interpreting failures
 
@@ -149,6 +149,6 @@ Follow this order.
 Auth rules live in the auth reference even when OpenAPI omits schemes. **A
 route miss is not a credential or project failure.** A 404 `Cannot GET <path>`
 means the router has no such path; a route the contract omits is not called.
-Follow [When a route is missing](auth-and-environment.md#when-a-route-is-missing).
+Follow [When a route is missing](auth-credentials.md#when-a-route-is-missing).
 If the production integration is unreachable, say so and offer references-only,
 noting the envelope may have drifted.

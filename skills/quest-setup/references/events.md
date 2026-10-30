@@ -53,7 +53,7 @@ Do not claim the quest was verified.
 
 `user_ids[].identifier_type` is `xsolla_id`, `gamer_id`, `guest_id` or `email`
 per the contract. A Web3 reward requires an `xsolla_id` whose user already has
-a wallet. Check it with the recipient read in [`auth-and-environment.md`](auth-and-environment.md#recipient-wallet) before submitting.
+a wallet. Ask the publisher to confirm it in Publisher Account as described in [`store-and-wallet.md`](store-and-wallet.md#recipient-wallet) before submitting.
 
 A successful response returns `event_id` (and echoes `idempotency_key`). Keep
 `event_id` and use it to correlate the read-only execution result when
@@ -117,7 +117,7 @@ as described in [`verification.md`](verification.md).
   whether a repeat can pay again. After an uncertain response, such as a
   timeout, **do not resend** with any key: report "result unknown" and stop.
 - After a timeout or 5xx on a quest `POST` or `PUT`, reconcile before retry per
-  [Ambiguous or partial writes](quest-document.md#ambiguous-or-partial-writes).
+  [Ambiguous or partial writes](quest-publish.md#ambiguous-or-partial-writes).
   A 422 saved nothing: validation runs before anything is stored.
 - After a `FAILED` reward action, do not resend the event. Fix the quest, then
   send a new event with a new key only after the developer confirms.
