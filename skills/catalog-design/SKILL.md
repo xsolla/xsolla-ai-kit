@@ -113,7 +113,7 @@ export XSOLLA_PROJECT_API_KEY=<your API key>
    via a Catalog call, buy an item, confirm the order reaches `done`, and the
    confirmation path (webhook or socket) fired.
 
-7. **Hand off to localization if the catalog is single-language.** A catalog created
+8. **Hand off to localization if the catalog is single-language.** A catalog created
    here carries one language, so coverage is zero by construction and this is the best
    moment to add more: the items are fresh and the developer is already in context.
    Offer `localization` once — it translates `name` / `description` /
