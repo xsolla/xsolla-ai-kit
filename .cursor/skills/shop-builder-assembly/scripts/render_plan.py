@@ -85,6 +85,10 @@ CUSTOM_CODE_WARNING = (
     "The Custom code block is added empty and hidden; paste your code and make the "
     "block visible in the Site Builder editor."
 )
+LAYOUT_WARNING = (
+    "The common layout needs a newer Xsolla CLI, so the site is built without it. A "
+    "site without the common layout won't open in the Editor, Publish or private preview."
+)
 LIVEOPS_BLOCKS = {
     "promocodes": ("promo_codes", "no promo code promotion configured in the project"),
     "rewards": ("reward_chain", "no reward chain configured in the project"),
@@ -293,6 +297,26 @@ def custom_code_warnings(pages: list[dict]) -> list[str]:
         if "html" in page.get("blocks", []) and "html" not in current:
             return [CUSTOM_CODE_WARNING]
     return []
+
+
+def layout_warnings(
+    structure: object | None,
+    has_create_block: bool,
+    module_of: Callable[[str], object] | None = None,
+) -> list[str]:
+    """Warn when the site needs the common layout and the CLI cannot add it.
+
+    A new site always needs it; an existing site only when it has none. Without
+    ``create-block`` assembly skips the layout step.
+    """
+    if has_create_block:
+        return []
+    if (
+        structure is not None
+        and common_layout_id(structure_data(structure), module_of) is not None
+    ):
+        return []
+    return [LAYOUT_WARNING]
 
 
 def selected_pages(brief: dict, preset: str) -> list[dict]:
@@ -508,6 +532,8 @@ def build_plan(
     brief: dict,
     current_structure: object | None = None,
     created_block_ids: frozenset = frozenset(),
+    has_create_block: bool = True,
+    module_of: Callable[[str], object] | None = None,
 ) -> dict:
     preset = choose_preset(brief)
     catalog_groups = catalog_sections(brief, preset)
@@ -526,6 +552,7 @@ def build_plan(
             "No event data supplied; omit event-specific copy and scarcity claims."
         )
     warnings.extend(custom_code_warnings(pages))
+    warnings.extend(layout_warnings(current_structure, has_create_block, module_of))
     plan = {
         "version": 2,
         "target": {
@@ -677,6 +704,9 @@ def approval_changes(approved: dict, plan: dict, run_report: dict) -> list[str]:
 
 
 def main() -> int:
+    # preflight imports this module, so a top-level import would be circular.
+    from preflight import cli_has_command, site_block_module
+
     parser = argparse.ArgumentParser()
     parser.add_argument("brief", type=Path)
     parser.add_argument(
@@ -713,12 +743,17 @@ def main() -> int:
             print(f"- {error}", file=sys.stderr)
         return 1
     try:
+        slug = brief["site"]["slug"]
         plan = build_plan(
-            brief, structure, created_block_ids(report) if report else frozenset()
+            brief,
+            structure,
+            created_block_ids(report) if report else frozenset(),
+            cli_has_command("shopbuilder", "create-block"),
+            lambda block_id: site_block_module(slug, block_id),
         )
         if structure is not None:
             require_own_header(plan["pages"], structure)
-    except ValueError as exc:
+    except (RuntimeError, ValueError) as exc:
         print(str(exc), file=sys.stderr)
         return 1
     print(json.dumps(plan, indent=2))
