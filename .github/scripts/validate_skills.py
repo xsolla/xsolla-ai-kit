@@ -46,6 +46,8 @@ VALID_OWNERS = {
     "r.addoumie",
     "s.hossain",
     "s.sadruddin",
+    # Quest Platform skills (quest-setup)
+    "r.aliyev",
 }
 
 VALID_DOMAINS = {
