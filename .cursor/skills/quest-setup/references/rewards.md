@@ -113,12 +113,8 @@ confirmed:
 example `1` means one token) and within the selected target's contract limit. Confirm the token decimals and binding with
 the owner of that target. Never guess them.
 
-`web3_item.body.project` selects the catalog only when the deployed reward
-worker supports it. A worker without that support ignores the field and mints
-against its configured default project, so the item can reach the wallet but
-show without the catalog name. When a read-back shows a project different from
-`body.project`, report a delivery mismatch, not a success, and do not send the
-event again.
+When a read-back shows a project different from `body.project`, report a
+delivery mismatch, not a success, and do not send the event again.
 
 ## Recipient
 
