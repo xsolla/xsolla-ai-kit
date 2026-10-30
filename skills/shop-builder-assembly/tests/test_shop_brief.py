@@ -153,15 +153,19 @@ class ShopBriefTests(unittest.TestCase):
                     "project.environment must be test", validator.validate(brief)
                 )
 
-    def test_dedicated_test_project_requires_acknowledgement(self) -> None:
+    def test_allowlist_replaces_the_brief_acknowledgement(self) -> None:
         brief = copy.deepcopy(self.brief)
-        brief["project"]["test_project_acknowledged"] = False
+        brief["project"].pop("test_project_acknowledged", None)
+        self.assertEqual([], validator.validate(brief))
+        # Older briefs still carry the retired flag; it is ignored.
+        for value in (True, False):
+            brief["project"]["test_project_acknowledged"] = value
+            self.assertEqual([], validator.validate(brief))
+        brief["project"]["test_project_acknowledged"] = "yes"
         self.assertIn(
-            "project.test_project_acknowledged must be true for a dedicated test project",
+            "project.test_project_acknowledged, when present, must be a boolean",
             validator.validate(brief),
         )
-        brief["project"]["test_project_acknowledged"] = True
-        self.assertEqual([], validator.validate(brief))
 
     def test_credentials_are_rejected(self) -> None:
         brief = copy.deepcopy(self.brief)
@@ -323,27 +327,20 @@ class ShopBriefTests(unittest.TestCase):
                         module.run_json("shopbuilder", "delete-block", "--force")
                     run.assert_not_called()
 
-    def test_preflight_rejects_enabled_cli_sandbox_before_shopbuilder_reads(self) -> None:
+    def test_preflight_stops_for_an_unlisted_project_before_any_cli_call(self) -> None:
         brief = ROOT / "examples" / "mobile-single-page.json"
         stderr = io.StringIO()
         with (
             mock.patch.object(sys, "argv", ["preflight.py", str(brief)]),
             mock.patch.object(preflight.shutil, "which", return_value="xsolla"),
-            mock.patch.object(
-                preflight,
-                "approved_test_project",
-                return_value={"approval_reference": "test approval"},
-            ),
-            mock.patch.object(
-                preflight,
-                "run_json",
-                return_value={"merchant_id": 12345, "project_id": 67890, "sandbox": True},
-            ) as run_json,
+            mock.patch.object(preflight, "run_json") as run_json,
+            mock.patch.object(preflight.cli_environment.subprocess, "run") as run,
             contextlib.redirect_stderr(stderr),
         ):
             self.assertEqual(1, preflight.main())
-        self.assertIn("CLI sandbox must be disabled", stderr.getvalue())
-        run_json.assert_called_once_with("config", "list")
+        self.assertIn("approved-test-projects", stderr.getvalue())
+        run_json.assert_not_called()
+        run.assert_not_called()
 
     def test_preflight_accepts_config_without_sandbox_key(self) -> None:
         brief = ROOT / "examples" / "mobile-single-page.json"

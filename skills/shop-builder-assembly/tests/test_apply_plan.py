@@ -1199,6 +1199,26 @@ def object_path(path: str) -> dict:
     return {"pathSegment": path, "type": "static"}
 
 
+class EditorUrlTests(unittest.TestCase):
+    def test_builds_the_site_builder_editor_link(self) -> None:
+        self.assertEqual(
+            "https://publisher.xsolla.com/1/projects/2/site-builder/my-test-site/editor",
+            apply_plan.editor_url(1, 2, "my-test-site"),
+        )
+
+    def test_rejects_unverified_ids_and_bad_slugs(self) -> None:
+        for merchant_id, project_id, slug in (
+            ("1", 2, "shop"),
+            (1, 0, "shop"),
+            (True, 2, "shop"),
+            (1, 2, ""),
+            (1, 2, "a/b"),
+            (1, 2, None),
+        ):
+            with self.assertRaises(ValueError, msg=(merchant_id, project_id, slug)):
+                apply_plan.editor_url(merchant_id, project_id, slug)
+
+
 class FakeShopBuilderCli:
     """In-memory `xsolla` stand-in whose get-structure returns object page paths.
 
@@ -1927,6 +1947,16 @@ class PublisherTemplateSiteTests(unittest.TestCase):
         self.assertEqual(0, code, stderr)
         self.assertEqual("implemented-phases-applied", json.loads(stdout)["status"])
         self.assertEqual(["/"], [call.args[2]["path"] for call in reconcile.call_args_list])
+
+    def test_build_apply_still_runs_the_template_header_check(self) -> None:
+        cli = self.fake_cli(own_header=True)
+        with mock.patch.object(
+            apply_plan, "require_own_header", wraps=apply_plan.require_own_header
+        ) as check:
+            code, stdout, stderr, _ = self.run_apply(cli)
+        self.assertEqual(0, code, stderr)
+        check.assert_called_once()
+        self.assertEqual(["/"], [page["path"] for page in check.call_args.args[0]])
 
     def test_only_pages_already_on_the_site_need_their_own_header(self) -> None:
         site, _ = publisher_template_site(self.brief, own_header=True)

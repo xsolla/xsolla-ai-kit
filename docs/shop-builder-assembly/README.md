@@ -9,10 +9,14 @@ from a normalized JSON shop brief.
   every new site, needs a CLI with `shopbuilder create-block` and the Shop Builder API
   support for it; without the command, assembly skips the layout step and says so
 - `xsolla auth login` completed for a Publisher account
-- An acknowledged dedicated test project with CLI sandbox mode disabled
+- A dedicated test project on the approval allowlist below (the allowlist is the
+  acknowledgement). Preflight asks before it switches CLI sandbox mode off, and prefers an
+  existing sandbox-off environment such as `test` (`--environment`) over a config write;
+  the last step of a run switches sandbox mode back on
 - Existing catalog group IDs for any `newStore` sections
-- A separate local approval allowlist containing the
-  exact merchant/project identity and the mentor or lead's approval reference
+- A separate local approval allowlist containing the exact merchant/project identity and
+  the mentor or lead's approval reference, kept at
+  `~/.config/xsolla/approved-test-projects.json`
 
 ## Happy path
 
@@ -23,7 +27,7 @@ from a normalized JSON shop brief.
    ```bash
    python3 scripts/validate_shop_brief.py brief.json
    python3 scripts/preflight.py brief.json \
-     --approved-test-projects /path/to/approved-test-projects.json
+     --approved-test-projects ~/.config/xsolla/approved-test-projects.json
    ```
 
 3. If the target exists, back it up before rendering or confirming a plan:
@@ -38,7 +42,7 @@ from a normalized JSON shop brief.
    python3 scripts/render_plan.py brief.json --structure ./backups/my-shop/structure.json
    python3 scripts/apply_plan.py brief.json --confirmation-id <id> \
      --backup-dir ./backups/my-shop \
-     --approved-test-projects /path/to/approved-test-projects.json
+     --approved-test-projects ~/.config/xsolla/approved-test-projects.json
    ```
 
    For a new slug, render without `--structure` and confirm the bootstrap-only plan.
@@ -63,7 +67,7 @@ catalog. Federated wrappers use their effective `values.blockId` module.
 
 ## Known limitations
 
-- Record formal inventory and preset approval in `references/expert-review.md` during
+- Record formal inventory and preset approval in `expert-review.md` during
   PR review; implementation testing may start earlier.
 - Test project IDs are intentionally not stored in committed examples.
 - A `test` brief is insufficient on its own: preflight and apply also require a
@@ -71,7 +75,7 @@ catalog. Federated wrappers use their effective `values.blockId` module.
 - Sandbox briefs are rejected, and the scripts never pass `--force` to the CLI.
 - The CLI does not currently expose an authoritative list of standard block modules.
 - Multi-command Shop Builder authentication, readiness verification, and CLI preview
-  have confirmed defects captured in `references/test-findings.md`.
+  have confirmed defects captured in `test-findings.md`.
 - The CLI has no page-deletion command. Application stops before writes when an
   existing target contains pages outside the confirmed plan.
 - Bare `create-website` still leaves a blank site without a layout; this skill adds
@@ -79,6 +83,9 @@ catalog. Federated wrappers use their effective `values.blockId` module.
   won't open in the Editor, Publish or private preview. Editor/Publish/private-preview
   checks require the API change to be deployed and a fresh test-project run; neither
   is implied by unit tests.
+- Quests block operations are limited to the ops in
+  [block-operations.md](../../skills/shop-builder-assembly/references/block-operations.md).
+  There is no `delete` op: the publisher deletes a block in the Site Builder editor.
 - The official block inventory is fully documented, and every observed official
   module has a UI-created exported contract. Subscriptions is documented but absent
   from the observed palette/export, while five palette entries are absent from the
@@ -91,5 +98,6 @@ catalog. Federated wrappers use their effective `values.blockId` module.
 - Description callers produce this skill's brief and leave all site writes here. Figma
   integration remains separate.
 - Sites created from a Publisher Account template keep the header in the common layout;
-  render and apply stop on them before any write. Report the stop and suggest nothing
-  else: not another site, not manual edits, no other workaround.
+  render and apply stop on them before any write, for a build and for block operations.
+  Report the stop and suggest nothing else: not another site, not manual edits, no other
+  workaround.
