@@ -347,7 +347,7 @@ Keep the publisher experience business-first and progressive:
   returns zero candidates; ask the publisher to choose when multiple candidates
   are plausible. The optional headless Web Shop module is independent of the
   quest flow; follow
-  `web-shop-module.md` only when
+  [`web-shop-module.md`](web-shop-module.md) only when
   explicitly requested.
 - Use the event name the publisher supplied, or derive a stable `snake_case`
   name from the stated player action (for example, `monster_defeated`). Show
@@ -364,7 +364,7 @@ Keep the publisher experience business-first and progressive:
   an existing headless shop, an explicit request to add or update it authorizes
   those source edits; quest publication approval alone does not. For a new shop,
   ask whether to opt in. Keep the module inside catalog content, never in
-  navigation, and follow `web-shop-module.md`.
+  navigation, and follow [`web-shop-module.md`](web-shop-module.md).
   Resolve the public URL from the known production host and the connected
   project scope; never ask the developer to supply it or gate integration on a
   live endpoint readiness check.
