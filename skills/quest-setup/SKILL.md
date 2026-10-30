@@ -2,7 +2,7 @@
 name: quest-setup
 description: >-
   Creates, inspects and edits production Xsolla Quest Platform quests conversationally,
-  submits a quest event, and verifies that the event actually made the quest execute.
+  submits a quest event and reports whether its execution can be read back.
   Covers the whole quest document: the node graph and its connections, the seven node
   subtypes, the condition grammar, activation limits, and the Web3 reward types
   `web3_item` and `web3_token` (token payouts are disabled in production). Use when
