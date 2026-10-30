@@ -37,7 +37,7 @@ Use this skill when the developer wants to:
 - Set local prices per country or restrict sales by region
 - Add limited-time offers, purchase limits, promotions, offer chains, daily rewards or a
   reward system — "limited-time offer", "purchase limit", "first purchase bonus", "offer
-  chain", "daily rewards", "reward system", "loyalty program", "promo codes"
+  chain", "daily rewards", "reward system", "promo codes"
 - Build the store catalog UI on the client (game or website)
 - Implement purchase: fast purchase by SKU, cart, purchase for VC, free items
 - Confirm purchases: webhooks on the server or order tracking on the client

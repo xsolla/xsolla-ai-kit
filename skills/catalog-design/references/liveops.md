@@ -49,8 +49,10 @@ Facts that change the proposal:
    `list-value-point`, and the catalog. These lists include inactive entries: only those
    with `is_enabled: true` are live. Reuse what exists; never create a duplicate.
 2. Propose the set in one message. Call each mechanic by its name in the table above, as the
-   Xsolla docs do: the Reward system, not a loyalty program. For each mechanic: what the player
-   gets, why it helps this game, and what is still to connect (player login, delivery to the game).
+   Xsolla docs do. The Reward system (value points and reward chains) and the loyalty program
+   (loyalty points that players spend on items) are different mechanics: never call one by the
+   other's name. For each mechanic: what the player gets, why it helps this game, and what is
+   still to connect (player login, delivery to the game).
 3. In the same message, ask once for the commercial values that are missing: reward quantities,
    purchase limits, campaign dates and time zone, who is eligible, and how items reach the game.
    Show every value as proposed or confirmed. Never write a proposed value as if the developer
