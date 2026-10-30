@@ -1,7 +1,8 @@
 # Web3 rewards
 
 This skill supports the production Web3 reward path only. A named item always
-uses `web3_item` and is delivered to the player's Backpack. Do not offer
+uses `web3_item`. The reward is granted or minted as the platform response
+reports, and this skill does not claim delivery to the player's Backpack. Do not offer
 `inventory_item`, Store API grants, direct Backpack grants, ERC-20 claim
 endpoints or a provider-default catalog as fallbacks.
 
@@ -69,13 +70,13 @@ confirmed:
   "body": {
     "project": "<token project>",
     "item_sku": "<bound token SKU>",
-    "amount": 10000
+    "amount": 1
   }
 }
 ```
 
-`amount` must be a positive integer in the token's base units and within the
-selected target's contract limit. Confirm the token decimals and binding with
+`amount` must be a positive whole number of tokens written in decimal (for
+example `1` means one token) and within the selected target's contract limit. Confirm the token decimals and binding with
 the owner of that target. Never guess them.
 
 `web3_item.body.project` selects the catalog only when the deployed reward
