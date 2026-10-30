@@ -326,7 +326,8 @@ Keep the publisher experience business-first and progressive:
   complete graph, proposed schedule and repeat limits. Do not seek plan
   approval before those GETs.
 - Show one concise proposal: publisher project name; what the player does; the
-  selected reward in business terms; quantity or amount; schedule; repeat limit
+  selected reward in business terms (for a named item, its name, SKU and
+  image URL); quantity or amount; schedule; repeat limit
   and payout impact. Omit service names, routes, auth, implementation fields
   and narration. Ask only for approval of this draft quest. If the publisher
   wants a change, they will say so; do not request separate confirmation of
