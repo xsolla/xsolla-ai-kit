@@ -1948,6 +1948,16 @@ class PublisherTemplateSiteTests(unittest.TestCase):
         self.assertEqual("implemented-phases-applied", json.loads(stdout)["status"])
         self.assertEqual(["/"], [call.args[2]["path"] for call in reconcile.call_args_list])
 
+    def test_build_apply_still_runs_the_template_header_check(self) -> None:
+        cli = self.fake_cli(own_header=True)
+        with mock.patch.object(
+            apply_plan, "require_own_header", wraps=apply_plan.require_own_header
+        ) as check:
+            code, stdout, stderr, _ = self.run_apply(cli)
+        self.assertEqual(0, code, stderr)
+        check.assert_called_once()
+        self.assertEqual(["/"], [page["path"] for page in check.call_args.args[0]])
+
     def test_only_pages_already_on_the_site_need_their_own_header(self) -> None:
         site, _ = publisher_template_site(self.brief, own_header=True)
         pages = [{"path": "/"}, {"path": "/store"}]

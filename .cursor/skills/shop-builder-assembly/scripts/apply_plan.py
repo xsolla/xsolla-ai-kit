@@ -26,7 +26,6 @@ from render_plan import (
     build_plan,
     common_layout_id,
     effective_module,
-    header_check_pages,
     page_path,
     require_own_header,
     site_block_ids,
@@ -1503,8 +1502,9 @@ def main() -> int:
                     "target structure changed after backup; back up, re-render, and reconfirm"
                 )
             if ops_mode:
-                # Same Publisher Account template stop as a build, before any write.
-                require_own_header(header_check_pages(plan, current), current)
+                # Block operations only change Quests blocks and never touch the header
+                # or navigation, so a site from a Publisher Account template (header in
+                # the common layout) runs here without the build's header stop.
                 landing_id = current.get("_id")
                 if not isinstance(landing_id, str):
                     raise RuntimeError("landing has no _id")

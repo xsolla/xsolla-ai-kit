@@ -888,6 +888,16 @@ class PublisherTemplateSiteTests(unittest.TestCase):
             "block operations must not add a header or footer to a template site",
         )
 
+    def test_apply_block_ops_never_calls_the_template_header_check(self) -> None:
+        site = self.site(own_header=False)
+        with mock.patch.object(
+            apply_plan, "require_own_header", wraps=apply_plan.require_own_header
+        ) as check:
+            code, stdout, stderr, _ = self.run_apply(site)
+        self.assertEqual(0, code, stderr)
+        self.assertEqual("block-operations-applied", json.loads(stdout)["status"])
+        check.assert_not_called()
+
     def test_ops_brief_on_a_page_with_its_own_header_renders_and_applies(self) -> None:
         site = self.site(own_header=True)
         code, stdout, stderr = self.run_render(site)
