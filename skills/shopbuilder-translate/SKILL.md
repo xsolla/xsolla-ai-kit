@@ -14,7 +14,7 @@ metadata:
 
 # Translate Shop Builder page copy
 
-This skill writes Shop Builder page copy only. Catalog and LiveOps text (items, groups, bundles, currency, promotions, reward chains) are out of scope. Do not translate them here.
+This skill writes Shop Builder page copy only. Catalog and LiveOps text (items, groups, bundles, currency, promotions, reward chains) are `localization`. Do not translate them here.
 
 The model does the translation. There is no machine-translation service.
 
@@ -25,7 +25,7 @@ Nothing here publishes the site. `--commit` writes the live project named by `XS
 1. Name the target locale in the user's words (`Japanese` → `ja-JP`). Codes are in [references/i18n-support.md](references/i18n-support.md).
 2. Ask whether they already have translations. If yes, `scripts/ingest-user-translations.sh`. If no, the model fills the gaps after they confirm the plan.
 3. Show the plan: locale, what will change, what already has a translation. Wait for an explicit yes. Then write.
-4. Catalog and LiveOps strings are out of scope. Stop. Do not translate them with this skill.
+4. Catalog and LiveOps strings belong to `localization`. Do not translate them here. For a general "translate my shop" or "translate the shop", run `localization` for that half, and do not report the shop as done after page copy. Say which half is done and which is still open. A page-copy request ("translate the FAQ", "translate the hero") stays on this skill alone.
 
 ## Page copy
 
@@ -51,4 +51,4 @@ The shop opens in the first language of the site language list. This skill does 
 
 ## Out of scope
 
-Catalog and LiveOps text. Prices and regional availability. Legal copy. Text baked into images. Publishing the site. Changing the language the shop opens in.
+Catalog and LiveOps text, which `localization` translates. Prices and regional availability. Legal copy. Text baked into images. Publishing the site. Changing the language the shop opens in. For "translate my shop", finishing page copy does not finish the shop.

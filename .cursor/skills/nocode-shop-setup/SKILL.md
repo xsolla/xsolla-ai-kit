@@ -31,7 +31,11 @@ widget: this site renders its own checkout and login.
    that skill's rule for a key pasted into chat.
 2. `catalog-design` — the items the site will sell. If the project already has that
    catalog, do not rebuild it.
-3. `login-setup` — how the player signs in.
+3. Offer `localization` once if that catalog is in one language. It translates
+   `name`, `description`, and `long_description` through one reviewable CSV.
+   Offering writes nothing without an explicit yes, and a single-language shop
+   is a valid choice.
+4. `login-setup` — how the player signs in.
 
 ## Store or game home
 

@@ -8,6 +8,7 @@ Each subdirectory contains a `SKILL.md` — a structured workflow file for an Xs
 |---------------------------------------------------------------------------|-----------------------------------------|---------------------|--------|
 | [`shop-setup`](shop-setup/SKILL.md)                                       | Coded shop — the user writes and deploys | @y.klochikhin       | Done   |
 | [`nocode-shop-setup`](nocode-shop-setup/SKILL.md)                         | Shop Builder entry — store or game home | @a.pyanzin          | Draft  |
+| [`localization`](localization/SKILL.md)                                   | Catalog + LiveOps content (CSV)         | @u.filipau          | Draft  |
 | [`shop-builder-assembly`](shop-builder-assembly/SKILL.md)                 | Shop Builder site assembly              | @k.shah             | Draft  |
 | [`description-to-shop`](description-to-shop/SKILL.md)                     | Description → Shop Builder shop brief   | @k.shah             | Draft  |
 | [`game-web-portal`](game-web-portal/SKILL.md)                             | Game Web Portal — PC game home + shop   | @a.pyanzin          | Draft  |
@@ -18,7 +19,7 @@ Each subdirectory contains a `SKILL.md` — a structured workflow file for an Xs
 | [`headless-checkout-integration`](headless-checkout-integration/SKILL.md) | Payments via Headless Checkout          | @y.klochikhin       | Done   |
 | [`webhooks-impl`](webhooks-impl/SKILL.md)                                 | Webhook handler generation              | @e.chernykh         | Done   |
 | [`production`](production/SKILL.md)                                       | Sandbox → live / go-live checklist      | @y.klochikhin       | Done   |
-| [`shopbuilder-translate`](shopbuilder-translate/SKILL.md)                 | Shop Builder page copy          | @s.hossain          | Draft  |
+| [`shopbuilder-translate`](shopbuilder-translate/SKILL.md)                 | Shop Builder page copy                  | @s.hossain          | Draft  |
 
 ## Adding a skill
 
