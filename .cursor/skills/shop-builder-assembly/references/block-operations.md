@@ -106,7 +106,7 @@ The plan runs against the backup structure and rejects these before confirmation
 
 Ordinary `add` keeps using the stable creation pin `0.1.5`. An `add` operation may
 select a different artifact only through its explicit `version` field. The only verified
-candidate capability currently enabled is `0.2.3-qp-3256.0`; this is candidate-only
+candidate capability currently enabled is `0.2.2-qp-3256.0`; this is candidate-only
 support, not a stable-version claim. Updates and resets that use these fields require the
 target block's exact `values.version` to match that candidate. No other version is
 accepted by inference.

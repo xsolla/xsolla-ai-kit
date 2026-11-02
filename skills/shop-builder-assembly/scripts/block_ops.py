@@ -1296,3 +1296,4 @@ def _localization_item(
         "block_ref": ref,
         "translations": translations,
     }
+

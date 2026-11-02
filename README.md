@@ -93,7 +93,6 @@ XSOLLA_PROJECT_API_KEY=<your API key>
 | `headless-checkout-integration` | Payments via Headless Checkout | @y.klochikhin | Done |
 | `webhooks-impl` | Webhook handler generation | @e.chernykh | Done |
 | `production` | Sandbox → live / go-live | @y.klochikhin | Done |
-| `quest-setup` | Quest Platform quests, events, rewards, Web Shop and Shop Builder Quests operations | @r.aliyev | Draft |
 
 ## Invoking a skill
 
@@ -113,8 +112,7 @@ specific skill:
 and `production`. `nocode-shop-setup` is the entry for Shop Builder: a store goes to
 `description-to-shop` and `shop-builder-assembly`, and a PC game home goes to
 `game-web-portal`. `shopbuilder-translate` translates the page copy of a Shop Builder
-site. `quest-setup` creates and manages Quest Platform quests, events, rewards, Web Shop
-quest modules, and approved Shop Builder Quests block operations.
+site.
 
 ## Contributing
 
