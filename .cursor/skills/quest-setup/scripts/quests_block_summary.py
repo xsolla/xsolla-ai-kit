@@ -14,7 +14,9 @@ its count of visible Quests blocks; when exactly one site has a visible Quests b
 is that site and the output also carries its full summary (else `site` is null).
 
 Output: one JSON object on stdout. The ids (merchant, project, block, quest) are for a
-block_operations brief only, never for a reply. Exit codes: 0 read ok, 1 a site read failed.
+block_operations brief only, never for a reply. The summary also includes page module ids
+and an allowlisted, normalized saved appearance/action readback; unknown open-map values
+are omitted. Exit codes: 0 read ok, 1 a site read failed.
 Python 3.9+, standard library only.
 """
 from __future__ import annotations
@@ -22,11 +24,13 @@ from __future__ import annotations
 import argparse
 import html
 import json
+import math
 import re
 import subprocess
 import sys
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
+from urllib.parse import urlparse
 
 sys.dont_write_bytecode = True  # keep the installed skill folder clean
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -37,6 +41,31 @@ BLOCK_ID = "_quest-platform_quests-block"
 TAG = re.compile(r"<[^>]+>")
 QUEST_PAGES = 5
 QUEST_PAGE_SIZE = 50
+THEME_IDS = {"site-builder", "xsolla-pages", "custom"}
+PRESET_FIELDS = {
+    "cardAlign": {"start", "center", "end"},
+    "blockBackground": {"transparent", "primary", "secondary"},
+    "cardBackground": {"transparent", "primary", "secondary"},
+    "buttonStyle": {"primary", "secondary", "tertiary", "theme-default"},
+}
+PALETTE_FIELDS = {
+    "accent", "sectionBackground", "cardBackground", "primaryText",
+    "secondaryText", "border", "actionText",
+}
+FONT_FIELDS = {"bodyFont", "headingFont", "buttonFont"}
+WEIGHT_FIELDS = {"headingWeight", "bodyWeight", "buttonWeight"}
+LINE_HEIGHT_FIELDS = {
+    "headingLineHeight", "bodyLineHeight", "buttonLineHeight",
+}
+SIZE_FIELDS = {"headingSize", "bodySize", "buttonSize"}
+GEOMETRY_FIELDS = {
+    "maxWidth", "gutter", "mobileGutter", "sectionPadding", "cardPadding",
+    "gap", "radius", "buttonRadius", "buttonHeight", "columns", "railInset",
+}
+FONT_TOKENS = {"host-body", "host-heading", "host-button"}
+SAFE_FONT = re.compile(r"(?=.*[A-Za-z0-9])[A-Za-z0-9 _-]{1,64}\Z")
+HEX6 = re.compile(r"#[0-9a-fA-F]{6}\Z")
+VERSION = re.compile(r"[0-9]+\.[0-9]+\.[0-9]+(?:-[A-Za-z0-9][A-Za-z0-9.-]*)?\Z")
 
 Runner = Callable[[List[str]], Dict[str, Any]]
 QuestFetcher = Callable[[str, str], Optional[Dict[str, Dict[str, Any]]]]
@@ -89,6 +118,216 @@ def _is_quests_block(block: Dict[str, Any]) -> bool:
     return block.get("module") == BLOCK_ID or values.get("blockId") == BLOCK_ID
 
 
+def _module_id(block: Dict[str, Any]) -> Optional[str]:
+    """Return an observed module id, never the host URL or arbitrary block data."""
+    module = block.get("module")
+    if (
+        isinstance(module, str)
+        and module not in {"federated", "custom"}
+        and re.fullmatch(r"[A-Za-z0-9._-]{1,128}", module)
+    ):
+        return module
+    values = block.get("values") or {}
+    block_id = values.get("blockId")
+    if isinstance(block_id, str) and re.fullmatch(r"[A-Za-z0-9._-]{1,128}", block_id):
+        return block_id
+    host = values.get("host")
+    if isinstance(host, str):
+        parts = [part for part in urlparse(host).path.split("/") if part]
+        if "site-builder-modules" in parts:
+            index = parts.index("site-builder-modules") + 1
+            if index < len(parts) and re.fullmatch(r"[A-Za-z0-9._-]{1,128}", parts[index]):
+                return parts[index]
+    return None
+
+
+def _summary_appearance(values: Dict[str, Any], internal: Dict[str, Any]) -> Dict[str, Any]:
+    """Return recognized saved appearance fields without exposing open-map data."""
+    saved_theme = internal.get("themeId")
+    theme_status = (
+        "missing" if "themeId" not in internal
+        else "known" if isinstance(saved_theme, str) and saved_theme in THEME_IDS
+        else "unsupported"
+    )
+    saved_action = internal.get("backpackAction")
+    action_status = (
+        "missing" if "backpackAction" not in internal
+        else "known" if isinstance(saved_action, str) and saved_action in {"external", "overlay"}
+        else "unsupported"
+    )
+    appearance = internal.get("themeAppearance")
+    invalid: list[str] = []
+    if not isinstance(appearance, dict):
+        if "themeAppearance" in internal:
+            invalid.append("themeAppearance")
+        appearance = {}
+
+    unknown = set(appearance) - {"site-builder", "xsolla-pages", "custom"}
+    saved_version = values.get("version")
+    version_status = (
+        "missing" if "version" not in values
+        else "present" if isinstance(saved_version, str) and VERSION.fullmatch(saved_version)
+        else "invalid"
+    )
+    result: Dict[str, Any] = {
+        "module_id": BLOCK_ID,
+        "version": saved_version if version_status == "present" else None,
+        "version_status": version_status,
+        "theme_id": saved_theme if theme_status == "known" else None,
+        "theme_id_status": theme_status,
+        "backpack_action": saved_action if action_status == "known" else None,
+        "backpack_action_status": action_status,
+        "presets": {},
+        "custom": {},
+    }
+
+    def safe_preset(theme: str) -> Dict[str, Any]:
+        raw = appearance.get(theme)
+        if not isinstance(raw, dict):
+            if theme in appearance:
+                invalid.append(f"themeAppearance.{theme}")
+            return {}
+        out = {}
+        unknown.update(set(raw) - set(PRESET_FIELDS))
+        for field, allowed in PRESET_FIELDS.items():
+            if field not in raw:
+                continue
+            if isinstance(raw[field], str) and raw[field] in allowed:
+                out[field] = raw[field]
+            else:
+                invalid.append(f"themeAppearance.{theme}.{field}")
+        return out
+
+    result["presets"] = {
+        "site-builder": safe_preset("site-builder"),
+        "xsolla-pages": safe_preset("xsolla-pages"),
+    }
+
+    raw_custom = appearance.get("custom")
+    if isinstance(raw_custom, dict):
+        custom: Dict[str, Any] = {}
+        allowed_top = {"version", "baseThemeId", "palette", "typography", "geometry"}
+        unknown.update(set(raw_custom) - allowed_top)
+        if "version" in raw_custom:
+            if type(raw_custom["version"]) is int and raw_custom["version"] == 1:
+                custom["version"] = 1
+            else:
+                invalid.append("themeAppearance.custom.version")
+        if "baseThemeId" in raw_custom:
+            if (
+                isinstance(raw_custom["baseThemeId"], str)
+                and raw_custom["baseThemeId"] in {"site-builder", "xsolla-pages"}
+            ):
+                custom["baseThemeId"] = raw_custom["baseThemeId"]
+            else:
+                invalid.append("themeAppearance.custom.baseThemeId")
+
+        raw_palette = raw_custom.get("palette")
+        if isinstance(raw_palette, dict):
+            palette = {}
+            unknown.update(set(raw_palette) - PALETTE_FIELDS)
+            for field in PALETTE_FIELDS:
+                if field not in raw_palette:
+                    continue
+                value = raw_palette[field]
+                if isinstance(value, str) and HEX6.fullmatch(value):
+                    palette[field] = value
+                else:
+                    invalid.append(f"themeAppearance.custom.palette.{field}")
+            if palette:
+                custom["palette"] = palette
+        elif "palette" in raw_custom:
+            invalid.append("themeAppearance.custom.palette")
+
+        raw_type = raw_custom.get("typography")
+        if isinstance(raw_type, dict):
+            typography = {}
+            allowed_type = FONT_FIELDS | WEIGHT_FIELDS | LINE_HEIGHT_FIELDS | SIZE_FIELDS
+            unknown.update(set(raw_type) - allowed_type)
+            for field in FONT_FIELDS:
+                if field not in raw_type:
+                    continue
+                value = raw_type[field]
+                if isinstance(value, str) and value in FONT_TOKENS:
+                    typography[field] = value
+                elif (
+                    isinstance(value, dict)
+                    and set(value) == {"loadedFont"}
+                    and isinstance(value["loadedFont"], str)
+                    and SAFE_FONT.fullmatch(value["loadedFont"])
+                ):
+                    typography[field] = {"loadedFont": value["loadedFont"]}
+                else:
+                    invalid.append(f"themeAppearance.custom.typography.{field}")
+            for field in WEIGHT_FIELDS:
+                if field not in raw_type:
+                    continue
+                value = raw_type[field]
+                if type(value) is int and value in {400, 500, 600, 700}:
+                    typography[field] = value
+                else:
+                    invalid.append(f"themeAppearance.custom.typography.{field}")
+            for field in SIZE_FIELDS:
+                if field not in raw_type:
+                    continue
+                value = raw_type[field]
+                bounds = (16, 64) if field == "headingSize" else (12, 24)
+                if type(value) is int and bounds[0] <= value <= bounds[1]:
+                    typography[field] = value
+                else:
+                    invalid.append(f"themeAppearance.custom.typography.{field}")
+            for field in LINE_HEIGHT_FIELDS:
+                if field not in raw_type:
+                    continue
+                value = raw_type[field]
+                if type(value) in {int, float} and math.isfinite(value) and 1 <= value <= 2:
+                    typography[field] = math.floor(value * 100 + 0.5) / 100
+                else:
+                    invalid.append(f"themeAppearance.custom.typography.{field}")
+            if typography:
+                custom["typography"] = typography
+        elif "typography" in raw_custom:
+            invalid.append("themeAppearance.custom.typography")
+
+        raw_geometry = raw_custom.get("geometry")
+        if isinstance(raw_geometry, dict):
+            geometry = {}
+            unknown.update(set(raw_geometry) - GEOMETRY_FIELDS)
+            bounds = {
+                "maxWidth": (640, 1920), "gutter": (0, 64),
+                "mobileGutter": (0, 64), "sectionPadding": (0, 128),
+                "cardPadding": (8, 64), "gap": (8, 48), "radius": (0, 32),
+                "buttonRadius": (0, 32), "buttonHeight": (32, 64),
+                "railInset": (0, 20),
+            }
+            for field in GEOMETRY_FIELDS:
+                if field not in raw_geometry:
+                    continue
+                value = raw_geometry[field]
+                if field == "columns":
+                    valid = type(value) is int and value in {1, 2, 3, 4}
+                else:
+                    low, high = bounds[field]
+                    valid = type(value) is int and low <= value <= high
+                if valid:
+                    geometry[field] = value
+                else:
+                    invalid.append(f"themeAppearance.custom.geometry.{field}")
+            if geometry:
+                custom["geometry"] = geometry
+        elif "geometry" in raw_custom:
+            invalid.append("themeAppearance.custom.geometry")
+        result["custom"] = custom
+    elif "custom" in appearance:
+        invalid.append("themeAppearance.custom")
+
+    if unknown:
+        result["unrecognized_saved_fields_present"] = True
+    if invalid:
+        result["invalid_saved_fields"] = sorted(invalid)
+    return result
+
+
 def summarize(structure: Dict[str, Any], localization: Dict[str, Any],
               quests: Optional[Dict[str, Dict[str, Any]]]) -> List[Dict[str, Any]]:
     common = localization.get("common") or {}
@@ -97,6 +336,14 @@ def summarize(structure: Dict[str, Any], localization: Dict[str, Any],
     for page in structure.get("pages") or []:
         page_texts = (loc_pages.get(page.get("_id")) or {}).get("texts") or {}
         blocks = page.get("blocks") or []
+        page_modules = [
+            {
+                "position": module_index,
+                "module_id": _module_id(candidate),
+                "is_quests": _is_quests_block(candidate),
+            }
+            for module_index, candidate in enumerate(blocks, 1)
+        ]
         for index, block in enumerate(blocks, 1):
             if not _is_quests_block(block):
                 continue
@@ -133,10 +380,12 @@ def summarize(structure: Dict[str, Any], localization: Dict[str, Any],
                 "page": page.get("name"),
                 "position": index,
                 "blocks_on_page": len(blocks),
+                "page_modules": page_modules,
                 "hidden": bool(block.get("hidden")),
                 "max_quests": ibv.get("maxQuests"),
                 "heading": text(heading_ref) if heading_ref else None,
                 "show_heading": layout.get("showHeading", True),
+                "appearance": _summary_appearance(values, ibv),
                 "quests": cards,
             })
     return blocks_out

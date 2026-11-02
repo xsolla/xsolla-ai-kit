@@ -72,7 +72,7 @@ even to redact them, for any request. Run every command from the publisher's fol
 11. **Image URLs must be https.** If the publisher gives an `http` URL,
     stop before any plan with the rejected-value shape. Never change it to https or draft
     a plan with it ([reply-format.md](references/reply-format.md#examples)).
-12. **No stray files.** Parse command output in a pipe. The only files you write are the gate's brief and backup, in the one `mktemp -d` folder from [Gate commands](references/quests-block-brief.md#gate-commands); never in the working folder.
+12. **No stray files.** Parse command output in a pipe. The only files you write are the gate's brief, backup and approved plan in the one `mktemp -d` folder from [Gate commands](references/quests-block-brief.md#gate-commands); never in the working folder.
 13. **Named sites.** Write only to the site the publisher chose under [Which shop](references/quests-block-flow.md#which-shop). A site they name that is not that choice, or one they say must not be touched, gets no plan and no write.
 14. **Block reward is read-only.** The reward text and image on a Quests block card come from the quest's reward (not its description) and can't be changed on the block. A request to change a card's reward gets no tool call, no reads and no write, only the reward-change reply in [reply-format.md](references/reply-format.md#examples): bold "The reward on the card comes from the quest, so it can't be changed on the block.", one bullet "To show a different reward, change the quest's reward.", then "Next: want me to draft that quest edit?". A yes goes to [Editing](references/quest-edit.md#editing).
 
@@ -182,8 +182,9 @@ answers, ask the developer.
    `block_operations` brief through the `shop-builder-assembly` gate. There is no delete op:
    a delete request gets `needs_human` and an offer to hide
    ([Removing the block](references/quests-block-flow.md#removing-the-block)). Quest
-   approval never authorizes site writes. A question about the block on a known
-   site is a read: [Describe the block](references/quests-block-flow.md#describe-the-block).
+   approval never authorizes site writes. Appearance fitting uses
+   [quests-block-appearance.md](references/quests-block-appearance.md); block questions
+   on a known site are reads: [Describe the block](references/quests-block-flow.md#describe-the-block).
 9. **Headless Web Shop section.** Only on explicit request, and only then load
    [web-shop-module.md](references/web-shop-module.md). Quest approval never authorizes shop source edits. Never copy the catalog project ID into the Quest Platform project setting, and never offer to; ask which Quest Platform project to use.
 

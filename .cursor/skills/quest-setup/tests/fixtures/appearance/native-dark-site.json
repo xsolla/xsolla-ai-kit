@@ -1,0 +1,28 @@
+{
+  "case": "native-dark-site",
+  "fixture_only": true,
+  "intent": {"request": "fit the Quests block to this site", "explicit_theme": null},
+  "site_evidence": {
+    "page": "Fixture Home",
+    "viewport_px": [375, 768, 1440],
+    "composition": "native Site Builder page with dark colors",
+    "neighbors": [
+      {"module_id": "fixture.native-header", "font": "Fixture Sans", "font_loaded": true, "size_px": 16, "weight": 500, "line_height_px": 24, "color": "#F4F4F4", "gutter_px": 24},
+      {"module_id": "fixture.native-footer", "font": "Fixture Sans", "font_loaded": true, "size_px": 14, "weight": 400, "line_height_px": 20, "color": "#B8B8B8", "gutter_px": 24}
+    ]
+  },
+  "recommendation": {"theme_id": "site-builder", "reason": "Native module composition is observed; dark colors alone do not imply Pages.", "operation": null},
+  "gate_result": "no-op; no appearance leaf differs",
+  "whole_page_result": "No visual values changed; confirm the inherited Quests block still aligns with the native dark header and footer at all three viewports.",
+  "saved_before": {
+    "_id": "fixture-quests-native",
+    "module": "_quest-platform_quests-block",
+    "values": {"version": "0.2.1-qp-3256.1", "internalBlockValues": {"themeId": "site-builder", "backpackAction": "external", "questIds": ["quest-a", "quest-b"], "layout": {"showHeading": true}, "translations": {"heading": "L:quests"}}}
+  },
+  "saved_after": {
+    "_id": "fixture-quests-native",
+    "module": "_quest-platform_quests-block",
+    "values": {"version": "0.2.1-qp-3256.1", "internalBlockValues": {"themeId": "site-builder", "backpackAction": "external", "questIds": ["quest-a", "quest-b"], "layout": {"showHeading": true}, "translations": {"heading": "L:quests"}}}
+  },
+  "expected_readback": {"module_id": "_quest-platform_quests-block", "version": "0.2.1-qp-3256.1", "version_status": "present", "theme_id": "site-builder", "theme_id_status": "known", "backpack_action": "external", "backpack_action_status": "known", "presets": {"site-builder": {}, "xsolla-pages": {}}, "custom": {}}
+}

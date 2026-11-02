@@ -164,8 +164,7 @@ Full go-live checklist (utils probe, flip sandbox flags, deploy, live payment te
 Once all credentials are confirmed, write them to the project-local `.env`.
 Use the `XSOLLA_MERCHANT_ID`, `XSOLLA_PROJECT_ID`, and
 `XSOLLA_PROJECT_API_KEY` names. Update only those three assignments and retain
-every other line and setting, including other skills' `XSOLLA_*` keys such as
-`XSOLLA_BUILD_PATH` written by `shop-plan`.
+every other line and setting, including keys used by other skills.
 
 If `.env` does not exist, add `.env` to the repository's `.gitignore` before
 saving any credential values, then create the file with only the required

@@ -39,16 +39,20 @@ Loaded for a Quests block request on a Shop Builder site. Settings and the opera
 5. **Quest and site approvals are separate.** A quest approval never covers a site
    write, and a site confirmation never covers a quest write. Quest edits keep the
    stops in [`SKILL.md`](../SKILL.md).
-6. **Quests block only.** For the header, theme, other blocks, site language or
-   anything else on the site, say: "That's outside the Quests block; change it in the
-   Shop Builder editor." Offer no site-wide change and give no steps or menu names.
-7. **Sandbox mode is implied.** A Shop Builder change means the CLI's sandbox mode is
-   off. The gate's preflight settles it itself. Its `plan_notes` holds at most one line
-   (for example "Using the CLI test environment (sandbox off)"): show it exactly when
-   preflight returns one, and no sandbox line when `plan_notes` is empty. Never ask the publisher about sandbox mode, and
-   never run `xsolla config set` or edit a CLI config yourself. When preflight reports a
-   `cli_environment`, add `--environment <name>` to the read-only `xsolla shopbuilder`
-   commands you run yourself.
+6. **Quests block only.** The block's own appearance is in scope when the publisher
+   asks to fit or change it; follow [appearance](quests-block-appearance.md). Site or
+   page themes, the header, other blocks, site language and other site changes are not
+   in scope. For those, say: "That's outside the Quests block; change it in the Shop
+   Builder editor." Offer no site-wide change and give no steps or menu names.
+7. **Sandbox confirmation.** If preflight stops with `SandboxConfirmationNeeded`, stop
+   before backup, plan or writes. Ask the publisher to confirm the exact command and
+   directory shown by preflight; do not substitute or reconstruct it. After an explicit
+   yes, rerun preflight with `--confirm-sandbox-off`. If they decline, stop without a
+   switch. When preflight returns a `cli_environment`, add `--environment <name>` to
+   read-only `xsolla shopbuilder` commands. If this run switched sandbox off, run
+   `restore_sandbox.py` as the last step after apply/readback, or immediately whenever
+   the run stops before that. A run that is waiting for confirmation of its exact plan
+   remains pending; if it is declined or abandoned, restore before stopping.
 
 ## Prerequisites
 
@@ -114,9 +118,10 @@ quests on my webshop" after naming the site. This is a read, so it needs no gate
 1. Run one command, read-only, from the publisher's folder (add `--environment <name>`
    when the site needs it): `python3 "<skill base dir>/scripts/quests_block_summary.py" --slug <slug>`.
    It reads the structure, the localization and the quest list itself and prints JSON:
-   per Quests block its page, position, `hidden`, `max_quests`, `heading`, and `quests` in
-   block order (`quest_name`, `card_title`, `overridden`, `public`). No other reads, no
-   `--help`, no own parsing.
+   per Quests block its page, position, `page_modules`, `hidden`, `max_quests`, `heading`,
+   `appearance` and `quests` in block order (`quest_name`, `card_title`, `overridden`,
+   `public`). Module IDs come from the structure, not host URLs. Appearance is allowlisted
+   and omits unknown saved fields. No other reads, no `--help`, no own parsing.
 2. Reply in the Describe-the-block shape from [reply-format.md](reply-format.md): a bold
    line naming the site and that it has a Quests block (if `blocks` is empty: it has no
    Quests block, with `Next:` offering to add one). Then bullets, in order: Where (page,
@@ -217,7 +222,9 @@ into the title or description as a workaround.
    a quest is not found or the read-back does not show `is_public: true`. An `active`
    quest's `PUT` re-checks its dates ([dates on edit](quest-edit.md#editing)); put any
    date move in this same proposal, never a plan the server will reject.
-3. **Build the brief.** Turn the agreed settings and defaults into `block_operations`.
+3. **Build the brief.** For an appearance request, first follow
+   [appearance](quests-block-appearance.md) and give the recommendation with its measured
+   evidence. Turn only the agreed settings and defaults into `block_operations`.
    The brief never sets the reward text or image: they come from the quest. If the
    publisher asks to change them, say they can't be changed on the block and offer to
    change the quest's reward through the edit flow instead.

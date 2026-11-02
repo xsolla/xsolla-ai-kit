@@ -50,13 +50,24 @@ to copy.
   (for example `Change: show 3 cards (was 4); heading → "Daily quests"`).
 - When the plan `warnings` say a card text replaces the one set in the editor, add
   "(replaces the text set in the Site Builder editor)" to that Change bullet.
-- When the gate preflight returns a `plan_notes` line, add it as it is, for example "Using
-  the CLI test environment (sandbox off)" or "CLI sandbox mode switched off for Shop
-  Builder". When `plan_notes` is empty, add no sandbox or environment line (the examples
-  below show one only because their preflight returned it). Never ask about sandbox mode.
+- After preflight succeeds, include a returned `plan_notes` line exactly in the plan.
+  When `plan_notes` is empty, add no sandbox or environment line. If preflight instead
+  stops with `SandboxConfirmationNeeded`, do not show a site plan; use the separate
+  command-confirmation shape below.
 - Last line: `Next: reply "yes" to apply this exact plan.`
 - Show one plan, after preflight, backup and render. Never show a draft plan first, and
   never ask the publisher to confirm a dedicated test project. One yes applies the plan.
+
+## Sandbox command confirmation
+
+When preflight stops with `SandboxConfirmationNeeded`, do not run the command, backup,
+render or apply. Reply with a bold line that Shop Builder needs sandbox mode off to plan
+the change, one bullet containing the exact command and directory from the stop message,
+and this final line: `Next: reply "yes" to run this exact command.` Do not paraphrase,
+rebuild or broaden the command. Only after that yes, rerun preflight with
+`--confirm-sandbox-off`. The later yes to the rendered block plan is still required and
+covers only that plan. If the run had already switched sandbox off and then ends before
+apply, restore it with `restore_sandbox.py` before stopping.
 
 For a quest create or edit, the bullets are the labelled lines in
 [quest-publish.md](quest-publish.md#proposal-format).

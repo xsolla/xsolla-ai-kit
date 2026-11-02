@@ -61,6 +61,12 @@ class SummarizeTest(unittest.TestCase):
         self.assertFalse(block["hidden"])
         self.assertEqual(block["max_quests"], 3)
         self.assertEqual(block["heading"], "Daily quests")
+        self.assertEqual(block["page_modules"][1], {
+            "position": 2,
+            "module_id": qbs.BLOCK_ID,
+            "is_quests": True,
+        })
+        self.assertNotIn("cdn.xsolla.net", json.dumps(block["page_modules"]))
         names = [q["quest_name"] for q in block["quests"]]
         self.assertEqual(names, ["Collect 10 crystals", "Win 3 matches", None])
         self.assertEqual(block["quests"][1]["card_title"], "Win & earn")
@@ -78,6 +84,63 @@ class SummarizeTest(unittest.TestCase):
         self.assertTrue(block["hidden"])
         self.assertIsNone(block["heading"])
         self.assertNotIn("public", block["quests"][0])
+
+    def test_saved_appearance_is_allowlisted_and_normalized(self) -> None:
+        saved = structure()
+        values = saved["pages"][0]["blocks"][1]["values"]
+        values["version"] = "0.2.1-qp-3256.1"
+        internal = values["internalBlockValues"]
+        internal["themeId"] = "custom"
+        internal["backpackAction"] = "overlay"
+        internal["themeAppearance"] = {
+            "site-builder": {"buttonStyle": "theme-default", "futurePreset": "secret"},
+            "xsolla-pages": {"cardAlign": "center"},
+            "custom": {
+                "version": 1,
+                "baseThemeId": "xsolla-pages",
+                "palette": {"accent": "#123456", "futureColor": "secret"},
+                "typography": {
+                    "headingFont": {"loadedFont": "Hosted Heading"},
+                    "bodyLineHeight": 1.239,
+                },
+                "geometry": {"railInset": 0, "columns": 3},
+                "futureField": "secret",
+            },
+            "futureTheme": {"private": "secret"},
+        }
+        [block] = qbs.summarize(saved, LOCALIZATION, QUESTS)
+        appearance = block["appearance"]
+        self.assertEqual(appearance["module_id"], qbs.BLOCK_ID)
+        self.assertEqual(appearance["version"], "0.2.1-qp-3256.1")
+        self.assertEqual(appearance["theme_id"], "custom")
+        self.assertEqual(appearance["theme_id_status"], "known")
+        self.assertEqual(appearance["backpack_action"], "overlay")
+        self.assertEqual(appearance["presets"]["site-builder"]["buttonStyle"], "theme-default")
+        self.assertEqual(appearance["custom"]["palette"], {"accent": "#123456"})
+        self.assertEqual(
+            appearance["custom"]["typography"]["headingFont"],
+            {"loadedFont": "Hosted Heading"},
+        )
+        self.assertEqual(appearance["custom"]["typography"]["bodyLineHeight"], 1.24)
+        self.assertTrue(appearance["unrecognized_saved_fields_present"])
+        self.assertNotIn("futureField", appearance["custom"])
+        self.assertNotIn("secret", json.dumps(appearance))
+
+    def test_unknown_saved_theme_and_invalid_values_are_not_exposed(self) -> None:
+        saved = structure()
+        internal = saved["pages"][0]["blocks"][1]["values"]["internalBlockValues"]
+        internal["themeId"] = {"unexpected": "secret"}
+        internal["backpackAction"] = "unknown"
+        internal["themeAppearance"] = {
+            "custom": {"palette": {"accent": "url(secret)"}}
+        }
+        [block] = qbs.summarize(saved, LOCALIZATION, QUESTS)
+        appearance = block["appearance"]
+        self.assertEqual(appearance["theme_id_status"], "unsupported")
+        self.assertIsNone(appearance["theme_id"])
+        self.assertEqual(appearance["backpack_action_status"], "unsupported")
+        self.assertIn("themeAppearance.custom.palette.accent", appearance["invalid_saved_fields"])
+        self.assertNotIn("secret", json.dumps(appearance))
 
     def test_no_quests_block(self) -> None:
         site = {"pages": [{"_id": PAGE_ID, "name": "Main", "blocks": [{"values": {"host": "x"}}]}]}

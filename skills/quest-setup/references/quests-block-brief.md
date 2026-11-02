@@ -2,6 +2,11 @@
 
 Brief keys, settings and operations for the `block_operations` brief that the
 `shop-builder-assembly` gate validates. The agent never shows these keys to the publisher.
+Appearance recommendations and fitting rules are in
+[quests-block-appearance.md](quests-block-appearance.md). Keep appearance and completed-
+quest action as separate choices; an appearance update preserves `backpackAction`.
+Appearance/action leaves require exact candidate `0.2.1-qp-3256.1` support; ordinary
+Quests creation remains pinned to stable `0.1.5`.
 
 ## Block settings
 
@@ -20,6 +25,10 @@ block's real path and creates a missing parent object (for example `layout`) fir
 | `layout.buttonStyle` | `primary`, `secondary`, `tertiary` | `primary` | Card button style |
 | `layout.blockBackground` | `transparent`, `primary`, `secondary` | `transparent` | Background behind the whole block |
 | `layout.cardBackground` | `transparent`, `primary`, `secondary` | `secondary` | Background of each card |
+| `themeId` | `site-builder`, `xsolla-pages`, `custom` | artifact default | Appearance preset for this Quests block only |
+| `themeAppearance.site-builder.*` / `themeAppearance.xsolla-pages.*` | `cardAlign`, `blockBackground`, `cardBackground`, `buttonStyle` values listed in [appearance](quests-block-appearance.md) | inherited | Bounded appearance overrides for the selected preset |
+| `themeAppearance.custom.*` | Custom V1 fields and bounds in [appearance](quests-block-appearance.md) | omitted values inherit | Measured, block-scoped appearance overrides |
+| `backpackAction` | `external`, `overlay` | `external` | Completed-quest button action only; independent Overlay owner setup is out of scope |
 | `overrides.<questId>.title` | text, at most 120 characters | none | Replaces that card's title |
 | `overrides.<questId>.description` | text, at most 400 characters | none | Replaces that card's description |
 | `overrides.<questId>.imageUrl` | absolute `https` URL | none | Replaces that card's image |
@@ -122,22 +131,33 @@ Move, duplicate, hide, show:
 ## Gate commands
 
 Run these exactly, each from the publisher's folder (never `cd` into a skill folder: the
-Quest Platform credential is read from the working folder). No `--help`, no reading the
-gate's scripts or docs. `G` is `<skill base dir>/../shop-builder-assembly/scripts`; `A` is
-the approval list, `$HOME/.config/xsolla/approved-test-projects.json` (pass it, never read it).
+Quest Platform credential is read from the working folder). Do not run `--help`, read
+the gate's scripts or docs, or edit CLI config yourself. `G` is
+`<skill base dir>/../shop-builder-assembly/scripts`; `A` is the approval list,
+`$HOME/.config/xsolla/approved-test-projects.json` (pass it, never read it).
 
 1. Ids: run the block summary from [Describe the block](quests-block-flow.md#describe-the-block).
    It gives `merchant_id`, `project_id`, each block's `block_id` and each card's
    `quest_id`, in block order. Never show these ids to the publisher.
 2. Run `mktemp -d` once and reuse the printed path `W`. Write the brief to `W/brief.json`.
-3. `python3 "G/preflight.py" "W/brief.json" --approved-test-projects "A"`
+3. Run `python3 "G/preflight.py" "W/brief.json" --approved-test-projects "A"`.
+   If it stops with `SandboxConfirmationNeeded`, use the exact-command confirmation
+   shape in [reply-format.md](reply-format.md#sandbox-command-confirmation). After an
+   explicit yes, rerun this command with `--confirm-sandbox-off`. Do not continue if the
+   publisher declines.
 4. `python3 "G/backup_shop.py" --brief "W/brief.json" --slug <slug> --output-dir "W/backup"`
-5. `python3 "G/render_plan.py" "W/brief.json" --structure "W/backup/structure.json"`.
-   Show its `confirmation_id` in the one plan (Plan shape in [reply-format.md](reply-format.md))
-   and end the turn. If step 3 returned a `plan_notes` line, it is a plan bullet, word for
-   word; if `plan_notes` is empty, the plan has no sandbox line.
-6. After "yes": `python3 "G/apply_plan.py" "W/brief.json" --confirmation-id <id> --backup-dir "W/backup" --approved-test-projects "A"`.
-   It verifies the result itself and prints the `editor_url`.
+5. Render and save the target-bound plan:
+   `python3 "G/render_plan.py" "W/brief.json" --structure "W/backup/structure.json" > "W/approved-plan.json"`.
+   Show its exact operations, `confirmation_id` and any returned `plan_notes` in the
+   one plan (Plan shape in [reply-format.md](reply-format.md)), then end the turn.
+6. After a later "yes":
+   `python3 "G/apply_plan.py" "W/brief.json" --approved-plan "W/approved-plan.json" --confirmation-id <id> --backup-dir "W/backup" --approved-test-projects "A"`.
+   This is one confirmed operations run: do not pass `--run-report`. Apply verifies
+   saved leaves and block preservation, then prints `editor_url`.
+7. If preflight switched sandbox off, run
+   `python3 "G/restore_sandbox.py"` as the final step after apply/readback, or whenever
+   the run stops before apply. If the plan is declined or abandoned, restore before
+   stopping. Do not leave a confirmed switch behind after an ended run.
 
 If apply says the target structure changed after backup, someone edited the site
 meanwhile and nothing was written: run steps 4 and 5 again with a new backup folder, say
