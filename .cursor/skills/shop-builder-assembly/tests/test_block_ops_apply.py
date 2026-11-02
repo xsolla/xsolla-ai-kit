@@ -344,6 +344,64 @@ class BlockOpsApplyTests(BlockOpsApplyBase):
         self.assertEqual(0, self.site.noop_patches)
         self.assertEqual([], self.verify(plan, refs))
 
+    def test_candidate_custom_patch_applies_and_reads_back_normalized_leaves(self) -> None:
+        block = self.site.find("q1")
+        block["values"]["version"] = "0.2.0-qp-3256.5"
+        block["values"]["host"] = f"https://cdn.xsolla.net/site-builder-modules/{QUESTS_MODULE}/0.2.0-qp-3256.5/"
+        block["values"]["internalBlockValues"].update({
+            "themeId": "site-builder",
+            "backpackAction": "external",
+            "futureField": {"preserve": True},
+        })
+        operations = [{
+            "op": "update", "block_id": "q1", "values": {
+                "themeId": "custom",
+                "themeAppearance.custom.version": 1,
+                "themeAppearance.custom.baseThemeId": "xsolla-pages",
+                "themeAppearance.custom.palette.accent": "#123456",
+                "themeAppearance.custom.typography.headingLineHeight": 1.239,
+                "themeAppearance.custom.geometry.railInset": 0,
+                "backpackAction": "overlay",
+            },
+        }]
+        plan, refs = self.apply(operations)
+        saved = self.site.find("q1")["values"]["internalBlockValues"]
+        self.assertEqual(1, saved["themeAppearance"]["custom"]["version"])
+        self.assertEqual("xsolla-pages", saved["themeAppearance"]["custom"]["baseThemeId"])
+        self.assertEqual(1.24, saved["themeAppearance"]["custom"]["typography"]["headingLineHeight"])
+        self.assertEqual("overlay", saved["backpackAction"])
+        self.assertEqual({"preserve": True}, saved["futureField"])
+        self.assertEqual([], self.verify(plan, refs))
+
+    def test_candidate_custom_reset_preserves_version_unknown_fields_and_other_themes(self) -> None:
+        block = self.site.find("q1")
+        block["values"]["version"] = "0.2.0-qp-3256.5"
+        block["values"]["internalBlockValues"].update({
+            "themeId": "custom",
+            "backpackAction": "overlay",
+            "themeAppearance": {
+                "custom": {"version": 1, "baseThemeId": "site-builder", "future": {"keep": 1}, "palette": {"accent": "#112233", "futureColor": "keep"}},
+                "xsolla-pages": {"cardAlign": "center"},
+            },
+        })
+        plan, refs = self.apply([{
+            "op": "reset", "block_id": "q1",
+            "paths": ["themeAppearance.custom.palette.accent", "backpackAction"],
+        }])
+        saved = self.site.find("q1")["values"]["internalBlockValues"]
+        self.assertNotIn("accent", saved["themeAppearance"]["custom"]["palette"])
+        self.assertEqual({"version": 1, "baseThemeId": "site-builder", "future": {"keep": 1}, "palette": {"futureColor": "keep"}}, saved["themeAppearance"]["custom"])
+        self.assertEqual({"cardAlign": "center"}, saved["themeAppearance"]["xsolla-pages"])
+        self.assertNotIn("backpackAction", saved)
+        self.assertEqual([], self.verify(plan, refs))
+
+    def test_invalid_candidate_preflight_makes_zero_mutating_calls(self) -> None:
+        block = self.site.find("q1")
+        block["values"]["version"] = "0.2.0-qp-3256.4"
+        with self.assertRaisesRegex(ValueError, "unsupported Quests version"):
+            self.plan_for([{"op": "update", "block_id": "q1", "values": {"themeId": "custom"}}])
+        self.assertEqual([], self.site.write_calls())
+
     def test_duplicate_keeps_both_instances(self) -> None:
         plan, refs = self.apply([{"op": "duplicate", "block_id": "q1"}])
         ids = self.page_ids()

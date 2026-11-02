@@ -63,7 +63,8 @@ The plan runs against the backup structure and rejects these before confirmation
 - Wrapper: `federated`, `values.blockId` `_quest-platform_quests-block`
   (CDN-verified), `useAsNativeBlock: false`. The npm name `@quest-platform/quests-block`
   is stored with `@` and `/` replaced by `_`.
-- Pinned build: the package version in `scripts/block_ops.py` (`QUESTS_VERSION`).
+- Ordinary creation pin: the package version in `scripts/block_ops.py` (`QUESTS_VERSION`),
+  currently stable `0.1.5`.
   Add strategy: `federated_patch`. `add-block --block federated` creates an empty wrapper
   at index 0 (omit `--index`), then one `update-block` sets `host`, `blockId`, `version`,
   `useAsNativeBlock` and `internalBlockValues` from the CDN `default-data.json`; the
@@ -96,3 +97,45 @@ The plan runs against the backup structure and rejects these before confirmation
   Quest Platform quest UUIDs. Preflight rejects any other string before a plan is made.
 - A leaf patch into a missing parent (for example `layout`) returns 200 and is silently
   ignored, so create the parent object first.
+
+## Appearance and Backpack action capability
+
+Ordinary `add` keeps using the stable creation pin `0.1.5`. An `add` operation may
+select a different artifact only through its explicit `version` field. The only verified
+candidate capability currently enabled is `0.2.0-qp-3256.5`; this is candidate-only
+support, not a stable-version claim. Updates and resets that use these fields require the
+target block's exact `values.version` to match that candidate. No other version is
+accepted by inference.
+
+The candidate artifact defaults `themeId` to `site-builder` and `backpackAction` to
+`external`; `themeAppearance` is optional and stored as an open map. The operation paths
+below it are therefore leaf patches under `values.internalBlockValues`.
+
+On that candidate, the gate accepts the `themeId` values `site-builder`, `xsolla-pages`
+and `custom`, the existing per-preset leaves under
+`themeAppearance.site-builder.*` / `themeAppearance.xsolla-pages.*`, and Custom V1
+leaves under `themeAppearance.custom`. Custom is an open saved map, but the gate allows
+only these known leaf paths: `version`, `baseThemeId`, the palette colors, the typography
+font/size/weight/line-height fields and the geometry fields. It never replaces the whole
+map. A new Custom map needs `version: 1` and a `baseThemeId` (`site-builder` or
+`xsolla-pages`) in the same operation before appearance leaves can be written. Existing
+unknown fields and other theme entries survive leaf updates and resets. Reset removes
+known palette/type/geometry override leaves only; it cannot remove `version`,
+`baseThemeId`, `themeId`, a Custom parent or the whole appearance map.
+
+Palette values must be literal `#RRGGBB` colors. Typography weights are 400, 500, 600 or
+700; line heights are finite values from 1 to 2 and are rounded to two decimal places
+using JavaScript rounding. Sizes and geometry use the adaptation contract's bounds.
+Font choices are `host-body`, `host-heading`, `host-button`, or a `{"loadedFont": "..."}`
+object containing a 1-64 character safe family name. This syntax check does not
+prove that a font is loaded. Before proposing a `loadedFont`, inspect the target site's
+actual loaded-font evidence; otherwise use a host font token or inherit the base. If both
+`actionText` and `accent` are explicit, the pair must reach 4.5:1 contrast. Omitting
+`actionText` leaves the block's safe derived-color behavior in control.
+
+The candidate also supports the flat `backpackAction` leaf, `external` or `overlay`.
+Omission and reset use the artifact default, `external`. The older nested
+`backpackOverlay` shape and any host ID, loader, authentication, bootstrap or owner lease
+field are not accepted. Selecting `overlay` only chooses the Quests action. Installation,
+controller readiness and authentication belong to the independent owner procedure, not
+this Quests mutation gate.

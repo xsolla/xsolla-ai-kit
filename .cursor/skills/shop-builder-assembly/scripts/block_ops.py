@@ -10,6 +10,7 @@ patch whose parent object is missing.
 
 from __future__ import annotations
 
+import math
 import re
 from urllib.parse import urlparse
 
@@ -21,12 +22,16 @@ QUESTS_MODULE = "_quest-platform_quests-block"
 OPS_BLOCK_MODULES = frozenset({QUESTS_MODULE})
 # add-block --block federated, then one update-block retargeting the wrapper.
 QUESTS_ADD_STRATEGY = "federated_patch"
-# Package version the add strategy retargets to: the latest released (non-prerelease)
-# build on the CDN. 0.1.5 reads the editable override fields (`title`, `description`,
-# `imageUrl`, `imageRef`) in its bundle; the reward text and reward image come from the
-# quest definition and are read-only (READ_ONLY_OVERRIDE_FIELDS). Its default-data.json carries `overrides`, `layout` and `editorPreview`; its CDN files
-# return 200 anonymously.
+# Stable package version used by ordinary creation. Candidate versions must be chosen
+# explicitly and have a separate exact-version capability entry below.
 QUESTS_VERSION = "0.1.5"
+QUESTS_CANDIDATE_VERSION = "0.2.0-qp-3256.5"
+# Capabilities are keyed by exact released artifacts, never inferred by semver.
+# The stable creation default deliberately remains QUESTS_VERSION.
+QUESTS_CAPABILITIES = {
+    QUESTS_VERSION: {"appearance": False, "backpack_action": False},
+    QUESTS_CANDIDATE_VERSION: {"appearance": True, "backpack_action": True},
+}
 QUESTS_CDN_ROOT = "https://cdn.xsolla.net/site-builder-modules/"
 # Editor layer label that UI-added federated blocks carry (top-level `devName`).
 QUESTS_DEV_NAME = "Quests"
@@ -40,6 +45,61 @@ LAYOUT_ENUMS = {
     "cardBackground": {"transparent", "primary", "secondary"},
 }
 LAYOUT_BOOLEANS = {"showHeading", "showDescription", "showImage"}
+THEME_IDS = {"site-builder", "xsolla-pages", "custom"}
+PRESET_FIELDS = {
+    "cardAlign": {"start", "center", "end"},
+    "blockBackground": {"transparent", "primary", "secondary"},
+    "cardBackground": {"transparent", "primary", "secondary"},
+    "buttonStyle": {"primary", "secondary", "tertiary", "theme-default"},
+}
+CUSTOM_PALETTE_FIELDS = {
+    "accent",
+    "sectionBackground",
+    "cardBackground",
+    "primaryText",
+    "secondaryText",
+    "border",
+    "actionText",
+}
+CUSTOM_FONT_FIELDS = {"bodyFont", "headingFont", "buttonFont"}
+CUSTOM_WEIGHT_FIELDS = {"headingWeight", "bodyWeight", "buttonWeight"}
+CUSTOM_LINE_HEIGHT_FIELDS = {
+    "headingLineHeight", "bodyLineHeight", "buttonLineHeight",
+}
+CUSTOM_SIZE_BOUNDS = {
+    "headingSize": (16, 64),
+    "bodySize": (12, 24),
+    "buttonSize": (12, 24),
+}
+CUSTOM_GEOMETRY_BOUNDS = {
+    "maxWidth": (640, 1920),
+    "gutter": (0, 64),
+    "mobileGutter": (0, 64),
+    "sectionPadding": (0, 128),
+    "cardPadding": (8, 64),
+    "gap": (8, 48),
+    "radius": (0, 32),
+    "buttonRadius": (0, 32),
+    "buttonHeight": (32, 64),
+    "railInset": (0, 20),
+}
+CUSTOM_RESETTABLE_FIELDS = {
+    *(f"themeAppearance.custom.palette.{name}" for name in CUSTOM_PALETTE_FIELDS),
+    *(
+        f"themeAppearance.custom.typography.{name}"
+        for name in CUSTOM_FONT_FIELDS
+        | CUSTOM_WEIGHT_FIELDS
+        | CUSTOM_LINE_HEIGHT_FIELDS
+        | set(CUSTOM_SIZE_BOUNDS)
+    ),
+    *(
+        f"themeAppearance.custom.geometry.{name}"
+        for name in set(CUSTOM_GEOMETRY_BOUNDS) | {"columns"}
+    ),
+}
+FONT_TOKEN_CHOICES = {"host-body", "host-heading", "host-button"}
+FONT_FAMILY_RE = re.compile(r"(?=.*[A-Za-z0-9])[A-Za-z0-9 _-]{1,64}")
+HEX6_RE = re.compile(r"#[0-9a-fA-F]{6}")
 OVERRIDE_FIELDS = {
     "title",
     "description",
@@ -76,6 +136,25 @@ QUESTS_PATCHABLE_LEAVES = frozenset(
     {"questIds", "maxQuests", "editorPreview"}
     | {f"layout.{name}" for name in (*LAYOUT_ENUMS, *LAYOUT_BOOLEANS)}
     | {f"overrides.<questId>.{name}" for name in OVERRIDE_FIELDS}
+    | {"themeId", "backpackAction"}
+    | {
+        f"themeAppearance.{theme}.{name}"
+        for theme in ("site-builder", "xsolla-pages")
+        for name in PRESET_FIELDS
+    }
+    | {"themeAppearance.custom.version", "themeAppearance.custom.baseThemeId"}
+    | {f"themeAppearance.custom.palette.{name}" for name in CUSTOM_PALETTE_FIELDS}
+    | {
+        f"themeAppearance.custom.typography.{name}"
+        for name in CUSTOM_FONT_FIELDS
+        | CUSTOM_WEIGHT_FIELDS
+        | CUSTOM_LINE_HEIGHT_FIELDS
+        | set(CUSTOM_SIZE_BOUNDS)
+    }
+    | {
+        f"themeAppearance.custom.geometry.{name}"
+        for name in set(CUSTOM_GEOMETRY_BOUNDS) | {"columns"}
+    }
 )
 QUESTS_MAX_IDS = 24
 # Quest Platform quest ids are UUIDs; a format check stops typos before any write.
@@ -88,7 +167,10 @@ TRANSLATION_KEYS = {"heading"}
 DEFAULT_PARENTS = {("overrides",)}
 
 OPERATIONS = {
-    "add": {"required": {"module", "page"}, "optional": {"index", "values", "translations"}},
+    "add": {
+        "required": {"module", "page"},
+        "optional": {"index", "values", "translations", "version"},
+    },
     "update": {"required": {"block_id"}, "optional": {"values", "translations"}},
     "reset": {"required": {"block_id", "paths"}, "optional": set()},
     "move": {"required": {"block_id", "index"}, "optional": set()},
@@ -130,6 +212,35 @@ def split_key(key: str) -> tuple[str, ...] | None:
         return None
     if key in ("questIds", "maxQuests", "editorPreview"):
         return (key,)
+    if key in ("themeId", "backpackAction"):
+        return (key,)
+    parts = key.split(".")
+    if (
+        len(parts) == 3
+        and parts[0] == "themeAppearance"
+        and parts[1] in PRESET_FIELDS
+        and parts[2] in PRESET_FIELDS
+    ):
+        return ("themeAppearance", parts[1], parts[2])
+    if (
+        len(parts) == 3
+        and parts[:2] == ["themeAppearance", "custom"]
+        and parts[2] in {"version", "baseThemeId"}
+    ):
+        return ("themeAppearance", "custom", parts[2])
+    if len(parts) == 4 and parts[:2] == ["themeAppearance", "custom"]:
+        group, field = parts[2:]
+        if group == "palette" and field in CUSTOM_PALETTE_FIELDS:
+            return ("themeAppearance", "custom", group, field)
+        if group == "typography" and field in (
+            CUSTOM_FONT_FIELDS
+            | CUSTOM_WEIGHT_FIELDS
+            | CUSTOM_LINE_HEIGHT_FIELDS
+            | set(CUSTOM_SIZE_BOUNDS)
+        ):
+            return ("themeAppearance", "custom", group, field)
+        if group == "geometry" and field in set(CUSTOM_GEOMETRY_BOUNDS) | {"columns"}:
+            return ("themeAppearance", "custom", group, field)
     head, _, rest = key.partition(".")
     if head == "layout" and rest in (*LAYOUT_ENUMS, *LAYOUT_BOOLEANS):
         return ("layout", rest)
@@ -242,9 +353,22 @@ def plan_value_patches(
                     "value": {},
                 }
             )
+    def patch_order(key: str) -> tuple[int, int]:
+        if key == "themeAppearance.custom.version":
+            return (0, keys.index(key))
+        if key == "themeAppearance.custom.baseThemeId":
+            return (1, keys.index(key))
+        return (2, keys.index(key))
+
+    ordered_keys = sorted(keys, key=patch_order)
     patches = [
-        {"op": "replace", "key": key, "path": full_path(key), "value": values[key]}
-        for key in keys
+        {
+            "op": "replace",
+            "key": key,
+            "path": full_path(key),
+            "value": _normalize_patch_value(key, values[key]),
+        }
+        for key in ordered_keys
     ]
     return create_parents, patches
 
@@ -257,7 +381,75 @@ def _validate_leaf_value(key: str, value: object) -> str | None:
     segments = split_key(key)
     if segments is None:
         return None
-    if segments == ("questIds",):
+    if segments == ("themeId",):
+        if not isinstance(value, str) or value not in THEME_IDS:
+            return "themeId must use: " + ", ".join(sorted(THEME_IDS))
+    elif segments == ("backpackAction",):
+        if not isinstance(value, str) or value not in {"external", "overlay"}:
+            return "backpackAction must use: external, overlay"
+    elif segments[:2] == ("themeAppearance", "custom"):
+        field = segments[-1]
+        if field == "version":
+            if not _is_int(value) or value != 1:
+                return "themeAppearance.custom.version must be 1"
+        elif field == "baseThemeId":
+            if not isinstance(value, str) or value not in {
+                "site-builder",
+                "xsolla-pages",
+            }:
+                return "themeAppearance.custom.baseThemeId must use: site-builder, xsolla-pages"
+        elif segments[2] == "palette":
+            if not isinstance(value, str) or not HEX6_RE.fullmatch(value):
+                return f"{key} must be a six-digit hex color (#RRGGBB)"
+        elif segments[2] == "typography":
+            if field in CUSTOM_FONT_FIELDS:
+                if isinstance(value, str):
+                    if value not in FONT_TOKEN_CHOICES:
+                        return f"{key} must use a host font token or a loadedFont object"
+                elif not (
+                    isinstance(value, dict)
+                    and set(value) == {"loadedFont"}
+                    and isinstance(value["loadedFont"], str)
+                    and FONT_FAMILY_RE.fullmatch(value["loadedFont"])
+                ):
+                    return (
+                        f"{key} loadedFont must be 1-64 safe font-family characters; "
+                        "verify it is already loaded from site evidence"
+                    )
+            elif field in CUSTOM_WEIGHT_FIELDS:
+                if not _is_int(value) or value not in {400, 500, 600, 700}:
+                    return f"{key} must use weight 400, 500, 600, or 700"
+            elif field in CUSTOM_LINE_HEIGHT_FIELDS:
+                try:
+                    finite = (
+                        not isinstance(value, bool)
+                        and isinstance(value, (int, float))
+                        and math.isfinite(float(value))
+                    )
+                except (OverflowError, ValueError):
+                    finite = False
+                if not finite or not 1 <= value <= 2:
+                    return f"{key} must be a finite number from 1 to 2"
+            elif field in CUSTOM_SIZE_BOUNDS:
+                minimum, maximum = CUSTOM_SIZE_BOUNDS[field]
+                if not _is_int(value) or not minimum <= value <= maximum:
+                    return f"{key} must be an integer from {minimum} to {maximum}"
+        elif segments[2] == "geometry":
+            if field == "columns":
+                if not _is_int(value) or value not in {1, 2, 3, 4}:
+                    return f"{key} must be an integer from 1 to 4"
+            else:
+                minimum, maximum = CUSTOM_GEOMETRY_BOUNDS[field]
+                if not _is_int(value) or not minimum <= value <= maximum:
+                    return f"{key} must be an integer from {minimum} to {maximum}"
+    elif segments[:2] in {
+        ("themeAppearance", "site-builder"),
+        ("themeAppearance", "xsolla-pages"),
+    }:
+        field = segments[2]
+        if not isinstance(value, str) or value not in PRESET_FIELDS[field]:
+            return f"{key} must use: " + ", ".join(sorted(PRESET_FIELDS[field]))
+    elif segments == ("questIds",):
         if (
             not isinstance(value, list)
             or any(not isinstance(item, str) or not item.strip() for item in value)
@@ -323,6 +515,229 @@ def _validate_values(values: object, prefix: str, errors: list[str]) -> None:
         problem = _validate_leaf_value(key, value)
         if problem:
             errors.append(f"{prefix}.values.{key}: {problem}")
+
+
+def _appearance_or_action_key(key: object) -> str | None:
+    segments = split_key(key) if isinstance(key, str) else None
+    if segments is None:
+        return None
+    if segments[0] == "themeId" or segments[0] == "themeAppearance":
+        return "appearance"
+    if segments[0] == "backpackAction":
+        return "backpack_action"
+    return None
+
+
+def _block_version(block: dict) -> str | None:
+    values = block.get("values")
+    version = values.get("version") if isinstance(values, dict) else None
+    return version if isinstance(version, str) else None
+
+
+def _hex_rgb(value: str) -> tuple[float, float, float]:
+    raw = value[1:]
+    return tuple(int(raw[index:index + 2], 16) / 255 for index in (0, 2, 4))
+
+
+def _relative_luminance(color: str) -> float:
+    channels = _hex_rgb(color)
+    linear = tuple(
+        channel / 12.92
+        if channel <= 0.04045
+        else ((channel + 0.055) / 1.055) ** 2.4
+        for channel in channels
+    )
+    return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2]
+
+
+def _contrast_ratio(first: str, second: str) -> float:
+    high, low = sorted((_relative_luminance(first), _relative_luminance(second)), reverse=True)
+    return (high + 0.05) / (low + 0.05)
+
+
+def _custom_state(internal: object) -> object:
+    if not isinstance(internal, dict):
+        return None
+    appearance = internal.get("themeAppearance")
+    if not isinstance(appearance, dict):
+        return None
+    return appearance.get("custom")
+
+
+def _check_capability_and_custom_contract(
+    operation: dict, block: dict | None, prefix: str, errors: list[str]
+) -> None:
+    op = operation.get("op")
+    if op == "add":
+        version = operation.get("version", QUESTS_VERSION)
+        if not isinstance(version, str) or version not in QUESTS_CAPABILITIES:
+            errors.append(
+                f"{prefix}.version must use a verified Quests artifact version: "
+                + ", ".join(QUESTS_CAPABILITIES)
+            )
+        internal = None
+    else:
+        version = _block_version(block or {})
+        internal = ((block or {}).get("values") or {}).get("internalBlockValues")
+
+    raw_entries = operation.get("values")
+    entries = raw_entries if isinstance(raw_entries, dict) else {}
+    raw_paths = operation.get("paths")
+    paths = raw_paths if isinstance(raw_paths, list) else []
+    relevant = [key for key in entries if _appearance_or_action_key(key)]
+    relevant.extend(path for path in paths if _appearance_or_action_key(path))
+    if relevant and op != "add" and block is None:
+        errors.append(
+            f"{prefix}: a backup structure is required to verify the exact "
+            "Quests version capability"
+        )
+        return
+    for key in relevant:
+        capability = _appearance_or_action_key(key)
+        if (
+            not isinstance(version, str)
+            or not QUESTS_CAPABILITIES.get(version, {}).get(capability, False)
+        ):
+            errors.append(
+                f"{prefix}.{key}: unsupported Quests version {version or 'unknown'} "
+                f"for {capability}; verified candidate capability is "
+                f"{QUESTS_CANDIDATE_VERSION}"
+            )
+
+    custom_keys = [
+        key
+        for key in relevant
+        if isinstance(key, str) and key.startswith("themeAppearance.custom.")
+    ]
+    if not custom_keys:
+        return
+
+    custom = _custom_state(internal)
+    value_updates = entries if isinstance(entries, dict) else {}
+    custom_version = value_updates.get(
+        "themeAppearance.custom.version",
+        custom.get("version") if isinstance(custom, dict) else None,
+    )
+    base_theme = value_updates.get(
+        "themeAppearance.custom.baseThemeId",
+        custom.get("baseThemeId") if isinstance(custom, dict) else None,
+    )
+    non_meta_updates = [
+        key
+        for key in custom_keys
+        if key
+        not in {
+            "themeAppearance.custom.version",
+            "themeAppearance.custom.baseThemeId",
+        }
+    ]
+
+    if isinstance(custom, dict):
+        saved_version = custom.get("version")
+        if not _is_int(saved_version) or saved_version != 1:
+            errors.append(
+                f"{prefix}: saved Custom appearance version {saved_version!r} "
+                "is unsupported; no write planned"
+            )
+    elif not (
+        _is_int(value_updates.get("themeAppearance.custom.version"))
+        and value_updates.get("themeAppearance.custom.version") == 1
+        and isinstance(value_updates.get("themeAppearance.custom.baseThemeId"), str)
+        and value_updates.get("themeAppearance.custom.baseThemeId")
+        in {"site-builder", "xsolla-pages"}
+    ):
+        errors.append(
+            f"{prefix}: creating a Custom appearance requires "
+            "themeAppearance.custom.version=1 and baseThemeId in the same operation"
+        )
+
+    if non_meta_updates and (
+        not _is_int(custom_version) or custom_version != 1
+        or not isinstance(base_theme, str) or base_theme not in {"site-builder", "xsolla-pages"}
+    ):
+        errors.append(
+            f"{prefix}: Custom appearance leaves require version 1 and baseThemeId "
+            "site-builder or xsolla-pages"
+        )
+    if (
+        any(key.endswith(".geometry.railInset") for key in custom_keys)
+        and base_theme != "xsolla-pages"
+    ):
+        errors.append(
+            f"{prefix}: themeAppearance.custom.geometry.railInset requires "
+            "baseThemeId xsolla-pages"
+        )
+    if (
+        any(key.endswith(".geometry.columns") for key in custom_keys)
+        and base_theme != "site-builder"
+    ):
+        errors.append(
+            f"{prefix}: themeAppearance.custom.geometry.columns requires "
+            "baseThemeId site-builder"
+        )
+
+    palette = (
+        custom.get("palette")
+        if isinstance(custom, dict) and isinstance(custom.get("palette"), dict)
+        else {}
+    )
+    patch_palette = {
+        key.rsplit(".", 1)[-1]: value
+        for key, value in value_updates.items()
+        if isinstance(key, str) and key.startswith("themeAppearance.custom.palette.")
+    }
+    resulting_palette = {**palette, **patch_palette}
+    if op == "reset":
+        for path in paths:
+            if isinstance(path, str) and path.startswith("themeAppearance.custom.palette."):
+                resulting_palette.pop(path.rsplit(".", 1)[-1], None)
+    palette_touched = any(
+        key.endswith(".palette.accent") or key.endswith(".palette.actionText")
+        for key in custom_keys
+    )
+    if palette_touched and "actionText" in resulting_palette:
+        accent = resulting_palette.get("accent")
+        action_text = resulting_palette.get("actionText")
+        if (
+            isinstance(accent, str)
+            and HEX6_RE.fullmatch(accent)
+            and isinstance(action_text, str)
+            and HEX6_RE.fullmatch(action_text)
+        ):
+            if _contrast_ratio(accent, action_text) < 4.5:
+                errors.append(
+                    f"{prefix}: explicit Custom actionText/accent pair must meet "
+                    "WCAG 4.5:1 contrast"
+                )
+        else:
+            errors.append(
+                f"{prefix}: explicit Custom actionText requires a valid known accent "
+                "in this operation or saved Custom palette"
+            )
+
+    if op == "reset" and "themeAppearance.custom.palette.accent" in paths:
+        if (
+            "themeAppearance.custom.palette.actionText" not in paths
+            and isinstance(palette.get("actionText"), str)
+        ):
+            errors.append(
+                f"{prefix}: reset actionText with accent so an inaccessible "
+                "saved pair cannot remain"
+            )
+
+
+def _normalize_patch_value(key: str, value: object) -> object:
+    segments = split_key(key)
+    if (
+        segments
+        and segments[0] == "themeAppearance"
+        and len(segments) == 4
+        and segments[2] == "typography"
+        and segments[3] in CUSTOM_LINE_HEIGHT_FIELDS
+    ):
+        # Match JavaScript Math.round for the positive validated 1..2 range.
+        return math.floor(float(value) * 100 + 0.5) / 100
+    return value
 
 
 def _validate_translations(translations: object, prefix: str, errors: list[str]) -> None:
@@ -411,6 +826,14 @@ def validate_block_operations(brief: dict, structure: dict | None = None) -> lis
                     f"{prefix}.module must be an operations block: "
                     + ", ".join(sorted(OPS_BLOCK_MODULES))
                 )
+        if op == "add" and "version" in operation and (
+            not isinstance(operation["version"], str)
+            or operation["version"] not in QUESTS_CAPABILITIES
+        ):
+            errors.append(
+                f"{prefix}.version must use a verified Quests artifact version: "
+                + ", ".join(QUESTS_CAPABILITIES)
+            )
         if "page" in operation:
             page = operation["page"]
             if not isinstance(page, str) or not page.startswith("/"):
@@ -447,6 +870,7 @@ def validate_block_operations(brief: dict, structure: dict | None = None) -> lis
                             f"{prefix}.paths entry {path!r}: the quest id "
                             f"{segments[1]!r} is not a quest UUID"
                         )
+        operation_block = None
         if "block_id" in operation:
             block_id = operation["block_id"]
             if not isinstance(block_id, str) or not block_id:
@@ -457,6 +881,9 @@ def validate_block_operations(brief: dict, structure: dict | None = None) -> lis
                     errors.append(f"{prefix}.block_id {block_id} is not in the backup structure")
                 elif not _is_quests_block(found[2]):
                     errors.append(f"{prefix}.block_id {block_id} is not a Quests block")
+                else:
+                    operation_block = found[2]
+        _check_capability_and_custom_contract(operation, operation_block, prefix, errors)
     if errors:
         return errors
     _check_conflicts(operations, errors)
@@ -646,6 +1073,10 @@ def _reset_path(path: object) -> tuple[str, ...] | None:
         return None
     segments = split_key(path)
     if segments is not None:
+        if segments == ("themeId",):
+            return None
+        if path.startswith("themeAppearance.custom.") and path not in CUSTOM_RESETTABLE_FIELDS:
+            return None
         return segments
     head, _, quest_id = path.partition(".")
     if head == "overrides" and quest_id:
@@ -682,7 +1113,7 @@ def plan_block_operations(brief: dict, structure: dict) -> list[dict]:
                     "block_ref": ref,
                     "module": operation["module"],
                     "strategy": QUESTS_ADD_STRATEGY,
-                    "version": QUESTS_VERSION,
+                    "version": operation.get("version", QUESTS_VERSION),
                     "page": operation["page"],
                     "page_id": page.get("_id"),
                     "index": position,

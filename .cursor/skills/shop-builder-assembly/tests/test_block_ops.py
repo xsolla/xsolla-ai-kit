@@ -82,6 +82,22 @@ def add_op(**overrides: object) -> dict:
     return op
 
 
+def candidate_quests_block(internal: dict | None = None, version: str = "0.2.0-qp-3256.5") -> dict:
+    block = quests_block("q1", internal or {"themeId": "site-builder", "backpackAction": "external"})
+    block["values"].update(
+        version=version,
+        host=f"https://cdn.xsolla.net/site-builder-modules/{QUESTS}/{version}/",
+    )
+    return block
+
+
+def candidate_structure(internal: dict | None = None, version: str = "0.2.0-qp-3256.5") -> dict:
+    structure = make_structure()
+    page = structure["pages"][0]
+    page["blocks"] = [candidate_quests_block(internal, version) if b.get("_id") == "q1" else b for b in page["blocks"]]
+    return structure
+
+
 class BlockOpsTests(unittest.TestCase):
     def errors(self, *operations: dict, structure: dict | None = None) -> list[str]:
         return block_ops.validate_block_operations(
@@ -97,6 +113,204 @@ class BlockOpsTests(unittest.TestCase):
             add_op(values={"layout.nope": 1}), add_op(values={"hidden": True})
         )
         self.assertEqual(2, sum("not a patchable leaf" in e for e in errors), errors)
+
+    def test_candidate_capability_is_explicit_and_keeps_stable_creation_pin(self) -> None:
+        self.assertEqual("0.1.5", block_ops.QUESTS_VERSION)
+        self.assertTrue(self.errors(add_op(values={"themeId": "custom"})))
+        errors = self.errors(
+            add_op(version="0.2.0-qp-3256.5", values={"themeId": "custom"})
+        )
+        self.assertEqual([], errors, errors)
+        candidate_plan = block_ops.plan_block_operations(
+            ops_brief([add_op(version="0.2.0-qp-3256.5", values={"themeId": "custom"})]),
+            make_structure(),
+        )
+        self.assertEqual("0.2.0-qp-3256.5", candidate_plan[0]["version"])
+        self.assertTrue(self.errors(add_op(version="0.2.0-qp-3256.6", values={"themeId": "custom"})))
+
+    def test_preset_selection_changes_only_the_active_theme_leaf(self) -> None:
+        internal = {
+            "themeId": "custom",
+            "themeAppearance": {
+                "custom": {"version": 1, "baseThemeId": "site-builder", "palette": {"accent": "#123456"}},
+                "site-builder": {"cardAlign": "center"},
+                "xsolla-pages": {"cardAlign": "end"},
+                "future-theme": {"future": True},
+            },
+            "other": {"keep": True},
+        }
+        plan = block_ops.plan_block_operations(
+            ops_brief([{"op": "update", "block_id": "q1", "values": {"themeId": "xsolla-pages"}}]),
+            candidate_structure(internal),
+        )
+        patches = plan[0]["patches"]
+        self.assertEqual(1, len(patches))
+        self.assertEqual(["values", "internalBlockValues", "themeId"], patches[0]["path"])
+
+    def test_candidate_appearance_validation_and_path_mapping(self) -> None:
+        brief = ops_brief([{
+            "op": "update", "block_id": "q1", "values": {
+                "themeId": "custom",
+                "themeAppearance.custom.version": 1,
+                "themeAppearance.custom.baseThemeId": "xsolla-pages",
+                "themeAppearance.custom.palette.accent": "#000000",
+                "themeAppearance.custom.typography.headingLineHeight": 1.239,
+                "themeAppearance.custom.geometry.railInset": 0,
+                "backpackAction": "overlay",
+            },
+        }])
+        structure = candidate_structure()
+        plan = block_ops.plan_block_operations(brief, structure)
+        patches = plan[0]["patches"]
+        self.assertEqual(
+            ["themeAppearance.custom.version", "themeAppearance.custom.baseThemeId"],
+            [patch["key"] for patch in patches[:2]],
+        )
+        self.assertEqual(
+            [
+                ["values", "internalBlockValues", "themeAppearance"],
+                ["values", "internalBlockValues", "themeAppearance", "custom"],
+                ["values", "internalBlockValues", "themeAppearance", "custom", "geometry"],
+                ["values", "internalBlockValues", "themeAppearance", "custom", "palette"],
+                ["values", "internalBlockValues", "themeAppearance", "custom", "typography"],
+            ],
+            [parent["path"] for parent in plan[0]["create_parents"]],
+        )
+        self.assertEqual(
+            ["values", "internalBlockValues", "themeAppearance", "custom", "version"],
+            next(p["path"] for p in patches if p["key"] == "themeAppearance.custom.version"),
+        )
+        self.assertEqual(
+            ["values", "internalBlockValues", "themeAppearance", "custom", "palette", "accent"],
+            next(p["path"] for p in patches if p["key"] == "themeAppearance.custom.palette.accent"),
+        )
+        line = next(p for p in patches if p["key"] == "themeAppearance.custom.typography.headingLineHeight")
+        self.assertEqual(1.24, line["value"])
+        self.assertTrue(any(p["key"] == "backpackAction" and p["value"] == "overlay" for p in patches))
+
+    def test_custom_invalid_values_and_unsupported_versions_fail_preflight(self) -> None:
+        cases = [
+            ({"themeId": "unknown"}, "themeId"),
+            ({"themeAppearance.custom.version": 2, "themeAppearance.custom.baseThemeId": "site-builder"}, "version"),
+            ({"themeAppearance.custom.version": 1, "themeAppearance.custom.baseThemeId": "site-builder", "themeAppearance.custom.palette.accent": "red"}, "hex"),
+            ({"themeAppearance.custom.version": 1, "themeAppearance.custom.baseThemeId": "site-builder", "themeAppearance.custom.typography.bodyFont": {"loadedFont": "bad; font"}}, "loadedFont"),
+            ({"themeAppearance.custom.version": 1, "themeAppearance.custom.baseThemeId": "site-builder", "themeAppearance.custom.typography.headingWeight": True}, "headingWeight"),
+            ({"themeAppearance.custom.version": 1, "themeAppearance.custom.baseThemeId": "site-builder", "themeAppearance.custom.geometry.railInset": 1}, "railInset"),
+            ({"themeAppearance.custom.version": 1, "themeAppearance.custom.baseThemeId": "xsolla-pages", "themeAppearance.custom.geometry.columns": 2}, "columns"),
+            ({"backpackAction": "internal"}, "backpackAction"),
+        ]
+        for values, key in cases:
+            with self.subTest(key=key, values=values):
+                errors = block_ops.validate_block_operations(
+                    ops_brief([{"op": "update", "block_id": "q1", "values": values}]),
+                    candidate_structure(),
+                )
+                self.assertTrue(any(key in error for error in errors), errors)
+
+        unsupported = candidate_structure(version="0.2.0-qp-3256.4")
+        errors = block_ops.validate_block_operations(
+            ops_brief([{"op": "update", "block_id": "q1", "values": {"themeId": "custom"}}]),
+            unsupported,
+        )
+        self.assertTrue(any("unsupported" in error.lower() for error in errors), errors)
+
+    def test_low_contrast_action_pair_is_rejected_and_omission_is_allowed(self) -> None:
+        prefix = "themeAppearance.custom."
+        valid = {
+            prefix + "version": 1,
+            prefix + "baseThemeId": "site-builder",
+            prefix + "palette.accent": "#ffffff",
+            prefix + "palette.actionText": "#ffffff",
+        }
+        errors = block_ops.validate_block_operations(
+            ops_brief([{"op": "update", "block_id": "q1", "values": valid}]), candidate_structure()
+        )
+        self.assertTrue(any("contrast" in e.lower() for e in errors), errors)
+        valid.pop(prefix + "palette.actionText")
+        self.assertEqual([], block_ops.validate_block_operations(
+            ops_brief([{"op": "update", "block_id": "q1", "values": valid}]), candidate_structure()
+        ))
+
+    def test_custom_enum_bounds_font_syntax_and_javascript_rounding(self) -> None:
+        prefix = "themeAppearance.custom."
+        base = {prefix + "version": 1, prefix + "baseThemeId": "site-builder"}
+        valid_values = {
+            **base,
+            prefix + "typography.bodyFont": "host-body",
+            prefix + "typography.headingFont": {"loadedFont": "Inter Display_2"},
+            prefix + "typography.buttonFont": "host-button",
+            prefix + "typography.headingWeight": 400,
+            prefix + "typography.bodyWeight": 500,
+            prefix + "typography.buttonWeight": 700,
+            prefix + "typography.headingLineHeight": 1.125,
+            prefix + "typography.bodyLineHeight": 1,
+            prefix + "typography.buttonLineHeight": 2,
+            prefix + "typography.headingSize": 64,
+            prefix + "typography.bodySize": 12,
+            prefix + "typography.buttonSize": 24,
+            prefix + "geometry.maxWidth": 1920,
+            prefix + "geometry.gutter": 0,
+            prefix + "geometry.mobileGutter": 64,
+            prefix + "geometry.sectionPadding": 128,
+            prefix + "geometry.cardPadding": 8,
+            prefix + "geometry.gap": 48,
+            prefix + "geometry.radius": 0,
+            prefix + "geometry.buttonRadius": 32,
+            prefix + "geometry.buttonHeight": 64,
+            prefix + "geometry.columns": 4,
+        }
+        plan = block_ops.plan_block_operations(
+            ops_brief([{"op": "update", "block_id": "q1", "values": valid_values}]),
+            candidate_structure(),
+        )
+        planned = {patch["key"]: patch["value"] for patch in plan[0]["patches"] if patch.get("key")}
+        self.assertEqual(1.13, planned[prefix + "typography.headingLineHeight"])
+        self.assertEqual(1.0, planned[prefix + "typography.bodyLineHeight"])
+        self.assertEqual(2.0, planned[prefix + "typography.buttonLineHeight"])
+
+        invalid = [
+            ("typography.headingWeight", 600.0), ("typography.bodyWeight", True),
+            ("typography.buttonWeight", 300), ("typography.headingLineHeight", 0.99),
+            ("typography.bodyLineHeight", 2.01), ("typography.buttonLineHeight", float("inf")),
+            ("typography.headingSize", 15), ("typography.bodySize", 25),
+            ("typography.buttonSize", 11), ("typography.bodyFont", "system"),
+            ("typography.buttonFont", {"loadedFont": ""}),
+            ("typography.buttonFont", {"loadedFont": "Inter;url(x)"}),
+            ("geometry.maxWidth", 639), ("geometry.gutter", 65),
+            ("geometry.mobileGutter", -1), ("geometry.sectionPadding", 129),
+            ("geometry.cardPadding", 7), ("geometry.gap", 7),
+            ("geometry.radius", 33), ("geometry.buttonRadius", -1),
+            ("geometry.buttonHeight", 65), ("geometry.columns", 5),
+        ]
+        for leaf, value in invalid:
+            with self.subTest(leaf=leaf, value=value):
+                values = {**base, prefix + leaf: value}
+                errors = block_ops.validate_block_operations(
+                    ops_brief([{"op": "update", "block_id": "q1", "values": values}]),
+                    candidate_structure(),
+                )
+                self.assertTrue(errors, (leaf, value))
+
+    def test_custom_reset_only_removes_known_override_leaves(self) -> None:
+        internal = {
+            "themeId": "custom",
+            "backpackAction": "overlay",
+            "unknown": {"keep": True},
+            "themeAppearance": {
+                "custom": {"version": 1, "baseThemeId": "site-builder", "future": {"keep": 1}, "palette": {"accent": "#112233", "futureColor": "keep"}},
+                "xsolla-pages": {"cardAlign": "center"},
+            },
+        }
+        brief = ops_brief([{"op": "reset", "block_id": "q1", "paths": ["themeAppearance.custom.palette.accent"]}])
+        plan = block_ops.plan_block_operations(brief, candidate_structure(internal))
+        patch = plan[0]["patches"][0]
+        self.assertEqual("remove", patch["op"])
+        self.assertEqual(["values", "internalBlockValues", "themeAppearance", "custom", "palette", "accent"], patch["path"])
+        for path in ("themeAppearance", "themeAppearance.custom", "themeAppearance.custom.version", "themeAppearance.custom.baseThemeId", "themeId"):
+            errors = block_ops.validate_block_operations(
+                ops_brief([{"op": "reset", "block_id": "q1", "paths": [path]}]), candidate_structure(internal)
+            )
+            self.assertTrue(errors, (path, errors))
 
     def test_limits_questids_and_maxquests(self) -> None:
         too_many = [f"{i:08x}-1111-4111-8111-111111111111" for i in range(25)]
