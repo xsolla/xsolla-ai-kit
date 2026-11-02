@@ -73,7 +73,8 @@ until [expert-review.md](references/expert-review.md) records approval.
    its sections in order, the products and offers in each, the visual direction (palette,
    backgrounds, artwork and where it came from), exact block removals, the template
    sections each new page comes with that are removed (`template_removals`), catalog
-   mappings, a preview link for the visual review that anyone with the link can open, and
+   mappings (for an `__all__` section, every enabled item it pulls in, with test or
+   leftover entries flagged so the developer can disable them first), a preview link for the visual review that anyone with the link can open, and
    what is still to connect, with a desktop and mobile
    [mockup](references/visual-style.md#mockup-for-the-approval). Call each section by its block name in the
    [block catalog](references/block-catalog.md), such as Offer chain or Reward system,
@@ -162,10 +163,12 @@ If the CLI lacks an operation, stop it, record the gap, and file a CLI/API ticke
   ([test findings](references/test-findings.md#cli-gaps-found)): report it once and go
   on, without retrying. For the preview, open it in the browser as the visual review
   describes.
-- Read the site's sign-in: `get-landing` shows `auth.loginId`. Check that this Login
-  project belongs to the same store project (`login-setup`). If it belongs to another
-  project, or to none, report it in the handoff as a fix in Publisher Account before
-  publishing: players would sign in through the wrong Login project. Never change it.
+- Read the site's sign-in: `auth` in `get-structure` or `get-landing`. With an
+  `auth.loginId`, check in Publisher Account, or with a read-only command from
+  `xsolla login --help`, that this Login project is linked to the same store project. If
+  it belongs to another project, or to none, report it in the handoff as a fix in
+  Publisher Account before publishing: players would sign in through the wrong Login
+  project. Never change it.
 - The visual review is the definition of done. Before the handoff, screenshot every page
   at 1440 and 390 px, compare with the approved plan and the render rules, fix, and look
   again until the checklist passes:

@@ -63,7 +63,8 @@ export XSOLLA_PROJECT_API_KEY=<your API key>
   Admin API, verify the current request schema with the `search_xsolla_sources` tool —
   this skill links the right operations, but field-level schemas must come from live
   docs, not from this file. If the MCP is unavailable, fetch the linked
-  developers.xsolla.com pages.
+  developers.xsolla.com pages, and say in your reply that the schemas came from the
+  docs pages, not the MCP.
 
 ## Steps
 
@@ -128,6 +129,11 @@ export XSOLLA_PROJECT_API_KEY=<your API key>
   example, with `limits.per_user` total 1 so it can't be bought twice.
 - **Inconsistent currencies break the catalog.** Different currency sets or default
   currencies across items cause fallback prices or `price: null` on the storefront.
+- **Bundles missing from a read-back.** Listing a group's items doesn't return its
+  bundles: read bundles back with the bundle list (`Get list of bundles`, or the CLI's
+  bundles-by-group command) before deciding one is missing or hidden.
+- **Products without pictures.** Give every item, pack and bundle its own image, from the
+  game's art the developer approved. List the products still without one in the handoff.
 - **Wrong webhook set.** Accounts registered after 2025-01-22 get combined
   `order_paid`/`order_canceled`; older accounts also receive separate
   `payment`/`refund` and must process them all.

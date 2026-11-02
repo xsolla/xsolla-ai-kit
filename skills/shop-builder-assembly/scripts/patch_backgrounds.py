@@ -109,6 +109,39 @@ def site_gradient_shapes(blocks: dict[str, dict]) -> set:
     return shapes
 
 
+def is_opaque(color: str) -> bool:
+    """True only for a color that is clearly opaque: hex without alpha or with full alpha,
+    `rgb()`, or `rgba()` with alpha 1. Anything else isn't judged."""
+    value = color.strip().lower().replace(" ", "")
+    if value.startswith("#") and all(c in "0123456789abcdef" for c in value[1:]):
+        digits = value[1:]
+        if len(digits) in (3, 6):
+            return True
+        if len(digits) == 4:
+            return digits[3] == "f"
+        if len(digits) == 8:
+            return digits[6:] == "ff"
+        return False
+    if value.startswith("rgb(") and value.endswith(")"):
+        return True
+    if value.startswith("rgba(") and value.endswith(")"):
+        parts = value[5:-1].split(",")
+        try:
+            return len(parts) == 4 and float(parts[3]) >= 1
+        except ValueError:
+            return False
+    return False
+
+
+def keeps_image(fix: dict, fixes: list[dict], background: dict) -> bool:
+    """Whether the block still has an image after this batch of fixes."""
+    image = background.get("img")
+    for other in fixes:
+        if other["block_id"] == fix["block_id"] and other["leaf"] == "img":
+            image = other["value"]
+    return isinstance(image, str) and bool(image)
+
+
 def refused_fixes(
     fixes: list[dict], blocks: dict[str, dict], created: frozenset, assets: set[str]
 ) -> list[str]:
@@ -132,6 +165,15 @@ def refused_fixes(
             errors.append(
                 f"{block_id} gradient doesn't match the shape of a gradient on the site; "
                 "leave gradients to the Site Builder editor"
+            )
+        elif (
+            fix["leaf"] == "color"
+            and is_opaque(fix["value"])
+            and keeps_image(fix, fixes, values["background"])
+        ):
+            errors.append(
+                f"{block_id} color {fix['value']} is opaque and would hide the block's "
+                "image; use a color with alpha below 1, or clear the image in the same fix"
             )
     return errors
 
