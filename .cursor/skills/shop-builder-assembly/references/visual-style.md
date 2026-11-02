@@ -132,23 +132,44 @@ below against the result.
 
 ## Visual review before handoff
 
-After the theme, artwork and catalog are applied, open the preview at a desktop and a mobile
-width and look at screenshots of every page. Fix what they show, then look again. Check:
+The review is the definition of done: without desktop and mobile screenshots of every page,
+the site isn't reviewed.
+
+1. **Open the preview.** When `enable-preview` or `preview-link` fails (a known CLI gap,
+   see [test-findings.md](test-findings.md)), use the browser the agent has that is signed
+   in to Publisher Account: open the site's editor, press Preview, and load the preview it
+   opens. Close the editor tab before the next CLI write. If the preview session has
+   expired and can't be started, ask the developer once to press Preview in the editor:
+   the only question allowed between the yes and the handoff.
+2. **Screenshot every page at 1440 and 390 px.** A browser window often won't shrink below
+   desktop width: load the preview in an iframe of that width, from a page on the preview's
+   own origin.
+3. **Compare** with the approved plan and its mockup, and with the render rules above. Fix,
+   then look again, until the checklist passes. If a page doesn't render at all, hide its
+   blocks one by one to find the one that breaks it.
+4. **Hand off** the final screenshots at both widths with the preview and editor links.
+
+Check:
 
 - background transitions and product-image seams;
 - one font family per role, and readable contrast over every image;
 - mobile crops of backgrounds, title wrapping, card rows that look unfinished, button and
   price alignment, horizontal overflow;
+- the header logo and navigation on phones;
 - the hero's call to action, and that a sticky header doesn't cover a section heading after
   an in-page scroll;
+- every section filled with the game's own content: no template leftovers such as stock
+  images, demo packs, system requirements or placeholder text;
 - copy that promises something real: a login prompt names a benefit, and "see more" appears
   only when more exists.
 
-The developer's yes to the plan covers only background fixes on blocks this assembly
-created, applied with `scripts/patch_backgrounds.py` (see `SKILL.md`). An image must be one
-uploaded to the site with `upload-asset`, and a gradient must have the shape of one already
-on the site. Show anything else the review finds, such as theme, font, wording or layout
-fixes, and ask before changing it.
-If the preview can't be opened, say the visual review wasn't done and why: the CLI preview
-permission error in [test-findings.md](test-findings.md), or a site without the common
-layout, which private preview doesn't open. Don't report the site as reviewed.
+The developer's yes covers fixes that bring the site to what the plan showed: background
+fixes on blocks this assembly created, applied with `scripts/patch_backgrounds.py` (see
+`SKILL.md`), and theme, font and wording fixes back to the approved values. An image must be
+one uploaded to the site with `upload-asset`, and a gradient must have the shape of one
+already on the site. Show a fix that goes beyond the plan, such as new wording, another font
+or a layout change, and ask before making it.
+
+If the preview can't be opened, say the visual review wasn't done and why: no browser
+signed in to Publisher Account, or a site without the common layout, which private preview
+doesn't open. Don't report the site as reviewed.

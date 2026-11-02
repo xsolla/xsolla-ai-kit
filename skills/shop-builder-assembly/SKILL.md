@@ -160,14 +160,18 @@ If the CLI lacks an operation, stop it, record the gap, and file a CLI/API ticke
 - When `verify-website` fails with `draftPagesIds must be an array`, or preview fails
   with `admin_privileges_requred`, it is a known CLI gap
   ([test findings](references/test-findings.md#cli-gaps-found)): report it once and go
-  on. Don't retry it or work around it.
+  on, without retrying. For the preview, open it in the browser as the visual review
+  describes.
 - Read the site's sign-in: `get-landing` shows `auth.loginId`. Check that this Login
   project belongs to the same store project (`login-setup`). If it belongs to another
   project, or to none, report it in the handoff as a fix in Publisher Account before
   publishing: players would sign in through the wrong Login project. Never change it.
-- Before the first handoff, review desktop and mobile screenshots of every page and fix
-  what they show: [visual style](references/visual-style.md#visual-review-before-handoff).
-  If the preview doesn't open, say the review wasn't done and why.
+- The visual review is the definition of done. Before the handoff, screenshot every page
+  at 1440 and 390 px, compare with the approved plan and the render rules, fix, and look
+  again until the checklist passes:
+  [visual style](references/visual-style.md#visual-review-before-handoff). Put the final
+  screenshots in the handoff. If the preview doesn't open, say the review wasn't done
+  and why; never call the site reviewed without them.
 - Report skips, interventions, and gaps; state that the site is **not published**.
 - If the plan adds the Custom code (`html`) block, tell the user it is added empty and
   hidden: they paste their code and make the block visible in the Site Builder editor.
