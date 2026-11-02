@@ -613,6 +613,10 @@ def _check_capability_and_custom_contract(
         return
 
     custom = _custom_state(internal)
+    if op == "reset" and custom is None:
+        # Removing a missing known override is a safe no-op; no Custom schema is
+        # being created or interpreted by this operation.
+        return
     value_updates = entries if isinstance(entries, dict) else {}
     custom_version = value_updates.get(
         "themeAppearance.custom.version",

@@ -395,6 +395,16 @@ class BlockOpsApplyTests(BlockOpsApplyBase):
         self.assertNotIn("backpackAction", saved)
         self.assertEqual([], self.verify(plan, refs))
 
+    def test_reset_of_absent_custom_leaf_is_a_noop(self) -> None:
+        block = self.site.find("q1")
+        block["values"]["version"] = "0.2.0-qp-3256.5"
+        plan, refs = self.apply([{
+            "op": "reset", "block_id": "q1",
+            "paths": ["themeAppearance.custom.palette.accent"],
+        }])
+        self.assertEqual([], self.site.write_calls())
+        self.assertEqual([], self.verify(plan, refs))
+
     def test_invalid_candidate_preflight_makes_zero_mutating_calls(self) -> None:
         block = self.site.find("q1")
         block["values"]["version"] = "0.2.0-qp-3256.4"
