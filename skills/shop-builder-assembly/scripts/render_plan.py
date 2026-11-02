@@ -13,7 +13,12 @@ from pathlib import Path
 
 sys.dont_write_bytecode = True  # keep the installed skill folder clean
 
-from block_ops import QUESTS_VERSION, block_fingerprints, plan_block_operations
+from block_ops import (
+    QUESTS_CANDIDATE_VERSION,
+    QUESTS_VERSION,
+    block_fingerprints,
+    plan_block_operations,
+)
 from validate_shop_brief import load_brief, validate
 
 PRESET_PAGES = {
@@ -538,6 +543,26 @@ def build_block_operations_plan(brief: dict, current_structure: object | None) -
         if operation.get("op") == "add":
             versions[f"op:{index}"] = operation.get("version", QUESTS_VERSION)
 
+    warnings = [
+        f"block_operations[{item['op_index']}] "
+        + ", ".join(entry["key"] for entry in item["texts"])
+        + f": {item['note']}"
+        for item in items
+        if item["type"] == "block_card_text"
+    ]
+    for target, version in versions.items():
+        if version != QUESTS_CANDIDATE_VERSION:
+            continue
+        target_label = (
+            f"add operation {target.removeprefix('op:')}"
+            if target.startswith("op:")
+            else f"block {target}"
+        )
+        warnings.append(
+            f"{target_label} uses Quests pre-release build {version}; review this "
+            "version before approving the plan."
+        )
+
     plan = {
         "version": 2,
         "mode": "block_operations",
@@ -571,13 +596,7 @@ def build_block_operations_plan(brief: dict, current_structure: object | None) -
         "brief_sha256": canonical_hash(brief),
         "implemented_phases": ["block_operations"],
         "unsupported_phases": [],
-        "warnings": [
-            f"block_operations[{item['op_index']}] "
-            + ", ".join(entry["key"] for entry in item["texts"])
-            + f": {item['note']}"
-            for item in items
-            if item["type"] == "block_card_text"
-        ],
+        "warnings": warnings,
     }
     plan["confirmation_id"] = "sha256:" + canonical_hash(plan)[:12]
     return plan
@@ -613,9 +632,6 @@ def build_plan(
             "merchant_id": brief["project"]["merchant_id"],
             "project_id": brief["project"]["project_id"],
             "environment": brief["project"]["environment"],
-            "test_project_acknowledged": brief["project"].get(
-                "test_project_acknowledged", False
-            ),
             "site_name": brief["site"]["name"],
             "slug": brief["site"]["slug"],
         },

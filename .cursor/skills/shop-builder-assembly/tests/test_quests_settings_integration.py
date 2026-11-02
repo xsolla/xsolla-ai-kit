@@ -98,6 +98,14 @@ class QuestsSettingsIntegrationTests(unittest.TestCase):
         self.assertEqual(
             {"quests-1": "0.2.2-qp-3256.0"}, plan["target"]["quests_versions"]
         )
+        self.assertTrue(
+            any(
+                "pre-release build" in warning
+                and "0.2.2-qp-3256.0" in warning
+                for warning in plan["warnings"]
+            ),
+            plan["warnings"],
+        )
         self.assertTrue(plan["requires_confirmation"])
         self.assertEqual("themeAppearance.site-builder.cardAlign", plan["block_operations"][0]["patches"][0]["key"])
 
