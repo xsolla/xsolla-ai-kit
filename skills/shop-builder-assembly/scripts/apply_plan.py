@@ -18,6 +18,7 @@ from pathlib import Path
 
 sys.dont_write_bytecode = True  # keep the installed skill folder clean
 
+import cli_environment
 from preflight import LAYOUT_SKIPPED, cli_has_command
 from render_plan import (
     COMMON_LAYOUT,
@@ -81,7 +82,7 @@ def refresh_supported_login() -> None:
         try:
             # Login messages go to stderr so stdout stays the JSON report.
             result = subprocess.run(
-                ["xsolla", "auth", "login"],
+                cli_environment.command("auth", "login"),
                 check=False,
                 stdout=sys.stderr,
                 timeout=LOGIN_TIMEOUT_SECONDS,
@@ -152,7 +153,7 @@ def login_once(detail: str) -> None:
 def run_json(*args: str) -> object:
     if any(arg == "--force" or arg.startswith("--force=") for arg in args):
         raise RuntimeError("--force is prohibited in Shop Builder assembly")
-    command = ["xsolla", *args, "--json"]
+    command = cli_environment.command(*args, "--json")
     rate_limit_attempt = 0
     while True:
         # The CLI writes UTF-8; without an explicit encoding Windows decodes with
@@ -278,18 +279,53 @@ def page_block_ids(value: dict, paths: list[str]) -> dict[str, list[str]]:
     return result
 
 
-def check_cli_context(expected: dict) -> None:
-    """Stop unless the CLI targets the brief's merchant and project outside sandbox."""
-    config = data(run_json("config", "list"))
-    if not isinstance(config, dict):
-        raise RuntimeError("xsolla config list returned an unexpected shape")
-    if config.get("merchant_id") != expected["merchant_id"]:
-        raise RuntimeError("CLI merchant_id does not match the shop brief")
-    if config.get("project_id") != expected["project_id"]:
-        raise RuntimeError("CLI project_id does not match the shop brief")
-    if config.get("sandbox") is True:
-        raise RuntimeError("CLI sandbox must be disabled for Shop Builder")
+def validate_run_report_context(report: dict | None, expected: dict) -> None:
+    """Reject a report whose recorded project context conflicts with this brief."""
+    if report is None or "context" not in report:
+        return
+    context = report["context"]
+    if not isinstance(context, dict):
+        raise RuntimeError("the run report has an invalid CLI context")
+    for key in ("merchant_id", "project_id", "environment"):
+        if key in context and context[key] != expected[key]:
+            raise RuntimeError(
+                f"the run report {key} does not match the shop brief. "
+                "Nothing was written; show the developer the current plan and ask again"
+            )
+    if "sandbox" in context and context["sandbox"] is not False:
+        raise RuntimeError(
+            "the run report was created with CLI sandbox enabled. "
+            "Nothing was written; rerun preflight and review the current plan"
+        )
+    if "cli_environment" in context:
+        environment = context["cli_environment"]
+        if environment is not None and (
+            not isinstance(environment, str) or not environment
+        ):
+            raise RuntimeError("the run report has an invalid selected CLI environment")
+
+
+def check_cli_context(expected: dict, report: dict | None = None) -> dict:
+    """Select the brief's sandbox-off CLI context and bind it to any run report."""
+    selected = cli_environment.select(expected, run_json, switch=False)
+    config = selected["config"]
     RUN_AUTH["context"] = cli_context(config)
+    if report is not None:
+        report_context = report.get("context")
+        if isinstance(report_context, dict) and "cli_environment" in report_context:
+            if report_context["cli_environment"] != selected["environment"]:
+                raise RuntimeError(
+                    "the selected CLI environment differs from the earlier run report. "
+                    "Nothing was written; rerun preflight and show the current plan"
+                )
+    return {
+        "merchant_id": expected["merchant_id"],
+        "project_id": expected["project_id"],
+        "environment": expected["environment"],
+        "sandbox": False,
+        "cli_environment": selected["environment"],
+        "sandbox_switched_off": selected["sandbox_switched_off"],
+    }
 
 
 def editor_url(merchant_id: object, project_id: object, slug: object) -> str:
@@ -1572,16 +1608,17 @@ def main() -> int:
         approved = load_approved_plan(args.approved_plan)
         report = load_run_report(args.run_report) if args.run_report else None
         check_approval_identity(args, approved, report)
-        if "block_operations" in brief and report is not None:
-            raise RuntimeError("Quests block operations do not accept an earlier run report")
         errors = validate(brief)
         if errors:
             raise RuntimeError("invalid shop brief: " + "; ".join(errors))
+        expected = brief["project"]
+        validate_run_report_context(report, expected)
         created = created_block_ids(report) if report else frozenset()
         run_preflight(args.brief, args.approved_test_projects)
 
-        expected = brief["project"]
-        check_cli_context(expected)
+        run_context = check_cli_context(expected, report)
+        if "block_operations" in brief and report is not None:
+            raise RuntimeError("Quests block operations do not accept an earlier run report")
 
         slug = brief["site"]["slug"]
         existed = website_exists(run_json("shopbuilder", "list-websites"), slug)
@@ -1616,6 +1653,7 @@ def main() -> int:
                         "status": "block-operations-applied",
                         "confirmation_id": plan["confirmation_id"],
                         "approved_confirmation_id": approved_id,
+                        "context": run_context,
                         "slug": slug,
                         "landing_id": landing_id,
                         "editor_url": editor_url(
@@ -1681,6 +1719,7 @@ def main() -> int:
                         "status": "bootstrap-complete",
                         "confirmation_id": plan["confirmation_id"],
                         "approved_confirmation_id": approved_id,
+                        "context": run_context,
                         "slug": slug,
                         "landing_id": landing_id,
                         "created_pages": created_pages,
@@ -1709,6 +1748,7 @@ def main() -> int:
                         "status": "page-phase-complete",
                         "confirmation_id": plan["confirmation_id"],
                         "approved_confirmation_id": approved_id,
+                        "context": run_context,
                         "slug": slug,
                         "landing_id": landing_id,
                         "created_pages": created_pages,
@@ -1739,6 +1779,7 @@ def main() -> int:
                     "status": "implemented-phases-applied",
                     "confirmation_id": plan["confirmation_id"],
                     "approved_confirmation_id": approved_id,
+                    "context": run_context,
                     "slug": slug,
                     "landing_id": landing_id,
                     "layout_id": layout_id,

@@ -7,6 +7,7 @@ import copy
 import importlib.util
 import io
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -18,8 +19,16 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 
 import render_plan  # noqa: E402
+import preflight  # noqa: E402
 import verify_structure  # noqa: E402
-from block_ops import OPERATIONS, QUESTS_MODULE, QUESTS_VERSION  # noqa: E402
+import backup_shop  # noqa: E402
+import cli_environment  # noqa: E402
+from block_ops import (  # noqa: E402
+    OPERATIONS,
+    QUESTS_CANDIDATE_VERSION,
+    QUESTS_MODULE,
+    QUESTS_VERSION,
+)
 
 
 def load_apply_plan():
@@ -741,6 +750,336 @@ class BlockOpsApplyTests(BlockOpsApplyBase):
 
 
 TITLE_TEXT_ID = "L:00000000-0000-0000-0000-0000000000a1"
+
+
+class FakeApplySubprocessBoundary:
+    """Fake only the external CLI/process boundary; keep the real apply flow."""
+
+    def __init__(self, site: FakeSite, *, default_sandbox: bool = True) -> None:
+        self.site = site
+        self.default_sandbox = default_sandbox
+        self.calls: list[dict] = []
+
+    def __call__(self, command: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+        if command and command[0] == sys.executable:
+            # Execute the actual preflight entrypoint in-process; only its CLI
+            # subprocess boundary is fake, so its allowlist/context guards run.
+            script = next(
+                (index for index, item in enumerate(command) if Path(item).name == "preflight.py"),
+                None,
+            )
+            if script is None:
+                raise AssertionError(f"unexpected Python subprocess: {command}")
+            stdout, stderr = io.StringIO(), io.StringIO()
+            child_argv = [command[script], *command[script + 1 :]]
+            with (
+                mock.patch.object(sys, "argv", child_argv),
+                contextlib.redirect_stdout(stdout),
+                contextlib.redirect_stderr(stderr),
+            ):
+                code = preflight.main()
+            return subprocess.CompletedProcess(command, code, stdout.getvalue(), stderr.getvalue())
+        if not command or command[0] != "xsolla":
+            raise AssertionError(f"unexpected subprocess: {command}")
+        argv = list(command[1:])
+        environment = "dev"
+        explicit_environment = False
+        if "--environment" in argv:
+            index = argv.index("--environment")
+            environment = argv[index + 1]
+            explicit_environment = True
+            del argv[index : index + 2]
+        argv = [arg for arg in argv if arg != "--json"]
+        self.calls.append({
+            "environment": environment,
+            "explicit_environment": explicit_environment,
+            "command": tuple(argv),
+        })
+        if argv == ["config", "list"]:
+            config = {
+                "merchant_id": 1,
+                "project_id": 2,
+                "sandbox": self.default_sandbox if environment == "dev" else False,
+            }
+            return subprocess.CompletedProcess(
+                command, 0, json.dumps({"ok": True, "data": config}), ""
+            )
+        if argv == ["auth", "list-account"]:
+            result = {"ok": True, "data": {"accounts": [{
+                "context": "publisher", "active": True, "expired": False
+            }]}}
+        elif argv[:2] == ["shopbuilder", "list-websites"]:
+            result = {"ok": True, "data": [{
+                "domain": SLUG, "_id": LANDING, "merchantId": 1, "projectId": 2
+            }]}
+        elif argv[:2] == ["shopbuilder", "get-landing"]:
+            result = {"ok": True, "data": {
+                "domain": SLUG, "_id": LANDING, "merchantId": 1, "projectId": 2
+            }}
+        elif argv[:2] == ["shopbuilder", "list-assets"]:
+            result = {"ok": True, "data": []}
+        elif argv[:2] == ["shopbuilder", "list-versions"]:
+            result = {"ok": True, "data": []}
+        elif argv[:2] == ["catalog", "list-item-groups"]:
+            result = {"ok": True, "data": {"groups": []}}
+        elif argv == ["shopbuilder", "create-block", "--help"]:
+            return subprocess.CompletedProcess(
+                command, 0, "Usage:\n  xsolla shopbuilder create-block [flags]\n", ""
+            )
+        else:
+            result = self.site.run_json(*argv)
+            if argv[:2] == ["shopbuilder", "get-structure"]:
+                data = result.get("data") if isinstance(result, dict) else None
+                if isinstance(data, dict):
+                    data.setdefault("layouts", [])
+        return subprocess.CompletedProcess(command, 0, json.dumps(result), "")
+
+
+class ApplyNamedEnvironmentIntegrationTests(unittest.TestCase):
+    """Exercise apply_plan.main across a fake CLI subprocess boundary."""
+
+    def setUp(self) -> None:
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name)
+        self.home = self.root / "home"
+        self.home.mkdir()
+        self.project_dir = self.root / "project"
+        self.project_dir.mkdir()
+        self.bin = self.root / "bin"
+        self.bin.mkdir()
+        fake_xsolla = self.bin / "xsolla"
+        fake_xsolla.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+        fake_xsolla.chmod(0o755)
+        self.config_path = self.home / ".xsolla.json"
+        self.config = {
+            "version": "1",
+            "default_environment": "dev",
+            "environments": {
+                "dev": {"merchant_id": 1, "project_id": 2, "sandbox": True},
+                "test": {"merchant_id": 1, "project_id": 2, "sandbox": False},
+            },
+        }
+        self.config_path.write_text(json.dumps(self.config, indent=2), encoding="utf-8")
+        self.config_before = self.config_path.read_bytes()
+        self.site = FakeSite()
+        target = self.site.find("q1")
+        target["values"]["version"] = QUESTS_CANDIDATE_VERSION
+        target["values"]["host"] = (
+            f"https://cdn.xsolla.net/site-builder-modules/{QUESTS_MODULE}/"
+            f"{QUESTS_CANDIDATE_VERSION}/"
+        )
+        self.brief = ops_brief(
+            [{
+                "op": "update",
+                "block_id": "q1",
+                "values": {"themeAppearance.site-builder.cardAlign": "center"},
+            }]
+        )
+        self.brief_path = self.root / "brief.json"
+        self.brief_path.write_text(json.dumps(self.brief, indent=2), encoding="utf-8")
+        self.allowlist = self.root / "approved-test-projects.json"
+        self.allowlist.write_text(
+            json.dumps({
+                "version": 1,
+                "projects": [{
+                    "merchant_id": 1,
+                    "project_id": 2,
+                    "approved_by": "test fixture",
+                    "approval_reference": "test fixture",
+                }],
+            }),
+            encoding="utf-8",
+        )
+        self.boundary = FakeApplySubprocessBoundary(self.site)
+
+    def configure_default(self, *, sandbox: bool, include_named_test: bool) -> None:
+        self.config["environments"]["dev"]["sandbox"] = sandbox
+        if include_named_test:
+            self.config["environments"]["test"] = {
+                "merchant_id": 1,
+                "project_id": 2,
+                "sandbox": False,
+            }
+        else:
+            self.config["environments"].pop("test", None)
+        self.config_path.write_text(json.dumps(self.config, indent=2), encoding="utf-8")
+        self.config_before = self.config_path.read_bytes()
+        self.boundary = FakeApplySubprocessBoundary(self.site, default_sandbox=sandbox)
+
+    def fake_subprocess(self, command: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+        return self.boundary(command, **kwargs)
+
+    def invoke(self, argv: list[str]) -> tuple[int, str, str]:
+        stdout, stderr = io.StringIO(), io.StringIO()
+        with (
+            contextlib.chdir(self.project_dir),
+            mock.patch.dict(
+                os.environ,
+                {"HOME": str(self.home), "PATH": f"{self.bin}:{os.environ.get('PATH', '')}"},
+            ),
+            mock.patch("subprocess.run", side_effect=self.fake_subprocess),
+            mock.patch.dict(apply_plan.RUN_AUTH, {"logged_in": False, "context": None}),
+            mock.patch.object(sys, "argv", argv),
+            contextlib.redirect_stdout(stdout),
+            contextlib.redirect_stderr(stderr),
+        ):
+            code = apply_plan.main()
+        return code, stdout.getvalue(), stderr.getvalue()
+
+    def make_real_backup_and_approved_plan(self) -> tuple[Path, Path, dict]:
+        backup_dir = self.root / "backup"
+        with (
+            contextlib.chdir(self.project_dir),
+            mock.patch.dict(
+                os.environ,
+                {"HOME": str(self.home), "PATH": f"{self.bin}:{os.environ.get('PATH', '')}"},
+            ),
+            mock.patch("subprocess.run", side_effect=self.fake_subprocess),
+            mock.patch.object(backup_shop.shutil, "which", return_value=str(self.bin / "xsolla")),
+            mock.patch.object(backup_shop, "RUN_AUTH", {"logged_in": False, "context": None}),
+            mock.patch.object(
+                sys,
+                "argv",
+                [
+                    "backup_shop.py",
+                    "--brief",
+                    str(self.brief_path),
+                    "--slug",
+                    SLUG,
+                    "--output-dir",
+                    str(backup_dir),
+                ],
+            ),
+            contextlib.redirect_stdout(io.StringIO()),
+            contextlib.redirect_stderr(io.StringIO()),
+        ):
+            self.assertEqual(0, backup_shop.main())
+        approved = render_plan.build_plan(self.brief, apply_plan.backup_structure(backup_dir))
+        approved_path = self.root / "approved-plan.json"
+        approved_path.write_text(json.dumps(approved, indent=2), encoding="utf-8")
+        return backup_dir, approved_path, approved
+
+    def test_apply_main_selects_named_test_environment_and_reads_back(self) -> None:
+        backup_dir, approved_path, approved = self.make_real_backup_and_approved_plan()
+        argv = [
+            "apply_plan.py",
+            str(self.brief_path),
+            "--approved-test-projects",
+            str(self.allowlist),
+            "--approved-plan",
+            str(approved_path),
+            "--confirmation-id",
+            approved["confirmation_id"],
+            "--backup-dir",
+            str(backup_dir),
+        ]
+        code, output, error = self.invoke(argv)
+        self.assertEqual(0, code, error)
+        report = json.loads(output)
+        saved = self.site.find("q1")["values"]["internalBlockValues"]
+        self.assertEqual("center", saved["themeAppearance"]["site-builder"]["cardAlign"])
+        self.assertEqual("block-operations-applied", report["status"])
+        self.assertEqual("test", report["context"]["cli_environment"])
+        targeted = [call for call in self.boundary.calls if call["command"] != ("config", "list")]
+        self.assertTrue(targeted)
+        self.assertTrue(all(call["environment"] == "test" for call in targeted), targeted)
+        self.assertTrue(all(
+            call["explicit_environment"]
+            or (call["environment"] == "dev" and call["command"] == ("config", "list"))
+            for call in self.boundary.calls
+        ))
+        self.assertFalse(any(call["command"][:2] == ("config", "set") for call in self.boundary.calls))
+        self.assertEqual(self.config_before, self.config_path.read_bytes())
+
+    def test_active_sandbox_still_stops_without_a_matching_named_environment(self) -> None:
+        self.configure_default(sandbox=True, include_named_test=False)
+        approved = render_plan.build_plan(self.brief, self.site.structure_value())
+        approved_path = self.root / "approved-plan.json"
+        approved_path.write_text(json.dumps(approved, indent=2), encoding="utf-8")
+        code, _, error = self.invoke([
+            "apply_plan.py",
+            str(self.brief_path),
+            "--approved-test-projects",
+            str(self.allowlist),
+            "--approved-plan",
+            str(approved_path),
+            "--confirmation-id",
+            approved["confirmation_id"],
+        ])
+        self.assertEqual(1, code)
+        self.assertIn("CLI sandbox mode is on", error)
+        self.assertEqual([], self.site.write_calls())
+        self.assertTrue(all(
+            call["command"][:2] == ("config", "list") for call in self.boundary.calls
+        ))
+        self.assertEqual(self.config_before, self.config_path.read_bytes())
+
+    def test_default_sandbox_off_keeps_using_the_active_cli_context(self) -> None:
+        self.configure_default(sandbox=False, include_named_test=False)
+        backup_dir, approved_path, approved = self.make_real_backup_and_approved_plan()
+        code, output, error = self.invoke([
+            "apply_plan.py",
+            str(self.brief_path),
+            "--approved-test-projects",
+            str(self.allowlist),
+            "--approved-plan",
+            str(approved_path),
+            "--confirmation-id",
+            approved["confirmation_id"],
+            "--backup-dir",
+            str(backup_dir),
+        ])
+        self.assertEqual(0, code, error)
+        report = json.loads(output)
+        self.assertIsNone(report["context"]["cli_environment"])
+        targeted = [call for call in self.boundary.calls if call["command"] != ("config", "list")]
+        self.assertTrue(targeted)
+        self.assertTrue(all(not call["explicit_environment"] for call in targeted), targeted)
+        self.assertFalse(any(call["command"][:2] == ("config", "set") for call in self.boundary.calls))
+        self.assertEqual(self.config_before, self.config_path.read_bytes())
+
+    def test_tampered_run_report_environment_is_rejected_before_site_reads_or_writes(self) -> None:
+        backup_dir, approved_path, approved = self.make_real_backup_and_approved_plan()
+        code, output, error = self.invoke([
+            "apply_plan.py",
+            str(self.brief_path),
+            "--approved-test-projects",
+            str(self.allowlist),
+            "--approved-plan",
+            str(approved_path),
+            "--confirmation-id",
+            approved["confirmation_id"],
+            "--backup-dir",
+            str(backup_dir),
+        ])
+        self.assertEqual(0, code, error)
+        report = json.loads(output)
+        self.assertEqual("test", report["context"]["cli_environment"])
+        report["context"]["cli_environment"] = "staging"
+        report_path = self.root / "run-report.json"
+        report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
+
+        self.boundary.calls.clear()
+        self.site.calls.clear()
+        code, _, error = self.invoke([
+            "apply_plan.py",
+            str(self.brief_path),
+            "--approved-test-projects",
+            str(self.allowlist),
+            "--approved-plan",
+            str(approved_path),
+            "--confirmation-id",
+            approved["confirmation_id"],
+            "--run-report",
+            str(report_path),
+        ])
+        self.assertEqual(1, code)
+        self.assertIn("differs from the earlier run report", error)
+        self.assertEqual([], self.site.write_calls())
+        self.assertFalse(any(
+            call["command"][:2] == ("config", "set") for call in self.boundary.calls
+        ))
 
 
 class CardTextRefTests(BlockOpsApplyBase):
