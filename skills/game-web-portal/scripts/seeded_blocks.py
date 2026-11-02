@@ -35,16 +35,24 @@ def string_ids(value: object) -> list[str]:
     return []
 
 
+def without_ids(value: object) -> object:
+    if isinstance(value, dict):
+        return {k: without_ids(v) for k, v in value.items() if k != "_id"}
+    if isinstance(value, list):
+        return [without_ids(v) for v in value]
+    return value
+
+
 def block_hash(block: dict, localization: dict, page_id: str) -> str:
     """Hash what a partner can change: values, components and every string they reference.
 
-    Component `_id`s are left out: the server regenerates them on every read.
+    Every nested `_id` is left out: the server regenerates the IDs of components, FAQ items
+    and store sections on every read.
     """
-    content = {key: block.get(key) for key in ("module", "hidden", "values")}
-    content["components"] = [
-        {k: v for k, v in c.items() if k != "_id"} if isinstance(c, dict) else c
-        for c in block.get("components") or []
-    ]
+    content = without_ids({
+        **{key: block.get(key) for key in ("module", "hidden", "values")},
+        "components": block.get("components") or [],
+    })
     page_texts = ((localization.get("pages") or {}).get(page_id) or {}).get("texts") or {}
     common = localization.get("common") or {}
     content["strings"] = {

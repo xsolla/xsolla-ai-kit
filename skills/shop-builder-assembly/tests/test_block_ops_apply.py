@@ -310,9 +310,12 @@ class BlockOpsApplyBase(unittest.TestCase):
 
 
 class BlockOpsApplyTests(BlockOpsApplyBase):
-    def run_main_preflight(self, operations: list[dict]) -> tuple[int, str, mock.Mock]:
+    def run_main_preflight(
+        self, operations: list[dict], *, set_candidate_version: bool = True
+    ) -> tuple[int, str, mock.Mock]:
         block = self.site.find("q1")
-        block["values"]["version"] = "0.2.0-qp-3256.5"
+        if set_candidate_version:
+            block["values"]["version"] = "0.2.1-qp-3256.1"
         brief = ops_brief(operations)
         saved = self.site.structure_value()
         stderr = io.StringIO()
@@ -320,26 +323,43 @@ class BlockOpsApplyTests(BlockOpsApplyBase):
         with tempfile.TemporaryDirectory() as directory:
             brief_path = Path(directory) / "brief.json"
             brief_path.write_text(json.dumps(brief), encoding="utf-8")
+            approved_path = Path(directory) / "approved-plan.json"
+            empty_plan = {}
+            empty_plan["confirmation_id"] = "sha256:" + render_plan.canonical_hash(empty_plan)[:12]
+            approved_path.write_text(json.dumps(empty_plan), encoding="utf-8")
             argv = [
                 "apply_plan.py",
                 str(brief_path),
                 "--confirmation-id",
-                "unused-invalid-plan",
+                empty_plan["confirmation_id"],
+                "--approved-plan",
+                str(approved_path),
                 "--backup-dir",
                 directory,
             ]
+            def cli(*args: str) -> object:
+                if args[:2] == ("config", "list"):
+                    project = brief["project"]
+                    return {
+                        "ok": True,
+                        "data": {
+                            "merchant_id": project["merchant_id"],
+                            "project_id": project["project_id"],
+                            "sandbox": False,
+                        },
+                    }
+                if args[:2] == ("shopbuilder", "list-websites"):
+                    return {"ok": True, "data": [{"domain": SLUG, "_id": LANDING}]}
+                return {"ok": True, "data": {}}
+            run_json.side_effect = cli
             with (
                 mock.patch.dict(apply_plan.RUN_AUTH, {"logged_in": False, "context": None}),
                 mock.patch.object(sys, "argv", argv),
                 mock.patch.object(apply_plan, "run_preflight"),
-                mock.patch.object(
-                    apply_plan.cli_environment, "select", return_value={"config": {}}
-                ),
-                mock.patch.object(apply_plan, "cli_context", return_value={}),
                 mock.patch.object(apply_plan, "website_exists", return_value=True),
                 mock.patch.object(apply_plan, "verified_backup", return_value=True),
                 mock.patch.object(apply_plan, "backup_structure", return_value=saved),
-                mock.patch.object(apply_plan, "run_json", run_json),
+                mock.patch.object(apply_plan, "run_json", side_effect=run_json),
                 contextlib.redirect_stderr(stderr),
             ):
                 code = apply_plan.main()
@@ -381,8 +401,8 @@ class BlockOpsApplyTests(BlockOpsApplyBase):
 
     def test_candidate_custom_patch_applies_and_reads_back_normalized_leaves(self) -> None:
         block = self.site.find("q1")
-        block["values"]["version"] = "0.2.0-qp-3256.5"
-        block["values"]["host"] = f"https://cdn.xsolla.net/site-builder-modules/{QUESTS_MODULE}/0.2.0-qp-3256.5/"
+        block["values"]["version"] = "0.2.1-qp-3256.1"
+        block["values"]["host"] = f"https://cdn.xsolla.net/site-builder-modules/{QUESTS_MODULE}/0.2.1-qp-3256.1/"
         block["values"]["internalBlockValues"].update({
             "themeId": "site-builder",
             "backpackAction": "external",
@@ -410,7 +430,7 @@ class BlockOpsApplyTests(BlockOpsApplyBase):
 
     def test_candidate_preset_leaves_apply_and_read_back_for_both_themes(self) -> None:
         block = self.site.find("q1")
-        block["values"]["version"] = "0.2.0-qp-3256.5"
+        block["values"]["version"] = "0.2.1-qp-3256.1"
         block["values"]["internalBlockValues"].update({
             "themeAppearance": {
                 "custom": {"version": 1, "baseThemeId": "site-builder"},
@@ -438,7 +458,7 @@ class BlockOpsApplyTests(BlockOpsApplyBase):
 
     def test_candidate_custom_reset_preserves_version_unknown_fields_and_other_themes(self) -> None:
         block = self.site.find("q1")
-        block["values"]["version"] = "0.2.0-qp-3256.5"
+        block["values"]["version"] = "0.2.1-qp-3256.1"
         block["values"]["internalBlockValues"].update({
             "themeId": "custom",
             "backpackAction": "overlay",
@@ -460,7 +480,7 @@ class BlockOpsApplyTests(BlockOpsApplyBase):
 
     def test_reset_of_absent_custom_leaf_is_a_noop(self) -> None:
         block = self.site.find("q1")
-        block["values"]["version"] = "0.2.0-qp-3256.5"
+        block["values"]["version"] = "0.2.1-qp-3256.1"
         plan, refs = self.apply([{
             "op": "reset", "block_id": "q1",
             "paths": ["themeAppearance.custom.palette.accent"],
@@ -469,11 +489,27 @@ class BlockOpsApplyTests(BlockOpsApplyBase):
         self.assertEqual([], self.verify(plan, refs))
 
     def test_invalid_candidate_preflight_makes_zero_mutating_calls(self) -> None:
-        block = self.site.find("q1")
-        block["values"]["version"] = "0.2.0-qp-3256.4"
-        with self.assertRaisesRegex(ValueError, "unsupported Quests version"):
-            self.plan_for([{"op": "update", "block_id": "q1", "values": {"themeId": "custom"}}])
-        self.assertEqual([], self.site.write_calls())
+        for unsupported_version in ("0.2.0-qp-3256.5", "0.2.0-qp-3256.4"):
+            with self.subTest(version=unsupported_version):
+                block = self.site.find("q1")
+                block["values"]["version"] = unsupported_version
+                code, stderr, cli = self.run_main_preflight(
+                    [{"op": "update", "block_id": "q1", "values": {"themeId": "custom"}}],
+                    set_candidate_version=False,
+                )
+                self.assertEqual(1, code, stderr)
+                self.assertIn("unsupported Quests version", stderr)
+                reads = {
+                    "list", "list-websites", "get-structure", "get-localization", "get-block"
+                }
+                mutations = [
+                    call
+                    for call in cli.call_args_list
+                    if call.args
+                    and call.args[0] == "shopbuilder"
+                    and call.args[1] not in reads
+                ]
+                self.assertEqual([], mutations)
 
     def test_custom_value_and_contrast_preflight_failures_make_zero_mutating_calls(self) -> None:
         prefix = "themeAppearance.custom."
@@ -608,20 +644,6 @@ class BlockOpsApplyTests(BlockOpsApplyBase):
         self.assertFalse(self.site.find("q1")["hidden"])
         self.assertEqual([], self.verify(plan, refs))
 
-    def test_both_visibility_paths_share_set_block_hidden(self) -> None:
-        with mock.patch.object(apply_plan, "set_block_hidden") as helper:
-            self.apply([{"op": "hide", "block_id": "q1"}])
-        helper.assert_called_once_with("q1", True, landing_id=LANDING)
-        site_html = {"_id": "h", "module": "html", "hidden": False}
-        page = {"_id": PAGE, "path": "/", "blocks": [site_html]}
-        with (
-            mock.patch.object(apply_plan, "structure", return_value={"pages": [page]}),
-            mock.patch.object(apply_plan, "set_block_hidden") as helper,
-        ):
-            apply_plan.hide_added_custom_code("s", "landing", "/", set())
-        helper.assert_called_once()
-        self.assertEqual(("h", True), helper.call_args.args)
-
     def test_heading_uses_translation_shape(self) -> None:
         plan, refs = self.apply(
             [
@@ -694,6 +716,28 @@ class BlockOpsApplyTests(BlockOpsApplyBase):
         self.assertEqual({QUEST_A: {"title": "T"}}, overrides)
         self.assertEqual(0, self.site.noop_patches)
         self.assertEqual([], self.verify(plan, refs))
+
+    def test_custom_code_visibility_and_quests_visibility_keep_separate_block_scopes(self) -> None:
+        plan, refs = self.apply([{"op": "hide", "block_id": "q1"}])
+        self.assertTrue(self.site.find("q1")["hidden"])
+        self.assertEqual([], self.verify(plan, refs))
+
+        page = {
+            "_id": PAGE,
+            "path": "/",
+            "blocks": [{"_id": "new-html", "module": "html", "hidden": False}],
+        }
+        with (
+            mock.patch.object(apply_plan, "structure", return_value={"pages": [page]}),
+            mock.patch.object(apply_plan, "run_json") as cli,
+        ):
+            self.assertEqual(["new-html"], apply_plan.hide_added_custom_code("s", LANDING, "/", set()))
+
+        command = cli.call_args.args
+        self.assertEqual(("shopbuilder", "update-block"), command[:2])
+        payload = json.loads(command[command.index("--data") + 1])
+        patch = payload["hideCustomCode"]["patches"][0]
+        self.assertEqual({"op": "replace", "path": ["hidden"], "value": True}, patch)
 
 
 TITLE_TEXT_ID = "L:00000000-0000-0000-0000-0000000000a1"
@@ -1044,11 +1088,17 @@ class PublisherTemplateSiteTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             brief_path = Path(directory) / "brief.json"
             brief_path.write_text(json.dumps(brief), encoding="utf-8")
+            approved_path = Path(directory) / "approved-plan.json"
+            approved_path.write_text(
+                json.dumps(render_plan.build_plan(brief, saved)), encoding="utf-8"
+            )
             argv = [
                 "apply_plan.py",
                 str(brief_path),
                 "--confirmation-id",
                 confirmation_id,
+                "--approved-plan",
+                str(approved_path),
                 "--backup-dir",
                 directory,
             ]

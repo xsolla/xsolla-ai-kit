@@ -12,7 +12,7 @@ Turns a plain-language game description into a validated Shop Builder assembly b
 
 ## Happy path
 
-1. Give the agent a plain-language game description, or continue after `shop-plan`.
+1. Give the agent a plain-language game description, or continue after `nocode-shop-setup`.
    Confirmed answers in the project's `.xsolla/onboarding.json` are reused automatically.
 2. Answer one batch of genuinely missing factual questions.
 3. Review the normalized brief.

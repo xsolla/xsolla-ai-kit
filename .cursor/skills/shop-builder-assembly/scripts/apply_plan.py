@@ -8,30 +8,32 @@ import copy
 import hashlib
 import html
 import json
+import re
 import subprocess
 import sys
 import time
-import urllib.parse
 import urllib.request
 import uuid
 from pathlib import Path
 
-sys.dont_write_bytecode = True  # keep the installed skill folder clean
-
-import cli_environment
 from preflight import LAYOUT_SKIPPED, cli_has_command
 from render_plan import (
     COMMON_LAYOUT,
     CUSTOM_CODE_WARNING,
+    approval_changes,
     build_plan,
     common_layout_id,
+    created_block_ids,
     effective_module,
+    load_approved_plan,
+    load_run_report,
     page_path,
     require_own_header,
     site_block_ids,
     structure_data,
     structure_hash,
 )
+from validate_shop_brief import VERIFIED_BLOCK_MODULES, load_brief, validate
 from block_ops import (
     BLOCK_VALUES_ROOT,
     QUESTS_DEV_NAME,
@@ -39,12 +41,11 @@ from block_ops import (
     QUESTS_VERSION,
     card_text_ref,
     find_block,
-    has_object,
     has_leaf,
+    has_object,
     quests_host,
 )
 from verify_structure import verify_block_operations
-from validate_shop_brief import VERIFIED_BLOCK_MODULES, load_brief, validate
 
 BACKUP_FILE_NAMES = {
     "config.json",
@@ -78,7 +79,7 @@ def refresh_supported_login() -> None:
         try:
             # Login messages go to stderr so stdout stays the JSON report.
             result = subprocess.run(
-                cli_environment.command("auth", "login"),
+                ["xsolla", "auth", "login"],
                 check=False,
                 stdout=sys.stderr,
                 timeout=LOGIN_TIMEOUT_SECONDS,
@@ -149,7 +150,7 @@ def login_once(detail: str) -> None:
 def run_json(*args: str) -> object:
     if any(arg == "--force" or arg.startswith("--force=") for arg in args):
         raise RuntimeError("--force is prohibited in Shop Builder assembly")
-    command = cli_environment.command(*args, "--json")
+    command = ["xsolla", *args, "--json"]
     rate_limit_attempt = 0
     while True:
         # The CLI writes UTF-8; without an explicit encoding Windows decodes with
@@ -196,22 +197,6 @@ def data(value: object) -> object:
     if isinstance(value, dict) and value.get("ok") is True and "data" in value:
         return value["data"]
     return value
-
-
-PUBLISHER_ROOT = "https://publisher.xsolla.com"
-
-
-def editor_url(merchant_id: int, project_id: int, slug: str) -> str:
-    """Site Builder editor link for a site, built from the verified ids and slug."""
-    for name, value in (("merchant_id", merchant_id), ("project_id", project_id)):
-        if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
-            raise ValueError(f"{name} must be a positive integer")
-    if not isinstance(slug, str) or not slug or "/" in slug:
-        raise ValueError("slug must be a non-empty string without '/'")
-    return (
-        f"{PUBLISHER_ROOT}/{merchant_id}/projects/{project_id}"
-        f"/site-builder/{urllib.parse.quote(slug, safe='')}/editor"
-    )
 
 
 def website_exists(value: object, slug: str) -> bool:
@@ -278,6 +263,102 @@ def page_for_path(value: dict, path: str) -> dict | None:
     return None
 
 
+def page_block_ids(value: dict, paths: list[str]) -> dict[str, list[str]]:
+    """Return the block IDs on each page path, for the run report."""
+    result = {}
+    for path in paths:
+        page = page_for_path(value, path) or {}
+        result[path] = [
+            block["_id"]
+            for block in page.get("blocks", [])
+            if isinstance(block, dict) and isinstance(block.get("_id"), str)
+        ]
+    return result
+
+
+def check_cli_context(expected: dict) -> None:
+    """Stop unless the CLI targets the brief's merchant and project outside sandbox."""
+    config = data(run_json("config", "list"))
+    if not isinstance(config, dict):
+        raise RuntimeError("xsolla config list returned an unexpected shape")
+    if config.get("merchant_id") != expected["merchant_id"]:
+        raise RuntimeError("CLI merchant_id does not match the shop brief")
+    if config.get("project_id") != expected["project_id"]:
+        raise RuntimeError("CLI project_id does not match the shop brief")
+    if config.get("sandbox") is True:
+        raise RuntimeError("CLI sandbox must be disabled for Shop Builder")
+    RUN_AUTH["context"] = cli_context(config)
+
+
+def editor_url(merchant_id: object, project_id: object, slug: object) -> str:
+    """Build an editor link only from verified positive IDs and a safe site slug."""
+    slug_pattern = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+    if (
+        isinstance(merchant_id, bool)
+        or not isinstance(merchant_id, int)
+        or merchant_id <= 0
+        or isinstance(project_id, bool)
+        or not isinstance(project_id, int)
+        or project_id <= 0
+        or not isinstance(slug, str)
+        or not slug_pattern.fullmatch(slug)
+    ):
+        raise ValueError("editor link requires positive verified IDs and a safe site slug")
+    return (
+        f"https://publisher.xsolla.com/{merchant_id}/projects/{project_id}/"
+        f"site-builder/{slug}/editor"
+    )
+
+
+def check_approval(
+    args: argparse.Namespace, plan: dict, approved: dict, report: dict | None
+) -> None:
+    """Stop unless the developer's yes to the approved plan covers this run's plan.
+
+    The confirmation ID must be the approved plan's, and a run report must come from a
+    run under that same approval. A different current plan, such as a new site's second
+    run, is covered only when ``approval_changes`` finds nothing.
+    """
+    if args.confirmation_id != approved["confirmation_id"]:
+        raise RuntimeError("confirmation ID does not match the approved plan")
+    if report is not None and report.get("approved_confirmation_id") != approved[
+        "confirmation_id"
+    ]:
+        raise RuntimeError(
+            "the run report belongs to another approval than the approved plan. "
+            "Nothing was written. Show the developer the current plan and ask again"
+        )
+    if plan["confirmation_id"] == approved["confirmation_id"]:
+        return
+    if report is None:
+        raise RuntimeError(
+            "the current plan isn't the approved one; pass the earlier run's report "
+            "with --run-report, or show the developer the new plan and ask again"
+        )
+    changes = approval_changes(approved, plan, report)
+    if changes:
+        raise RuntimeError(
+            "the developer's yes doesn't cover the current plan: "
+            + "; ".join(changes)
+            + ". Nothing was written. Show these changes and ask again"
+        )
+
+
+def check_approval_identity(
+    args: argparse.Namespace, approved: dict, report: dict | None
+) -> None:
+    """Check the developer's approval token before running preflight or any CLI read."""
+    if args.confirmation_id != approved["confirmation_id"]:
+        raise RuntimeError("confirmation ID does not match the approved plan")
+    if report is not None and report.get("approved_confirmation_id") != approved[
+        "confirmation_id"
+    ]:
+        raise RuntimeError(
+            "the run report belongs to another approval than the approved plan. "
+            "Nothing was written. Show the developer the current plan and ask again"
+        )
+
+
 def verified_backup(path: Path, expected: dict, slug: str) -> bool:
     manifest_path = path / "manifest.json"
     try:
@@ -324,193 +405,6 @@ def backup_structure(path: Path) -> object:
         raise RuntimeError(f"cannot read backup structure: {exc}") from exc
 
 
-def run_preflight(brief_path: Path, approved_test_projects: Path | None) -> None:
-    # `-X utf8` makes the child write UTF-8 to the pipe; on Windows it would
-    # otherwise write the ANSI code page.
-    command = [
-        sys.executable,
-        "-X",
-        "utf8",
-        str(Path(__file__).with_name("preflight.py")),
-        str(brief_path),
-    ]
-    if approved_test_projects is not None:
-        command.extend(["--approved-test-projects", str(approved_test_projects)])
-    result = subprocess.run(
-        command,
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        check=False,
-    )
-    if result.returncode:
-        raise RuntimeError(
-            (result.stderr or "").strip()
-            or (result.stdout or "").strip()
-            or "preflight failed"
-        )
-
-
-def reconcile_page(slug: str, landing_id: str, page_plan: dict) -> dict:
-    current = structure(slug)
-    page = page_for_path(current, page_plan["path"])
-    if page is None:
-        raise RuntimeError(
-            f"page {page_plan['path']} must be created in the page phase before reconciliation"
-        )
-    if not isinstance(page.get("_id"), str):
-        raise RuntimeError(f"could not resolve page {page_plan['path']}")
-
-    page_id = page["_id"]
-    desired = page_plan["blocks"]
-    unverified = sorted(set(desired) - VERIFIED_BLOCK_MODULES)
-    if unverified:
-        raise RuntimeError(
-            "plan contains unverified block modules: " + ", ".join(unverified)
-        )
-    kept: set[str] = set()
-    removals: list[dict] = []
-    blocks = page.get("blocks", [])
-    if not isinstance(blocks, list) or any(
-        not isinstance(block, dict) for block in blocks
-    ):
-        raise RuntimeError("pages[].blocks must contain full block objects")
-    for block in blocks:
-        module = effective_module(block)
-        if module in desired and module not in kept:
-            kept.add(module)
-        else:
-            removals.append(block)
-    approved_removals = {
-        removal["block_id"]: removal["module"]
-        for removal in page_plan.get("removals", [])
-    }
-    unapproved = [
-        block
-        for block in removals
-        if approved_removals.get(block.get("_id")) != effective_module(block)
-    ]
-    if unapproved:
-        details = ", ".join(
-            f"{effective_module(block)}:{block.get('_id')}" for block in unapproved
-        )
-        raise RuntimeError(
-            "current page requires unconfirmed block removals; back up, re-render, "
-            f"and reconfirm the plan ({details})"
-        )
-    current_modules = [effective_module(block) for block in blocks]
-    if not removals and current_modules == desired:
-        return {
-            "path": page_plan["path"],
-            "page_id": page_id,
-            "blocks": current_modules,
-            "removed_blocks": 0,
-            "hidden_custom_code": [],
-        }
-    if removals:
-        removal_ids = {block["_id"] for block in removals}
-        removal_indexes = sorted(
-            (
-                index
-                for index, block in enumerate(blocks)
-                if block.get("_id") in removal_ids
-            ),
-            reverse=True,
-        )
-        removal_payload = {
-            "removeBlocks": {
-                "type": "page",
-                "id": page_id,
-                "patches": [
-                    {"op": "remove", "path": ["blocks", index]}
-                    for index in removal_indexes
-                ],
-            }
-        }
-        run_json(
-            "shopbuilder",
-            "update-block",
-            "--landing-id",
-            landing_id,
-            "--data",
-            json.dumps(removal_payload, sort_keys=True, separators=(",", ":")),
-        )
-
-    page = page_for_path(structure(slug), page_plan["path"])
-    if page is None:
-        raise RuntimeError(
-            f"page disappeared during reconciliation: {page_plan['path']}"
-        )
-    existing = [effective_module(block) for block in page.get("blocks", [])]
-    known_block_ids = {block.get("_id") for block in page.get("blocks", [])}
-    for module in desired:
-        if module not in existing:
-            run_json(
-                "shopbuilder",
-                "add-block",
-                "--landing-id",
-                landing_id,
-                "--page-id",
-                page_id,
-                "--block",
-                module,
-            )
-            existing.append(module)
-    hidden_custom_code = (
-        hide_added_custom_code(slug, landing_id, page_plan["path"], known_block_ids)
-        if "html" in desired
-        else []
-    )
-
-    for destination, module in enumerate(desired):
-        page = page_for_path(structure(slug), page_plan["path"])
-        if page is None:
-            raise RuntimeError(f"page disappeared during ordering: {page_plan['path']}")
-        modules = [effective_module(block) for block in page.get("blocks", [])]
-        source = modules.index(module)
-        if source != destination:
-            run_json(
-                "shopbuilder",
-                "move-block",
-                "--landing-id",
-                landing_id,
-                "--page-id",
-                page_id,
-                "--source",
-                str(source),
-                "--destination",
-                str(destination),
-            )
-
-    final_page = page_for_path(structure(slug), page_plan["path"])
-    if final_page is None:
-        raise RuntimeError(f"could not read final page {page_plan['path']}")
-    final_modules = [effective_module(block) for block in final_page.get("blocks", [])]
-    if final_modules != desired:
-        raise RuntimeError(
-            f"block reconciliation failed for {page_plan['path']}: {final_modules}"
-        )
-    still_visible = [
-        block.get("_id")
-        for block in final_page.get("blocks", [])
-        if block.get("_id") in hidden_custom_code and block.get("hidden") is not True
-    ]
-    if still_visible:
-        raise RuntimeError(
-            f"could not hide the new Custom code block on {page_plan['path']}: "
-            + ", ".join(still_visible)
-        )
-    return {
-        "path": page_plan["path"],
-        "page_id": page_id,
-        "blocks": final_modules,
-        "removed_blocks": len(removals),
-        "hidden_custom_code": hidden_custom_code,
-    }
-
-
-# Ops-mode executor. Every CLI shape below is documented in `xsolla shopbuilder <cmd>
-# --help` (1.9.4) and, where noted, exercised on a test site (2026-10-20).
 OPS_APPLY_SUPPORTED = {
     "block_add",
     "block_values",
@@ -981,6 +875,196 @@ def page_for_id(value: dict, page_id: str) -> dict:
             return page
     raise RuntimeError(f"page {page_id} is no longer on the site")
 
+def run_preflight(brief_path: Path, approved_test_projects: Path | None) -> None:
+    # `-X utf8` makes the child write UTF-8 to the pipe; on Windows it would
+    # otherwise write the ANSI code page.
+    command = [
+        sys.executable,
+        "-X",
+        "utf8",
+        str(Path(__file__).with_name("preflight.py")),
+        str(brief_path),
+    ]
+    if approved_test_projects is not None:
+        command.extend(["--approved-test-projects", str(approved_test_projects)])
+    result = subprocess.run(
+        command,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        check=False,
+    )
+    if result.returncode:
+        raise RuntimeError(
+            (result.stderr or "").strip()
+            or (result.stdout or "").strip()
+            or "preflight failed"
+        )
+
+
+def reconcile_page(slug: str, landing_id: str, page_plan: dict) -> dict:
+    current = structure(slug)
+    page = page_for_path(current, page_plan["path"])
+    if page is None:
+        raise RuntimeError(
+            f"page {page_plan['path']} must be created in the page phase before reconciliation"
+        )
+    if not isinstance(page.get("_id"), str):
+        raise RuntimeError(f"could not resolve page {page_plan['path']}")
+
+    page_id = page["_id"]
+    desired = page_plan["blocks"]
+    unverified = sorted(set(desired) - VERIFIED_BLOCK_MODULES)
+    if unverified:
+        raise RuntimeError(
+            "plan contains unverified block modules: " + ", ".join(unverified)
+        )
+    kept: set[str] = set()
+    removals: list[dict] = []
+    blocks = page.get("blocks", [])
+    if not isinstance(blocks, list) or any(
+        not isinstance(block, dict) for block in blocks
+    ):
+        raise RuntimeError("pages[].blocks must contain full block objects")
+    for block in blocks:
+        module = effective_module(block)
+        if module in desired and module not in kept:
+            kept.add(module)
+        else:
+            removals.append(block)
+    approved_removals = {
+        removal["block_id"]: removal["module"]
+        for removal in page_plan.get("removals", [])
+    }
+    unapproved = [
+        block
+        for block in removals
+        if approved_removals.get(block.get("_id")) != effective_module(block)
+    ]
+    if unapproved:
+        details = ", ".join(
+            f"{effective_module(block)}:{block.get('_id')}" for block in unapproved
+        )
+        raise RuntimeError(
+            "current page requires unconfirmed block removals; back up, re-render, "
+            f"and reconfirm the plan ({details})"
+        )
+    current_modules = [effective_module(block) for block in blocks]
+    if not removals and current_modules == desired:
+        return {
+            "path": page_plan["path"],
+            "page_id": page_id,
+            "blocks": current_modules,
+            "removed_blocks": 0,
+            "added_block_ids": [],
+            "hidden_custom_code": [],
+        }
+    if removals:
+        removal_ids = {block["_id"] for block in removals}
+        removal_indexes = sorted(
+            (
+                index
+                for index, block in enumerate(blocks)
+                if block.get("_id") in removal_ids
+            ),
+            reverse=True,
+        )
+        removal_payload = {
+            "removeBlocks": {
+                "type": "page",
+                "id": page_id,
+                "patches": [
+                    {"op": "remove", "path": ["blocks", index]}
+                    for index in removal_indexes
+                ],
+            }
+        }
+        run_json(
+            "shopbuilder",
+            "update-block",
+            "--landing-id",
+            landing_id,
+            "--data",
+            json.dumps(removal_payload, sort_keys=True, separators=(",", ":")),
+        )
+
+    page = page_for_path(structure(slug), page_plan["path"])
+    if page is None:
+        raise RuntimeError(
+            f"page disappeared during reconciliation: {page_plan['path']}"
+        )
+    existing = [effective_module(block) for block in page.get("blocks", [])]
+    known_block_ids = {block.get("_id") for block in page.get("blocks", [])}
+    for module in desired:
+        if module not in existing:
+            run_json(
+                "shopbuilder",
+                "add-block",
+                "--landing-id",
+                landing_id,
+                "--page-id",
+                page_id,
+                "--block",
+                module,
+            )
+            existing.append(module)
+    hidden_custom_code = (
+        hide_added_custom_code(slug, landing_id, page_plan["path"], known_block_ids)
+        if "html" in desired
+        else []
+    )
+
+    for destination, module in enumerate(desired):
+        page = page_for_path(structure(slug), page_plan["path"])
+        if page is None:
+            raise RuntimeError(f"page disappeared during ordering: {page_plan['path']}")
+        modules = [effective_module(block) for block in page.get("blocks", [])]
+        source = modules.index(module)
+        if source != destination:
+            run_json(
+                "shopbuilder",
+                "move-block",
+                "--landing-id",
+                landing_id,
+                "--page-id",
+                page_id,
+                "--source",
+                str(source),
+                "--destination",
+                str(destination),
+            )
+
+    final_page = page_for_path(structure(slug), page_plan["path"])
+    if final_page is None:
+        raise RuntimeError(f"could not read final page {page_plan['path']}")
+    final_modules = [effective_module(block) for block in final_page.get("blocks", [])]
+    if final_modules != desired:
+        raise RuntimeError(
+            f"block reconciliation failed for {page_plan['path']}: {final_modules}"
+        )
+    still_visible = [
+        block.get("_id")
+        for block in final_page.get("blocks", [])
+        if block.get("_id") in hidden_custom_code and block.get("hidden") is not True
+    ]
+    if still_visible:
+        raise RuntimeError(
+            f"could not hide the new Custom code block on {page_plan['path']}: "
+            + ", ".join(still_visible)
+        )
+    return {
+        "path": page_plan["path"],
+        "page_id": page_id,
+        "blocks": final_modules,
+        "removed_blocks": len(removals),
+        "added_block_ids": [
+            block.get("_id")
+            for block in final_page.get("blocks", [])
+            if block.get("_id") not in known_block_ids
+        ],
+        "hidden_custom_code": hidden_custom_code,
+    }
+
 
 def hide_added_custom_code(
     slug: str, landing_id: str, path: str, known_block_ids: set
@@ -1000,8 +1084,24 @@ def hide_added_custom_code(
         if not isinstance(block_id, str):
             raise RuntimeError(f"new Custom code block on {path} has no _id")
         if block.get("hidden") is not True:
-            set_block_hidden(
-                block_id, True, landing_id=landing_id, request_id="hideCustomCode"
+            run_json(
+                "shopbuilder",
+                "update-block",
+                "--landing-id",
+                landing_id,
+                "--data",
+                json.dumps(
+                    {
+                        "hideCustomCode": {
+                            "type": "block",
+                            "id": block_id,
+                            "patches": [
+                                {"op": "replace", "path": ["hidden"], "value": True}
+                            ],
+                        }
+                    },
+                    separators=(",", ":"),
+                ),
             )
         hidden.append(block_id)
     return hidden
@@ -1460,26 +1560,29 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("brief", type=Path)
     parser.add_argument("--confirmation-id", required=True)
+    parser.add_argument("--approved-plan", type=Path, required=True)
+    parser.add_argument("--run-report", type=Path)
     parser.add_argument("--backup-dir", type=Path)
     parser.add_argument("--approved-test-projects", type=Path)
     args = parser.parse_args()
     try:
         brief = load_brief(args.brief)
+        approved = load_approved_plan(args.approved_plan)
+        report = load_run_report(args.run_report) if args.run_report else None
+        check_approval_identity(args, approved, report)
+        if "block_operations" in brief and report is not None:
+            raise RuntimeError("Quests block operations do not accept an earlier run report")
         errors = validate(brief)
         if errors:
             raise RuntimeError("invalid shop brief: " + "; ".join(errors))
+        created = created_block_ids(report) if report else frozenset()
         run_preflight(args.brief, args.approved_test_projects)
 
         expected = brief["project"]
-        # Preflight (above) settled sandbox mode; reuse its environment.
-        config = cli_environment.select(expected, run_json, switch=False)["config"]
-        RUN_AUTH["context"] = cli_context(config)
+        check_cli_context(expected)
 
         slug = brief["site"]["slug"]
-        ops_mode = "block_operations" in brief
         existed = website_exists(run_json("shopbuilder", "list-websites"), slug)
-        if ops_mode and not existed:
-            raise RuntimeError("block operations need an existing site")
         if existed:
             if args.backup_dir is None:
                 raise RuntimeError("--backup-dir is required for an existing target")
@@ -1488,12 +1591,41 @@ def main() -> int:
                     "a complete verified backup created before confirmation is required"
                 )
             saved_structure = backup_structure(args.backup_dir)
-            plan = build_plan(brief, saved_structure)
+            plan = build_plan(brief, saved_structure, created)
         else:
             plan = build_plan(brief)
 
-        if args.confirmation_id != plan["confirmation_id"]:
-            raise RuntimeError("confirmation ID does not match the current plan")
+        check_approval(args, plan, approved, report)
+        approved_id = approved["confirmation_id"]
+
+        if plan.get("mode") == "block_operations":
+            if not existed:
+                raise RuntimeError("Quests block operations require an existing site")
+            if report is not None:
+                raise RuntimeError("Quests block operations do not accept an earlier run report")
+            landing_id = (plan.get("current_state") or {}).get("landing_id")
+            if not isinstance(landing_id, str):
+                raise RuntimeError("the confirmed Quests settings plan has no landing ID")
+            applied, after = run_block_operations(slug, landing_id, plan)
+            print(
+                json.dumps(
+                    {
+                        "operation_succeeded": True,
+                        "status": "block-operations-applied",
+                        "confirmation_id": plan["confirmation_id"],
+                        "approved_confirmation_id": approved_id,
+                        "slug": slug,
+                        "landing_id": landing_id,
+                        "editor_url": editor_url(
+                            expected["merchant_id"], expected["project_id"], slug
+                        ),
+                        "applied": applied,
+                        "published": after.get("published") not in (None, False),
+                    },
+                    indent=2,
+                )
+            )
+            return 0
 
         if existed:
             current = structure(slug)
@@ -1501,36 +1633,6 @@ def main() -> int:
                 raise RuntimeError(
                     "target structure changed after backup; back up, re-render, and reconfirm"
                 )
-            if ops_mode:
-                # Block operations only change Quests blocks and never touch the header
-                # or navigation, so a site from a Publisher Account template (header in
-                # the common layout) runs here without the build's header stop.
-                landing_id = current.get("_id")
-                if not isinstance(landing_id, str):
-                    raise RuntimeError("landing has no _id")
-                link = editor_url(expected["merchant_id"], expected["project_id"], slug)
-                refs: dict = {}
-                applied, _ = run_block_operations(slug, landing_id, plan, refs)
-                print(
-                    json.dumps(
-                        {
-                            "operation_succeeded": True,
-                            "assembly_complete": True,
-                            "status": "block-operations-applied",
-                            "confirmation_id": plan["confirmation_id"],
-                            "slug": slug,
-                            "editor_url": link,
-                            "landing_id": landing_id,
-                            "operations": applied,
-                            "created_blocks": refs,
-                            "verified": True,
-                            "warnings": [],
-                            "published": False,
-                        },
-                        indent=2,
-                    )
-                )
-                return 0
             extra_pages = plan["current_state"]["extra_pages"]
             if extra_pages:
                 paths = ", ".join(page["path"] for page in extra_pages)
@@ -1576,14 +1678,18 @@ def main() -> int:
                         "assembly_complete": False,
                         "status": "bootstrap-complete",
                         "confirmation_id": plan["confirmation_id"],
+                        "approved_confirmation_id": approved_id,
                         "slug": slug,
                         "landing_id": landing_id,
                         "created_pages": created_pages,
+                        "created_blocks": page_block_ids(structure(slug), created_pages),
                         "layout_id": layout_id,
                         "locales": locales,
                         "next_action": (
-                            "Back up the generated site, render a target-bound plan, "
-                            "and explicitly confirm its exact removals before reconciliation."
+                            "Save this report, back up the generated site, and render a "
+                            "target-bound plan with --approved-plan and --run-report. "
+                            "Apply it under the same yes only if the render says it is "
+                            "covered; otherwise show the changes and ask again."
                         ),
                         "published": False,
                     },
@@ -1600,14 +1706,18 @@ def main() -> int:
                         "assembly_complete": False,
                         "status": "page-phase-complete",
                         "confirmation_id": plan["confirmation_id"],
+                        "approved_confirmation_id": approved_id,
                         "slug": slug,
                         "landing_id": landing_id,
                         "created_pages": created_pages,
+                        "created_blocks": page_block_ids(structure(slug), created_pages),
                         "layout_id": layout_id,
                         "locales": locales,
                         "next_action": (
-                            "Back up the changed site, re-render its generated block IDs, "
-                            "and explicitly confirm before block reconciliation."
+                            "Save this report, back up the changed site, and render a "
+                            "target-bound plan with --approved-plan and --run-report. "
+                            "Apply it under the same yes only if the render says it is "
+                            "covered; otherwise show the changes and ask again."
                         ),
                         "published": False,
                     },
@@ -1626,6 +1736,7 @@ def main() -> int:
                     "assembly_complete": not plan["unsupported_phases"],
                     "status": "implemented-phases-applied",
                     "confirmation_id": plan["confirmation_id"],
+                    "approved_confirmation_id": approved_id,
                     "slug": slug,
                     "landing_id": landing_id,
                     "layout_id": layout_id,

@@ -1,10 +1,14 @@
 # Quests block operations
 
-Use this for a `block_operations` brief: single Quests blocks on an existing Shop Builder
-site. The gate in [SKILL.md](../SKILL.md) applies: preflight, backup, plan, the plan's
-`confirmation_id`, then `scripts/apply_plan.py`, which verifies on exit and touches only
-the listed blocks. Its last step is `scripts/restore_sandbox.py` (SKILL.md, Run end).
-Brief fields are in [shop brief](shop-brief.md).
+Use this for a `block_operations` brief that targets Quests blocks on an existing Shop
+Builder site. Run preflight and create a verified backup, then render with
+`scripts/render_plan.py --structure <backup>/structure.json`. Save that plan as
+`approved-plan.json` and apply it with both `--approved-plan approved-plan.json` and its
+`--confirmation-id`. Do not pass `--run-report`; operations are a single confirmed run.
+The current assembly entrypoint verifies the saved result and touches only the listed
+blocks. If preflight recorded a sandbox switch, run
+`scripts/restore_sandbox.py` when the run ends or stops. Brief fields are in
+[shop brief](shop-brief.md).
 
 ## Apply behaviour
 
@@ -102,7 +106,7 @@ The plan runs against the backup structure and rejects these before confirmation
 
 Ordinary `add` keeps using the stable creation pin `0.1.5`. An `add` operation may
 select a different artifact only through its explicit `version` field. The only verified
-candidate capability currently enabled is `0.2.0-qp-3256.5`; this is candidate-only
+candidate capability currently enabled is `0.2.1-qp-3256.1`; this is candidate-only
 support, not a stable-version claim. Updates and resets that use these fields require the
 target block's exact `values.version` to match that candidate. No other version is
 accepted by inference.

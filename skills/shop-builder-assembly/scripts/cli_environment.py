@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Run every `xsolla` call of a Shop Builder run with CLI sandbox mode off.
 
-Shop Builder has no sandbox. A request to change a Shop Builder site implies the
-CLI's sandbox mode is off, so the gate settles it without asking:
+Shop Builder has no sandbox. A Shop Builder run requires CLI sandbox mode off. The
+gate never switches it without explicit user confirmation:
 
 1. The active environment already has sandbox off: nothing to do.
 2. Another environment in the config file in use has sandbox off and the brief's
@@ -12,8 +12,8 @@ CLI's sandbox mode is off, so the gate settles it without asking:
    SandboxConfirmationNeeded, which names the exact command). Only a preflight run
    with the user's confirmation runs `xsolla config set sandbox false` in the
    directory of the config file in use, so that file is the one changed. It records
-   the switch in a restore record in the home folder. restore() puts sandbox back
-   on and removes the record; the last step of every run calls it.
+   the switch in a restore record in the home folder. `restore_sandbox.py` puts
+   sandbox back on and removes the record as the documented last step of the run.
 
 The xsolla CLI (1.9.4) reads `./.xsolla.json` when the working directory has one,
 else `~/.xsolla.json`, and `xsolla config set` writes `./.xsolla.json`, creating a
