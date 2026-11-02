@@ -8,7 +8,7 @@ publisher choices.
 
 Use for mobile-first games and focused top-up or item purchase journeys.
 
-- `/` Home: `header → leadGameSales → newStore → faq → footer`
+- `/` Home: `header → leadGameSales → sb-offer-chain → newStore → rewards → promocodes → faq → footer`
 - Navigation: anchors or one Home link; keep purchase content above long-form copy.
 - Store sections: currency packages first, then featured bundles, then virtual goods.
 - Defaults: compact hero, high-contrast CTA, short FAQ, minimal outbound navigation.
@@ -21,7 +21,7 @@ catalog entry points. This is a Shop Builder shop, not the Game Web Portal owned
 the agentic-onboarding flow.
 
 - `/` Home: `header → leadGameSales → description → gallery → footer`
-- `/store` Store: `header → newStore → faq → footer`
+- `/store` Store: `header → sb-offer-chain → newStore → rewards → promocodes → faq → footer`
 - `/about` About: `header → description → requirements → faq → footer`
 - Navigation: Home, Store, About; the primary CTA targets `/store`.
 - Store sections: featured bundles, grouped virtual goods, then currency packages.
@@ -32,13 +32,22 @@ the agentic-onboarding flow.
 Use when offers rotate, events have dates, or bundles are a primary merchandising
 unit. Do not invent event dates, discounts, scarcity, or eligibility.
 
-- `/` Home: `header → leadGameSales → newStore → gallery → faq → footer`
-- `/store` Store: `header → newStore → faq → footer`
+- `/` Home: `header → leadGameSales → sb-offer-chain → newStore → gallery → faq → footer`
+- `/store` Store: `header → newStore → rewards → promocodes → faq → footer`
 - `/events` Events: `header → leadGameSales → newStore → description → footer`
 - Navigation: Home, Store, Events; event CTA links to the verified event catalog group.
 - Store sections: active event bundles, featured bundles, virtual goods, currency.
 - Required data: active event name/dates, bundle or group IDs, fallback content for no
   active event, locale, and event assets.
+
+## LiveOps blocks
+
+`sb-offer-chain`, `rewards` and `promocodes` show what `catalog-design` set up in the project.
+Each is planned only when the brief's `catalog.liveops` lists its feature (`offer_chain`,
+`reward_chain`, `promo_codes`); otherwise the plan omits it and says what is not configured.
+Assembly adds these blocks with their default settings; check them in preview. A daily
+rewards block can't be added yet (see the block catalog), so report configured daily rewards
+as a gap.
 
 ## Override rules
 

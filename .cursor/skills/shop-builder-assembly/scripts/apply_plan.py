@@ -8,19 +8,27 @@ import copy
 import hashlib
 import html
 import json
+import re
 import subprocess
 import sys
 import time
+import urllib.request
 import uuid
 from pathlib import Path
+
+sys.dont_write_bytecode = True  # keep the installed skill folder clean
 
 from preflight import LAYOUT_SKIPPED, cli_has_command
 from render_plan import (
     COMMON_LAYOUT,
     CUSTOM_CODE_WARNING,
+    approval_changes,
     build_plan,
     common_layout_id,
+    created_block_ids,
     effective_module,
+    load_approved_plan,
+    load_run_report,
     page_path,
     require_own_header,
     site_block_ids,
@@ -28,6 +36,18 @@ from render_plan import (
     structure_hash,
 )
 from validate_shop_brief import VERIFIED_BLOCK_MODULES, load_brief, validate
+from block_ops import (
+    BLOCK_VALUES_ROOT,
+    QUESTS_DEV_NAME,
+    QUESTS_MODULE,
+    QUESTS_VERSION,
+    card_text_ref,
+    find_block,
+    has_leaf,
+    has_object,
+    quests_host,
+)
+from verify_structure import verify_block_operations
 
 BACKUP_FILE_NAMES = {
     "config.json",
@@ -245,6 +265,102 @@ def page_for_path(value: dict, path: str) -> dict | None:
     return None
 
 
+def page_block_ids(value: dict, paths: list[str]) -> dict[str, list[str]]:
+    """Return the block IDs on each page path, for the run report."""
+    result = {}
+    for path in paths:
+        page = page_for_path(value, path) or {}
+        result[path] = [
+            block["_id"]
+            for block in page.get("blocks", [])
+            if isinstance(block, dict) and isinstance(block.get("_id"), str)
+        ]
+    return result
+
+
+def check_cli_context(expected: dict) -> None:
+    """Stop unless the CLI targets the brief's merchant and project outside sandbox."""
+    config = data(run_json("config", "list"))
+    if not isinstance(config, dict):
+        raise RuntimeError("xsolla config list returned an unexpected shape")
+    if config.get("merchant_id") != expected["merchant_id"]:
+        raise RuntimeError("CLI merchant_id does not match the shop brief")
+    if config.get("project_id") != expected["project_id"]:
+        raise RuntimeError("CLI project_id does not match the shop brief")
+    if config.get("sandbox") is True:
+        raise RuntimeError("CLI sandbox must be disabled for Shop Builder")
+    RUN_AUTH["context"] = cli_context(config)
+
+
+def editor_url(merchant_id: object, project_id: object, slug: object) -> str:
+    """Build an editor link only from verified positive IDs and a safe site slug."""
+    slug_pattern = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+    if (
+        isinstance(merchant_id, bool)
+        or not isinstance(merchant_id, int)
+        or merchant_id <= 0
+        or isinstance(project_id, bool)
+        or not isinstance(project_id, int)
+        or project_id <= 0
+        or not isinstance(slug, str)
+        or not slug_pattern.fullmatch(slug)
+    ):
+        raise ValueError("editor link requires positive verified IDs and a safe site slug")
+    return (
+        f"https://publisher.xsolla.com/{merchant_id}/projects/{project_id}/"
+        f"site-builder/{slug}/editor"
+    )
+
+
+def check_approval(
+    args: argparse.Namespace, plan: dict, approved: dict, report: dict | None
+) -> None:
+    """Stop unless the developer's yes to the approved plan covers this run's plan.
+
+    The confirmation ID must be the approved plan's, and a run report must come from a
+    run under that same approval. A different current plan, such as a new site's second
+    run, is covered only when ``approval_changes`` finds nothing.
+    """
+    if args.confirmation_id != approved["confirmation_id"]:
+        raise RuntimeError("confirmation ID does not match the approved plan")
+    if report is not None and report.get("approved_confirmation_id") != approved[
+        "confirmation_id"
+    ]:
+        raise RuntimeError(
+            "the run report belongs to another approval than the approved plan. "
+            "Nothing was written. Show the developer the current plan and ask again"
+        )
+    if plan["confirmation_id"] == approved["confirmation_id"]:
+        return
+    if report is None:
+        raise RuntimeError(
+            "the current plan isn't the approved one; pass the earlier run's report "
+            "with --run-report, or show the developer the new plan and ask again"
+        )
+    changes = approval_changes(approved, plan, report)
+    if changes:
+        raise RuntimeError(
+            "the developer's yes doesn't cover the current plan: "
+            + "; ".join(changes)
+            + ". Nothing was written. Show these changes and ask again"
+        )
+
+
+def check_approval_identity(
+    args: argparse.Namespace, approved: dict, report: dict | None
+) -> None:
+    """Check the developer's approval token before running preflight or any CLI read."""
+    if args.confirmation_id != approved["confirmation_id"]:
+        raise RuntimeError("confirmation ID does not match the approved plan")
+    if report is not None and report.get("approved_confirmation_id") != approved[
+        "confirmation_id"
+    ]:
+        raise RuntimeError(
+            "the run report belongs to another approval than the approved plan. "
+            "Nothing was written. Show the developer the current plan and ask again"
+        )
+
+
 def verified_backup(path: Path, expected: dict, slug: str) -> bool:
     manifest_path = path / "manifest.json"
     try:
@@ -290,6 +406,476 @@ def backup_structure(path: Path) -> object:
     except (OSError, json.JSONDecodeError) as exc:
         raise RuntimeError(f"cannot read backup structure: {exc}") from exc
 
+
+OPS_APPLY_SUPPORTED = {
+    "block_add",
+    "block_values",
+    "block_reset",
+    "block_move",
+    "block_duplicate",
+    "block_visibility",
+    "block_localization",
+    "block_card_text",
+}
+CDN_TIMEOUT_SECONDS = 20
+
+
+class ApplyContext:
+    """What one run of block operations needs: the target and the ids it created.
+
+    ``refs`` maps "op:N" to the id of the block an add op created and "dup:N" to the
+    id of a duplicate's copy.
+    """
+
+    def __init__(self, slug: str, landing_id: str, refs: dict | None = None) -> None:
+        self.slug = slug
+        self.landing_id = landing_id
+        self.refs = refs if refs is not None else {}
+
+
+def block_patch_payload(
+    block_id: str, patches: list[dict], request_id: str = "r1"
+) -> str:
+    """Batch body for `update-block --data`: a map of requestId -> change (see --help)."""
+    clean = [
+        {key: value for key, value in patch.items() if key in ("op", "path", "value")}
+        for patch in patches
+    ]
+    payload = {request_id: {"type": "block", "id": block_id, "patches": clean}}
+    return json.dumps(payload, sort_keys=True, separators=(",", ":"))
+
+
+def patch_block(
+    landing_id: str, block_id: str, patches: list[dict], request_id: str = "r1"
+) -> None:
+    response = data(
+        run_json(
+            "shopbuilder",
+            "update-block",
+            "--landing-id",
+            landing_id,
+            "--data",
+            block_patch_payload(block_id, patches, request_id),
+        )
+    )
+    # The batch API answers 200 with `{"patches": []}` when it ignored every patch
+    # (for example a leaf under a missing parent object). Never treat that as applied.
+    if (
+        patches
+        and isinstance(response, dict)
+        and isinstance(response.get("patches"), list)
+        and not response["patches"]
+    ):
+        raise RuntimeError(
+            f"update-block on {block_id} was accepted but applied no patch: "
+            + ", ".join("/".join(str(part) for part in patch["path"]) for patch in patches)
+        )
+
+
+def set_block_hidden(
+    block_id: str, hidden: bool, *, landing_id: str, request_id: str = "r1"
+) -> None:
+    """Hide or show a block. Shared by block operations and Custom code hiding."""
+    patch_block(
+        landing_id,
+        block_id,
+        [{"op": "replace", "path": ["hidden"], "value": hidden}],
+        request_id,
+    )
+
+
+def fetch_quests_defaults(version: str) -> dict:
+    """Read the public default-data.json the CDN serves for a Quests block version."""
+    url = quests_host(version) + "default-data.json"
+    try:
+        with urllib.request.urlopen(url, timeout=CDN_TIMEOUT_SECONDS) as response:
+            value = json.loads(response.read().decode("utf-8"))
+    except (OSError, ValueError) as exc:
+        raise RuntimeError(f"cannot read the Quests block defaults at {url}: {exc}") from exc
+    resources = value.get("resources") if isinstance(value, dict) else None
+    if (
+        not isinstance(value, dict)
+        or not isinstance(value.get("defaultData"), dict)
+        or not isinstance(resources, dict)
+        or not isinstance(resources.get("localizedValues"), dict)
+    ):
+        raise RuntimeError(f"unexpected default-data.json shape at {url}")
+    return value
+
+
+def current_block(ctx: ApplyContext, block_id: str) -> tuple[dict, int, dict]:
+    found = find_block(structure(ctx.slug), block_id)
+    if found is None:
+        raise RuntimeError(f"block {block_id} is no longer on the site")
+    return found
+
+
+def item_block_id(item: dict, ctx: ApplyContext) -> str:
+    if item.get("block_id"):
+        return item["block_id"]
+    ref = item.get("block_ref")
+    if ref not in ctx.refs:
+        raise RuntimeError(f"no block was created for {ref}")
+    return ctx.refs[ref]
+
+
+def move_to(ctx: ApplyContext, page_id: str, block_id: str, index: int) -> None:
+    position = current_block(ctx, block_id)[1]
+    if position != index:
+        run_json(
+            "shopbuilder",
+            "move-block",
+            "--landing-id",
+            ctx.landing_id,
+            "--page-id",
+            page_id,
+            "--source",
+            str(position),
+            "--destination",
+            str(index),
+        )
+
+
+def new_block_on_page(ctx: ApplyContext, page_id: str, before: set) -> dict:
+    page = page_for_id(structure(ctx.slug), page_id)
+    created = [block for block in page.get("blocks", []) if block.get("_id") not in before]
+    if len(created) != 1:
+        raise RuntimeError(
+            f"expected one new block on page {page_id}, found {len(created)}"
+        )
+    return created[0]
+
+
+def block_ids_on_page(ctx: ApplyContext, page_id: str) -> set:
+    return {
+        block.get("_id") for block in page_for_id(structure(ctx.slug), page_id)["blocks"]
+    }
+
+
+def add_quests_block(item: dict, ctx: ApplyContext) -> dict:
+    """federated_patch: bare `federated` wrapper, then one update-block retarget."""
+    page_id = item["page_id"]
+    version = item.get("version") or QUESTS_VERSION
+    # Read the CDN first so a network failure cannot leave an empty wrapper behind.
+    defaults = fetch_quests_defaults(version)
+    before = block_ids_on_page(ctx, page_id)
+    command = [
+        "shopbuilder",
+        "add-block",
+        "--landing-id",
+        ctx.landing_id,
+        "--page-id",
+        page_id,
+        "--block",
+        "federated",
+    ]
+    # The CLI drops `--index 0`, and the API then places the block first.
+    if item["index"] > 0:
+        command += ["--index", str(item["index"])]
+    try:
+        run_json(*command)
+        block_id = new_block_on_page(ctx, page_id, before)["_id"]
+        ctx.refs[item["block_ref"]] = block_id
+        patch_block(
+            ctx.landing_id,
+            block_id,
+            [
+                {"op": "replace", "path": ["values", "host"], "value": quests_host(version)},
+                {"op": "replace", "path": ["values", "blockId"], "value": QUESTS_MODULE},
+                {"op": "replace", "path": ["values", "version"], "value": version},
+                {"op": "replace", "path": ["values", "useAsNativeBlock"], "value": False},
+                {
+                    "op": "replace",
+                    "path": ["values", "internalBlockValues"],
+                    "value": defaults["defaultData"],
+                },
+                {
+                    "op": "replace",
+                    "path": ["values", "resources", "localizedValues"],
+                    "value": defaults["resources"]["localizedValues"],
+                },
+            ],
+        )
+        # A separate change keeps a rejected label from undoing the retarget.
+        patch_block(
+            ctx.landing_id,
+            block_id,
+            [{"op": "add", "path": ["devName"], "value": QUESTS_DEV_NAME}],
+            request_id="r2",
+        )
+        move_to(ctx, page_id, block_id, item["index"])
+        values = current_block(ctx, block_id)[2].get("values") or {}
+        if values.get("blockId") != QUESTS_MODULE or values.get("version") != version:
+            raise RuntimeError("the new block was not retargeted to the Quests module")
+    except Exception as exc:
+        # Report every block this add left on the page, not only the one we resolved:
+        # an auth-retried add-block that already applied can leave two wrappers. No
+        # script deletes a block, so a bare wrapper is removed in the editor.
+        try:
+            leftover = sorted(block_ids_on_page(ctx, page_id) - before)
+        except Exception:  # noqa: BLE001 - the original error matters more
+            leftover = []
+        if leftover:
+            ctx.refs.setdefault(item["block_ref"], leftover[0])
+        raise RuntimeError(
+            f"{exc}. New block(s) left on page {page_id}: "
+            f"{', '.join(leftover) or 'unknown, re-read the page'}. Remove any bare "
+            "federated wrapper (empty blockId) in the Site Builder editor before "
+            "retrying"
+        ) from exc
+    return {"block_id": block_id}
+
+
+def apply_values(item: dict, ctx: ApplyContext) -> dict:
+    block_id = item_block_id(item, ctx)
+    block = current_block(ctx, block_id)[2]
+    internal = (block.get("values") or {}).get("internalBlockValues")
+    # An `add` of {} over an existing object would wipe it, so create only absent parents.
+    missing = [
+        parent
+        for parent in item["create_parents"]
+        if not has_object(internal, tuple(parent["path"][len(BLOCK_VALUES_ROOT) :]))
+    ]
+    if missing:
+        patch_block(ctx.landing_id, block_id, missing)
+    patch_block(ctx.landing_id, block_id, item["patches"])
+    return {"block_id": block_id}
+
+
+def apply_reset(item: dict, ctx: ApplyContext) -> dict:
+    block_id = item["block_id"]
+    internal = (current_block(ctx, block_id)[2].get("values") or {}).get("internalBlockValues")
+    patches = [
+        patch
+        for patch in item["patches"]
+        if has_leaf(internal, tuple(patch["path"][len(BLOCK_VALUES_ROOT) :]))
+    ]
+    if patches:
+        patch_block(ctx.landing_id, block_id, patches)
+    return {"block_id": block_id}
+
+
+def apply_move(item: dict, ctx: ApplyContext) -> dict:
+    # The plan's source_index comes from the backup; the live index decides.
+    move_to(ctx, item["page_id"], item["block_id"], item["index"])
+    return {"block_id": item["block_id"]}
+
+
+def apply_duplicate(item: dict, ctx: ApplyContext) -> dict:
+    page_id = item["page_id"]
+    block_id = item["block_id"]
+    current_block(ctx, block_id)
+    before = block_ids_on_page(ctx, page_id)
+    command = [
+        "shopbuilder",
+        "duplicate-block",
+        "--landing-id",
+        ctx.landing_id,
+        "--page-id",
+        page_id,
+        "--blockid",
+        block_id,
+    ]
+    if item["index"] > 0:
+        command += ["--index", str(item["index"])]
+    run_json(*command)
+    copy_id = new_block_on_page(ctx, page_id, before)["_id"]
+    ctx.refs[f"dup:{item['op_index']}"] = copy_id
+    move_to(ctx, page_id, copy_id, item["index"])
+    return {"block_id": block_id, "copy_id": copy_id}
+
+
+def text_localization_id(block: dict, key: str) -> str:
+    """The `L:` id behind ``internalBlockValues.translations.<key>``.
+
+    ``translations.<key>`` holds a block-local `L:` key; the block's
+    ``resources.localizedValues`` entry for it names the localization id that
+    `get-localization` and `update-many-localization` use.
+    """
+    values = block.get("values") or {}
+    short = ((values.get("internalBlockValues") or {}).get("translations") or {}).get(key)
+    texts = (((values.get("resources") or {}).get("localizedValues") or {}).get(short) or {}).get(
+        "texts"
+    )
+    text_id = texts.get("id") if isinstance(texts, dict) else None
+    if not isinstance(text_id, str) or not text_id.startswith("L:"):
+        raise RuntimeError(f"block {block.get('_id')} has no localization id for {key}")
+    return text_id
+
+
+def localization_scope(localization: object, text_id: str, default_scope: str) -> str:
+    """Namespace (page id or `common`) that holds ``text_id``."""
+    value = data(localization)
+    if isinstance(value, dict):
+        for page_id, namespace in (value.get("pages") or {}).items():
+            if text_id in (namespace.get("texts") or {}):
+                return page_id
+        if text_id in ((value.get("common") or {}).get("texts") or {}):
+            return "common"
+    return default_scope
+
+
+def apply_localization(item: dict, ctx: ApplyContext) -> dict:
+    block_id = item_block_id(item, ctx)
+    current = structure(ctx.slug)
+    found = find_block(current, block_id)
+    if found is None:
+        raise RuntimeError(f"block {block_id} is no longer on the site")
+    page, _, block = found
+    languages = current.get("languages") or []
+    localization = run_json("shopbuilder", "get-localization", "--slug", ctx.slug)
+    for locale, texts in item["translations"].items():
+        # Backstop: planning already rejects a locale the backup did not have.
+        if locale not in languages:
+            raise RuntimeError(f"locale {locale} is not enabled on {ctx.slug}")
+        values = {}
+        scope = None
+        for key, text in texts.items():
+            text_id = text_localization_id(block, key)
+            text_scope = localization_scope(localization, text_id, page["_id"])
+            if scope not in (None, text_scope):
+                raise RuntimeError(f"{block_id} texts span more than one localization scope")
+            scope = text_scope
+            values[text_id] = {"translation": text}
+        payload = {"locale": locale, "perScopeValues": {scope: values}}
+        run_json(
+            "shopbuilder",
+            "update-many-localization",
+            "--slug",
+            ctx.slug,
+            "--data",
+            json.dumps(payload, sort_keys=True, separators=(",", ":")),
+        )
+    return {"block_id": block_id}
+
+
+def apply_card_text(item: dict, ctx: ApplyContext) -> dict:
+    """Write a card's new title/description into the editor text ref behind it.
+
+    The ref (``overrides.<questId>.titleRef`` / ``descriptionRef``) wins over the plain
+    field, so the same text goes to every site locale through the same
+    `update-many-localization` shape the heading uses.
+    """
+    block_id = item["block_id"]
+    current = structure(ctx.slug)
+    found = find_block(current, block_id)
+    if found is None:
+        raise RuntimeError(f"block {block_id} is no longer on the site")
+    page, _, block = found
+    languages = current.get("languages") or []
+    localization = run_json("shopbuilder", "get-localization", "--slug", ctx.slug)
+    per_scope: dict[str, dict] = {}
+    for entry in item["texts"]:
+        _, text_id = card_text_ref(block, entry["quest_id"], entry["field"])
+        if text_id is None:
+            raise RuntimeError(f"{block_id} {entry['ref_key']} has no localization id")
+        scope = localization_scope(localization, text_id, page["_id"])
+        per_scope.setdefault(scope, {})[text_id] = {"translation": entry["text"]}
+    for locale in item["locales"]:
+        if locale not in languages:
+            raise RuntimeError(f"locale {locale} is not enabled on {ctx.slug}")
+        payload = {"locale": locale, "perScopeValues": per_scope}
+        run_json(
+            "shopbuilder",
+            "update-many-localization",
+            "--slug",
+            ctx.slug,
+            "--data",
+            json.dumps(payload, sort_keys=True, separators=(",", ":")),
+        )
+    return {"block_id": block_id}
+
+
+def apply_block_operation(item: dict, ctx: ApplyContext) -> dict:
+    """Run one confirmed plan item against the CLI and report what it touched."""
+    kind = item["type"]
+    if kind == "block_add":
+        done = add_quests_block(item, ctx)
+    elif kind == "block_values":
+        done = apply_values(item, ctx)
+    elif kind == "block_reset":
+        done = apply_reset(item, ctx)
+    elif kind == "block_move":
+        done = apply_move(item, ctx)
+    elif kind == "block_duplicate":
+        done = apply_duplicate(item, ctx)
+    elif kind == "block_visibility":
+        current_block(ctx, item["block_id"])
+        set_block_hidden(item["block_id"], item["hidden"], landing_id=ctx.landing_id)
+        done = {"block_id": item["block_id"]}
+    elif kind == "block_localization":
+        done = apply_localization(item, ctx)
+    elif kind == "block_card_text":
+        done = apply_card_text(item, ctx)
+    else:
+        raise RuntimeError(f"unknown block operation {kind}")
+    return {"type": kind, "op_index": item["op_index"], **done}
+
+
+def run_block_operations(
+    slug: str, landing_id: str, plan: dict, refs: dict | None = None
+) -> tuple[list[dict], dict]:
+    """Apply, then verify. Any failure becomes a partial-apply RuntimeError."""
+    refs = refs if refs is not None else {}
+    try:
+        applied = apply_block_operations(slug, landing_id, plan, refs)
+        after = structure(slug)
+        problems = verify_block_operations(
+            plan,
+            after,
+            data(run_json("shopbuilder", "get-localization", "--slug", slug)),
+            refs,
+        )
+        if problems:
+            raise RuntimeError("verification failed: " + "; ".join(problems))
+    except Exception as exc:  # noqa: BLE001 - every failure may follow a write
+        # login_once says a rerun is safe because the failed command wrote nothing; in a
+        # multi-step run earlier steps may have, so do not repeat that advice here.
+        cause = str(exc).replace(
+            "made no change, so it is safe to rerun",
+            "made no change itself, but earlier steps of this run may have written",
+        )
+        raise RuntimeError(
+            "block operations may be partly applied, so do not rerun this plan: "
+            "back up again, inspect the site and re-render. Created blocks: "
+            f"{refs or 'none'}. Cause: {cause}"
+        ) from exc
+    return applied, after
+
+
+def apply_block_operations(
+    slug: str, landing_id: str, plan: dict, refs: dict | None = None
+) -> list[dict]:
+    """Run only the confirmed block operation items; touch nothing else.
+
+    ``refs`` receives the ids of blocks the run created, for verification.
+    """
+    items = plan["block_operations"]
+    unsupported = sorted(
+        {item["type"] for item in items if item["type"] not in OPS_APPLY_SUPPORTED}
+    )
+    if unsupported:
+        raise RuntimeError(
+            "plan contains block operations apply cannot run: " + ", ".join(unsupported)
+        )
+    expected = plan.get("current_state", {}).get("structure_sha256")
+    if not isinstance(expected, str):
+        raise RuntimeError(
+            "plan has no current_state.structure_sha256; re-render it from a backup"
+        )
+    if structure_hash(structure(slug)) != expected:
+        raise RuntimeError(
+            "target structure changed after backup; back up, re-render, and reconfirm"
+        )
+    ctx = ApplyContext(slug, landing_id, refs)
+    return [apply_block_operation(item, ctx) for item in items]
+
+
+def page_for_id(value: dict, page_id: str) -> dict:
+    for page in value["pages"]:
+        if page.get("_id") == page_id:
+            return page
+    raise RuntimeError(f"page {page_id} is no longer on the site")
 
 def run_preflight(brief_path: Path, approved_test_projects: Path | None) -> None:
     # `-X utf8` makes the child write UTF-8 to the pipe; on Windows it would
@@ -372,6 +958,7 @@ def reconcile_page(slug: str, landing_id: str, page_plan: dict) -> dict:
             "page_id": page_id,
             "blocks": current_modules,
             "removed_blocks": 0,
+            "added_block_ids": [],
             "hidden_custom_code": [],
         }
     if removals:
@@ -472,6 +1059,11 @@ def reconcile_page(slug: str, landing_id: str, page_plan: dict) -> dict:
         "page_id": page_id,
         "blocks": final_modules,
         "removed_blocks": len(removals),
+        "added_block_ids": [
+            block.get("_id")
+            for block in final_page.get("blocks", [])
+            if block.get("_id") not in known_block_ids
+        ],
         "hidden_custom_code": hidden_custom_code,
     }
 
@@ -970,27 +1562,26 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("brief", type=Path)
     parser.add_argument("--confirmation-id", required=True)
+    parser.add_argument("--approved-plan", type=Path, required=True)
+    parser.add_argument("--run-report", type=Path)
     parser.add_argument("--backup-dir", type=Path)
     parser.add_argument("--approved-test-projects", type=Path)
     args = parser.parse_args()
     try:
         brief = load_brief(args.brief)
+        approved = load_approved_plan(args.approved_plan)
+        report = load_run_report(args.run_report) if args.run_report else None
+        check_approval_identity(args, approved, report)
+        if "block_operations" in brief and report is not None:
+            raise RuntimeError("Quests block operations do not accept an earlier run report")
         errors = validate(brief)
         if errors:
             raise RuntimeError("invalid shop brief: " + "; ".join(errors))
+        created = created_block_ids(report) if report else frozenset()
         run_preflight(args.brief, args.approved_test_projects)
 
         expected = brief["project"]
-        config = data(run_json("config", "list"))
-        if not isinstance(config, dict):
-            raise RuntimeError("xsolla config list returned an unexpected shape")
-        if config.get("merchant_id") != expected["merchant_id"]:
-            raise RuntimeError("CLI merchant_id does not match the shop brief")
-        if config.get("project_id") != expected["project_id"]:
-            raise RuntimeError("CLI project_id does not match the shop brief")
-        if config.get("sandbox") is True:
-            raise RuntimeError("CLI sandbox must be disabled for Shop Builder")
-        RUN_AUTH["context"] = cli_context(config)
+        check_cli_context(expected)
 
         slug = brief["site"]["slug"]
         existed = website_exists(run_json("shopbuilder", "list-websites"), slug)
@@ -1002,12 +1593,41 @@ def main() -> int:
                     "a complete verified backup created before confirmation is required"
                 )
             saved_structure = backup_structure(args.backup_dir)
-            plan = build_plan(brief, saved_structure)
+            plan = build_plan(brief, saved_structure, created)
         else:
             plan = build_plan(brief)
 
-        if args.confirmation_id != plan["confirmation_id"]:
-            raise RuntimeError("confirmation ID does not match the current plan")
+        check_approval(args, plan, approved, report)
+        approved_id = approved["confirmation_id"]
+
+        if plan.get("mode") == "block_operations":
+            if not existed:
+                raise RuntimeError("Quests block operations require an existing site")
+            if report is not None:
+                raise RuntimeError("Quests block operations do not accept an earlier run report")
+            landing_id = (plan.get("current_state") or {}).get("landing_id")
+            if not isinstance(landing_id, str):
+                raise RuntimeError("the confirmed Quests settings plan has no landing ID")
+            applied, after = run_block_operations(slug, landing_id, plan)
+            print(
+                json.dumps(
+                    {
+                        "operation_succeeded": True,
+                        "status": "block-operations-applied",
+                        "confirmation_id": plan["confirmation_id"],
+                        "approved_confirmation_id": approved_id,
+                        "slug": slug,
+                        "landing_id": landing_id,
+                        "editor_url": editor_url(
+                            expected["merchant_id"], expected["project_id"], slug
+                        ),
+                        "applied": applied,
+                        "published": after.get("published") not in (None, False),
+                    },
+                    indent=2,
+                )
+            )
+            return 0
 
         if existed:
             current = structure(slug)
@@ -1060,14 +1680,18 @@ def main() -> int:
                         "assembly_complete": False,
                         "status": "bootstrap-complete",
                         "confirmation_id": plan["confirmation_id"],
+                        "approved_confirmation_id": approved_id,
                         "slug": slug,
                         "landing_id": landing_id,
                         "created_pages": created_pages,
+                        "created_blocks": page_block_ids(structure(slug), created_pages),
                         "layout_id": layout_id,
                         "locales": locales,
                         "next_action": (
-                            "Back up the generated site, render a target-bound plan, "
-                            "and explicitly confirm its exact removals before reconciliation."
+                            "Save this report, back up the generated site, and render a "
+                            "target-bound plan with --approved-plan and --run-report. "
+                            "Apply it under the same yes only if the render says it is "
+                            "covered; otherwise show the changes and ask again."
                         ),
                         "published": False,
                     },
@@ -1084,14 +1708,18 @@ def main() -> int:
                         "assembly_complete": False,
                         "status": "page-phase-complete",
                         "confirmation_id": plan["confirmation_id"],
+                        "approved_confirmation_id": approved_id,
                         "slug": slug,
                         "landing_id": landing_id,
                         "created_pages": created_pages,
+                        "created_blocks": page_block_ids(structure(slug), created_pages),
                         "layout_id": layout_id,
                         "locales": locales,
                         "next_action": (
-                            "Back up the changed site, re-render its generated block IDs, "
-                            "and explicitly confirm before block reconciliation."
+                            "Save this report, back up the changed site, and render a "
+                            "target-bound plan with --approved-plan and --run-report. "
+                            "Apply it under the same yes only if the render says it is "
+                            "covered; otherwise show the changes and ask again."
                         ),
                         "published": False,
                     },
@@ -1110,6 +1738,7 @@ def main() -> int:
                     "assembly_complete": not plan["unsupported_phases"],
                     "status": "implemented-phases-applied",
                     "confirmation_id": plan["confirmation_id"],
+                    "approved_confirmation_id": approved_id,
                     "slug": slug,
                     "landing_id": landing_id,
                     "layout_id": layout_id,

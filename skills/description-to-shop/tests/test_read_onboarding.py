@@ -15,8 +15,6 @@ class OnboardingTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
-        self.env = self.root / ".env"
-        self.env.write_text("XSOLLA_BUILD_PATH=shopbuilder\nXSOLLA_SITE_KIND=shop\n")
         (self.root / ".xsolla").mkdir()
         self.path = self.root / ".xsolla/onboarding.json"
         self.ledger = {
@@ -77,50 +75,40 @@ class OnboardingTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "intake must be an object"):
             read_onboarding(self.root)
 
-    def test_path_or_site_kind_mismatch_stops(self):
-        for key, value in (("path", "headless"), ("site_kind", "portal")):
-            with self.subTest(key=key):
-                original = self.ledger[key]
-                self.ledger[key] = value
-                self.save()
-                with self.assertRaisesRegex(ValueError, "conflicts"):
-                    read_onboarding(self.root)
-                self.ledger[key] = original
+    def test_headless_ledger_stops(self):
+        self.ledger["path"] = "headless"
+        self.save()
+        with self.assertRaisesRegex(ValueError, "shop the user codes"):
+            read_onboarding(self.root)
 
     def test_legacy_empty_or_absent_site_kind_means_shop(self):
-        self.save()
-        for suffix in ("", "XSOLLA_SITE_KIND=\n"):
-            self.env.write_text("XSOLLA_BUILD_PATH=shopbuilder\n" + suffix)
-            self.assertEqual(read_onboarding(self.root)["site_kind"], "shop")
-
-    def test_last_routing_key_wins(self):
-        self.env.write_text("XSOLLA_BUILD_PATH=headless\nXSOLLA_BUILD_PATH=shopbuilder\n")
-        self.save()
-        self.assertEqual(read_onboarding(self.root)["status"], "loaded")
+        for kind in ("", None):
+            with self.subTest(kind=kind):
+                if kind is None:
+                    del self.ledger["site_kind"]
+                else:
+                    self.ledger["site_kind"] = kind
+                self.save()
+                self.assertEqual(read_onboarding(self.root)["site_kind"], "shop")
 
     def test_portal_remains_portal(self):
-        self.env.write_text("XSOLLA_BUILD_PATH=shopbuilder\nXSOLLA_SITE_KIND=portal\n")
         self.ledger["site_kind"] = "portal"
         self.save()
         self.assertEqual(read_onboarding(self.root)["site_kind"], "portal")
 
-    def test_headless_or_missing_or_invalid_decisions_stop(self):
-        for env in ("", "XSOLLA_BUILD_PATH=\n", "XSOLLA_BUILD_PATH=headless\n",
-                    'XSOLLA_BUILD_PATH="shopbuilder"\n',
-                    "XSOLLA_BUILD_PATH=shopbuilder \n",
-                    "XSOLLA_BUILD_PATH=shopbuilder\nXSOLLA_SITE_KIND=Shop\n"):
-            with self.subTest(env=env):
-                self.env.write_text(env)
-                with self.assertRaises(ValueError):
-                    read_onboarding(self.root)
-
-    def test_missing_env_stops(self):
-        self.env.unlink()
-        with self.assertRaisesRegex(ValueError, "No build path"):
+    def test_invalid_site_kind_stops(self):
+        self.ledger["site_kind"] = "Shop"
+        self.save()
+        with self.assertRaisesRegex(ValueError, "site_kind"):
             read_onboarding(self.root)
 
+    def test_missing_env_still_loads(self):
+        self.save()
+        self.assertFalse((self.root / ".env").exists())
+        self.assertEqual(read_onboarding(self.root)["status"], "loaded")
+
     def test_only_intake_returned_no_credentials_or_step_ids(self):
-        self.env.write_text(self.env.read_text() + "XSOLLA_PROJECT_API_KEY=secret-sentinel\n")
+        (self.root / ".env").write_text("XSOLLA_PROJECT_API_KEY=secret-sentinel\n")
         self.ledger["intake"]["api_key"] = "secret-sentinel"
         self.ledger["steps"] = [{"id": "merchant", "ids": {"project_id": 12345}}]
         self.save()

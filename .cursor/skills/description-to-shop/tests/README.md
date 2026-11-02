@@ -6,15 +6,14 @@ Run the deterministic tests with:
 python3 -B -m unittest discover -s skills/description-to-shop/tests -v
 ```
 
-The tests cover intake preservation, incomplete/absent/corrupt ledgers, route mismatches,
-legacy site-kind defaults, portal/headless routing, no credential/step leakage, and no
-file writes. They do not prove the agent asks the right questions.
+The tests cover intake preservation, incomplete/absent/corrupt ledgers, a ledger for a
+shop the user codes, legacy site-kind defaults, portal site kind, no credential/step
+leakage, and no file writes. They do not prove the agent asks the right questions.
 
 ## Claude behavior check
 
 Use a dedicated approved test project with an existing catalog. In a separate working
-directory, prepare `.env` routing keys `XSOLLA_BUILD_PATH=shopbuilder` and
-`XSOLLA_SITE_KIND=shop`. Use `shop-plan` to record confirmed onboarding intake, including
+directory, record confirmed onboarding intake in `.xsolla/onboarding.json`, including
 game name, platforms, approved description, domain, primary locale and locales. Load the
 plugin from the branch under test, not an older installed copy.
 
