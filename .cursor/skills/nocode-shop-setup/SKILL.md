@@ -35,17 +35,21 @@ is still missing), and one yes. Everything else runs without them. Never stop to
 
 ## Check what can be built, before any question
 
-Run these read-only checks first, so a blocker shows up in the first message, not after
-the catalog is built.
+Run these first, so a blocker shows up in the first message, not after the catalog is
+built.
 
-1. **The CLI can make a site that opens.** A new store site gets its common layout only
+1. **The latest CLI and kit.** Run `xsolla update --check`; when it can't tell (it has
+   reported "not published") and the CLI came from Homebrew, run `brew upgrade xsolla`.
+   Then refresh the kit with `xsolla skills install --global --source ai-kit`. Name both
+   versions in the first message. The checks below are read-only.
+2. **The CLI can make a site that opens.** A new store site gets its common layout only
    from a CLI with `xsolla shopbuilder create-block`. Run
    `xsolla shopbuilder create-block --help`. If the usage line doesn't name
    `create-block`, say in the first message: a new site this CLI creates won't open in
    the Editor, Publish or private preview until a newer CLI ships. Put "build the
    structure anyway, or wait" in the batch. A game home is not affected: the partner
    creates its site from a template.
-2. **The project is an approved test project.** Shop Builder writes need the project on
+3. **The project is an approved test project.** Shop Builder writes need the project on
    the approved test-project allowlist, with its approver and approval reference. The
    format is in [shop brief](../shop-builder-assembly/references/shop-brief.md); the
    file lives outside the repository, at `$XSOLLA_APPROVED_TEST_PROJECTS`, by default
@@ -53,9 +57,9 @@ the catalog is built.
    the batch who approved it as a dedicated test project (a mentor or tech lead) and a
    link to that approval. Record exactly what the user gives. Never fill in the approver
    or the reference yourself, and never use this chat as the approval reference.
-3. **The platform.** Read the user's store listing link, if they gave one, for the
+4. **The platform.** Read the user's store listing link, if they gave one, for the
    platforms.
-4. **Browser and design tools in this session.** Find the browser that is signed in to
+5. **Browser and design tools in this session.** Find the browser that is signed in to
    Publisher Account (a built-in browser, Claude in Chrome, or another extension) and use
    it for every browser step; don't ask which one. Check that the mockup's design tool,
    such as Figma, is available in this session: a setup log from an earlier session is not

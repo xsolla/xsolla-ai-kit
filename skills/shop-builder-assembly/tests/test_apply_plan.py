@@ -2339,6 +2339,53 @@ def load_patch_backgrounds():
 patch_backgrounds = load_patch_backgrounds()
 
 
+class OpaqueColorTests(unittest.TestCase):
+    """An opaque background color hides the block's image (render rules)."""
+
+    def test_only_clearly_opaque_colors_count(self) -> None:
+        for color in ("#000", "#0e6fd6", "#0E6FD6FF", "#000f", "rgb(1, 2, 3)", "rgba(0,0,0,1)"):
+            with self.subTest(color=color):
+                self.assertTrue(patch_backgrounds.is_opaque(color))
+        for color in ("rgba(0, 0, 0, 0)", "rgba(0,0,0,0.4)", "#00000080", "transparent", "black"):
+            with self.subTest(color=color):
+                self.assertFalse(patch_backgrounds.is_opaque(color))
+
+    def blocks(self, image: str) -> dict:
+        return {"hero": {"values": {"background": {"img": image, "color": "rgba(0,0,0,0)"}}}}
+
+    def refused(self, fixes: list[dict], image: str) -> list[str]:
+        return patch_backgrounds.refused_fixes(
+            fixes, self.blocks(image), frozenset({"hero"}), {"https://cdn.example/a.webp"}
+        )
+
+    def test_an_opaque_color_over_an_image_is_refused(self) -> None:
+        errors = self.refused(
+            [{"block_id": "hero", "leaf": "color", "value": "#101820"}],
+            "https://cdn.example/a.webp",
+        )
+        self.assertEqual(1, len(errors))
+        self.assertIn("would hide the block's image", errors[0])
+
+    def test_a_tint_with_alpha_over_an_image_is_allowed(self) -> None:
+        self.assertEqual(
+            [],
+            self.refused(
+                [{"block_id": "hero", "leaf": "color", "value": "rgba(16, 24, 32, 0.5)"}],
+                "https://cdn.example/a.webp",
+            ),
+        )
+
+    def test_an_opaque_color_is_allowed_when_the_image_is_cleared(self) -> None:
+        fixes = [
+            {"block_id": "hero", "leaf": "img", "value": ""},
+            {"block_id": "hero", "leaf": "color", "value": "#101820"},
+        ]
+        self.assertEqual([], self.refused(fixes, "https://cdn.example/a.webp"))
+        self.assertEqual(
+            [],
+            self.refused([{"block_id": "hero", "leaf": "color", "value": "#101820"}], ""),
+        )
+
 class BackgroundFixTests(unittest.TestCase):
     """Background fixes after the visual review touch only blocks the assembly created."""
 

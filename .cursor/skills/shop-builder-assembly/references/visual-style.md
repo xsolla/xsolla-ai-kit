@@ -13,6 +13,9 @@ colors, placeholder art and hard section edges read as unfinished.
   one or two supporting colors. Keep it on every page.
 - Without key art, build section backgrounds as gradients in that palette, not one flat
   color.
+- Hero default: the key art centered, a blurred and darkened copy of it filling the sides,
+  and the copy over it readable at both widths. Between sections, plain two-color fades;
+  one font per role (headings, body, buttons).
 - Upload images with `upload-asset` and use the returned CDN URL. Never hotlink a store page.
 - Products and packs need artwork in one consistent style. It's the catalog items' images,
   which `catalog-design` sets; list the missing ones in the handoff.
