@@ -3,8 +3,8 @@ name: description-to-shop
 description: >-
   Turn a plain-language game description into the normalized, source-attributed shop
   brief consumed by shop-builder-assembly. Not the entry point for "build me a shop" —
-  that is shop-setup, which routes here once the build path is Shop Builder and the only
-  input is prose. Use when a publisher has no design, brief or written specification and
+  that is nocode-shop-setup, which routes here once the shop is created on Xsolla's side
+  and the only input is prose. Use when a publisher has no design, brief or written specification and
   asks to build a Shop Builder site, webshop, top-up page, PC portal, or live-service
   store from a description. This skill owns intake and inference; shop-builder-assembly
   owns presets, confirmation, backups, CLI writes, verification, and preview. Do not use
@@ -24,12 +24,15 @@ it over. Never call Shop Builder write commands here.
 Before asking anything, read [references/onboarding-intake.md](references/onboarding-intake.md)
 and run this skill's `scripts/read_onboarding.py --project-root <publisher-project-root>`.
 Use the publisher's working project, not the installed plugin directory. The helper reads
-`.env` routing keys and `.xsolla/onboarding.json` only; it makes no writes or API calls.
-On an error, stop and report it rather than restarting the interview. For `portal`, hand
-off to `game-web-portal` and stop here. A missing ledger on the shop path permits normal
-intake from the conversation. A loaded ledger supplies already-confirmed answers. A value
-that contradicts the ledger without an explicit correction is a conflict: keep the ledger
-value, ask one question that shows both values, and wait for the answer.
+`.xsolla/onboarding.json` only. It does not read a build path from `.env`, and it makes no
+writes or API calls.
+On an error, stop and report it rather than restarting the interview. For `portal`, or when
+the user asked for a game home, or the existing site has `/news`, `/rewards`, and `/store`,
+hand off to `game-web-portal` and stop here. `nocode-shop-setup` asks store or game home
+when it is still open. A missing ledger permits normal intake from the conversation. A
+loaded ledger supplies already-confirmed answers. A value that contradicts the ledger
+without an explicit correction is a conflict: keep the ledger value, ask one question that
+shows both values, and wait for the answer.
 
 ## 1. Extract the description
 

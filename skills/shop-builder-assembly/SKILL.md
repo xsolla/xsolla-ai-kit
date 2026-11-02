@@ -4,8 +4,8 @@ description: >-
   Assemble a complete Xsolla Shop Builder storefront from a structured shop brief,
   working top-down from theme and pages through navigation, standard blocks,
   localization, and catalog links. Not the entry point for "build me a shop" — that is
-  shop-setup, which routes here once the build path is Shop Builder and a validated
-  brief exists (from description-to-shop). Use for AI-built Shop Builder sites, full
+  nocode-shop-setup, which routes here once the shop is created on Xsolla's side and a
+  validated brief exists (from description-to-shop). Use for AI-built Shop Builder sites, full
   website or webshop assembly,
   game-type storefront presets, mobile single-page shops, PC multi-page shops, and
   live-service stores with bundles or events. Prefer this skill over creating isolated
@@ -21,9 +21,9 @@ metadata:
 Build an unpublished Publisher Account **Shop Builder site**, not a custom frontend,
 in a dedicated non-partner test project through `xsolla shopbuilder`.
 
-A Game Web Portal is built by `game-web-portal`, not here. First read `XSOLLA_SITE_KIND` with the
-[build-path contract's check](../shop-plan/references/build-path-contract.md#the-site-kind-shop-builder-only):
-for `portal`, hand off to `game-web-portal` and stop; an invalid value halts. A shop continues.
+A Game Web Portal is built by `game-web-portal`, not here. If the user asked for a
+game home, or the existing site has `/news`, `/rewards`, and `/store`, hand off to
+`game-web-portal` and stop. A shop continues.
 
 ## Inputs
 

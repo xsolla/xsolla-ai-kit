@@ -12,13 +12,23 @@ On the headless path, skills call **Xsolla REST APIs directly**. The Shop Builde
 
 ---
 
+## Shop building paths
+
+Two ways to build a shop, for different goals. Before building, ask whether the user is ready to code, review, test, and deploy, and whether they already have a store to plug into.
+
+**In code** — `shop-setup`. The agent writes the shop on the user's machine. The user deploys, tests, and reviews it. They control the logic and the styles: a store from scratch, or Xsolla products embedded in a store they already have. The usual payment UI is Headless Checkout, a component library. Pay Station, the hosted payment page, is the other option.
+
+**In Shop Builder** — `nocode-shop-setup`. The agent sends commands to Shop Builder, and the site is created there. The user arranges blocks, configures them, and publishes. This fits someone who does not want to own the HTML, JavaScript, backend, deploys, or the upkeep of their own storefront. Custom blocks are possible; that code still runs on Xsolla's side. Payments use Pay Station. A store continues in `description-to-shop` or `shop-builder-assembly`. A PC game home around the store continues in `game-web-portal`.
+
+---
+
 ## Skill inventory
 
 | Skill                           | What it does                                                                             |
 |---------------------------------|------------------------------------------------------------------------------------------|
-| `shop-plan`                     | **Decides the build path** — Xsolla-hosted or custom (headless) storefront, pre-build    |
-| `shop-setup`                    | **Entry point** for "build me a shop" — checks the build path, chains the right skills   |
-| `shop-builder-assembly`         | Assembles a Shop Builder site from a shop brief — reached via shop-setup, not directly   |
+| `shop-setup`                    | **In code** — a shop the user writes, deploys, and reviews. Chains the headless skills   |
+| `nocode-shop-setup`             | **In Shop Builder** — a hosted site. Store, or a PC game home around the store           |
+| `shop-builder-assembly`         | Assembles a Shop Builder store from a shop brief — reached via nocode-shop-setup        |
 | `merchant-setup`                | Creates and configures an Xsolla account + get API key                                   |
 | `catalog-design`                | Configures the catalog and the client flow: client catalog, purchase, order confirmation |
 | `login-setup`                   | Integrates Xsolla Login / NewID authentication                                           |
@@ -26,9 +36,9 @@ On the headless path, skills call **Xsolla REST APIs directly**. The Shop Builde
 | `headless-checkout-integration` | Payments via Headless Checkout                                                           |
 | `webhooks-impl`                 | Generates webhook handler code for order/payment events                                  |
 | `production`                    | Sandbox → live: contract, flip flags, deploy, developer live-payment checklist           |
-| `description-to-shop`           | Prose → shop brief for shop-builder-assembly — reached via shop-setup, not directly      |
+| `description-to-shop`           | Prose → shop brief for shop-builder-assembly — reached via nocode-shop-setup             |
 | `shopbuilder-translate`         | Translates Shop Builder page copy. Catalog and LiveOps text are out of scope             |
-| `game-web-portal`               | Builds a PC Game Web Portal (game home + shop) — handed off by the Shop Builder skills   |
+| `game-web-portal`               | Builds a PC Game Web Portal (game home + shop) — handed off by nocode-shop-setup         |
 
 ---
 
@@ -37,16 +47,19 @@ On the headless path, skills call **Xsolla REST APIs directly**. The Shop Builde
 Skills are loaded automatically when you open this repo in your agent. To run a specific skill, ask your agent naturally:
 
 ```
-Should Xsolla host my store, or should I build my own storefront with Xsolla APIs?
-→ triggers: shop-plan (weighs six criteria, shows the trade-offs, records the choice)
+Should I code the shop or use Shop Builder?
+→ triggers: the Shop building paths section above. In code → shop-setup. Shop Builder →
+  nocode-shop-setup.
 
-Build me a shop / set up a full Xsolla game shop for my project
-→ triggers: shop-setup — the one entry point. It checks the build path (via shop-plan), and on
-  the Shop Builder path hands off to description-to-shop (prose only) or shop-builder-assembly
-  (a brief exists). Never start with those two.
+Build me a shop I will code, deploy, and review
+→ triggers: shop-setup
+
+Build a Shop Builder site / I don't want to code the storefront
+→ triggers: nocode-shop-setup. A description goes to description-to-shop; a brief goes to
+  shop-builder-assembly. A game home goes to game-web-portal.
 
 Assemble a Shop Builder site from this validated shop brief
-→ triggers: shop-builder-assembly (reached through shop-setup)
+→ triggers: shop-builder-assembly (reached through nocode-shop-setup)
 
 Configure my Xsolla catalog with items and pricing
 → triggers: catalog-design
@@ -57,17 +70,16 @@ Integrate payments into my game
 Go live / leave sandbox
 → triggers: production
 
-Build me a shop from this description — I have no design or spec
-→ triggers: shop-setup, which routes to description-to-shop once the path is Shop Builder;
-  description-to-shop then delegates the build to shop-builder-assembly
+Build me a Shop Builder site from this description — I have no design or spec
+→ triggers: nocode-shop-setup, which routes to description-to-shop; description-to-shop
+  then delegates the build to shop-builder-assembly
 
 Translate the Shop Builder FAQ / add German to the storefront page
 → triggers: shopbuilder-translate (page copy only; catalog and LiveOps text are out of
   scope; previews first, writes only after an explicit yes)
 
 Set up a Game Web Portal for my PC game — a game home with news, rewards and a shop
-→ triggers: shop-setup; on the Shop Builder path with the site kind portal, description-to-shop
-  or shop-builder-assembly hands off to game-web-portal
+→ triggers: nocode-shop-setup, which hands off to game-web-portal
 ```
 
 ---
@@ -80,19 +92,6 @@ XSOLLA_PROJECT_ID=<your project ID>
 XSOLLA_PROJECT_API_KEY=<your API key>
 ```
 Setup by `merchant-setup` skill.
-
-```bash
-XSOLLA_BUILD_PATH=headless|shopbuilder
-XSOLLA_SITE_KIND=shop|portal
-```
-Recorded by `shop-plan` once the developer confirms the build path, and read by `shop-setup`
-before it builds anything. One path per shop — `shop-plan` is the only skill that writes it.
-On Shop Builder, `XSOLLA_SITE_KIND` says whether the site is a shop or a Game Web Portal; the
-Shop Builder skills read it, and an absent value means a shop.
-
-Adding a skill that behaves differently per path? Implement against
-[the build-path contract](skills/shop-plan/references/build-path-contract.md) — it covers the
-allowed values and the three states a reader must handle (absent, decided, invalid).
 
 ---
 

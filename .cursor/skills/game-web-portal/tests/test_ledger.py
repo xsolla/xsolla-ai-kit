@@ -43,19 +43,19 @@ class LedgerCheckTest(unittest.TestCase):
                 self.assertEqual(ledger.problems({"steps": [step(status=status)]}), [])
 
     def test_the_contract_lists_exactly_these_statuses(self):
-        contract = (ROOT.parent / "shop-plan" / "references" / "onboarding-contract.md")
+        contract = (ROOT.parent / "nocode-shop-setup" / "references" / "onboarding-contract.md")
         table = contract.read_text(encoding="utf-8").split("## Statuses", 1)[1].split("##", 1)[0]
         listed = [line.split("`")[1] for line in table.splitlines() if line.startswith("| `")]
         self.assertEqual(listed, list(ledger.STATUSES))
 
     def steps_table(self) -> list[list[str]]:
-        contract = (ROOT.parent / "shop-plan" / "references" / "onboarding-contract.md")
+        contract = (ROOT.parent / "nocode-shop-setup" / "references" / "onboarding-contract.md")
         text = contract.read_text(encoding="utf-8")
         table = text.split("## Steps and their evidence", 1)[1].split("##", 1)[0]
         return [line.split("|") for line in table.splitlines() if line.startswith("| `")]
 
     def test_the_contract_states_the_step_shape_this_check_requires(self):
-        contract = (ROOT.parent / "shop-plan" / "references" / "onboarding-contract.md")
+        contract = (ROOT.parent / "nocode-shop-setup" / "references" / "onboarding-contract.md")
         text = contract.read_text(encoding="utf-8")
         section = text.split("## The ledger", 1)[1].split("\n## ", 1)[0]
         prose = " ".join(part for i, part in enumerate(section.split("```")) if i % 2 == 0)
@@ -70,7 +70,7 @@ class LedgerCheckTest(unittest.TestCase):
 
     def test_the_skipped_steps_are_the_ones_shop_plan_writes(self):
         by_shop_plan = [row[1].strip(" `") for row in self.steps_table()
-                        if row[2].strip() == "`shop-plan`"]
+                        if row[2].strip() == "`nocode-shop-setup`"]
         self.assertEqual(by_shop_plan, list(ledger.SKIPPED))
 
     def test_each_contract_step_passes(self):
@@ -88,7 +88,7 @@ class LedgerCheckTest(unittest.TestCase):
         self.assertIn("evidence", found[0])
 
     def test_shop_plan_steps_without_ids_evidence_or_updated_at_pass(self):
-        # shop-plan's own instructions never name these fields
+        # nocode-shop-setup's intake and plan steps are not checked for these fields
         for skipped in ledger.SKIPPED:
             with self.subTest(step=skipped):
                 bare = step(id=skipped, ids=..., evidence=..., updated_at=...)
@@ -120,7 +120,7 @@ class LedgerCheckTest(unittest.TestCase):
         self.assertEqual(ledger.problems({"steps": [step(), step(id="verify")]}), [])
 
     def test_a_repeated_skipped_step_passes(self):
-        # intake and plan are shop-plan's, so the check skips them, repeats included
+        # intake and plan are nocode-shop-setup's, so the check skips them, repeats included
         self.assertEqual(ledger.problems({"steps": [step(id="intake"), step(id="intake")]}), [])
 
     def test_a_step_under_way_without_status_passes(self):

@@ -5,14 +5,14 @@ description: >-
   Home, News, Rewards, Web Shop, Community, and an optional Launcher section around the
   store — on the site the partner created from the Multi-page web portal template, and
   returns an evidence-backed handoff. Not the entry point for "build me a shop" or "set up
-  my portal": that is shop-setup. On the Shop Builder path, description-to-shop or
-  shop-builder-assembly hands off here when the recorded site kind is portal. Use for
+  my portal": that is nocode-shop-setup. It hands off here when the user wants a game
+  home, or the existing site has /news, /rewards, and /store. Use for
   "continue my Game Web Portal", "resume my portal without duplicating pages", "add the
   Community section to my portal", or wiring an existing catalog and Login into a portal.
   The agent never publishes, never runs the readiness check, and never generates a preview
   key — those are handed to the human in Publisher Account. PC only; App Store and Google
-  Play titles return needs_input. For a store without a game home, use shop-setup, which
-  routes to the Shop Builder or headless path instead.
+  Play titles return needs_input. For a store without a game home, use nocode-shop-setup.
+  For a shop the user codes and deploys, use shop-setup.
 metadata:
   owner: a.pyanzin
   domain: orchestrator
@@ -26,18 +26,14 @@ handoff. Honest partial completion is correct; simulated completion is failure.
 
 ## When to use
 
-On the Shop Builder path, `description-to-shop` or `shop-builder-assembly` hands off here
-when the recorded site kind is `portal` — the partner needs a game home around the store
-(news, rewards, community, launcher), not only a store. The site kind is recorded by
-`shop-plan`; this skill never decides it and never writes it.
+`nocode-shop-setup` hands off here when the partner needs a game home around the store
+(news, rewards, community, launcher), not only a store. This skill does not decide that
+and does not write it to `.env`.
 
 Entry conditions:
 
-- `XSOLLA_BUILD_PATH=shopbuilder` and `XSOLLA_SITE_KIND=portal` are recorded in `.env` (see
-  [the build-path contract](../shop-plan/references/build-path-contract.md)). Check this
-  first. With no path recorded, hand back to `shop-setup` before any other message or
-  question. With the site kind absent or `shop`, the recorded site is a shop: stop and say
-  so, since only `shop-plan` changes it. Any other path or kind: stop and say so.
+- The user asked for a game home, or the existing site has `/news`, `/rewards`, and
+  `/store`. A site without those pages is a store: stop and point at `nocode-shop-setup`.
 - The title ships on PC. A Steam URL is optional and may be skipped.
 - If a store URL is supplied, its host must be exactly `store.steampowered.com`.
   Mobile, unknown, invalid, or spoofed supplied URLs return `needs_input`.
@@ -65,7 +61,7 @@ Entry conditions:
 - Approved content and brand assets: the partner's own, or approved Steam content. Never
   invent content or use anything the partner hasn't approved.
 - Required input, collected in a single question rather than one at a time. Read what is
-  already known instead of asking again: `shop-plan`'s intake from the ledger, the merchant
+  already known instead of asking again: intake from the ledger, the merchant
   and project from `.env`:
 
 ```yaml
@@ -163,7 +159,7 @@ Verify (read-back) → Human review → Handoff
    when one was supplied, with evidence for every completed item.
 
 Statuses, the ledger, resume, and the handoff report follow the
-[onboarding contract](../shop-plan/references/onboarding-contract.md). Two more references,
+[onboarding contract](../nocode-shop-setup/references/onboarding-contract.md). Two more references,
 both loaded before issuing changes:
 
 - [references/agentic-onboarding.md](references/agentic-onboarding.md) — the portal

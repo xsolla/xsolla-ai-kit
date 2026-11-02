@@ -1,22 +1,22 @@
 # Reuse onboarding answers
 
 Read the intake part of the shared
-[onboarding contract](../../shop-plan/references/onboarding-contract.md#intake).
+[onboarding contract](../../nocode-shop-setup/references/onboarding-contract.md#intake).
 This skill is a **read-only intake consumer**: it does not update ledger steps, implement
 resume, or render the onboarding handoff report. Assembly's existing safety gates remain.
 
 Run `scripts/read_onboarding.py --project-root <publisher-project-root>` from this skill's
-directory (or use its absolute script path). The helper reads only the routing keys from
-the project's `.env`, checks them against the version-1 ledger, and returns its intake.
+directory (or use its absolute script path). The helper reads the version-1 ledger and
+returns its intake. It does not read a build path from `.env`.
 Do not source or print `.env`. Never copy ledger step IDs into the target project context.
 
 - `loaded`: reuse usable recorded values below, even if no `intake` step status exists.
 - `absent`: keep answers already given in conversation and ask only for remaining gaps.
-- Nonzero exit: stop. A corrupt/unsupported ledger is not absent. On a route mismatch,
-  show the conflicting **path/site-kind values only** and ask for `shop-plan` to reconcile
-  them. Do not choose a source, overwrite the ledger, or repeat the full interview.
-- `site_kind: portal`: delegate to `game-web-portal`, not assembly. Headless never enters
-  this intake. An absent/empty site kind in `.env` means `shop`, per the build-path contract.
+- Nonzero exit: stop. A corrupt/unsupported ledger is not absent. If the ledger is for a
+  shop the user codes, open `shop-setup`. Do not choose a source, overwrite the ledger, or
+  repeat the full interview.
+- `site_kind: portal`: delegate to `game-web-portal`, not assembly. A shop the user codes
+  never enters this intake. An absent or empty `site_kind` in the ledger means `shop`.
 
 ## Map confirmed answers into the brief
 
