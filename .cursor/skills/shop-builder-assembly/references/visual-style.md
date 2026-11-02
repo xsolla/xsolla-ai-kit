@@ -17,6 +17,24 @@ colors, placeholder art and hard section edges read as unfinished.
 - Products and packs need artwork in one consistent style. It's the catalog items' images,
   which `catalog-design` sets; list the missing ones in the handoff.
 
+## Mockup for the approval
+
+The plan the developer approves includes a picture of the site: a desktop (1440 px) and a
+mobile (390 px) mockup of the main page, and of any page whose layout differs. A picture is
+approved in seconds and settles the look; a text plan leads to rework after the build.
+
+- Use the design tool this session has, in this order: a Figma connector (a new file), an
+  image model, or an HTML page rendered in the browser and screenshotted. Never require a
+  tool the developer doesn't have, and say which one you used.
+- Draw only blocks from the [block catalog](block-catalog.md), at their real sizes and
+  limits ([render rules](#render-rules)): no button on the lead block, no logo where the
+  template's header has no slot, one item type per store section.
+- Use the brief's palette, fonts and art, and the real catalog items and prices.
+- Everything the mockup shows must be in the plan. Next to it, list the offers and LiveOps,
+  and what is left to connect, such as player login and item delivery.
+- Skip the mockup only when the developer supplied a design; the visual review then
+  compares with that design.
+
 ## Section backgrounds
 
 A block's `values.background` holds `enable`, `type`, `color`, `gradient`, `img`, `position`

@@ -108,8 +108,8 @@ Do not start `game-web-portal` for a store.
 
 ## One approval
 
-Show the catalog proposal and the storefront skill's plan **in one message** and ask for
-**one yes**. That yes lets `catalog-design` create the catalog and the storefront skill
+Show the catalog proposal and the storefront skill's plan, with its desktop and mobile
+mockup, **in one message** and ask for **one yes**. That yes lets `catalog-design` create the catalog and the storefront skill
 apply its plan, in that order. The storefront skill still runs its own preflight and
 backup, and asks again only for what its plan didn't show. When the catalog already
 exists, the plan alone is the message.

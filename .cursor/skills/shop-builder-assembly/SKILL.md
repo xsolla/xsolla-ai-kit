@@ -74,7 +74,8 @@ until [expert-review.md](references/expert-review.md) records approval.
    backgrounds, artwork and where it came from), exact block removals, the template
    sections each new page comes with that are removed (`template_removals`), catalog
    mappings, a preview link for the visual review that anyone with the link can open, and
-   what is still to connect. Call each section by its block name in the
+   what is still to connect, with a desktop and mobile
+   [mockup](references/visual-style.md#mockup-for-the-approval). Call each section by its block name in the
    [block catalog](references/block-catalog.md), such as Offer chain or Reward system,
    never by a module ID such as `sb-offer-chain`. Don't show the developer module IDs or
    the `confirmation_id`, not even labelled as audit details. Preserve configured blocks
