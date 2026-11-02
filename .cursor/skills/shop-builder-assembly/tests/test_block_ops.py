@@ -82,7 +82,7 @@ def add_op(**overrides: object) -> dict:
     return op
 
 
-def candidate_quests_block(internal: dict | None = None, version: str = "0.2.1-qp-3256.1") -> dict:
+def candidate_quests_block(internal: dict | None = None, version: str = "0.2.2-qp-3256.0") -> dict:
     block = quests_block("q1", internal or {"themeId": "site-builder", "backpackAction": "external"})
     block["values"].update(
         version=version,
@@ -91,7 +91,7 @@ def candidate_quests_block(internal: dict | None = None, version: str = "0.2.1-q
     return block
 
 
-def candidate_structure(internal: dict | None = None, version: str = "0.2.1-qp-3256.1") -> dict:
+def candidate_structure(internal: dict | None = None, version: str = "0.2.2-qp-3256.0") -> dict:
     structure = make_structure()
     page = structure["pages"][0]
     page["blocks"] = [candidate_quests_block(internal, version) if b.get("_id") == "q1" else b for b in page["blocks"]]
@@ -118,15 +118,15 @@ class BlockOpsTests(unittest.TestCase):
         self.assertEqual("0.1.5", block_ops.QUESTS_VERSION)
         self.assertTrue(self.errors(add_op(values={"themeId": "custom"})))
         errors = self.errors(
-            add_op(version="0.2.1-qp-3256.1", values={"themeId": "custom"})
+            add_op(version="0.2.2-qp-3256.0", values={"themeId": "custom"})
         )
         self.assertEqual([], errors, errors)
         candidate_plan = block_ops.plan_block_operations(
-            ops_brief([add_op(version="0.2.1-qp-3256.1", values={"themeId": "custom"})]),
+            ops_brief([add_op(version="0.2.2-qp-3256.0", values={"themeId": "custom"})]),
             make_structure(),
         )
-        self.assertEqual("0.2.1-qp-3256.1", candidate_plan[0]["version"])
-        self.assertTrue(self.errors(add_op(version="0.2.0-qp-3256.6", values={"themeId": "custom"})))
+        self.assertEqual("0.2.2-qp-3256.0", candidate_plan[0]["version"])
+        self.assertTrue(self.errors(add_op(version="0.2.1-qp-3256.1", values={"themeId": "custom"})))
 
     def test_candidate_update_syntax_passes_brief_preflight_before_structure_read(self) -> None:
         brief = ops_brief([{

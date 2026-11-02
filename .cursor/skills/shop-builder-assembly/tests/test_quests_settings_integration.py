@@ -17,7 +17,7 @@ import apply_plan  # noqa: E402
 import render_plan  # noqa: E402
 
 QUESTS_MODULE = "_quest-platform_quests-block"
-QUESTS_VERSION = "0.2.1-qp-3256.1"
+QUESTS_VERSION = "0.2.2-qp-3256.0"
 
 
 def candidate_structure() -> dict:
@@ -96,7 +96,7 @@ class QuestsSettingsIntegrationTests(unittest.TestCase):
         self.assertEqual("block_operations", plan["mode"])
         self.assertEqual("my-test-site", plan["target"]["slug"])
         self.assertEqual(
-            {"quests-1": "0.2.1-qp-3256.1"}, plan["target"]["quests_versions"]
+            {"quests-1": "0.2.2-qp-3256.0"}, plan["target"]["quests_versions"]
         )
         self.assertTrue(plan["requires_confirmation"])
         self.assertEqual("themeAppearance.site-builder.cardAlign", plan["block_operations"][0]["patches"][0]["key"])
@@ -154,7 +154,7 @@ class QuestsSettingsIntegrationTests(unittest.TestCase):
 
     def test_invalid_or_unsupported_settings_make_zero_mutating_calls(self):
         cases = [
-            ("unsupported version", "0.2.0-qp-3256.6", {"themeId": "custom"}),
+            ("unsupported version", "0.2.1-qp-3256.1", {"themeId": "custom"}),
             ("invalid color", QUESTS_VERSION, {"themeAppearance.custom.palette.accent": "red"}),
         ]
         for label, version, values in cases:
