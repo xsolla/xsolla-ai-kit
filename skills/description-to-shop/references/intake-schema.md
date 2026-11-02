@@ -104,8 +104,9 @@ thing.
 
 ### Never
 
-- **Invent prices, item names or currency codes.** Read them from the catalog. A named
-  group that does not exist is a Missing field, not a thing to create.
+- **Invent prices, item names or currency codes.** Read them from the catalog, or from
+  `catalog-design`'s pending proposal that the same yes approves. A named group that is
+  in neither is a Missing field, not a thing to create.
 - **Create catalog entities**, even when convenient. If the catalog is thin or has no
   offers, limits, rewards or promo codes, say so and point at `catalog-design`, which
   proposes them.

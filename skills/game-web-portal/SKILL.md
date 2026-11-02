@@ -109,7 +109,8 @@ Verify (read-back) → Human review → Handoff
    (`xsolla shopbuilder list-websites`, `get-landing`, `get-structure`). Capture the landing
    `_id`, page IDs, and block IDs before any mutation — block and theme calls are keyed by
    landing `_id`, not the domain. Confirm the template's `/news`, `/rewards` and `/store`
-   pages, and read its catalog groups and sign-in ([Discover](references/portal-api.md#discover)).
+   pages, and read its catalog groups (a test or demo group means sample items) and sign-in
+   ([Discover](references/portal-api.md#discover)).
    Never recreate a discovered existing entity; resume at the first incomplete item.
 4. **Back up** — before the first write, export the site: `get-landing`,
    `get-structure` and `get-localization` for the slug, and `list-assets` for the
