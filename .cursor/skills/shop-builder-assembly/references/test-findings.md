@@ -69,5 +69,14 @@ from committed evidence.
    Publisher Account project owner, while the same user could open Preview in the
    Publisher Account editor. Still open.
 
+First-time user runs (2026-10-29 to 2026-11-02, CLI 1.9.4) found two more:
+
+4. `create-website` with a slug that another site already uses creates the site under a
+   generated slug (the requested one plus a suffix). The next command on the requested
+   slug returns HTTP 404. Still open.
+5. A site created through the CLI can sign players in through a Login project that isn't
+   linked to its store project: `get-landing` showed an `auth.loginId` of an unrelated
+   Login project in two runs. Assembly reads it back and reports a mismatch. Still open.
+
 Do not work around these gaps by copying `pa-v4-token` from browser storage. Continue
-to use `xsolla auth login`; the CLI gaps above are filed and still open.
+to use `xsolla auth login`. Gaps 1–3 are filed; 4 and 5 still need a ticket.

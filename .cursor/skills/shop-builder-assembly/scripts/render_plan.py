@@ -11,6 +11,12 @@ import sys
 from collections.abc import Callable
 from pathlib import Path
 
+# `python3 -I` (isolated mode) does not put the script's own folder on sys.path, so
+# the sibling imports below would fail. Add it explicitly.
+SCRIPTS_DIR = str(Path(__file__).resolve().parent)
+if SCRIPTS_DIR not in sys.path:
+    sys.path.insert(0, SCRIPTS_DIR)
+
 from validate_shop_brief import load_brief, validate
 
 PRESET_PAGES = {

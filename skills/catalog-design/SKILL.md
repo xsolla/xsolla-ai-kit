@@ -81,7 +81,9 @@ export XSOLLA_PROJECT_API_KEY=<your API key>
    rewards, a reward system and promo codes — a coherent set for the
    game, not all of them. Explain each in plain words and ask for every missing
    commercial value in one message; create nothing before the developer's yes. See
-   `references/liveops.md`.
+   `references/liveops.md`. On the Shop Builder path, `nocode-shop-setup` asks those
+   values in its one batch and shows the proposal with the site plan, so a single yes
+   covers both; don't ask for a separate one.
 
 3. **Set up pricing.** Recommend regional prices in local currencies for key markets
    via the `prices` array; keep the currency list and default currency identical across

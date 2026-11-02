@@ -35,6 +35,7 @@ cat .env 2>/dev/null | grep -E "XSOLLA_MERCHANT_ID|XSOLLA_PROJECT_ID|XSOLLA_PROJ
 - A shop the user codes (`shop-setup`) has a project directory. Write the merchant id, project id, and project API key to `.env` ([Step 5](#step-5-write-credentials-to-env)). That file is for the application.
 - A shop on Xsolla's side with no project directory (`nocode-shop-setup`) has nowhere to put `.env`. Do not create one. Ask the user to generate a **separate** project API key for this chat, paste it here, and **delete that key** in Publisher Account when setup is finished. Do not reuse the key a live project already uses. Hold it in the conversation for the calls, and do not write it to a file.
 - Pasting a key into chat is a stopgap. The durable replacement is an Xsolla MCP that acts as the signed-in user. It is not available for these calls yet. When the agent can run the Xsolla CLI, Shop Builder calls use `xsolla auth login` instead of a pasted project key. Never ask the user to paste a session token.
+- When `xsolla auth login` reports that it created a Store API key for the project and saved it to the keychain, CLI commands use that key. Don't ask the user for a key and don't copy it into `.env` or the chat. Check it with one read-only catalog command for this project. If that read returns 401, `auth login` made no key for this project (seen after switching projects). Create one project key with `xsolla publisher create-api-key` (confirm it with `xsolla publisher --help`), write it to `.env` in the folder the CLI runs from, as in Step 5 (the CLI reads it there), and continue. Create one key per project, not one per run.
 
 ---
 
@@ -161,6 +162,13 @@ XSOLLA_PROJECT_API_KEY={api_key}
 EOF
 ```
 
+Then make the file readable only by its owner. The Xsolla CLI ignores a `.env` that
+other users can read, with only a warning:
+
+```bash
+chmod 600 .env
+```
+
 After writing, confirm to the user:
 ```
 ✅ Written to .env:
@@ -184,7 +192,7 @@ grep -q "^\.env" .gitignore 2>/dev/null || echo ".env" >> .gitignore
 - [ ] Merchant ID known
 - [ ] Project ID known
 - [ ] Project-level API key generated and saved securely
-- [ ] Credentials written to `.env`
+- [ ] Credentials written to `.env`, with mode 600
 - [ ] `.env` added to `.gitignore`
 - [ ] *(Optional)* Merchant-level API key saved — only needed for CLI or cross-project API calls
 

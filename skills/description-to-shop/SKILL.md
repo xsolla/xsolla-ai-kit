@@ -52,9 +52,11 @@ When the publisher delegates routine choices ("decide for me"), choose the prese
 layout, visual treatment and draft copy yourself and show them in assembly's plan
 instead of asking.
 
-Ask for missing required facts and unresolved conflicts in one batch. Use read-only discovery for the active
-CLI project and its catalog groups. If the catalog is absent, or a named group does not
-exist, stop and point at the catalog skill rather than creating entities.
+Ask for missing required facts and unresolved conflicts in one batch: the same batch as
+`nocode-shop-setup`'s questions when it started this run. Use read-only discovery for the
+active CLI project and its catalog groups. If the catalog is absent, or a named group
+does not exist and isn't in `catalog-design`'s pending proposal, stop and point at the
+catalog skill. Never create entities here.
 
 ## 2. Produce the shared brief
 
@@ -63,8 +65,9 @@ version-1 JSON object:
 
 - `game` — platforms and lifecycle.
 - `site` — proposed slug, locales, and `auto` or an explicit preset.
-- `catalog.groups` — only verified same-project groups; `__all__` for all items of a
-  supported type.
+- `catalog.groups` — same-project groups that exist, or that `catalog-design`'s pending
+  proposal creates under the same yes; `__all__` for all items of a supported type.
+  Assembly's preflight checks every group exists before any site write.
 - `catalog.liveops` — the promo code or coupon promotions, reward chains and offer chains
   found by read-only `xsolla liveops list-promo-codes`, `list-coupons`,
   `list-reward-chain` and `list-offer-chain`. The lists include inactive entries: count
@@ -90,7 +93,8 @@ localization, catalog, readiness and preview verification, and the never-publish
 safeguard.
 
 Do not request a separate approval here and do not run legacy local assembly scripts.
-The developer approves one plan, in `shop-builder-assembly`.
+The developer approves one plan, in `shop-builder-assembly`, shown in the same message as
+any pending catalog proposal.
 
 ## Failure handling
 

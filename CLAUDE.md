@@ -8,13 +8,13 @@ This file is read automatically by most AI coding agents (Cursor, Codex CLI, Git
 
 `xsolla/xsolla-ai-kit` is the Xsolla agent skills toolkit — a collection of `SKILL.md` files (agentskills.io format) that teach AI coding agents how to execute Xsolla-specific workflows end-to-end.
 
-On the headless path, skills call **Xsolla REST APIs directly**. The Shop Builder path uses the Xsolla CLI 1.9.4 or later today (`brew install xsolla/xsolla-cli/xsolla`).
+On the headless path, skills call **Xsolla REST APIs directly**. The Shop Builder path uses the Xsolla CLI 1.9.4 or later today (`brew install xsolla/xsolla-cli/xsolla`). A new Shop Builder store opens in the Editor and preview only when the CLI has `shopbuilder create-block`; `nocode-shop-setup` checks that before anything else.
 
 ---
 
 ## Shop building paths
 
-Two ways to build a shop, for different goals. Before building, ask whether the user is ready to code, review, test, and deploy, and whether they already have a store to plug into.
+Two ways to build a shop, for different goals. Before building, find out whether the user is ready to code, review, test, and deploy, and whether they already have a store to plug into. Don't ask what is already clear. A user who says they will write the code goes to code. Otherwise, with no local repo, or when the user says they don't code, the path is Shop Builder: say so and continue. Ask only when a repo with storefront code exists and the user hasn't said.
 
 **In code** — `shop-setup`. The agent writes the shop on the user's machine. The user deploys, tests, and reviews it. They control the logic and the styles: a store from scratch, or Xsolla products embedded in a store they already have. The usual payment UI is Headless Checkout, a component library. Pay Station, the hosted payment page, is the other option.
 

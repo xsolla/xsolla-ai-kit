@@ -14,6 +14,12 @@ import time
 import uuid
 from pathlib import Path
 
+# `python3 -I` (isolated mode) does not put the script's own folder on sys.path, so
+# the sibling imports below would fail. Add it explicitly.
+SCRIPTS_DIR = str(Path(__file__).resolve().parent)
+if SCRIPTS_DIR not in sys.path:
+    sys.path.insert(0, SCRIPTS_DIR)
+
 from preflight import LAYOUT_SKIPPED, cli_has_command
 from render_plan import (
     COMMON_LAYOUT,
@@ -1080,7 +1086,11 @@ def main() -> int:
             current = structure(slug)
             if structure_hash(current) != structure_hash(saved_structure):
                 raise RuntimeError(
-                    "target structure changed after backup; back up, re-render, and reconfirm"
+                    "target structure changed after backup. Nothing was written. Export "
+                    "the site again and render with --structure, adding --approved-plan "
+                    "and --run-report after a new site's first run; apply under the same "
+                    "yes only if the render says it is covered, otherwise show the "
+                    "changes and ask again"
                 )
             extra_pages = plan["current_state"]["extra_pages"]
             if extra_pages:

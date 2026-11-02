@@ -2,26 +2,6 @@
 
 ## Requirements
 
-### Input
-
-Collect missing required values in one question; values recorded in the
-ledger are not asked again:
-
-```yaml
-merchant_id:
-project_id:
-domain:
-game_name:
-primary_locale:
-```
-
-Optional: `store_url` (Steam) with `steam_assets_approved` (yes or no), approved game
-description and brand assets, analytics IDs, and locales. A Steam URL may be skipped. With
-it, the partner confirms the page is their own game's and says whether its art and text may
-be used; only a yes makes it a source ([Steam content](portal-api.md#steam-content)). Never
-invent content, and never use identifiers, credentials, content, prices, assets, or URLs the
-partner hasn't approved.
-
 ### Acceptance scenarios
 
 1. **Platform:** GIVEN no store URL, WHEN the title is confirmed as PC and
@@ -104,85 +84,10 @@ Before mutation:
 
 Never recreate discovered existing entities.
 
-## Run checklist
+## Handoff: the portal's Storefront section
 
-### 1. Context
-
-- First message, before any question: create the site from the template if it doesn't exist
-  yet, and [what the run can change](portal-api.md#what-the-run-can-change).
-- Confirm merchant/project, the partner's site domain, and locale.
-- Confirm PC scope. Validate the exact Steam host only when `store_url` is supplied, and
-  ask whether the page is theirs and its art and text may be used.
-- Without approved Steam content, confirm approved metadata and assets are available, or
-  say the draft keeps the template's art.
-- Resolve ambiguity and disclose unsupported/human gates.
-
-### 2. Preflight
-
-- Run `scripts/preflight.py` for the merchant, project and approved test-project
-  allowlist. If it fails, stop before any write.
-
-### 3. Existing state
-
-- List websites and read the target structure.
-- Confirm the site has the template's `/news`, `/rewards` and `/store` pages.
-- Report the Web Shop's catalog groups (a test or demo group means sample items) and how the
-  site signs buyers in.
-- Capture landing, page, and block IDs.
-- Compare existing and desired state.
-- Resume at the first incomplete item.
-
-### 4. Back up
-
-- Add `.xsolla/` to `.gitignore` if it isn't there, then export the site to a new
-  `.xsolla/backup-<timestamp>/` directory before the first write. A failed export stops
-  the run.
-
-### 5. Plan and confirm
-
-- Show the ordered change groups and the seeded blocks it will hide, which the partner then
-  deletes in the builder; wait for an explicit yes.
-
-### 6. One change group
-
-Portal structure — pages, blocks, theme, assets, copy and localization, analytics — runs
-through the CLI commands listed in [portal-api.md](portal-api.md). Use related skills for
-everything else, instead of repeating their command recipes:
-
-- `merchant-setup` — merchant/project/API key.
-- `catalog-design` — the catalog and pricing the Web Shop sells.
-- `login-setup` — Login.
-
-Checkout is the Web Shop's hosted Pay Station: nothing to integrate.
-
-Sections: Home, News, Rewards and Web Shop from the template, and Community added by the
-agent. Placeholders require approval and visible labels. The Launcher section is the
-partner's: it requires a real Launcher, uploaded build, generated installer, and verified
-download.
-
-### 7. Verify
-
-- Read back changed entities and compare them with the confirmed plan.
-- Look at each changed page in the Editor, or hand the visual check to the partner.
-- Update the ledger, then run `scripts/ledger.py check`.
-- `storefront` is `completed` only when every change in the confirmed plan reads back. A planned
-  change that didn't land, because the CLI can't set it or a write failed, makes the step
-  `needs_human`, `needs_input`, `blocked_capability` or `failed`, with the gap in its `evidence`,
-  not in a step of its own.
-
-### 8. Draft gate, review and hand over
-
-- The draft is ready for review only with correct ownership/domain/type/locale, no duplicate
-  routes, read-back-verified content, disclosed placeholders, and explicit Login/commerce status.
-- Present Completed, placeholders, blockers, and failures.
-- Hand the human, as `needs_human`: the readiness check, the preview, publication
-  (per page, main page first), live verification, and any rollback.
-- Never publish, run the readiness check, or generate a preview key.
-
-### 9. Handoff
-
-The handoff is the onboarding report in the
-[onboarding contract](../../nocode-shop-setup/references/onboarding-contract.md#handoff-report).
+The run itself follows the steps in [SKILL.md](../SKILL.md). The handoff is the onboarding
+report in the [onboarding contract](../../nocode-shop-setup/references/onboarding-contract.md#handoff-report).
 The portal fills its **Storefront** section with:
 
 ```markdown
@@ -202,7 +107,7 @@ Before publishing, in Publisher Account:
 - Publish the main page first, then confirm the public URL
 ```
 
-### After the human publishes
+## After the human publishes
 
 If the partner comes back after publishing, a resumed run may read the public site
 and report what it sees. HTTP 200 with stale content is incomplete; the expected

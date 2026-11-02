@@ -48,12 +48,20 @@ until [expert-review.md](references/expert-review.md) records approval.
 ## Non-negotiable safety gate
 
 1. Run `scripts/preflight.py <brief.json> --approved-test-projects <local-allowlist.json>`.
-   Read back the matched merchant ID, project ID, safety environment, approval reference, active Publisher login,
-   target site, and catalog groups. When the site needs a common layout (a new site, or
-   one without it) and the CLI has no `shopbuilder create-block`, preflight prints "the
-   common layout needs a newer Xsolla CLI; the site is built without it". Tell the user
-   in the plan, before any write: a site without the common layout won't open in the
-   Editor, Publish or private preview.
+   The allowlist is at `$XSOLLA_APPROVED_TEST_PROJECTS`, by default
+   `~/.config/xsolla/approved-test-projects.json`; `nocode-shop-setup` collects the
+   approver and approval link in its first batch, not at this step.
+   Read back the matched merchant ID, project ID, safety environment, approval
+   reference, active Publisher login, target site, and catalog groups.
+   When `catalog-design`'s proposal is still waiting for the same yes, preflight's only
+   allowed failure is the groups that proposal creates: render and show the plan with
+   it. After the yes and the catalog's creation, run preflight again; it must pass in
+   full before apply.
+   When the site needs a common layout (a new site, or one without it) and the CLI has
+   no `shopbuilder create-block`, preflight prints "the common layout needs a newer
+   Xsolla CLI; the site is built without it". Tell the user in the plan, before any
+   write: a site without the common layout won't open in the Editor, Publish or
+   private preview.
 2. If CLI context differs, switch it and rerun preflight; never override later commands.
 3. If the target site exists, export it before the first write with
    `scripts/backup_shop.py --brief <brief.json> --slug <slug> --output-dir <dir>`.
@@ -70,10 +78,11 @@ until [expert-review.md](references/expert-review.md) records approval.
    the `confirmation_id`, not even labelled as audit details. Preserve configured blocks
    lacking replacement data. Omit `--structure` only for a new slug's bootstrap-only
    plan; it still shows every page and section to be built.
-5. Ask for one explicit yes to that plan immediately before the first remote write.
-   Earlier permission to "build a shop" is not that yes. Apply with
-   `--approved-plan approved-plan.json --confirmation-id <its confirmation_id>`; the
-   script refuses an edited plan file.
+5. Ask for one explicit yes to that plan before the first remote write. When
+   `nocode-shop-setup` shows it in one message with a pending catalog proposal, that yes
+   covers creating the catalog too. Earlier permission to "build a shop" is not that
+   yes. Apply with `--approved-plan approved-plan.json --confirmation-id <its
+   confirmation_id>`; the script refuses an edited plan file.
 
 The brief must target an acknowledged dedicated test project and match a separate
 local allowlist with exact IDs, approver, and approval reference. Never use sandbox
@@ -94,10 +103,18 @@ The yes also covers background fixes after the visual review: `values.background
 `scripts/patch_backgrounds.py` after a fresh export. It refuses anything else, an image
 not uploaded to the site, and a gradient unlike the ones already on it.
 
-Ask again, showing what changed, before anything else: a render that "Needs a new yes",
-the site or page theme, fonts, wording, a block or page that existed before this run, any
-price, promotion, limit, date or eligibility, another site or project, or a target that
-changed after export.
+The yes covers what the plan showed: its pages and sections, catalog, palette, fonts,
+art and wording, and both runs of a new site. Don't ask again for those; note "covered by
+the approved plan" and continue. Ask again, showing what changed, only for what the plan
+didn't show: a render that "Needs a new yes", a theme, font or wording the plan didn't
+show, a block or page that existed before this run, any price, promotion, limit, date or eligibility,
+another site or project, or a target that changed after export.
+
+A run that stops partway, such as on an authentication failure, leaves its changes on the
+site. Export again and render with `--structure`. In a new site's second run, also pass
+`--approved-plan` and `--run-report run1-report.json`, and apply under the same yes when
+the render says "Covered by the approved plan". Otherwise show the new plan and ask
+again.
 
 ## Assembly order
 
@@ -138,6 +155,14 @@ If the CLI lacks an operation, stop it, record the gap, and file a CLI/API ticke
 - Run `xsolla shopbuilder verify-website --slug <slug>`.
 - Enable preview for the visual review (`enable-preview`, `preview-link`); the plan's yes
   covers it, because the plan says anyone with the link can open it. Return the link.
+- When `verify-website` fails with `draftPagesIds must be an array`, or preview fails
+  with `admin_privileges_requred`, it is a known CLI gap
+  ([test findings](references/test-findings.md#cli-gaps-found)): report it once and go
+  on. Don't retry it or work around it.
+- Read the site's sign-in: `get-landing` shows `auth.loginId`. Check that this Login
+  project belongs to the same store project (`login-setup`). If it belongs to another
+  project, or to none, report it in the handoff as a fix in Publisher Account before
+  publishing: players would sign in through the wrong Login project. Never change it.
 - Before the first handoff, review desktop and mobile screenshots of every page and fix
   what they show: [visual style](references/visual-style.md#visual-review-before-handoff).
   If the preview doesn't open, say the review wasn't done and why.
@@ -158,3 +183,7 @@ Preserve completed safe work and explain the smallest action needed to continue.
 - Sites created from a Publisher Account template keep the header in the common layout;
   render and apply stop on them before any write. Report the stop and suggest nothing
   else: not another site, not manual edits, no other workaround.
+- When the requested slug is taken elsewhere in Shop Builder, `create-website` creates
+  the site under another slug and the run stops on the requested one. Propose a
+  distinctive slug in the plan, such as the game name with a short suffix, not a
+  generic `<game>-shop`.
