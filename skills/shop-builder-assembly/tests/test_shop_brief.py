@@ -154,13 +154,16 @@ class ShopBriefTests(unittest.TestCase):
                 )
 
     def test_allowlist_replaces_the_brief_acknowledgement(self) -> None:
-        brief = copy.deepcopy(self.brief)
-        brief["project"].pop("test_project_acknowledged", None)
-        self.assertEqual([], validator.validate(brief))
-        # Older briefs still carry the retired flag; it is ignored.
-        for value in (True, False):
-            brief["project"]["test_project_acknowledged"] = value
+        for value in (None, True, False):
+            brief = copy.deepcopy(self.brief)
+            if value is None:
+                brief["project"].pop("test_project_acknowledged", None)
+            else:
+                # Older briefs still carry the retired flag; it is ignored.
+                brief["project"]["test_project_acknowledged"] = value
             self.assertEqual([], validator.validate(brief))
+            plan = render_plan.build_plan(brief)
+            self.assertNotIn("test_project_acknowledged", plan["target"])
         brief["project"]["test_project_acknowledged"] = "yes"
         self.assertIn(
             "project.test_project_acknowledged, when present, must be a boolean",

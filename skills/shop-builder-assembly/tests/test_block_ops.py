@@ -126,6 +126,25 @@ class BlockOpsTests(unittest.TestCase):
             make_structure(),
         )
         self.assertEqual("0.2.2-qp-3256.0", candidate_plan[0]["version"])
+        rendered = render_plan.build_plan(
+            ops_brief([add_op(version="0.2.2-qp-3256.0", values={"themeId": "custom"})]),
+            make_structure(),
+        )
+        self.assertTrue(
+            any(
+                "pre-release build" in warning
+                and "0.2.2-qp-3256.0" in warning
+                for warning in rendered["warnings"]
+            ),
+            rendered["warnings"],
+        )
+        stable_rendered = render_plan.build_plan(
+            ops_brief([add_op()]), make_structure()
+        )
+        self.assertFalse(
+            any("pre-release build" in warning for warning in stable_rendered["warnings"]),
+            stable_rendered["warnings"],
+        )
         self.assertTrue(self.errors(add_op(version="0.2.1-qp-3256.1", values={"themeId": "custom"})))
 
     def test_candidate_update_syntax_passes_brief_preflight_before_structure_read(self) -> None:
