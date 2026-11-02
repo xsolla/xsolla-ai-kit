@@ -17,7 +17,7 @@ To use it today, install the Xsolla CLI 1.9.4 or later: `brew install xsolla/xso
 | `.github/copilot-instructions.md` | GitHub Copilot-specific context |
 | `.cursor/skills/` | Cursor-native skills (synced from `skills/`) |
 | `.cursor/rules/` | Short always-on Cursor pointer rule |
-| `docs/` | Architecture, distribution, and skill-gap guides |
+| `docs/` | Architecture, distribution, and skill-gap guides; specs in `docs/specs/` |
 
 ## Quick start
 
