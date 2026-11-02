@@ -113,11 +113,10 @@ didn't show: a render that "Needs a new yes", a theme, font or wording the plan 
 show, a block or page that existed before this run, any price, promotion, limit, date or eligibility,
 another site or project, or a target that changed after export.
 
-A run that stops partway, such as on an authentication failure, leaves its changes on the
-site. Export again and render with `--structure`. In a new site's second run, also pass
-`--approved-plan` and `--run-report run1-report.json`, and apply under the same yes when
-the render says "Covered by the approved plan". Otherwise show the new plan and ask
-again.
+A run that stops after its writes began, such as on an authentication failure, prints a
+`stopped-partway` report: save it as `partial-report.json`. Export again, render with
+`--structure`, `--approved-plan` and `--run-report partial-report.json`, and apply under
+the same yes when the render says "Covered by the approved plan"; otherwise ask again.
 
 ## Assembly order
 
@@ -191,6 +190,5 @@ Preserve completed safe work and explain the smallest action needed to continue.
   render and apply stop on them before any write. Report the stop and suggest nothing
   else: not another site, not manual edits, no other workaround.
 - When the requested slug is taken elsewhere in Shop Builder, `create-website` creates
-  the site under another slug and the run stops on the requested one. Propose a
-  distinctive slug in the plan, such as the game name with a short suffix, not a
-  generic `<game>-shop`.
+  the site under another slug; `apply_plan.py` stops and names it. The new address needs
+  a new yes, so propose a distinctive slug in the plan, not a generic `<game>-shop`.

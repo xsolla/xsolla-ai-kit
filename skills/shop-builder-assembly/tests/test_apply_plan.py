@@ -1988,7 +1988,11 @@ class OneApprovalTests(unittest.TestCase):
         self.cli = FakeShopBuilderCli(self.brief)
 
     def apply(
-        self, *extra: str, brief: dict | None = None, confirmation_id: str | None = None
+        self,
+        *extra: str,
+        brief: dict | None = None,
+        confirmation_id: str | None = None,
+        navigation_error: str | None = None,
     ) -> tuple[int, dict | None, str, mock.Mock]:
         brief_path = self.root / "brief.json"
         brief_path.write_text(json.dumps(brief or self.brief), encoding="utf-8")
@@ -2025,13 +2029,19 @@ class OneApprovalTests(unittest.TestCase):
             mock.patch.object(
                 apply_plan, "reconcile_page", side_effect=reconciled
             ) as reconcile,
-            mock.patch.object(apply_plan, "apply_navigation", return_value=[]),
+            mock.patch.object(
+                apply_plan,
+                "apply_navigation",
+                return_value=[],
+                side_effect=RuntimeError(navigation_error) if navigation_error else None,
+            ),
             mock.patch.object(apply_plan, "wire_catalog_sections", return_value=[]),
             contextlib.redirect_stdout(stdout),
             contextlib.redirect_stderr(stderr),
         ):
             code = apply_plan.main()
-        report = json.loads(stdout.getvalue()) if code == 0 else None
+        # A run prints a report when it finishes, and when it stops after writing.
+        report = json.loads(stdout.getvalue()) if stdout.getvalue().strip() else None
         return code, report, stderr.getvalue(), reconcile
 
     def bootstrap(self) -> Path:
@@ -2235,6 +2245,86 @@ class OneApprovalTests(unittest.TestCase):
             "Needs a new yes: the run report belongs to another approval\n", render()
         )
 
+
+    def save(self, name: str, report: dict) -> Path:
+        path = self.root / name
+        path.write_text(json.dumps(report, indent=2), encoding="utf-8")
+        return path
+
+    def stop_second_run_partway(self) -> tuple[Path, dict]:
+        run_report = self.bootstrap()
+        code, report, stderr, _ = self.apply(
+            "--run-report",
+            str(run_report),
+            "--backup-dir",
+            str(self.root),
+            navigation_error="authentication still fails",
+        )
+        self.assertEqual(1, code)
+        self.assertIn("authentication still fails", stderr)
+        return run_report, report
+
+    def test_a_run_that_stops_partway_prints_a_report_bound_to_the_yes(self) -> None:
+        run_report, report = self.stop_second_run_partway()
+        first = json.loads(run_report.read_text(encoding="utf-8"))
+        self.assertEqual(render_plan.STOPPED_PARTWAY, report["status"])
+        self.assertFalse(report["operation_succeeded"])
+        self.assertEqual(self.approved["confirmation_id"], report["approved_confirmation_id"])
+        self.assertEqual(self.brief["site"]["slug"], report["slug"])
+        self.assertEqual("landing-1", report["landing_id"])
+        self.assertEqual(
+            sorted(render_plan.created_block_ids(first)), report["created_block_ids"]
+        )
+        self.assertFalse(report["published"])
+
+    def test_rerun_after_a_partial_run_is_covered_by_the_same_yes(self) -> None:
+        _, report = self.stop_second_run_partway()
+        partial = self.save("partial-report.json", report)
+        self.assertEqual(
+            report, render_plan.load_run_report(partial)
+        )
+        code, final, stderr, _ = self.apply(
+            "--run-report", str(partial), "--backup-dir", str(self.root)
+        )
+        self.assertEqual(0, code, stderr)
+        self.assertEqual("implemented-phases-applied", final["status"])
+        self.assertEqual(self.approved["confirmation_id"], final["approved_confirmation_id"])
+
+    def test_a_partial_report_from_another_approval_needs_a_new_yes(self) -> None:
+        _, report = self.stop_second_run_partway()
+        report["approved_confirmation_id"] = "sha256:000000000000"
+        partial = self.save("partial-report.json", report)
+        code, _, stderr, _ = self.apply(
+            "--run-report", str(partial), "--backup-dir", str(self.root)
+        )
+        self.assertEqual(1, code)
+        self.assertIn("belongs to another approval", stderr)
+
+    def test_a_failed_run_without_the_partial_status_is_not_a_run_report(self) -> None:
+        path = self.save("failed.json", {"operation_succeeded": False, "status": "error"})
+        with self.assertRaises(ValueError):
+            render_plan.load_run_report(path)
+
+    def test_a_taken_slug_stops_before_any_page_is_written(self) -> None:
+        cli = self.cli
+        create = cli.__call__
+
+        def taken_slug(*args: str) -> object:
+            if args[1:2] == ("create-website",):
+                result = create(*args)
+                cli.landing["domain"] = f"{self.brief['site']['slug']}-0f4f"
+                return result
+            return create(*args)
+
+        self.cli = mock.Mock(side_effect=taken_slug)
+        code, report, stderr, _ = self.apply()
+        self.assertEqual(1, code)
+        self.assertIsNone(report)
+        self.assertIn(f"as {self.brief['site']['slug']}-0f4f", stderr)
+        self.assertIn("that slug is taken", stderr)
+        self.assertNotIn(
+            "add-page", [call[1] for call in cli.calls if len(call) > 1]
+        )
 
 def load_patch_backgrounds():
     path = ROOT / "scripts" / "patch_backgrounds.py"

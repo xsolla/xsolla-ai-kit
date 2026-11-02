@@ -611,16 +611,30 @@ def load_approved_plan(path: Path) -> dict:
     return plan
 
 
+STOPPED_PARTWAY = "stopped-partway"
+
+
 def load_run_report(path: Path) -> dict:
+    """Load an earlier apply_plan.py run's report: a finished run, or one that stopped
+    partway after its writes began."""
     report = json.loads(path.read_text(encoding="utf-8"))
-    if not isinstance(report, dict) or report.get("operation_succeeded") is not True:
-        raise ValueError(f"{path} is not the report of a successful apply_plan.py run")
+    finished = isinstance(report, dict) and report.get("operation_succeeded") is True
+    stopped = (
+        isinstance(report, dict)
+        and report.get("operation_succeeded") is False
+        and report.get("status") == STOPPED_PARTWAY
+    )
+    if not (finished or stopped):
+        raise ValueError(f"{path} is not the report of an apply_plan.py run")
     return report
 
 
 def created_block_ids(report: dict) -> frozenset:
     """Return the IDs of the blocks an apply run created, from its report."""
     ids: set = set()
+    carried = report.get("created_block_ids")
+    if isinstance(carried, list):
+        ids.update(block_id for block_id in carried if isinstance(block_id, str))
     created = report.get("created_blocks")
     for block_ids in created.values() if isinstance(created, dict) else []:
         if isinstance(block_ids, list):

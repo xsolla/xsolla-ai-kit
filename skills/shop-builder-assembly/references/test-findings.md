@@ -73,7 +73,8 @@ First-time user runs (2026-10-29 to 2026-11-02, CLI 1.9.4) found two more:
 
 4. `create-website` with a slug that another site already uses creates the site under a
    generated slug (the requested one plus a suffix). The next command on the requested
-   slug returns HTTP 404. Still open.
+   slug returned HTTP 404; `apply_plan.py` now reads `list-websites` after creating and
+   stops with the slug Shop Builder used. Still open.
 5. A site created through the CLI can sign players in through a Login project that isn't
    linked to its store project: `get-landing` showed an `auth.loginId` of an unrelated
    Login project in two runs. Assembly reads it back and reports a mismatch. Still open.
