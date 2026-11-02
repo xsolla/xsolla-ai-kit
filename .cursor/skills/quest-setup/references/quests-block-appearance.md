@@ -26,6 +26,18 @@ and rendered page show Pages. Recommend Site Builder when the surrounding page u
 native inherited appearance. Recommend Custom when measured differences remain after
 the closest preset. On first entry into Custom, keep the previously selected known
 preset as `baseThemeId` and use bounded overrides for the measured differences.
+Omitted Custom leaves inherit that base preset. A measured line height is in pixels;
+for the matching semantic role, set the Custom line-height multiplier to
+`measured_line_height_px / measured_font_size_px`. Do not pair a size from one role
+with the line height from another.
+
+Treat each Custom field as applying to every semantic consumer wired to that field.
+`headingSize` and `headingLineHeight` affect the Quests section heading, while
+`headingFont` also affects card title fonts. Body typography reaches descriptions,
+helper/status/reward/tag text; button typography reaches action labels. Before calling
+a Custom profile an ideal page fit, measure every affected role at mobile and desktop
+sizes and compare the whole page. Do not use an unverified loaded-font name; keep the
+base font through `host-body`, `host-heading` or `host-button` when needed.
 
 If the publisher explicitly asks for a theme, preserve that choice even if the page
 evidence suggests another fit. If they ask for a recommendation or a site fit, recommend
@@ -99,6 +111,13 @@ list; do not invent additional paths.
 - Omitted values inherit the selected base. Custom reset removes known palette,
   typography and geometry overrides only; it preserves `version`, `baseThemeId`,
   unknown saved fields, other theme maps and unrelated block data.
+
+Custom `maxWidth` is the container's outer border-box width and includes its inline
+padding. When neighboring page content measures 1184px and has 32px gutters on both
+sides, record those as 1184px content width and 32px gutter, then use
+`maxWidth: 1248` (`1184 + 2 * 32`) with `gutter: 32`. Keep measured content width,
+border-box width and gutter as separate evidence; a content width is not itself the
+Custom `maxWidth` value.
 
 For an approved update, use dotted leaf keys inside the operation's `values`, for
 example:

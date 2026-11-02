@@ -182,9 +182,7 @@ answers, ask the developer.
    `block_operations` brief through the `shop-builder-assembly` gate. There is no delete op:
    a delete request gets `needs_human` and an offer to hide
    ([Removing the block](references/quests-block-flow.md#removing-the-block)). Quest
-   approval never authorizes site writes. Appearance fitting uses
-   [quests-block-appearance.md](references/quests-block-appearance.md); block questions
-   on a known site are reads: [Describe the block](references/quests-block-flow.md#describe-the-block).
+   approval never authorizes site writes. Appearance fitting uses [quests-block-appearance.md](references/quests-block-appearance.md) for role-specific line-height px/font-size px and border-box/gutter conversions; block questions on a known site are reads: [Describe the block](references/quests-block-flow.md#describe-the-block).
 9. **Headless Web Shop section.** Only on explicit request, and only then load
    [web-shop-module.md](references/web-shop-module.md). Quest approval never authorizes shop source edits. Never copy the catalog project ID into the Quest Platform project setting, and never offer to; ask which Quest Platform project to use.
 

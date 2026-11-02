@@ -68,6 +68,35 @@ class AppearanceFixturesTest(unittest.TestCase):
         self.assertEqual(after["themeAppearance"]["custom"]["typography"]["headingFont"], "host-heading")
         self.assertNotIn("actionText", after["themeAppearance"]["custom"].get("palette", {}))
 
+    def test_mixed_custom_recommendation_converts_measured_units(self) -> None:
+        fixture = json.loads((FIXTURES / "mixed-custom.json").read_text(encoding="utf-8"))
+        evidence = fixture["site_evidence"]
+        heading = next(
+            item for item in evidence["neighbors"]
+            if item["semantic_role"] == "section-heading"
+        )
+        content = next(
+            item for item in evidence["neighbors"]
+            if item["semantic_role"] == "regular-card-description"
+        )
+        values = fixture["recommendation"]["operation"]["values"]
+
+        measured_line_height = heading["line_height_px"] / heading["size_px"]
+        self.assertEqual(
+            values["themeAppearance.custom.typography.headingLineHeight"],
+            measured_line_height,
+        )
+
+        measured_border_box = content["content_width_px"] + 2 * content["gutter_px"]
+        self.assertEqual(
+            values["themeAppearance.custom.geometry.maxWidth"],
+            measured_border_box,
+        )
+        self.assertEqual(
+            values["themeAppearance.custom.geometry.gutter"],
+            content["gutter_px"],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
