@@ -82,7 +82,7 @@ def add_op(**overrides: object) -> dict:
     return op
 
 
-def candidate_quests_block(internal: dict | None = None, version: str = "0.2.2-qp-3256.0") -> dict:
+def candidate_quests_block(internal: dict | None = None, version: str = "0.2.3-qp-3256.0") -> dict:
     block = quests_block("q1", internal or {"themeId": "site-builder", "backpackAction": "external"})
     block["values"].update(
         version=version,
@@ -91,7 +91,7 @@ def candidate_quests_block(internal: dict | None = None, version: str = "0.2.2-q
     return block
 
 
-def candidate_structure(internal: dict | None = None, version: str = "0.2.2-qp-3256.0") -> dict:
+def candidate_structure(internal: dict | None = None, version: str = "0.2.3-qp-3256.0") -> dict:
     structure = make_structure()
     page = structure["pages"][0]
     page["blocks"] = [candidate_quests_block(internal, version) if b.get("_id") == "q1" else b for b in page["blocks"]]
@@ -118,22 +118,22 @@ class BlockOpsTests(unittest.TestCase):
         self.assertEqual("0.1.5", block_ops.QUESTS_VERSION)
         self.assertTrue(self.errors(add_op(values={"themeId": "custom"})))
         errors = self.errors(
-            add_op(version="0.2.2-qp-3256.0", values={"themeId": "custom"})
+            add_op(version="0.2.3-qp-3256.0", values={"themeId": "custom"})
         )
         self.assertEqual([], errors, errors)
         candidate_plan = block_ops.plan_block_operations(
-            ops_brief([add_op(version="0.2.2-qp-3256.0", values={"themeId": "custom"})]),
+            ops_brief([add_op(version="0.2.3-qp-3256.0", values={"themeId": "custom"})]),
             make_structure(),
         )
-        self.assertEqual("0.2.2-qp-3256.0", candidate_plan[0]["version"])
+        self.assertEqual("0.2.3-qp-3256.0", candidate_plan[0]["version"])
         rendered = render_plan.build_plan(
-            ops_brief([add_op(version="0.2.2-qp-3256.0", values={"themeId": "custom"})]),
+            ops_brief([add_op(version="0.2.3-qp-3256.0", values={"themeId": "custom"})]),
             make_structure(),
         )
         self.assertTrue(
             any(
                 "pre-release build" in warning
-                and "0.2.2-qp-3256.0" in warning
+                and "0.2.3-qp-3256.0" in warning
                 for warning in rendered["warnings"]
             ),
             rendered["warnings"],
