@@ -128,6 +128,19 @@ class BlockOpsTests(unittest.TestCase):
         self.assertEqual("0.2.0-qp-3256.5", candidate_plan[0]["version"])
         self.assertTrue(self.errors(add_op(version="0.2.0-qp-3256.6", values={"themeId": "custom"})))
 
+    def test_candidate_update_syntax_passes_brief_preflight_before_structure_read(self) -> None:
+        brief = ops_brief([{
+            "op": "update",
+            "block_id": "q1",
+            "values": {
+                "themeId": "custom",
+                "themeAppearance.custom.version": 1,
+                "themeAppearance.custom.baseThemeId": "site-builder",
+                "themeAppearance.custom.palette.accent": "#123456",
+            },
+        }])
+        self.assertEqual([], validate_shop_brief.validate(brief))
+
     def test_preset_selection_changes_only_the_active_theme_leaf(self) -> None:
         internal = {
             "themeId": "custom",

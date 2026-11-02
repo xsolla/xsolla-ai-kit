@@ -46,6 +46,7 @@ LAYOUT_ENUMS = {
 }
 LAYOUT_BOOLEANS = {"showHeading", "showDescription", "showImage"}
 THEME_IDS = {"site-builder", "xsolla-pages", "custom"}
+PRESET_THEME_IDS = {"site-builder", "xsolla-pages"}
 PRESET_FIELDS = {
     "cardAlign": {"start", "center", "end"},
     "blockBackground": {"transparent", "primary", "secondary"},
@@ -218,7 +219,7 @@ def split_key(key: str) -> tuple[str, ...] | None:
     if (
         len(parts) == 3
         and parts[0] == "themeAppearance"
-        and parts[1] in PRESET_FIELDS
+        and parts[1] in PRESET_THEME_IDS
         and parts[2] in PRESET_FIELDS
     ):
         return ("themeAppearance", parts[1], parts[2])
@@ -887,7 +888,10 @@ def validate_block_operations(brief: dict, structure: dict | None = None) -> lis
                     errors.append(f"{prefix}.block_id {block_id} is not a Quests block")
                 else:
                     operation_block = found[2]
-        _check_capability_and_custom_contract(operation, operation_block, prefix, errors)
+        # The brief-level validator runs before the saved structure is loaded. Defer
+        # exact target-version and saved-Custom checks until the structure-aware plan.
+        if current is not None or op == "add":
+            _check_capability_and_custom_contract(operation, operation_block, prefix, errors)
     if errors:
         return errors
     _check_conflicts(operations, errors)

@@ -310,6 +310,41 @@ class BlockOpsApplyBase(unittest.TestCase):
 
 
 class BlockOpsApplyTests(BlockOpsApplyBase):
+    def run_main_preflight(self, operations: list[dict]) -> tuple[int, str, mock.Mock]:
+        block = self.site.find("q1")
+        block["values"]["version"] = "0.2.0-qp-3256.5"
+        brief = ops_brief(operations)
+        saved = self.site.structure_value()
+        stderr = io.StringIO()
+        run_json = mock.Mock()
+        with tempfile.TemporaryDirectory() as directory:
+            brief_path = Path(directory) / "brief.json"
+            brief_path.write_text(json.dumps(brief), encoding="utf-8")
+            argv = [
+                "apply_plan.py",
+                str(brief_path),
+                "--confirmation-id",
+                "unused-invalid-plan",
+                "--backup-dir",
+                directory,
+            ]
+            with (
+                mock.patch.dict(apply_plan.RUN_AUTH, {"logged_in": False, "context": None}),
+                mock.patch.object(sys, "argv", argv),
+                mock.patch.object(apply_plan, "run_preflight"),
+                mock.patch.object(
+                    apply_plan.cli_environment, "select", return_value={"config": {}}
+                ),
+                mock.patch.object(apply_plan, "cli_context", return_value={}),
+                mock.patch.object(apply_plan, "website_exists", return_value=True),
+                mock.patch.object(apply_plan, "verified_backup", return_value=True),
+                mock.patch.object(apply_plan, "backup_structure", return_value=saved),
+                mock.patch.object(apply_plan, "run_json", run_json),
+                contextlib.redirect_stderr(stderr),
+            ):
+                code = apply_plan.main()
+        return code, stderr.getvalue(), run_json
+
     def test_values_use_leaf_patches_only(self) -> None:
         operations = [
             {
@@ -373,6 +408,34 @@ class BlockOpsApplyTests(BlockOpsApplyBase):
         self.assertEqual({"preserve": True}, saved["futureField"])
         self.assertEqual([], self.verify(plan, refs))
 
+    def test_candidate_preset_leaves_apply_and_read_back_for_both_themes(self) -> None:
+        block = self.site.find("q1")
+        block["values"]["version"] = "0.2.0-qp-3256.5"
+        block["values"]["internalBlockValues"].update({
+            "themeAppearance": {
+                "custom": {"version": 1, "baseThemeId": "site-builder"},
+                "future-theme": {"keep": True},
+            },
+        })
+        operations = [{
+            "op": "update",
+            "block_id": "q1",
+            "values": {
+                "themeAppearance.site-builder.cardAlign": "center",
+                "themeAppearance.xsolla-pages.buttonStyle": "theme-default",
+            },
+        }]
+        plan, refs = self.apply(operations)
+        saved = self.site.find("q1")["values"]["internalBlockValues"]
+        self.assertEqual(
+            {"cardAlign": "center"}, saved["themeAppearance"]["site-builder"]
+        )
+        self.assertEqual(
+            {"buttonStyle": "theme-default"}, saved["themeAppearance"]["xsolla-pages"]
+        )
+        self.assertEqual({"keep": True}, saved["themeAppearance"]["future-theme"])
+        self.assertEqual([], self.verify(plan, refs))
+
     def test_candidate_custom_reset_preserves_version_unknown_fields_and_other_themes(self) -> None:
         block = self.site.find("q1")
         block["values"]["version"] = "0.2.0-qp-3256.5"
@@ -411,6 +474,75 @@ class BlockOpsApplyTests(BlockOpsApplyBase):
         with self.assertRaisesRegex(ValueError, "unsupported Quests version"):
             self.plan_for([{"op": "update", "block_id": "q1", "values": {"themeId": "custom"}}])
         self.assertEqual([], self.site.write_calls())
+
+    def test_custom_value_and_contrast_preflight_failures_make_zero_mutating_calls(self) -> None:
+        prefix = "themeAppearance.custom."
+        base = {
+            prefix + "version": 1,
+            prefix + "baseThemeId": "site-builder",
+        }
+        rejected_values = [
+            {
+                **base,
+                prefix + "palette.accent": "red",
+            },
+            {
+                **base,
+                prefix + "typography.bodyFont": {"loadedFont": "bad; font"},
+            },
+            {
+                **base,
+                prefix + "typography.headingWeight": True,
+            },
+            {
+                **base,
+                prefix + "typography.bodyLineHeight": 2.01,
+            },
+            {
+                **base,
+                prefix + "geometry.railInset": 0,
+            },
+            {
+                **base,
+                prefix + "geometry.columns": 5,
+            },
+            {
+                **base,
+                prefix + "palette.accent": "#ffffff",
+                prefix + "palette.actionText": "#ffffff",
+            },
+            {
+                **base,
+                prefix + "version": 2,
+                prefix + "typography.bodySize": 16,
+            },
+        ]
+        expected_errors = [
+            "six-digit hex",
+            "loadedFont",
+            "weight 400",
+            "finite number",
+            "railInset requires",
+            "integer from 1 to 4",
+            "contrast",
+            "version must be 1",
+        ]
+        for index, values in enumerate(rejected_values):
+            with self.subTest(index=index, values=values):
+                code, stderr, cli = self.run_main_preflight(
+                    [{"op": "update", "block_id": "q1", "values": values}]
+                )
+                self.assertEqual(1, code, stderr)
+                self.assertIn(expected_errors[index], stderr)
+                mutating_calls = [
+                    call
+                    for call in cli.call_args_list
+                    if len(call.args) > 1
+                    and call.args[0] == "shopbuilder"
+                    and call.args[1]
+                    not in {"list-websites", "get-structure", "get-localization", "get-block"}
+                ]
+                self.assertEqual([], mutating_calls)
 
     def test_duplicate_keeps_both_instances(self) -> None:
         plan, refs = self.apply([{"op": "duplicate", "block_id": "q1"}])
