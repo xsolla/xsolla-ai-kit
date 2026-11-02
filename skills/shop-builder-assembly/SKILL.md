@@ -37,8 +37,10 @@ If `preset` is `auto`, choose in this order:
 2. PC/console game needing content beyond purchase → `pc-multi-page`.
 3. Mobile-first or purchase-focused game → `mobile-single-page`.
 
-Before planning, read [presets](references/presets.md) and the
-[block catalog](references/block-catalog.md). Before applying, read the
+Before planning, read [presets](references/presets.md), the
+[block catalog](references/block-catalog.md) and the
+[render rules](references/visual-style.md#render-rules): how Shop Builder actually draws
+themes, fonts, backgrounds, text and store sections. Before applying, read the
 [exported contracts](references/exported-block-contracts.md) and
 [CLI operations](references/cli-operations.md).
 
