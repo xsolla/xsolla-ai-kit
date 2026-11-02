@@ -109,10 +109,10 @@ example:
 
 This is a shape example, not a recommended design. Use only measured and approved
 values. For `add`, ordinary creation remains stable `0.1.5`; select exact candidate
-`0.2.1-qp-3256.1` with the explicit `version` field only when the requested appearance
+`0.2.2-qp-3256.0` with the explicit `version` field only when the requested appearance
 needs its capability, and show that version in the plan.
 
-The exact appearance/action capability is candidate `0.2.1-qp-3256.1` only. Ordinary
+The exact appearance/action capability is candidate `0.2.2-qp-3256.0` only. Ordinary
 block creation remains pinned to stable `0.1.5`; never change that default. Never infer
 support from version ordering or package metadata. Existing-block updates/resets require
 the exact supported version in saved readback. If the block version or schema is

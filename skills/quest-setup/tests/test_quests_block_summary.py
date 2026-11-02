@@ -88,7 +88,7 @@ class SummarizeTest(unittest.TestCase):
     def test_saved_appearance_is_allowlisted_and_normalized(self) -> None:
         saved = structure()
         values = saved["pages"][0]["blocks"][1]["values"]
-        values["version"] = "0.2.1-qp-3256.1"
+        values["version"] = "0.2.2-qp-3256.0"
         internal = values["internalBlockValues"]
         internal["themeId"] = "custom"
         internal["backpackAction"] = "overlay"
@@ -111,7 +111,7 @@ class SummarizeTest(unittest.TestCase):
         [block] = qbs.summarize(saved, LOCALIZATION, QUESTS)
         appearance = block["appearance"]
         self.assertEqual(appearance["module_id"], qbs.BLOCK_ID)
-        self.assertEqual(appearance["version"], "0.2.1-qp-3256.1")
+        self.assertEqual(appearance["version"], "0.2.2-qp-3256.0")
         self.assertEqual(appearance["theme_id"], "custom")
         self.assertEqual(appearance["theme_id_status"], "known")
         self.assertEqual(appearance["backpack_action"], "overlay")

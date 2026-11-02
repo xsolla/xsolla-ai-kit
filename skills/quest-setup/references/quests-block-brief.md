@@ -5,7 +5,7 @@ Brief keys, settings and operations for the `block_operations` brief that the
 Appearance recommendations and fitting rules are in
 [quests-block-appearance.md](quests-block-appearance.md). Keep appearance and completed-
 quest action as separate choices; an appearance update preserves `backpackAction`.
-Appearance/action leaves require exact candidate `0.2.1-qp-3256.1` support; ordinary
+Appearance/action leaves require exact candidate `0.2.2-qp-3256.0` support; ordinary
 Quests creation remains pinned to stable `0.1.5`.
 
 ## Block settings
