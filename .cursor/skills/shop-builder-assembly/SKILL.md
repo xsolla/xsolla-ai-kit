@@ -93,19 +93,12 @@ local allowlist with exact IDs, approver, and approval reference. Never use sand
 as a Shop Builder target or use a partner project. Never publish, attach a production
 domain, enable live payments, or apply a saved version. A human publishes in Publisher Account.
 
-A new site's generated blocks have no IDs before creation, so it is applied in two runs:
-the bootstrap, then the rest. Save run 1's report as `run1-report.json`, export again,
-and render with `--structure`, `--approved-plan approved-plan.json` and
-`--run-report run1-report.json`. Apply run 2 with `--approved-plan`, `--run-report`,
-`--backup-dir` and the approved `confirmation_id` only if the render says "Covered by the
-approved plan": the same pages,
-sections, catalog, locales, brand and content, and removals only of blocks run 1 created
-or the approved plan listed. `apply_plan.py` checks this again and stops before any write.
-
-The yes also covers background fixes after the visual review: `values.background` leaves
-(color, gradient, image, position, size) on blocks this assembly created, applied with
-`scripts/patch_backgrounds.py` after a fresh export. It refuses anything else, an image
-not uploaded to the site, and a gradient unlike the ones already on it.
+**More than one run under the yes.** A new site is applied in two runs, a run that stops
+partway prints a `stopped-partway` report, and background fixes after the review run
+`scripts/patch_backgrounds.py`. Before each later run, export again and render with
+`--structure`, `--approved-plan` and `--run-report`; apply under the same yes only when the
+render says "Covered by the approved plan". Commands and what each check covers:
+[runs under one yes](references/cli-operations.md#runs-under-one-yes).
 
 The yes covers what the plan showed: its pages and sections, catalog, palette, fonts,
 art and wording, and both runs of a new site. Don't ask again for those; note "covered by
@@ -113,11 +106,6 @@ the approved plan" and continue. Ask again, showing what changed, only for what 
 didn't show: a render that "Needs a new yes", a theme, font or wording the plan didn't
 show, a block or page that existed before this run, any price, promotion, limit, date or eligibility,
 another site or project, or a target that changed after export.
-
-A run that stops after its writes began, such as on an authentication failure, prints a
-`stopped-partway` report: save it as `partial-report.json`. Export again, render with
-`--structure`, `--approved-plan` and `--run-report partial-report.json`, and apply under
-the same yes when the render says "Covered by the approved plan"; otherwise ask again.
 
 ## Assembly order
 
