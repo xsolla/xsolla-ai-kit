@@ -19,12 +19,12 @@
   "saved_before": {
     "_id": "fixture-quests-custom",
     "module": "_quest-platform_quests-block",
-    "values": {"version": "0.2.3-qp-3256.0", "internalBlockValues": {"themeId": "site-builder", "backpackAction": "overlay", "questIds": ["quest-b", "quest-a"], "themeAppearance": {"site-builder": {"buttonStyle": "secondary"}}, "overrides": {"quest-a": {"titleRef": "L:title-a"}}}}
+    "values": {"version": "0.2.4-qp-3256.0", "internalBlockValues": {"themeId": "site-builder", "backpackAction": "overlay", "questIds": ["quest-b", "quest-a"], "themeAppearance": {"site-builder": {"buttonStyle": "secondary"}}, "overrides": {"quest-a": {"titleRef": "L:title-a"}}}}
   },
   "saved_after": {
     "_id": "fixture-quests-custom",
     "module": "_quest-platform_quests-block",
-    "values": {"version": "0.2.3-qp-3256.0", "internalBlockValues": {"themeId": "custom", "backpackAction": "overlay", "questIds": ["quest-b", "quest-a"], "themeAppearance": {"site-builder": {"buttonStyle": "secondary"}, "custom": {"version": 1, "baseThemeId": "site-builder", "typography": {"headingSize": 32, "headingLineHeight": 1.25, "headingFont": "host-heading"}, "geometry": {"maxWidth": 1248, "gutter": 32}}}, "overrides": {"quest-a": {"titleRef": "L:title-a"}}}}
+    "values": {"version": "0.2.4-qp-3256.0", "internalBlockValues": {"themeId": "custom", "backpackAction": "overlay", "questIds": ["quest-b", "quest-a"], "themeAppearance": {"site-builder": {"buttonStyle": "secondary"}, "custom": {"version": 1, "baseThemeId": "site-builder", "typography": {"headingSize": 32, "headingLineHeight": 1.25, "headingFont": "host-heading"}, "geometry": {"maxWidth": 1248, "gutter": 32}}}, "overrides": {"quest-a": {"titleRef": "L:title-a"}}}}
   },
-  "expected_readback": {"module_id": "_quest-platform_quests-block", "version": "0.2.3-qp-3256.0", "version_status": "present", "theme_id": "custom", "theme_id_status": "known", "backpack_action": "overlay", "backpack_action_status": "known", "presets": {"site-builder": {"buttonStyle": "secondary"}, "xsolla-pages": {}}, "custom": {"version": 1, "baseThemeId": "site-builder", "typography": {"headingSize": 32, "headingLineHeight": 1.25, "headingFont": "host-heading"}, "geometry": {"maxWidth": 1248, "gutter": 32}}}
+  "expected_readback": {"module_id": "_quest-platform_quests-block", "version": "0.2.4-qp-3256.0", "version_status": "present", "theme_id": "custom", "theme_id_status": "known", "backpack_action": "overlay", "backpack_action_status": "known", "presets": {"site-builder": {"buttonStyle": "secondary"}, "xsolla-pages": {}}, "custom": {"version": 1, "baseThemeId": "site-builder", "typography": {"headingSize": 32, "headingLineHeight": 1.25, "headingFont": "host-heading"}, "geometry": {"maxWidth": 1248, "gutter": 32}}}
 }

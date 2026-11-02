@@ -25,7 +25,7 @@ QUESTS_ADD_STRATEGY = "federated_patch"
 # Stable package version used by ordinary creation. Candidate versions must be chosen
 # explicitly and have a separate exact-version capability entry below.
 QUESTS_VERSION = "0.1.5"
-QUESTS_CANDIDATE_VERSION = "0.2.3-qp-3256.0"
+QUESTS_CANDIDATE_VERSION = "0.2.4-qp-3256.0"
 # Capabilities are keyed by exact released artifacts, never inferred by semver.
 # The stable creation default deliberately remains QUESTS_VERSION.
 QUESTS_CAPABILITIES = {
