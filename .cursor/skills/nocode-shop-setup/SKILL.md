@@ -55,6 +55,12 @@ the catalog is built.
    or the reference yourself, and never use this chat as the approval reference.
 3. **The platform.** Read the user's store listing link, if they gave one, for the
    platforms.
+4. **Browser and design tools in this session.** Find the browser that is signed in to
+   Publisher Account (a built-in browser, Claude in Chrome, or another extension) and use
+   it for every browser step; don't ask which one. Check that the mockup's design tool,
+   such as Figma, is available in this session: a setup log from an earlier session is not
+   proof. When one is missing, say in the first message what that changes: no visual
+   review without a signed-in browser, an HTML mockup instead of Figma.
 
 ## Store or game home
 
