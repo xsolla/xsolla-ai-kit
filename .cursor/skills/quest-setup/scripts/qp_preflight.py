@@ -48,11 +48,12 @@ def _outcome(state, onboard_calls=0, readback_status=None, detail=None):
     return result
 
 
-def _question(project_name, project_id):
-    return ("Get project returned 404 for project %s (%s). Per the live docs the same 404 means "
+def _question(project_name):
+    return ("Get project returned 404 for this project (%s). Per the live docs the same 404 means "
             "either the project is not onboarded to Quests, or this credential has no access to "
-            "that merchant or project. Onboard it now? A yes is only confirmed by a Get project "
-            "readback." % (project_name or project_id, project_id))
+            "that merchant or project. Onboard it now? Side effect: onboarding also gives the "
+            "merchant's publisher keys access to every project of the merchant. A yes is only "
+            "confirmed by a Get project readback." % project_name)
 
 
 def preflight(merchant_id, project_id, transport, confirm, merchant_name="", project_name=""):
@@ -68,7 +69,7 @@ def preflight(merchant_id, project_id, transport, confirm, merchant_name="", pro
         return _outcome("error", detail="merchant_name and project_name must be non-empty text "
                                         "of at most %d characters without control characters"
                         % MAX_NAME_CHARS)
-    if confirm(_question(project_name, project_id)) is not True:
+    if confirm(_question(project_name)) is not True:
         return _outcome("declined")
     body = {"merchant_name": merchant_name, "project_name": project_name}
     onboard_status, _ = transport("POST", base + "/onboard", body)
@@ -146,7 +147,7 @@ def main(argv=None, environ=None, cwd=None, send_transport=None):
 
     if not yes:
         _emit({"ok": False, "state": "proposal", "onboard_calls": 0,
-               "question": _question(project_name, creds.project_id),
+               "question": _question(project_name),
                "next": "Ask the publisher; rerun with --yes only after an explicit yes."})
         return 2
     try:

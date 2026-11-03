@@ -54,7 +54,7 @@ QP_ROUTE_METHODS = {
     "project": ("GET",),
     "quests": ("GET", "POST"),
     "quest": ("GET", "PUT", "DELETE"),
-    "events": ("GET", "POST"),
+    "events": ("POST",),  # the docs define POST only
     "onboard": ("POST",),
     "custom-blocks": ("GET", "POST"),  # SKILL.md: a 403 on creating a custom block gets one reply
 }
