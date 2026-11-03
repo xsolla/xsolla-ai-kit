@@ -46,6 +46,15 @@ The wrapper needs a supported `type`, a non-empty `purpose` and a non-empty
 `body`. Use `quest_completion` for a named item unless the developer requests a
 different reason.
 
+## Adding a reward
+
+"Add a reward to my quest" appends. Read the quest, add one `issue_reward` action node with a fresh
+UUID and connect it like the existing reward action, and keep every existing node and connection. The
+proposal shows the before/after list of reward actions: `before: Welcome Badge x10; after: Welcome Badge
+x10 and <new>`. Replace an existing reward only on an explicit "replace" request. The new item still
+comes from the publisher and a verified lookup (see below). Send the full `PUT` as in
+[quest-edit.md](quest-edit.md#editing).
+
 ## Named item behavior
 
 When the publisher requests a named item (`<requested item>`):

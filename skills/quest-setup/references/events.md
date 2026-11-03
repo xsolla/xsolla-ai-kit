@@ -96,6 +96,13 @@ versioned contract, not a guessed OpenAPI fetch.
 
 ## Test events
 
+A test event is for a real player of the publisher's project. The Xsolla ID in `user_ids` must come
+from the publisher and be a real Xsolla ID UUID. Never invent or reuse a made-up player id. If they
+give something that is not a UUID, or none, ask for the real one and stop. The quest must be active
+for the event to run it; activation is its own yes, never implied by the event yes. Write the event
+body to a file in the one `mktemp -d` folder and pass `--body-file <that file>`; never pipe it through
+`/dev/stdin` or a heredoc, and never retry a failed send in a loop.
+
 Do not use a test bypass unless the production contract documents it and the
 developer explicitly wants acceptance testing rather than execution. To verify
 execution, send a normal event and warn that matching actions may run for real.

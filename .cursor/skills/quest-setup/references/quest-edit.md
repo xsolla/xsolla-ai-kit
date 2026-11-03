@@ -20,6 +20,15 @@ to report as a change. A `$schema` link may be present; drop it before the
 server does not assign node ids, and existing node ids stay unchanged. Show the
 before/after diff of the changed fields before sending.
 
+Send the body from a file in the one `mktemp -d` folder with `--body-file <that file>`; never pipe it
+through `/dev/stdin` or a heredoc, and never retry a failed `PUT` in a loop: report after one failure.
+
+Add a reward ("add a reward to my quest"): APPEND one action node (with a fresh UUID) and its
+connection, and keep every existing node and connection as read. The proposal shows the before/after
+list of reward actions, for example `before: Welcome Badge x10; after: Welcome Badge x10 and <new>`.
+Replace an existing reward only when the publisher explicitly says "replace". Details:
+[rewards.md](rewards.md#adding-a-reward).
+
 Dates on edit: a `PUT` with `status: active` re-runs the date rules even when it
 changes only `is_public` or a text. Before the proposal, check the read: if
 `start_date` is more than 24 hours old, include a start at apply time, and if
