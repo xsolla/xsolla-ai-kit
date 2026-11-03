@@ -63,12 +63,86 @@ waits for a CLI release. **Open** has nothing merged yet.
 | R3 | Approve a mockup made with any available tool | Every approval request includes a picture of the site | shop-builder-assembly, nocode-shop-setup | Done. A Figma kit of real blocks at true sizes is open (design team) | [#117](https://github.com/xsolla/xsolla-ai-kit/pull/117) |
 | R4 | Visual loop at 1440 and 390 px as the definition of done | Every report says `real_visual_check: yes` for desktop and mobile | shop-builder-assembly | Done. A new site can't open in preview until the CLI ships `create-block` | [#117](https://github.com/xsolla/xsolla-ai-kit/pull/117) |
 | R5 | Ship the Shop Builder render rules | None of the rules shows up as a fix in a test run's friction log | shop-builder-assembly | Done: the rules and the opaque-color refusal. Script warnings for other rules are open | [#117](https://github.com/xsolla/xsolla-ai-kit/pull/117), [#118](https://github.com/xsolla/xsolla-ai-kit/pull/118) |
-| R6 | Support Publisher Account templates and mobile game homes | An App Store link becomes a multi-page hub with LiveOps through the kit | shop-builder-assembly, game-web-portal | Decision (D3) | — |
+| R6 | Support Publisher Account templates and mobile game homes | An App Store link becomes a multi-page hub with LiveOps through the kit; see [R6 in detail](#r6-in-detail) | shop-builder-assembly, game-web-portal, nocode-shop-setup | Decision (D3); specified below | — |
 | R7 | Helpers for CLI gaps instead of a stop | The agent neither stops nor improvises on known gaps | shop-builder-assembly, catalog-design | Decision (D4): conflicts with the kit's "no raw HTTP" rule. Most gaps close with the CLI release | — |
 | R8 | Research, real art and the full feature set by default | No follow-up prompt for art, SEO or features | description-to-shop, catalog-design | Partial: full shop proposal, store-listing art, an image per product, and design defaults are merged. SEO and OG tags are open; the sandbox purchase test is a decision (D6) | [#118](https://github.com/xsolla/xsolla-ai-kit/pull/118) |
 | R9 | Setup without manual steps | Setup takes one prompt and no manual step besides signing in | nocode-shop-setup, merchant-setup | Partial: the approver is asked first, the CLI and kit are refreshed first, and the key comes from `auth login`. Self-attestation by the project owner is a decision (D2) | [#117](https://github.com/xsolla/xsolla-ai-kit/pull/117), [#118](https://github.com/xsolla/xsolla-ai-kit/pull/118) |
 | R10 | Resumable, rerunnable builds | A build interrupted at any step resumes and finishes without duplicates | shop-builder-assembly | Partial: a stopped run's report keeps the same yes, and a taken slug stops the run by name. A per-section workspace and an asset URL cache are open | [#117](https://github.com/xsolla/xsolla-ai-kit/pull/117) |
 | R11 | Pay Station theme matches the site | Buy opens Pay Station in the site's look on desktop and mobile | new step after assembly | Decision (D5): browser-only until an API exists | — |
+
+### R6 in detail
+
+Written ahead of D3, as if D3 is approved with its recommendation: part (b) first, then
+part (c). If D3 is decided otherwise, change or remove this section.
+
+**Today.** `render_plan.py` and `apply_plan.py` stop before any write on a page whose
+header sits in the common layout (`require_own_header`), which is how every Publisher
+Account template builds its pages. Navigation looks for a header among the page's own
+blocks. `game-web-portal` accepts only a Steam link and returns `needs_input` for App Store
+and Google Play titles, and `nocode-shop-setup` offers a game home only for PC games.
+
+**Why.** A site made from a template already has the common layout, so it opens in the
+editor and preview without `create-block`. It also comes with the LiveOps blocks that the
+CLI can't add yet: daily rewards, offer chain, reward system and promo codes.
+
+**Part (b): `shop-builder-assembly` on a store template site**
+
+1. **Who creates the site.** The developer, in Publisher Account, from a store template:
+   Single-page shop first. The first message of `nocode-shop-setup` gives the steps when
+   the CLI lacks `create-block`, as the recommended answer to "build anyway, or wait". The
+   agent never creates a site through the browser, the same rule as `game-web-portal`.
+   With a CLI that has `create-block`, `create-website` stays the default.
+2. **Discover.** Export the site as today. Find the common layout's header and footer by
+   module with `get-block`, and each page's blocks by module.
+3. **Plan.** Render with `--structure` and map the preset's sections onto the template's
+   blocks by module:
+   - keep a block whose module the preset uses;
+   - list every demo block the preset doesn't use as an exact removal, by ID;
+   - rebind `newStore` sections from the demo groups to the brief's groups;
+   - bind the daily rewards, offer chain, reward system and promo codes blocks to the
+     active LiveOps the brief lists, or list them for removal when the project has none.
+
+   The plan shows all of this, so the one yes covers it.
+4. **Apply.** One run under the yes, since the template's blocks already have IDs; the
+   two-run bootstrap is for new sites only. Same preflight, backup and coverage checks.
+   Navigation patches the header in the common layout, with the `values` prefix that
+   layout blocks need.
+5. **Verify.** `verify_structure.py` accepts a header and footer in the common layout.
+   The site opens in preview, so the visual review at 1440 and 390 px runs.
+
+Done when, for part (b):
+
+- render and apply no longer stop on a page whose header is in the common layout;
+- one run under one yes turns a store template site into the plan: the brief's catalog
+  and LiveOps, and no demo blocks, groups or text left;
+- navigation is written to the layout header, and `verify_structure.py` passes;
+- the site opens in the editor and preview;
+- unit tests on a sanitized export of a Single-page shop site: the render lists exact
+  removals and rebindings, apply makes no write before the yes, and a page without its
+  own header passes.
+
+**Part (c): mobile game homes in `game-web-portal`**
+
+- Accept the exact hosts `apps.apple.com` and `play.google.com` next to
+  `store.steampowered.com`; anything else, or a look-alike host, is still `needs_input`.
+- An App Store or Google Play listing is a source of facts and art only after the
+  developer confirms it's theirs and may be used, as in `description-to-shop`.
+- The Launcher section isn't offered for a mobile title, and the sidebar keeps its App
+  Store and Google Play buttons.
+- `nocode-shop-setup` offers a game home for mobile titles again.
+
+Done when, for part (c): an App Store link becomes a multi-page hub with LiveOps through
+the kit, and the host check accepts the three exact hosts and refuses look-alikes.
+
+**Needs before coding.** A sanitized export of a Single-page shop site made in a test
+project, as the test fixture (`scripts/extract_block_contracts.py` sanitizes it). The
+LiveOps block contracts are already in
+[exported block contracts](../../skills/shop-builder-assembly/references/exported-block-contracts.md)
+and the [block catalog](../../skills/shop-builder-assembly/references/block-catalog.md).
+
+**Out of scope.** The agent creating sites in the browser; templates other than
+Single-page shop and Multi-page web portal; removing the template path once `create-block`
+ships, which is a separate decision.
 
 ### Items from the feedback reports
 
@@ -115,6 +189,7 @@ Google Play titles.
   `game-web-portal`.
 - Recommendation: (b) now, then (c). A template site already has the common layout, so (b)
   gives a site that opens in the editor and preview before the CLI ships `create-block`.
+  Specified in [R6 in detail](#r6-in-detail).
 - Effect: `reached_storefront` and `real_visual_check` can reach yes without waiting for
   the CLI.
 
