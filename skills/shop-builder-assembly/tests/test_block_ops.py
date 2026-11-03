@@ -82,7 +82,7 @@ def add_op(**overrides: object) -> dict:
     return op
 
 
-def candidate_quests_block(internal: dict | None = None, version: str = "0.2.4-qp-3256.0") -> dict:
+def candidate_quests_block(internal: dict | None = None, version: str = "0.2.5-qp-3256.0") -> dict:
     block = quests_block("q1", internal or {"themeId": "site-builder", "backpackAction": "external"})
     block["values"].update(
         version=version,
@@ -91,7 +91,7 @@ def candidate_quests_block(internal: dict | None = None, version: str = "0.2.4-q
     return block
 
 
-def candidate_structure(internal: dict | None = None, version: str = "0.2.4-qp-3256.0") -> dict:
+def candidate_structure(internal: dict | None = None, version: str = "0.2.5-qp-3256.0") -> dict:
     structure = make_structure()
     page = structure["pages"][0]
     page["blocks"] = [candidate_quests_block(internal, version) if b.get("_id") == "q1" else b for b in page["blocks"]]
@@ -118,22 +118,22 @@ class BlockOpsTests(unittest.TestCase):
         self.assertEqual("0.1.5", block_ops.QUESTS_VERSION)
         self.assertTrue(self.errors(add_op(values={"themeId": "custom"})))
         errors = self.errors(
-            add_op(version="0.2.4-qp-3256.0", values={"themeId": "custom"})
+            add_op(version="0.2.5-qp-3256.0", values={"themeId": "custom"})
         )
         self.assertEqual([], errors, errors)
         candidate_plan = block_ops.plan_block_operations(
-            ops_brief([add_op(version="0.2.4-qp-3256.0", values={"themeId": "custom"})]),
+            ops_brief([add_op(version="0.2.5-qp-3256.0", values={"themeId": "custom"})]),
             make_structure(),
         )
-        self.assertEqual("0.2.4-qp-3256.0", candidate_plan[0]["version"])
+        self.assertEqual("0.2.5-qp-3256.0", candidate_plan[0]["version"])
         rendered = render_plan.build_plan(
-            ops_brief([add_op(version="0.2.4-qp-3256.0", values={"themeId": "custom"})]),
+            ops_brief([add_op(version="0.2.5-qp-3256.0", values={"themeId": "custom"})]),
             make_structure(),
         )
         self.assertTrue(
             any(
                 "pre-release build" in warning
-                and "0.2.4-qp-3256.0" in warning
+                and "0.2.5-qp-3256.0" in warning
                 for warning in rendered["warnings"]
             ),
             rendered["warnings"],
@@ -146,6 +146,7 @@ class BlockOpsTests(unittest.TestCase):
             stable_rendered["warnings"],
         )
         for unsupported in (
+            "0.2.4-qp-3256.0",
             "0.2.3-qp-3256.0",
             "0.2.2-qp-3256.0",
             "0.2.1-qp-3256.1",
@@ -196,7 +197,6 @@ class BlockOpsTests(unittest.TestCase):
                 "themeAppearance.custom.palette.accent": "#000000",
                 "themeAppearance.custom.typography.headingLineHeight": 1.239,
                 "themeAppearance.custom.geometry.railInset": 0,
-                "backpackAction": "overlay",
             },
         }])
         structure = candidate_structure()
@@ -226,7 +226,6 @@ class BlockOpsTests(unittest.TestCase):
         )
         line = next(p for p in patches if p["key"] == "themeAppearance.custom.typography.headingLineHeight")
         self.assertEqual(1.24, line["value"])
-        self.assertTrue(any(p["key"] == "backpackAction" and p["value"] == "overlay" for p in patches))
 
     def test_custom_invalid_values_and_unsupported_versions_fail_preflight(self) -> None:
         cases = [
@@ -237,7 +236,7 @@ class BlockOpsTests(unittest.TestCase):
             ({"themeAppearance.custom.version": 1, "themeAppearance.custom.baseThemeId": "site-builder", "themeAppearance.custom.typography.headingWeight": True}, "headingWeight"),
             ({"themeAppearance.custom.version": 1, "themeAppearance.custom.baseThemeId": "site-builder", "themeAppearance.custom.geometry.railInset": 1}, "railInset"),
             ({"themeAppearance.custom.version": 1, "themeAppearance.custom.baseThemeId": "xsolla-pages", "themeAppearance.custom.geometry.columns": 2}, "columns"),
-            ({"backpackAction": "internal"}, "backpackAction"),
+            ({"backpackAction": "overlay"}, "backpackAction"),
         ]
         for values, key in cases:
             with self.subTest(key=key, values=values):
@@ -351,6 +350,16 @@ class BlockOpsTests(unittest.TestCase):
                 ops_brief([{"op": "reset", "block_id": "q1", "paths": [path]}]), candidate_structure(internal)
             )
             self.assertTrue(errors, (path, errors))
+
+    def test_legacy_backpack_action_is_not_an_operation_leaf(self) -> None:
+        for operation in (
+            {"op": "update", "block_id": "q1", "values": {"backpackAction": "external"}},
+            {"op": "update", "block_id": "q1", "values": {"backpackAction": "overlay"}},
+            {"op": "reset", "block_id": "q1", "paths": ["backpackAction"]},
+        ):
+            with self.subTest(operation=operation):
+                errors = self.errors(operation, structure=candidate_structure())
+                self.assertTrue(any("backpackAction" in error and "not a patchable leaf" in error for error in errors), errors)
 
     def test_limits_questids_and_maxquests(self) -> None:
         too_many = [f"{i:08x}-1111-4111-8111-111111111111" for i in range(25)]

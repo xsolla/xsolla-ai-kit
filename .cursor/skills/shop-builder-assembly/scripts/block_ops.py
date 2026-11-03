@@ -25,12 +25,12 @@ QUESTS_ADD_STRATEGY = "federated_patch"
 # Stable package version used by ordinary creation. Candidate versions must be chosen
 # explicitly and have a separate exact-version capability entry below.
 QUESTS_VERSION = "0.1.5"
-QUESTS_CANDIDATE_VERSION = "0.2.4-qp-3256.0"
+QUESTS_CANDIDATE_VERSION = "0.2.5-qp-3256.0"
 # Capabilities are keyed by exact released artifacts, never inferred by semver.
 # The stable creation default deliberately remains QUESTS_VERSION.
 QUESTS_CAPABILITIES = {
-    QUESTS_VERSION: {"appearance": False, "backpack_action": False},
-    QUESTS_CANDIDATE_VERSION: {"appearance": True, "backpack_action": True},
+    QUESTS_VERSION: {"appearance": False},
+    QUESTS_CANDIDATE_VERSION: {"appearance": True},
 }
 QUESTS_CDN_ROOT = "https://cdn.xsolla.net/site-builder-modules/"
 # Editor layer label that UI-added federated blocks carry (top-level `devName`).
@@ -137,7 +137,7 @@ QUESTS_PATCHABLE_LEAVES = frozenset(
     {"questIds", "maxQuests", "editorPreview"}
     | {f"layout.{name}" for name in (*LAYOUT_ENUMS, *LAYOUT_BOOLEANS)}
     | {f"overrides.<questId>.{name}" for name in OVERRIDE_FIELDS}
-    | {"themeId", "backpackAction"}
+    | {"themeId"}
     | {
         f"themeAppearance.{theme}.{name}"
         for theme in ("site-builder", "xsolla-pages")
@@ -213,7 +213,7 @@ def split_key(key: str) -> tuple[str, ...] | None:
         return None
     if key in ("questIds", "maxQuests", "editorPreview"):
         return (key,)
-    if key in ("themeId", "backpackAction"):
+    if key == "themeId":
         return (key,)
     parts = key.split(".")
     if (
@@ -385,9 +385,6 @@ def _validate_leaf_value(key: str, value: object) -> str | None:
     if segments == ("themeId",):
         if not isinstance(value, str) or value not in THEME_IDS:
             return "themeId must use: " + ", ".join(sorted(THEME_IDS))
-    elif segments == ("backpackAction",):
-        if not isinstance(value, str) or value not in {"external", "overlay"}:
-            return "backpackAction must use: external, overlay"
     elif segments[:2] == ("themeAppearance", "custom"):
         field = segments[-1]
         if field == "version":
@@ -518,14 +515,12 @@ def _validate_values(values: object, prefix: str, errors: list[str]) -> None:
             errors.append(f"{prefix}.values.{key}: {problem}")
 
 
-def _appearance_or_action_key(key: object) -> str | None:
+def _appearance_key(key: object) -> str | None:
     segments = split_key(key) if isinstance(key, str) else None
     if segments is None:
         return None
     if segments[0] == "themeId" or segments[0] == "themeAppearance":
         return "appearance"
-    if segments[0] == "backpackAction":
-        return "backpack_action"
     return None
 
 
@@ -585,8 +580,8 @@ def _check_capability_and_custom_contract(
     entries = raw_entries if isinstance(raw_entries, dict) else {}
     raw_paths = operation.get("paths")
     paths = raw_paths if isinstance(raw_paths, list) else []
-    relevant = [key for key in entries if _appearance_or_action_key(key)]
-    relevant.extend(path for path in paths if _appearance_or_action_key(path))
+    relevant = [key for key in entries if _appearance_key(key)]
+    relevant.extend(path for path in paths if _appearance_key(path))
     if relevant and op != "add" and block is None:
         errors.append(
             f"{prefix}: a backup structure is required to verify the exact "
@@ -594,7 +589,7 @@ def _check_capability_and_custom_contract(
         )
         return
     for key in relevant:
-        capability = _appearance_or_action_key(key)
+        capability = _appearance_key(key)
         if (
             not isinstance(version, str)
             or not QUESTS_CAPABILITIES.get(version, {}).get(capability, False)

@@ -102,18 +102,18 @@ The plan runs against the backup structure and rejects these before confirmation
 - A leaf patch into a missing parent (for example `layout`) returns 200 and is silently
   ignored, so create the parent object first.
 
-## Appearance and Backpack action capability
+## Appearance capability
 
 Ordinary `add` keeps using the stable creation pin `0.1.5`. An `add` operation may
 select a different artifact only through its explicit `version` field. The only verified
-candidate capability currently enabled is `0.2.4-qp-3256.0`; this is candidate-only
+candidate capability currently enabled is `0.2.5-qp-3256.0`; this is candidate-only
 support, not a stable-version claim. Updates and resets that use these fields require the
 target block's exact `values.version` to match that candidate. No other version is
 accepted by inference.
 
-The candidate artifact defaults `themeId` to `site-builder` and `backpackAction` to
-`external`; `themeAppearance` is optional and stored as an open map. The operation paths
-below it are therefore leaf patches under `values.internalBlockValues`.
+The candidate artifact defaults `themeId` to `site-builder`; `themeAppearance` is optional
+and stored as an open map. The operation paths below it are therefore leaf patches under
+`values.internalBlockValues`.
 
 On that candidate, the gate accepts the `themeId` values `site-builder`, `xsolla-pages`
 and `custom`, the existing per-preset leaves under
@@ -137,9 +137,7 @@ actual loaded-font evidence; otherwise use a host font token or inherit the base
 `actionText` and `accent` are explicit, the pair must reach 4.5:1 contrast. Omitting
 `actionText` leaves the block's safe derived-color behavior in control.
 
-The candidate also supports the flat `backpackAction` leaf, `external` or `overlay`.
-Omission and reset use the artifact default, `external`. The older nested
-`backpackOverlay` shape and any host ID, loader, authentication, bootstrap or owner lease
-field are not accepted. Selecting `overlay` only chooses the Quests action. Installation,
-controller readiness and authentication belong to the independent owner procedure, not
-this Quests mutation gate.
+`0.2.5-qp-3256.0` is the verified exact-version source pin for appearance capability
+only. Older saved action-looking fields are opaque legacy data: this gate does not accept
+them as operation leaves or expose/configure their values. Ordinary leaf updates and
+resets leave them untouched.

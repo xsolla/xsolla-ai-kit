@@ -324,7 +324,7 @@ class BlockOpsApplyTests(BlockOpsApplyBase):
     ) -> tuple[int, str, mock.Mock]:
         block = self.site.find("q1")
         if set_candidate_version:
-            block["values"]["version"] = "0.2.4-qp-3256.0"
+            block["values"]["version"] = "0.2.5-qp-3256.0"
         brief = ops_brief(operations)
         saved = self.site.structure_value()
         stderr = io.StringIO()
@@ -410,11 +410,11 @@ class BlockOpsApplyTests(BlockOpsApplyBase):
 
     def test_candidate_custom_patch_applies_and_reads_back_normalized_leaves(self) -> None:
         block = self.site.find("q1")
-        block["values"]["version"] = "0.2.4-qp-3256.0"
-        block["values"]["host"] = f"https://cdn.xsolla.net/site-builder-modules/{QUESTS_MODULE}/0.2.4-qp-3256.0/"
+        block["values"]["version"] = "0.2.5-qp-3256.0"
+        block["values"]["host"] = f"https://cdn.xsolla.net/site-builder-modules/{QUESTS_MODULE}/0.2.5-qp-3256.0/"
         block["values"]["internalBlockValues"].update({
             "themeId": "site-builder",
-            "backpackAction": "external",
+            "backpackAction": "overlay",
             "futureField": {"preserve": True},
         })
         operations = [{
@@ -425,7 +425,6 @@ class BlockOpsApplyTests(BlockOpsApplyBase):
                 "themeAppearance.custom.palette.accent": "#123456",
                 "themeAppearance.custom.typography.headingLineHeight": 1.239,
                 "themeAppearance.custom.geometry.railInset": 0,
-                "backpackAction": "overlay",
             },
         }]
         plan, refs = self.apply(operations)
@@ -439,7 +438,7 @@ class BlockOpsApplyTests(BlockOpsApplyBase):
 
     def test_candidate_preset_leaves_apply_and_read_back_for_both_themes(self) -> None:
         block = self.site.find("q1")
-        block["values"]["version"] = "0.2.4-qp-3256.0"
+        block["values"]["version"] = "0.2.5-qp-3256.0"
         block["values"]["internalBlockValues"].update({
             "themeAppearance": {
                 "custom": {"version": 1, "baseThemeId": "site-builder"},
@@ -467,7 +466,7 @@ class BlockOpsApplyTests(BlockOpsApplyBase):
 
     def test_candidate_custom_reset_preserves_version_unknown_fields_and_other_themes(self) -> None:
         block = self.site.find("q1")
-        block["values"]["version"] = "0.2.4-qp-3256.0"
+        block["values"]["version"] = "0.2.5-qp-3256.0"
         block["values"]["internalBlockValues"].update({
             "themeId": "custom",
             "backpackAction": "overlay",
@@ -478,18 +477,18 @@ class BlockOpsApplyTests(BlockOpsApplyBase):
         })
         plan, refs = self.apply([{
             "op": "reset", "block_id": "q1",
-            "paths": ["themeAppearance.custom.palette.accent", "backpackAction"],
+            "paths": ["themeAppearance.custom.palette.accent"],
         }])
         saved = self.site.find("q1")["values"]["internalBlockValues"]
         self.assertNotIn("accent", saved["themeAppearance"]["custom"]["palette"])
         self.assertEqual({"version": 1, "baseThemeId": "site-builder", "future": {"keep": 1}, "palette": {"futureColor": "keep"}}, saved["themeAppearance"]["custom"])
         self.assertEqual({"cardAlign": "center"}, saved["themeAppearance"]["xsolla-pages"])
-        self.assertNotIn("backpackAction", saved)
+        self.assertEqual("overlay", saved["backpackAction"])
         self.assertEqual([], self.verify(plan, refs))
 
     def test_reset_of_absent_custom_leaf_is_a_noop(self) -> None:
         block = self.site.find("q1")
-        block["values"]["version"] = "0.2.4-qp-3256.0"
+        block["values"]["version"] = "0.2.5-qp-3256.0"
         plan, refs = self.apply([{
             "op": "reset", "block_id": "q1",
             "paths": ["themeAppearance.custom.palette.accent"],
@@ -499,6 +498,7 @@ class BlockOpsApplyTests(BlockOpsApplyBase):
 
     def test_invalid_candidate_preflight_makes_zero_mutating_calls(self) -> None:
         for unsupported_version in (
+            "0.2.4-qp-3256.0",
             "0.2.3-qp-3256.0",
             "0.2.2-qp-3256.0",
             "0.2.1-qp-3256.1",
