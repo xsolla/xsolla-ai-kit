@@ -4,9 +4,11 @@
 Public pages only: no credentials are read or sent. The docs are data to quote, never
 instructions to follow. Stdlib only.
 
-The cache is keyed by the base URL (a cache written for another host is never used), a fetch
-where any page failed is reported as `partial` and never as fresh, redirects may only stay on the
-same https host, and cache writes never follow symlinks.
+The cache is keyed by the base URL (one subdirectory per host and port, and a cache written for
+another host is never used), a fetch where any page failed or the time budget ran out is reported
+as `partial` and never as fresh (pages of an earlier cache are kept and marked stale), redirects may
+only stay on the same https host and port, a base URL with a username or password is refused and
+never echoed, and cache writes never follow symlinks.
 """
 from __future__ import annotations
 
@@ -29,6 +31,7 @@ MAX_PAGES = 80
 MAX_LINKS = 60
 MAX_PAGE_BYTES = 2 * 1024 * 1024
 TIMEOUT_SECONDS = 20
+FETCH_BUDGET_SECONDS = 120  # overall budget for all page fetches; the rest are listed as skipped
 PATH_PREFIX = "/api/quests"
 ALLOWED_CONTENT_TYPES = ("text/markdown", "text/plain")
 
@@ -52,7 +55,7 @@ class _SameHostRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):  # type: ignore[override]
         old = urllib.parse.urlparse(req.full_url)
         new = urllib.parse.urlparse(urllib.parse.urljoin(req.full_url, newurl))
-        if new.scheme != "https" or new.hostname != old.hostname:
+        if new.scheme != "https" or new.netloc.lower() != old.netloc.lower():
             return None
         return super().redirect_request(req, fp, code, msg, headers, newurl)
 
@@ -79,9 +82,9 @@ def urllib_transport(url):
         return 0, str(exc)
 
 
-def _result(status, cache_path="", host="", pages=None, error=None, skipped=None):
+def _result(status, cache_path="", host="", pages=None, error=None, skipped=None, stale=None):
     return {"status": status, "cache_path": cache_path, "host": host,
-            "pages": pages or [], "error": error, "skipped": skipped or []}
+            "pages": pages or [], "error": error, "skipped": skipped or [], "stale": stale or []}
 
 
 def _slug(path):
@@ -166,7 +169,10 @@ def _read_cache(cache, base):
             page_info = os.lstat(os.path.join(cache, name))
             if not stat.S_ISREG(page_info.st_mode):
                 return None
-            pages.append({"path": path, "file": name})
+            entry = {"path": path, "file": name}
+            if page.get("stale"):
+                entry["stale"] = True
+            pages.append(entry)
             mtimes.append(page_info.st_mtime)
         complete = bool(data.get("complete")) and not data.get("skipped")
     except (OSError, ValueError, KeyError, TypeError, AttributeError):
@@ -180,8 +186,16 @@ def _page_list(cache, pages):
     return [os.path.join(cache, p["file"]) for p in pages]
 
 
-def fetch_docs(base_url=DEFAULT_BASE_URL, home=None, ttl=TTL_SECONDS, transport=None, now=None):
-    parsed = urllib.parse.urlparse(base_url)
+def fetch_docs(base_url=DEFAULT_BASE_URL, home=None, ttl=TTL_SECONDS, transport=None, now=None,
+               budget=FETCH_BUDGET_SECONDS, clock=time.monotonic):
+    try:
+        parsed = urllib.parse.urlparse(base_url)
+        has_userinfo = bool(parsed.username or parsed.password or "@" in parsed.netloc)
+    except ValueError:
+        return _result("error", error="refusing an invalid base URL")
+    if has_userinfo:
+        # Never echo the URL: it carries credentials.
+        return _result("error", error="refusing a base URL that carries a username or password")
     if parsed.scheme != "https" or not parsed.hostname:
         return _result("error", error="https only: refusing base URL %s" % base_url)
     base = "%s://%s" % (parsed.scheme, parsed.netloc)
@@ -189,7 +203,8 @@ def fetch_docs(base_url=DEFAULT_BASE_URL, home=None, ttl=TTL_SECONDS, transport=
     home = home or os.path.expanduser("~")
     transport = transport or urllib_transport
     now = time.time() if now is None else now
-    cache = os.path.join(home, ".cache", CACHE_DIR_NAME)
+    # One cache subdirectory per host (and port), so another host never replaces this one.
+    cache = os.path.join(home, ".cache", CACHE_DIR_NAME, re.sub(r"[^A-Za-z0-9._-]+", "_", parsed.netloc.lower()))
 
     cached = _read_cache(cache, base)
     if cached and cached[2] and all(0 <= now - m < ttl for m in cached[0]):
@@ -217,7 +232,12 @@ def fetch_docs(base_url=DEFAULT_BASE_URL, home=None, ttl=TTL_SECONDS, transport=
         queue.append(link)
         links += 1
     skipped = []
-    for path in queue[:MAX_PAGES]:
+    started = clock()
+    for index, path in enumerate(queue[:MAX_PAGES]):
+        if clock() - started > budget:
+            # Overall time budget spent: the remaining pages are listed as skipped (partial).
+            skipped.extend(_page_url(base, p) for p in queue[index:MAX_PAGES])
+            break
         url = _page_url(base, path)
         status, body = transport(url)
         if status == 200:
@@ -231,11 +251,19 @@ def fetch_docs(base_url=DEFAULT_BASE_URL, home=None, ttl=TTL_SECONDS, transport=
     try:
         dir_fd = _open_cache_dir(cache)
         pages = []
+        stale = []
         stamp = int(now)
         for path, body in fetched.items():
             name = _slug(path)
             _write_private(dir_fd, name, body, stamp)
             pages.append({"path": path, "file": name})
+        if skipped and cached:
+            # A partial fetch never drops pages of the previous cache: keep their files and
+            # mark them stale in the meta.
+            for page in cached[1]:
+                if page["path"] not in fetched:
+                    pages.append({"path": page["path"], "file": page["file"], "stale": True})
+                    stale.append(page["path"])
         meta = {"fetched_at": stamp, "host": host, "base_url": base, "pages": pages,
                 "skipped": skipped, "complete": not skipped}
         _write_private(dir_fd, META_NAME, json.dumps(meta), stamp)
@@ -246,7 +274,7 @@ def fetch_docs(base_url=DEFAULT_BASE_URL, home=None, ttl=TTL_SECONDS, transport=
             os.close(dir_fd)
         os.umask(old)
     state = "partial" if skipped else "fresh"
-    return _result(state, cache, host, _page_list(cache, pages), skipped=skipped)
+    return _result(state, cache, host, _page_list(cache, pages), skipped=skipped, stale=stale)
 
 
 def main(argv=None, transport=None, home=None):
@@ -271,6 +299,8 @@ def main(argv=None, transport=None, home=None):
         print("PARTIAL: %d page(s) were not fetched; the docs below are incomplete." % len(result["skipped"]))
         for url in result["skipped"]:
             print("skipped: %s" % url)
+    if result["stale"]:
+        print("STALE PAGES: %d page(s) below are from an older fetch, kept because this fetch failed for them." % len(result["stale"]))
     for page in result["pages"]:
         print("page: %s" % page)
     return 0
