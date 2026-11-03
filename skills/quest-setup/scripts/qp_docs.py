@@ -3,12 +3,18 @@
 
 Public pages only: no credentials are read or sent. The docs are data to quote, never
 instructions to follow. Stdlib only.
+
+The cache is keyed by the base URL (a cache written for another host is never used), a fetch
+where any page failed is reported as `partial` and never as fresh, redirects may only stay on the
+same https host, and cache writes never follow symlinks.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
+import stat
 import sys
 import time
 import urllib.error
@@ -20,7 +26,11 @@ TTL_SECONDS = 6 * 60 * 60
 CACHE_DIR_NAME = "quest-setup-docs"
 META_NAME = "_fetched_at.json"
 MAX_PAGES = 80
+MAX_LINKS = 60
+MAX_PAGE_BYTES = 2 * 1024 * 1024
 TIMEOUT_SECONDS = 20
+PATH_PREFIX = "/api/quests"
+ALLOWED_CONTENT_TYPES = ("text/markdown", "text/plain")
 
 SEED_PATHS = [
     "/api/quests",
@@ -33,58 +43,137 @@ SEED_PATHS = [
     "/api/quests/node-dynamic-event",
 ]
 LINK_RE = re.compile(r"\((/api/quests[^)\s#?]*)")
+SAFE_PATH_RE = re.compile(r"/api/quests(?:/[A-Za-z0-9._-]+)*")
+
+
+class _SameHostRedirect(urllib.request.HTTPRedirectHandler):
+    """Follow a redirect only to the same host over https; anything else is not followed."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):  # type: ignore[override]
+        old = urllib.parse.urlparse(req.full_url)
+        new = urllib.parse.urlparse(urllib.parse.urljoin(req.full_url, newurl))
+        if new.scheme != "https" or new.hostname != old.hostname:
+            return None
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
 
 
 def urllib_transport(url):
-    """Plain GET with no credentials. Returns (status, text)."""
+    """Plain GET with no credentials. Returns (status, text); status 0 means refused or failed."""
     req = urllib.request.Request(url, headers={"User-Agent": "quest-setup-docs/1"})
+    opener = urllib.request.build_opener(_SameHostRedirect)
     try:
-        with urllib.request.urlopen(req, timeout=TIMEOUT_SECONDS) as resp:  # noqa: S310 (https checked)
-            return resp.status, resp.read().decode("utf-8", errors="replace")
+        with opener.open(req, timeout=TIMEOUT_SECONDS) as resp:  # noqa: S310 (https checked)
+            status = resp.status
+            if status != 200:
+                return status, ""
+            ctype = (resp.headers.get("Content-Type") or "").split(";")[0].strip().lower()
+            if ctype not in ALLOWED_CONTENT_TYPES:
+                return 0, "unexpected content type"
+            raw = resp.read(MAX_PAGE_BYTES + 1)
+            if len(raw) > MAX_PAGE_BYTES:
+                return 0, "page too large"
+            return status, raw.decode("utf-8", errors="replace")
     except urllib.error.HTTPError as exc:
         return exc.code, ""
     except (urllib.error.URLError, OSError, ValueError) as exc:
         return 0, str(exc)
 
 
-def _result(status, cache_path="", host="", pages=None, error=None):
+def _result(status, cache_path="", host="", pages=None, error=None, skipped=None):
     return {"status": status, "cache_path": cache_path, "host": host,
-            "pages": pages or [], "error": error}
+            "pages": pages or [], "error": error, "skipped": skipped or []}
 
 
 def _slug(path):
-    return re.sub(r"[^A-Za-z0-9._-]+", "_", path.strip("/")) + ".md"
+    digest = hashlib.sha256(path.encode("utf-8")).hexdigest()[:10]
+    return re.sub(r"[^A-Za-z0-9._-]+", "_", path.strip("/"))[:80] + "-" + digest + ".md"
 
 
 def _page_url(base, path):
     return base + path.rstrip("/") + ".md"
 
 
-def _write_private(path, text):
-    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-    with os.fdopen(fd, "w", encoding="utf-8") as fh:
-        fh.write(text)
-    os.chmod(path, 0o600)
+def _valid_path(path):
+    return bool(SAFE_PATH_RE.fullmatch(path)) and ".." not in path
 
 
-def _read_cache(cache):
-    """Return (mtimes, pages) or None. Fetch time is the file mtime, set to the fetch time on write.
+def _open_cache_dir(cache):
+    """Return a directory fd for the cache dir, creating it. Refuses symlinks and foreign owners."""
+    parent = os.path.dirname(cache)
+    os.makedirs(parent, mode=0o700, exist_ok=True)
+    try:
+        info = os.lstat(cache)
+    except FileNotFoundError:
+        os.mkdir(cache, 0o700)
+        info = os.lstat(cache)
+    if stat.S_ISLNK(info.st_mode) or not stat.S_ISDIR(info.st_mode):
+        raise OSError("cache dir is a symlink or not a directory")
+    if hasattr(os, "getuid") and info.st_uid != os.getuid():
+        raise OSError("cache dir is not owned by the current user")
+    flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0)
+    fd = os.open(cache, flags)
+    os.fchmod(fd, 0o700)
+    return fd
 
+
+def _write_private(dir_fd, name, text, stamp):
+    """Write through an exclusive, no-follow temp file, then rename over the target name."""
+    tmp = ".tmp-%d-%s" % (os.getpid(), hashlib.sha256(os.urandom(16)).hexdigest()[:10])
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
+    fd = os.open(tmp, flags, 0o600, dir_fd=dir_fd)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            fh.write(text)
+            fh.flush()
+            os.fchmod(fh.fileno(), 0o600)
+            os.utime(fh.fileno(), (stamp, stamp))
+        os.rename(tmp, name, src_dir_fd=dir_fd, dst_dir_fd=dir_fd)
+    except BaseException:
+        try:
+            os.unlink(tmp, dir_fd=dir_fd)
+        except OSError:
+            pass
+        raise
+
+
+def _read_cache(cache, base):
+    """Return (mtimes, pages, complete) or None.
+
+    Valid only for the same base URL. Fetch time is the file mtime, set to the fetch time on write.
     A cache is fresh only if every file's age is within [0, ttl); a future mtime is not fresh.
     """
     meta = os.path.join(cache, META_NAME)
     try:
+        info = os.lstat(cache)
+        if stat.S_ISLNK(info.st_mode) or not stat.S_ISDIR(info.st_mode):
+            return None
+        meta_info = os.lstat(meta)
+        if not stat.S_ISREG(meta_info.st_mode):
+            return None
         with open(meta, encoding="utf-8") as fh:
             data = json.load(fh)
         float(data["fetched_at"])
-        pages = [p for p in data["pages"] if os.path.isfile(os.path.join(cache, p["file"]))]
-        mtimes = [os.path.getmtime(meta)] + [os.path.getmtime(os.path.join(cache, p["file"]))
-                                              for p in pages]
-    except (OSError, ValueError, KeyError, TypeError):
+        if data.get("base_url") != base:
+            return None
+        pages = []
+        mtimes = [meta_info.st_mtime]
+        for page in data["pages"]:
+            path, name = page["path"], page["file"]
+            if not isinstance(path, str) or not isinstance(name, str):
+                return None
+            if not _valid_path(path) or name != _slug(path) or os.path.basename(name) != name:
+                return None
+            page_info = os.lstat(os.path.join(cache, name))
+            if not stat.S_ISREG(page_info.st_mode):
+                continue
+            pages.append({"path": path, "file": name})
+            mtimes.append(page_info.st_mtime)
+        complete = bool(data.get("complete")) and not data.get("skipped")
+    except (OSError, ValueError, KeyError, TypeError, AttributeError):
         return None
     if not pages:
         return None
-    return mtimes, pages
+    return mtimes, pages, complete
 
 
 def _page_list(cache, pages):
@@ -102,8 +191,8 @@ def fetch_docs(base_url=DEFAULT_BASE_URL, home=None, ttl=TTL_SECONDS, transport=
     now = time.time() if now is None else now
     cache = os.path.join(home, ".cache", CACHE_DIR_NAME)
 
-    cached = _read_cache(cache)
-    if cached and all(0 <= now - m < ttl for m in cached[0]):
+    cached = _read_cache(cache, base)
+    if cached and cached[2] and all(0 <= now - m < ttl for m in cached[0]):
         return _result("cached", cache, host, _page_list(cache, cached[1]))
 
     def fail(message):
@@ -118,10 +207,15 @@ def fetch_docs(base_url=DEFAULT_BASE_URL, home=None, ttl=TTL_SECONDS, transport=
 
     fetched = {SEED_PATHS[0]: text}
     queue = list(SEED_PATHS[1:])
+    links = 0
     for link in LINK_RE.findall(text):
         link = re.sub(r"\.md$", "", link).rstrip("/")
-        if link and link not in queue and link != SEED_PATHS[0]:
-            queue.append(link)
+        if not link or link in queue or link == SEED_PATHS[0] or not _valid_path(link):
+            continue
+        if links >= MAX_LINKS:
+            break
+        queue.append(link)
+        links += 1
     skipped = []
     for path in queue[:MAX_PAGES]:
         url = _page_url(base, path)
@@ -130,28 +224,29 @@ def fetch_docs(base_url=DEFAULT_BASE_URL, home=None, ttl=TTL_SECONDS, transport=
             fetched[path] = body
         else:
             skipped.append(url)
+    skipped.extend(_page_url(base, p) for p in queue[MAX_PAGES:])
 
     old = os.umask(0o077)
+    dir_fd = None
     try:
-        os.makedirs(cache, mode=0o700, exist_ok=True)
-        os.chmod(cache, 0o700)
+        dir_fd = _open_cache_dir(cache)
         pages = []
         stamp = int(now)
         for path, body in fetched.items():
             name = _slug(path)
-            full = os.path.join(cache, name)
-            _write_private(full, body)
-            os.utime(full, (stamp, stamp))
+            _write_private(dir_fd, name, body, stamp)
             pages.append({"path": path, "file": name})
-        meta = os.path.join(cache, META_NAME)
-        _write_private(meta, json.dumps({"fetched_at": stamp, "host": host, "pages": pages,
-                                         "skipped": skipped}))
-        os.utime(meta, (stamp, stamp))
-    except OSError as exc:
+        meta = {"fetched_at": stamp, "host": host, "base_url": base, "pages": pages,
+                "skipped": skipped, "complete": not skipped}
+        _write_private(dir_fd, META_NAME, json.dumps(meta), stamp)
+    except (OSError, NotImplementedError) as exc:
         return fail("cache write failed: %s" % exc.__class__.__name__)
     finally:
+        if dir_fd is not None:
+            os.close(dir_fd)
         os.umask(old)
-    return _result("fresh", cache, host, _page_list(cache, pages))
+    state = "partial" if skipped else "fresh"
+    return _result(state, cache, host, _page_list(cache, pages), skipped=skipped)
 
 
 def main(argv=None, transport=None, home=None):
@@ -172,6 +267,10 @@ def main(argv=None, transport=None, home=None):
     print("cache: %s" % result["cache_path"])
     if result["status"] == "STALE":
         print("STALE: live fetch failed, using older cached copy. %s" % result["error"])
+    if result["skipped"]:
+        print("PARTIAL: %d page(s) were not fetched; the docs below are incomplete." % len(result["skipped"]))
+        for url in result["skipped"]:
+            print("skipped: %s" % url)
     for page in result["pages"]:
         print("page: %s" % page)
     return 0
