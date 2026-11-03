@@ -101,15 +101,18 @@ Tell the partner this in the first message, before any work:
 | The sidebar (logo, menu, store badges, social links) and the footer | The partner, in the Editor ([Layout](#the-layout-sidebar-and-footer)) |
 | Deleting the seeded blocks the agent hid | The partner, in the Editor |
 
-Without art from the partner or approved Steam content, the draft keeps the template's art.
+Without art from the partner or approved store content, the draft keeps the template's art.
 
-## Steam content
+## Store content
 
-A Steam URL is a source of content only after the partner confirms it is their own game's page
-and approves using its art and text (`steam_assets_approved: yes`). Then read Steam's public app
-details for the app ID in the URL: `https://store.steampowered.com/api/appdetails?appids=<appId>`.
-It needs no key and no parser; Shop Builder's own store-page parser, which rejects Steam links, is
-a different thing. Under `<appId>.data`:
+A store URL is a source of content only after `scripts/store_url.py` passes it and the partner
+confirms it is their own game's page and approves using its art and text
+(`store_assets_approved: yes`). The script returns the store and the app ID.
+
+**Steam:** read Steam's public app details for the app ID:
+`https://store.steampowered.com/api/appdetails?appids=<appId>`. It needs no key and no parser;
+Shop Builder's own store-page parser, which rejects Steam links, is a different thing. Under
+`<appId>.data`:
 
 | Field | Use |
 |---|---|
@@ -118,10 +121,19 @@ a different thing. Under `<appId>.data`:
 | `screenshots[].path_full` | gallery, card and description images (1920×1080) |
 | `short_description`, `genres`, `developers` | facts for the copy |
 
+**App Store:** read Apple's public lookup for the app ID: `https://itunes.apple.com/lookup?id=<appId>`.
+It needs no key. Under `results[0]`: `trackName`, `sellerName`, `description` and
+`genres` are facts for the copy; `artworkUrl512` is the icon for the logo; `screenshotUrls` (and
+`ipadScreenshotUrls`) are the gallery and card images. Phone screenshots are portrait: use them
+in the gallery and cards, not stretched across a wide hero.
+
+**Google Play:** there is no public API; read the listing page itself, as `description-to-shop`
+does: the name, developer, description, icon and screenshots.
+
 Download only the images the plan uses, upload each with `upload-asset`, and put the CDN URL it
-returns in the block; never point a block at Steam's own image host. Copy written from these
+returns in the block; never point a block at a store's own image host. Copy written from these
 facts is new copy: show it word for word in the plan, so the partner's yes covers it. With
-`steam_assets_approved: no`, or no answer, nothing from the page is used, and the intake says the
+`store_assets_approved: no`, or no answer, nothing from the page is used, and the intake says the
 draft keeps the template's art and text unless the partner supplies their own.
 
 ## Draft — build on the partner's site
@@ -364,7 +376,8 @@ with the Editor link:
 - **Sidebar → Layout → Logo image:** the game's logo.
 - **Sidebar → Menu:** switch items on or off; **Add menu item** (pick the page, enter a name) for
   each page the agent added, such as Community.
-- **Sidebar → Store buttons:** on a PC portal, switch off App Store and Google Play.
+- **Sidebar → Store buttons:** on a PC portal, switch off App Store and Google Play. On a mobile
+  one, keep them with the game's listing URLs, and switch off the PC stores it isn't on.
 - **Sidebar → Social networks:** each network needs its URL; the Editor checks it per network.
 - **Footer:** the "Use social network settings from sidebar" switch, and the Game icon image.
 - **Images:** click the current thumbnail to open the site's asset library. **Add new asset**
@@ -376,7 +389,7 @@ A Launcher is only `completed` with a real Launcher on the project, an uploaded 
 generated installer, and a verified installer download — evidence that must come from the
 Launcher product itself. Builds, installers, and downloads are not reachable from here, so
 the agent adds no Launcher page: the section is the partner's, and a missing piece is
-`blocked_capability`, never `completed`.
+`blocked_capability`, never `completed`. A mobile title's portal has no Launcher section.
 
 ## Failure → status mapping
 

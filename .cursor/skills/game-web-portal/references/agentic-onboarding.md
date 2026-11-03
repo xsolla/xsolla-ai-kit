@@ -4,13 +4,15 @@
 
 ### Acceptance scenarios
 
-1. **Platform:** GIVEN no store URL, WHEN the title is confirmed as PC and
-   approved metadata/assets are supplied, THEN continue without Steam parsing.
-   GIVEN a store URL, its exact host must be `store.steampowered.com`; Mobile,
-   unknown, invalid, or spoofed supplied URLs return `needs_input`. GIVEN a Steam URL and
-   `steam_assets_approved: yes`, THEN the plan uses its app details' art and facts, with
-   the copy shown word for word; GIVEN `no` or no answer, THEN nothing from the page is used
-   and the intake says the draft keeps the template's art.
+1. **Platform:** GIVEN no store URL, WHEN the title's platform (PC or mobile) is confirmed
+   and approved metadata/assets are supplied, THEN continue without reading a store page.
+   GIVEN a store URL, `scripts/store_url.py` passes only the exact hosts
+   `store.steampowered.com`, `apps.apple.com` and `play.google.com`; unknown, invalid,
+   look-alike or spoofed URLs return `needs_input`. GIVEN a store URL and
+   `store_assets_approved: yes`, THEN the plan uses the listing's art and facts, with the
+   copy shown word for word; GIVEN `no` or no answer, THEN nothing from the page is used and
+   the intake says the draft keeps the template's art. GIVEN a mobile title, THEN no
+   Launcher section is offered, and the sidebar keeps its App Store and Google Play buttons.
 2. **The partner's site:** WHEN onboarding starts, THEN the first message, before any
    question, says to create the site from the template if it doesn't exist yet, and what the
    run changes versus what stays an Editor step. GIVEN the partner created the site from the
@@ -30,7 +32,7 @@
    evidence is missing, THEN Launcher is incomplete and publish-anyway is
    refused.
 7. **Handoff:** GIVEN the run ends, WHEN reporting, THEN repeat merchant ID,
-   project ID, domain, locale, and Steam URL only if supplied, with evidence for
+   project ID, domain, locale, and store URL only if supplied, with evidence for
    every Completed item.
 8. **What the partner sees:** GIVEN any progress message or the handoff, THEN it links the
    Editor and says the public URL loads only after the first publish. GIVEN a section
@@ -65,7 +67,7 @@ the portal's own states and evidence.
 
 | State | Required evidence | Stop condition |
 |---|---|---|
-| Preflight | CLI context, PC confirmation, Steam host if supplied, domain search | Missing/ambiguous required input |
+| Preflight | CLI context, platform confirmation, store URL check if supplied, domain search | Missing/ambiguous required input |
 | Discover | Existing IDs, supported type and skills | Unsupported structure |
 | Backup | Export directory of the existing site, before the first write | Export failed |
 | Confirm | Explicit approval of the shown plan | Approval missing |
@@ -106,10 +108,10 @@ Never recreate discovered existing entities.
 
 ## Known limitations
 
-- **PC only.** App Store and Google Play titles return `needs_input` until the mobile
-  path ships.
-- **Steam content needs the partner's yes.** Shop Builder's store-page parser rejects Steam
-  links, so the agent reads Steam's app details itself, only with `steam_assets_approved: yes`.
+- **The Launcher is PC only.** A mobile title's portal has no Launcher section.
+- **Store content needs the partner's yes.** Shop Builder's store-page parser rejects Steam
+  links, so the agent reads the store's own data itself, only with
+  `store_assets_approved: yes`.
 - **Community needs the partner's channel.** Its `embed` block shows a social channel the
   partner supplies; without one the section is `needs_input`, not a guessed layout.
 - **The partner creates the site.** Until a site created through the CLI gets a layout,
@@ -126,7 +128,7 @@ report in the [onboarding contract](../../nocode-shop-setup/references/onboardin
 The portal fills its **Storefront** section with:
 
 ```markdown
-- Steam URL (include only if supplied):
+- Store URL (include only if supplied):
 - Editor: https://publisher.xsolla.com/<merchant_id>/projects/<project_id>/site-builder/<domain>/editor
 - The public URL loads only after the first publish.
 

@@ -1,7 +1,7 @@
 ---
 name: game-web-portal
 description: >-
-  Builds or resumes an unpublished Xsolla Game Web Portal for a PC game — a game home with
+  Builds or resumes an unpublished Xsolla Game Web Portal for a PC or mobile game — a home with
   Home, News, Rewards, Web Shop, Community, and an optional Launcher section around the
   store — on the site the partner created from the Multi-page web portal template, and
   returns an evidence-backed handoff. Not the entry point for "build me a shop" or "set up
@@ -10,8 +10,8 @@ description: >-
   "continue my Game Web Portal", "resume my portal without duplicating pages", "add the
   Community section to my portal", or reporting how a portal's catalog and Login are wired.
   The agent never publishes, never runs the readiness check, and never generates a preview
-  key — those are handed to the human in Publisher Account. PC only; App Store and Google
-  Play titles return needs_input. For a store without a game home, use nocode-shop-setup.
+  key — those are handed to the human in Publisher Account. Steam, App Store and Google Play
+  titles; a Launcher only for PC. For a store without a game home, use nocode-shop-setup.
   For a shop the user codes and deploys, use shop-setup.
 metadata:
   owner: a.pyanzin
@@ -34,11 +34,11 @@ Entry conditions:
 
 - The user asked for a game home, or the existing site has `/news`, `/rewards`, and
   `/store`. A site without those pages is a store: stop and point at `nocode-shop-setup`.
-- The title ships on PC. A Steam URL is optional and may be skipped.
-- If a store URL is supplied, its host must be exactly `store.steampowered.com`.
-  Mobile, unknown, invalid, or spoofed supplied URLs return `needs_input`.
-- A Steam page is a source of art and facts only with `steam_assets_approved: yes`
-  ([Steam content](references/portal-api.md#steam-content)). Otherwise use only `game_name`
+- The title ships on PC, the App Store or Google Play. A store URL is optional.
+- Check a supplied store URL with `scripts/store_url.py`: only the exact Steam, App Store and
+  Google Play hosts pass; anything else, or a look-alike, returns `needs_input`.
+- A store page is a source of art and facts only with `store_assets_approved: yes`
+  ([store content](references/portal-api.md#store-content)). Otherwise use only `game_name`
   and partner-approved metadata, copy, and assets. Never invent missing content.
 - A merchant/project pair is confirmed and the target is a dedicated test project on the
   approved test-project allowlist — never a partner's live project. Shop Builder has no
@@ -72,9 +72,9 @@ game_name:
 primary_locale:
 ```
 
-Optional: `store_url` (Steam) with `steam_assets_approved` (yes or no), approved
+Optional: `store_url` with `store_assets_approved` (yes or no), approved
 description, logo, hero, screenshots, colors and fonts; an existing Store catalog;
-additional locales; analytics IDs; an existing Launcher and build.
+additional locales; analytics IDs; for a PC title, an existing Launcher and build.
 
 ## Steps
 
@@ -96,15 +96,15 @@ Verify (read-back) → Human review → Handoff
    haven't (Storefronts → Websites → Multi-page web portal → Manual), and
    [what the run can change](references/portal-api.md#what-the-run-can-change) and what stays
    an Editor step for them. It asks only the required input `nocode-shop-setup`'s batch
-   didn't; with a Steam URL, whether the page is theirs and its art and text may be used.
+   didn't; with a store URL, whether the page is theirs and its art and text may be used.
    Resolve every ambiguity by asking; never choose an ambiguous match.
-2. **Preflight** — confirm PC scope, domain, and locale, then run
+2. **Preflight** — confirm the platform, domain, and locale, then run
    [`scripts/preflight.py`](scripts/preflight.py) with `--merchant-id`, `--project-id` and
    `--approved-test-projects <file>`. It checks that the CLI points at that merchant and
    project with its sandbox mode off, and that the project is listed in the approved
    test-project allowlist (the same file format as `shop-builder-assembly`). If it fails,
-   stop before any write. If `store_url` is supplied, validate the exact Steam host, and
-   with `steam_assets_approved: yes` read its app details.
+   stop before any write. If `store_url` is supplied, check it with `scripts/store_url.py`,
+   and with `store_assets_approved: yes` read the listing as store content says.
 3. **Discover** — find the partner's site at `domain` and read its structure
    (`xsolla shopbuilder list-websites`, `get-landing`, `get-structure`). Capture the landing
    `_id`, page IDs, and block IDs before any mutation — block and theme calls are keyed by
@@ -138,11 +138,10 @@ Verify (read-back) → Human review → Handoff
    `update-restrictions` when the plan lists them. A change with no CLI command is
    `needs_human`: say what to do in Publisher Account and record it. Apply one change group
    at a time across Home, News, Rewards, Web Shop, and Community; the Launcher section is the
-   partner's. `nocode-shop-setup` runs the surrounding products before this skill; don't
-   repeat their recipes: `merchant-setup`, `catalog-design` (it creates the catalog after the
-   yes in step 5) and `login-setup`. Checkout is the Web Shop's hosted Pay
-   Station, so there is nothing to integrate. Placeholders require approval and a visible
-   label.
+   partner's, PC only. `nocode-shop-setup` runs the surrounding products before this skill;
+   don't repeat their recipes: `merchant-setup`, `catalog-design` (it creates the catalog
+   after the yes in step 5) and `login-setup`. Checkout is the Web Shop's hosted Pay Station,
+   so there is nothing to integrate. Placeholders require approval and a visible label.
 7. **Verify (read-back)** — read back every changed entity (`get-structure`,
    `get-localization`, page and block reads) and compare it with the confirmed plan.
    A mutation response is not evidence, and a read-back isn't what renders: look at each
@@ -157,7 +156,7 @@ Verify (read-back) → Human review → Handoff
    Login and commerce status. Then hand over, as `needs_human`, the steps the agent never runs:
    the readiness check, the preview, publication (per page — the main page first),
    live verification, and any rollback to a saved version — all in Publisher Account.
-9. **Handoff** — repeat merchant ID, project ID, domain, locale, and Steam URL only
+9. **Handoff** — repeat merchant ID, project ID, domain, locale, and store URL only
    when one was supplied, with evidence for every completed item.
 
 Statuses, the ledger, resume, and the handoff report follow the
@@ -195,5 +194,5 @@ go to the partner as `needs_human`.
 
 Read them in [agentic-onboarding.md](references/agentic-onboarding.md#common-pitfalls)
 before the first change: duplicates on resume, a portal reported as live, sign-in taken
-for binding, an unverified Launcher, expired access, completion without read-back; PC only,
-Steam content needs the partner's yes, Community their channel, and they create the site.
+for binding, an unverified Launcher, expired access, completion without read-back; store
+content needs the partner's yes, Community their channel, and they create the site.
