@@ -72,7 +72,7 @@ class ThemePlanTests(unittest.TestCase):
     def test_without_a_palette_the_plan_keeps_the_site_theme(self) -> None:
         plan = render_plan.build_plan(brief_with_palette(None))
         self.assertEqual({"site": None, "pages_to_site_theme": []}, plan["theme"])
-        self.assertEqual(["theme", "images"], plan["style_phases"])
+        self.assertEqual(["theme", "images", "copy"], plan["style_phases"])
         self.assertNotIn("theme", plan["unsupported_phases"])
 
     def test_the_plan_shows_the_palette_and_the_pages_it_switches(self) -> None:
@@ -678,6 +678,297 @@ class ApplyImagesRunTests(unittest.TestCase):
         self.assertEqual(0, code, stderr)
         store = next(entry for entry in report["images"] if entry["block_id"] == "store")
         self.assertEqual("it is a federated block, whose wrapper isn't patched", store["reason"])
+
+
+FAQ = [
+    {"question": "<h4>Is it safe?</h4>", "answer": "<p>Yes, payments go through Xsolla.</p>"},
+    {"question": "<h4>Where are my items?</h4>", "answer": "<p>In your game inbox.</p>"},
+]
+
+
+class CopyBriefTests(unittest.TestCase):
+    def brief(self, copy_value: object = None, faq: object = None) -> dict:
+        brief = brief_with_palette(None)
+        brief["content"] = {}
+        if copy_value is not None:
+            brief["content"]["copy"] = copy_value
+        if faq is not None:
+            brief["content"]["faq"] = faq
+        return brief
+
+    def test_html_copy_and_faq_are_valid(self) -> None:
+        copy_value = [
+            {"module": "leadGameSales", "field": "title", "html": "<h1>Hold the line</h1>"},
+            {"module": "newStore", "field": "title", "html": "<h2>Shop</h2>", "page": "/"},
+        ]
+        self.assertEqual([], validate_shop_brief.validate(self.brief(copy_value, FAQ)))
+
+    def test_bad_copy_and_faq_are_refused(self) -> None:
+        good = {"module": "leadGameSales", "field": "title", "html": "<h1>Hi</h1>"}
+        cases = {
+            "content.copy must be a non-empty list": self.brief([]),
+            "content.copy[0].field must be one of": self.brief([{**good, "field": "legal"}]),
+            "content.copy[0].html must be HTML": self.brief([{**good, "html": "Hi"}]),
+            "must not contain <script> or <img>": self.brief(
+                [{**good, "html": "<h1><img src=x></h1>"}]
+            ),
+            "content.copy[0].module must be a verified block module": self.brief(
+                [{**good, "module": "carousel"}]
+            ),
+            "content.faq[0].question must be an <h4>": self.brief(
+                None, [{"question": "<p>Q</p>", "answer": "<p>A</p>"}]
+            ),
+            "content.faq[0] must have question and answer only": self.brief(
+                None, [{"question": "<h4>Q</h4>"}]
+            ),
+        }
+        for message, brief in cases.items():
+            with self.subTest(message):
+                errors = validate_shop_brief.validate(brief)
+                self.assertTrue(any(message in error for error in errors), errors)
+
+
+class CopyPlanTests(unittest.TestCase):
+    def test_the_plan_places_the_copy_and_the_faq(self) -> None:
+        brief = brief_with_palette(None)
+        brief["content"] = {
+            "copy": [
+                {"module": "leadGameSales", "field": "title", "html": "<h1>Hold</h1>"},
+                {"module": "gallery", "field": "title", "html": "<h2>Look</h2>"},
+            ],
+            "faq": FAQ,
+        }
+        plan = render_plan.build_plan(brief)
+        self.assertEqual("en-US", plan["copy"]["locale"])
+        self.assertEqual(["/"], plan["copy"]["texts"][0]["pages"])
+        self.assertEqual([], plan["copy"]["texts"][1]["pages"])
+        self.assertIn(
+            "The title text has no gallery block to go on; it isn't placed.", plan["warnings"]
+        )
+        self.assertEqual(FAQ, plan["copy"]["faq"]["items"])
+        self.assertIn("faq", plan["pages"][0]["blocks"])
+        self.assertEqual(["theme", "images", "copy"], plan["style_phases"])
+
+    def test_without_an_faq_the_plan_has_none(self) -> None:
+        self.assertIsNone(render_plan.build_plan(brief_with_palette(None))["copy"]["faq"])
+
+
+class ApplyCopyRunTests(unittest.TestCase):
+    """The copy phase of apply_style.py, against a fake CLI with a text store."""
+
+    def setUp(self) -> None:
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        self.root = Path(directory.name)
+        self.brief = brief_with_palette(None)
+        self.brief["content"] = {
+            "copy": [
+                {"module": "leadGameSales", "field": "title", "html": "<h1>Hold the line</h1>"},
+                {"module": "leadGameSales", "field": "subtitle", "html": "<p>Now on web</p>"},
+                {"module": "newStore", "field": "title", "html": "<h2>Shop</h2>"},
+            ],
+            "faq": FAQ,
+        }
+
+        def question(n: int) -> dict:
+            return {"_id": f"q{n}", "type": "questionV2", "enable": True,
+                    "question": {"id": f"L:q{n}"}, "answer": {"id": f"L:a{n}"}}
+
+        self.site = {
+            "_id": "landing-1",
+            "pages": [
+                {
+                    "_id": "page-1",
+                    "path": "/",
+                    "blocks": [
+                        {"_id": "hero", "module": "leadGameSales",
+                         "values": {"title": {"id": "L:t1"}, "subtitle": {"id": "L:t2"}}},
+                        {"_id": "store", "module": "newStore",
+                         "values": {"title": {"id": "L:c1"}}},
+                        {"_id": "faq", "module": "faq", "values": {"title": {"id": "L:t4"}},
+                         "components": [question(1), question(2), question(3)]},
+                    ],
+                }
+            ],
+        }
+
+        def text(value: str) -> dict:
+            return {"description": "blocks.demo", "translations": {"en-US": value}}
+
+        self.text = {
+            "pages": {
+                "page-1": {
+                    "texts": {
+                        "L:t1": text("<h1>Demo hero</h1>"),
+                        "L:t2": text("<p>Demo subtitle</p>"),
+                        "L:t4": text("<h2>FAQ</h2>"),
+                        **{f"L:q{n}": text(f"<h4>Demo Q{n}</h4>") for n in (1, 2, 3)},
+                        **{f"L:a{n}": text(f"<p>Demo A{n}</p>") for n in (1, 2, 3)},
+                    }
+                }
+            },
+            "common": {"L:c1": text("<h2>Demo store</h2>")},
+        }
+        self.calls: list[tuple[str, ...]] = []
+        self.touch_other_text = False
+        self.approve(None)
+        self.report = {
+            "operation_succeeded": True,
+            "approved_confirmation_id": self.approved["confirmation_id"],
+            "slug": self.brief["site"]["slug"],
+            "landing_id": "landing-1",
+            "created_blocks": {"/": ["hero", "store", "faq"]},
+        }
+
+    def approve(self, structure: dict | None) -> None:
+        self.approved = render_plan.build_plan(self.brief, structure, base_dir=self.root)
+        (self.root / "approved-plan.json").write_text(
+            json.dumps(self.approved), encoding="utf-8"
+        )
+        (self.root / "brief.json").write_text(json.dumps(self.brief), encoding="utf-8")
+
+    def cli(self, *args: str) -> dict:
+        self.calls.append(args)
+        if args[1] == "get-localization":
+            return {"ok": True, "data": copy.deepcopy(self.text)}
+        payload = json.loads(args[args.index("--data") + 1])
+        if args[1] == "update-many-localization":
+            for scope, ids in payload["perScopeValues"].items():
+                texts = (
+                    self.text["common"]
+                    if scope == "common"
+                    else self.text["pages"].setdefault(scope, {"texts": {}})["texts"]
+                )
+                for lid, value in ids.items():
+                    entry = texts.setdefault(lid, {"translations": {}})
+                    entry["description"] = value["description"]
+                    entry["translations"][payload["locale"]] = value["translation"]
+            if self.touch_other_text:
+                self.text["pages"]["page-1"]["texts"]["L:t4"]["translations"]["en-US"] = ""
+            return {"ok": True, "data": {}}
+        if args[1] != "update-block":
+            raise AssertionError(f"unexpected command {args}")
+        blocks = {b["_id"]: b for p in self.site["pages"] for b in p["blocks"]}
+        for change in payload.values():
+            for patch in change["patches"]:
+                node = blocks[change["id"]]
+                for key in patch["path"][:-1]:
+                    node = node[key]
+                last = patch["path"][-1]
+                if patch["op"] == "remove":
+                    node.pop(last)
+                elif patch["op"] == "add" and isinstance(node, list):
+                    node.insert(last, patch["value"])
+                else:
+                    node[last] = patch["value"]
+        return {"ok": True, "data": {}}
+
+    def run_style(self) -> tuple[int, dict | None, str]:
+        (self.root / "report.json").write_text(json.dumps(self.report), encoding="utf-8")
+        argv = [
+            "apply_style.py",
+            str(self.root / "brief.json"),
+            "--approved-plan",
+            str(self.root / "approved-plan.json"),
+            "--run-report",
+            str(self.root / "report.json"),
+            "--backup-dir",
+            str(self.root),
+        ]
+        stdout, stderr = io.StringIO(), io.StringIO()
+        with (
+            mock.patch.object(sys, "argv", argv),
+            mock.patch.object(apply_style, "run_preflight"),
+            mock.patch.object(apply_style, "check_cli_context"),
+            mock.patch.object(apply_style, "verified_backup", return_value=True),
+            mock.patch.object(
+                apply_style, "backup_structure", return_value=copy.deepcopy(self.site)
+            ),
+            mock.patch.object(
+                apply_style, "structure", side_effect=lambda slug: copy.deepcopy(self.site)
+            ),
+            mock.patch.object(apply_style, "run_json", side_effect=self.cli),
+            contextlib.redirect_stdout(stdout),
+            contextlib.redirect_stderr(stderr),
+        ):
+            code = apply_style.main()
+        report = json.loads(stdout.getvalue()) if stdout.getvalue().strip() else None
+        return code, report, stderr.getvalue()
+
+    def shown(self, scope: str, lid: str) -> str:
+        texts = self.text["common"] if scope == "common" else self.text["pages"][scope]["texts"]
+        return texts[lid]["translations"]["en-US"]
+
+    def names(self) -> list[str]:
+        return [call[1] for call in self.calls if call[1] != "get-localization"]
+
+    def faq_block(self) -> dict:
+        return self.site["pages"][0]["blocks"][2]
+
+    def test_writes_the_copy_and_trims_the_faq_to_the_approved_items(self) -> None:
+        code, report, stderr = self.run_style()
+        self.assertEqual(0, code, stderr)
+        self.assertEqual("<h1>Hold the line</h1>", self.shown("page-1", "L:t1"))
+        self.assertEqual("<p>Now on web</p>", self.shown("page-1", "L:t2"))
+        self.assertEqual("<h2>Shop</h2>", self.shown("common", "L:c1"))
+        self.assertEqual("blocks.demo", self.text["pages"]["page-1"]["texts"]["L:t1"]["description"])
+        self.assertEqual("<h4>Where are my items?</h4>", self.shown("page-1", "L:q2"))
+        self.assertEqual(["q1", "q2"], [c["_id"] for c in self.faq_block()["components"]])
+        self.assertEqual("<h2>FAQ</h2>", self.shown("page-1", "L:t4"))
+        self.assertEqual(["update-many-localization", "update-block"], self.names())
+        faq = next(entry for entry in report["copy"] if entry["module"] == "faq")
+        self.assertEqual((0, 1), (faq["added"], faq["removed"]))
+
+    def test_adds_faq_items_after_their_text_is_written(self) -> None:
+        self.brief["content"]["faq"] = FAQ + [
+            {"question": "<h4>Q3</h4>", "answer": "<p>A3</p>"},
+            {"question": "<h4>Q4</h4>", "answer": "<p>A4</p>"},
+        ]
+        self.approve(None)
+        self.report["approved_confirmation_id"] = self.approved["confirmation_id"]
+        code, report, stderr = self.run_style()
+        self.assertEqual(0, code, stderr)
+        self.assertEqual(["update-many-localization", "update-block"], self.names())
+        components = self.faq_block()["components"]
+        self.assertEqual(4, len(components))
+        added = components[3]
+        self.assertEqual("questionV2", added["type"])
+        self.assertEqual("<h4>Q4</h4>", self.shown("page-1", added["question"]["id"]))
+        self.assertEqual("<p>A4</p>", self.shown("page-1", added["answer"]["id"]))
+
+    def test_a_rerun_writes_nothing(self) -> None:
+        self.brief["content"]["faq"] = FAQ + [
+            {"question": "<h4>Q3</h4>", "answer": "<p>A3</p>"},
+            {"question": "<h4>Q4</h4>", "answer": "<p>A4</p>"},
+        ]
+        self.approve(None)
+        self.report["approved_confirmation_id"] = self.approved["confirmation_id"]
+        self.assertEqual(0, self.run_style()[0])
+        self.calls.clear()
+        code, report, stderr = self.run_style()
+        self.assertEqual(0, code, stderr)
+        self.assertEqual([], self.names())
+        self.assertEqual({"unchanged"}, {entry["status"] for entry in report["copy"]})
+
+    def test_an_existing_block_the_plan_didnt_list_keeps_its_text(self) -> None:
+        self.report["created_blocks"] = {"/": ["store", "faq"]}
+        code, report, stderr = self.run_style()
+        self.assertEqual(0, code, stderr)
+        self.assertEqual("<h1>Demo hero</h1>", self.shown("page-1", "L:t1"))
+        self.assertTrue(any("its text wasn't changed" in item for item in report["needs_human"]))
+
+    def test_a_missing_text_field_is_skipped_with_the_reason(self) -> None:
+        del self.site["pages"][0]["blocks"][0]["values"]["subtitle"]
+        code, report, stderr = self.run_style()
+        self.assertEqual(0, code, stderr)
+        subtitle = next(entry for entry in report["copy"] if entry["field"] == "subtitle")
+        self.assertEqual("it has no subtitle text", subtitle["reason"])
+
+    def test_stops_when_text_outside_the_plan_changes(self) -> None:
+        self.touch_other_text = True
+        code, _, stderr = self.run_style()
+        self.assertEqual(1, code)
+        self.assertIn("text outside the plan changed: L:t4", stderr)
 
 
 class VerifyThemeTests(unittest.TestCase):

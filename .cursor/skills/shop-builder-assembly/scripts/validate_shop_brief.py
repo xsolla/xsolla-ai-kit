@@ -103,6 +103,63 @@ def image_errors(images: object) -> list[str]:
     return errors
 
 
+# Block text fields the copy step writes: `values.<field>.id` holds the string's `L:` id.
+COPY_FIELDS = ("title", "subtitle", "description")
+
+
+def html_errors(value: object, label: str) -> list[str]:
+    """Copy is HTML. A title doesn't render `<img>`, and scripts never go in copy."""
+    if not isinstance(value, str) or not value.strip():
+        return [f"{label} must be non-empty HTML"]
+    lowered = value.lower()
+    if "<script" in lowered or "<img" in lowered:
+        return [f"{label} must not contain <script> or <img>"]
+    if "<" not in value:
+        return [f"{label} must be HTML, such as <p>…</p>: a bare string renders unstyled"]
+    return []
+
+
+def copy_errors(copy_value: object) -> list[str]:
+    """Check `content.copy`: approved HTML for a text field of a planned block module."""
+    if not isinstance(copy_value, list) or not copy_value:
+        return ["content.copy must be a non-empty list"]
+    errors = []
+    for index, item in enumerate(copy_value):
+        prefix = f"content.copy[{index}]"
+        if not isinstance(item, dict):
+            errors.append(f"{prefix} must be an object")
+            continue
+        unknown = sorted(set(item) - {"module", "field", "html", "page"})
+        if unknown:
+            errors.append(f"{prefix} has unknown keys: " + ", ".join(unknown))
+        if item.get("module") not in VERIFIED_BLOCK_MODULES:
+            errors.append(f"{prefix}.module must be a verified block module")
+        if item.get("field") not in COPY_FIELDS:
+            errors.append(f"{prefix}.field must be one of: " + ", ".join(COPY_FIELDS))
+        errors.extend(html_errors(item.get("html"), f"{prefix}.html"))
+        page = item.get("page")
+        if page is not None and (not isinstance(page, str) or not page.startswith("/")):
+            errors.append(f"{prefix}.page must be a page path such as /")
+    return errors
+
+
+def faq_errors(faq: object) -> list[str]:
+    """Check `content.faq`: the approved questions and answers, in order."""
+    if not isinstance(faq, list) or not faq:
+        return ["content.faq must be a non-empty list"]
+    errors = []
+    for index, item in enumerate(faq):
+        prefix = f"content.faq[{index}]"
+        if not isinstance(item, dict) or set(item) != {"question", "answer"}:
+            errors.append(f"{prefix} must have question and answer only")
+            continue
+        errors.extend(html_errors(item["question"], f"{prefix}.question"))
+        errors.extend(html_errors(item["answer"], f"{prefix}.answer"))
+        if isinstance(item["question"], str) and "<h4" not in item["question"].lower():
+            errors.append(f"{prefix}.question must be an <h4>: the FAQ block needs it")
+    return errors
+
+
 SECRET_KEY_SUFFIXES = (
     "apikey",
     "password",
@@ -303,6 +360,10 @@ def validate(brief: dict) -> list[str]:
         errors.extend(theme_errors(brand_value["theme"]))
     if isinstance(brand_value, dict) and "images" in brand_value:
         errors.extend(image_errors(brand_value["images"]))
+    if "copy" in content:
+        errors.extend(copy_errors(content["copy"]))
+    if "faq" in content:
+        errors.extend(faq_errors(content["faq"]))
 
     sources = brief.get("sources")
     if not isinstance(sources, list) or not sources:
