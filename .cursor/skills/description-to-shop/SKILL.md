@@ -79,7 +79,8 @@ version-1 JSON object:
   developer approves.
 - `content` — approved copy and publisher page overrides.
 - `brand` — the listing's app icon as the logo and its art for the hero, once the
-  publisher confirmed they may be used, unless they supplied their own.
+  publisher confirmed they may be used, unless they supplied their own. Put the palette
+  taken from that art in `brand.theme`, as the assembly skill's visual style describes.
 - `sources` — add `{"kind":"description", ...}`, and `{"kind":"external_store", ...}` with
   the listing URL when it supplied facts or art. Keep the provenance of any publisher
   answer used to fill a gap. Attribute reused intake to `.xsolla/onboarding.json` and

@@ -18,7 +18,7 @@ project overrides after preflight.
 | Site layout | `get-block --slug <slug> --block-id <id>` for each ID in `layouts` | `get-structure` layout IDs | The module of each site layout; `common-layout` can sit next to other layouts |
 | Site layout | `create-block --slug <slug> --block common-layout` (only if missing) | Pages already created | Site-level layout required by Editor, Publish, and preview; avoids suppressing template header/footer |
 | Blocks | `add-block`, `move-block`, and page-scoped `update-block` removal patches | Landing/page/block IDs | Ordered page block list |
-| Theme | `update-block` with `type:site` and `type:page` | Landing/page IDs, targeted patches | Site and page source themes |
+| Theme | `update-block` with `type:site` and `type:page`, through `apply_style.py` | Landing/page IDs, targeted patches | Site theme `theme.input`; pages on the site theme |
 | Assets | `upload-asset` | Landing ID, local file | Permanent CDN URL |
 | Copy | `add-language`, `update-localization`, `update-many-localization` | Slug, page and `L:` IDs | Localized HTML |
 | Catalog | `update-block` on `newStore.components` | Same-project group IDs | Store sections |
@@ -39,7 +39,8 @@ No script passes `--force`; an operation that requires it stops for review.
 
 The developer's one yes can cover more than one `apply_plan.py` run. Each later run is
 covered only when its render says so; `apply_plan.py` checks this again and stops before
-any write. Every script that writes (`apply_plan.py`, `patch_backgrounds.py`) also takes
+any write. Every script that writes (`apply_plan.py`, `apply_style.py`,
+`patch_backgrounds.py`) also takes
 `--approved-test-projects <allowlist>`, and refuses to write without it.
 
 - **A new site's two runs.** A new site's generated blocks have no IDs before creation, so
@@ -65,6 +66,16 @@ any write. Every script that writes (`apply_plan.py`, `patch_backgrounds.py`) al
   `{"block_id": …, "leaf": …, "value": …}`. It refuses anything else, an image not
   uploaded to the site, a gradient unlike the ones already on it, and an opaque color
   over a block that keeps its image.
+- **The theme, after the last apply run.** Export again, then run
+  `scripts/apply_style.py <brief.json> --approved-plan approved-plan.json --run-report
+  <report> --backup-dir <dir> --approved-test-projects <allowlist>`, with `--run-report`
+  once for every earlier run, as above. It sets the approved `brand.theme` on the site
+  theme's `theme.input`, only keys the site already has, each in its current format, and
+  sets `theme.enabled` to `false` on the planned pages that use their own theme: pages the
+  runs created, and existing pages only when the approved plan listed them
+  (`theme.pages_to_site_theme`). It reads `get-localization` before and after, and stops
+  if the text changed. A rerun writes nothing. When the CLI doesn't recalculate
+  `calculatedTheme`, the report's `needs_human` has the Editor step for the handoff.
 
 ## ID dependencies
 

@@ -12,6 +12,7 @@ SCRIPTS = Path(__file__).resolve().parents[1] / "scripts"
 # `python3 -I`, which leaves the script's own folder off sys.path.
 SCRIPTS_WITH_SIBLING_IMPORTS = (
     "apply_plan.py",
+    "apply_style.py",
     "backup_shop.py",
     "patch_backgrounds.py",
     "preflight.py",
