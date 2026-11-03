@@ -130,7 +130,7 @@ quests on my webshop" after naming the site. This is a read, so it needs no gate
    that is not public); Heading (the text in quotes, or "heading is set" when null);
    Card overrides in a few words ("all 4 cards: title, description, reward", or "none"),
    with no comment on rewards or matching names. Several Quests blocks: one Where and
-   Quests bullet each. No layout, style, JSON, ids, or draft and publishing notes.
+   Quests bullet each. No layout, style, JSON, ids, or publishing notes.
 3. If `quest_names` is `unavailable` and no `card_title` is set, say in the Quests bullet:
    "names show once Quest Platform access is set up." Never say the block cannot be
    confirmed when the read works.
@@ -206,13 +206,13 @@ into the title or description as a workaround.
    in [`SKILL.md`](../SKILL.md), created only after a yes to that exact proposal. Say a quest is missing only after the list read
    succeeds and shows no match. If the read fails, say you cannot check whether it exists.
    **Missing quest offer:** a bold line that the quest doesn't exist yet, at most 2
-   bullets, and one yes/no `Next:` ("want me to draft it?"). Under about 80 words. Do
-   not draft creation details (player action, reward, schedule, event) before that yes.
+   bullets, and one yes/no `Next:` ("want me to set it up?"). Under about 80 words. Do
+   not detail the creation (player action, reward, schedule, event) before that yes.
    **No quests offer:** if the list read succeeds and shows no quests in the project,
    say the project has no quests yet, so the block has nothing to show, and offer to
    create one first: a bold line, at most 1 bullet that ends with the docs link
    https://developers.xsolla.com/api/quests, and one yes/no `Next:` ("want me to
-   draft your first quest?"). After a yes, use the normal create flow in
+   set up your first quest?"). After a yes, use the normal create flow in
    [`SKILL.md`](../SKILL.md) (API reference: https://developers.xsolla.com/api/quests),
    then come back here to add the block. Never say there are no quests when the read
    failed; say you cannot check yet.
@@ -237,7 +237,7 @@ into the title or description as a workaround.
    the brief against the [rules](quests-block-brief.md#rules-for-every-operation).
 4. **Hand it to the gate.** With the exact [Gate commands](quests-block-brief.md#gate-commands),
    run the preflight, back up the target site, and render the plan from that backup,
-   all before showing anything. There is no draft plan. The plan
+   all before showing anything. There is no preliminary plan. The plan
    must show exactly the requested operations with their leaf paths and values, and any
    parent objects it creates. Show the one plan in the Plan shape from
    [reply-format.md](reply-format.md): a bold `Plan:` line, bullets for Site, Change
@@ -278,7 +278,7 @@ stop and report the gap. Never improvise raw `xsolla shopbuilder` commands.
 a block: `delete-block` needs `--force`, which no script passes, and a brief with a
 `delete` op fails validation. Reply in the Delete request shape from
 [reply-format.md](reply-format.md): the publisher deletes the block in the Site Builder
-editor, and the skill offers to hide it. Run no gate step and draft no plan for the delete
+editor, and the skill offers to hide it. Run no gate step and build no plan for the delete
 itself. If the publisher wants it hidden, that is a `hide` operation through the full
 [Flow](#flow) (preflight, backup, plan, yes).
 
