@@ -299,7 +299,27 @@ class ApplyStyleRunTests(unittest.TestCase):
         code, report, stderr = self.run_style()
         self.assertEqual(0, code, stderr)
         self.assertTrue(report["theme"]["recalculated"])
-        self.assertEqual([], report["needs_human"])
+        self.assertEqual(1, len(report["needs_human"]))
+        self.assertIn("Pay Station customization", report["needs_human"][0])
+
+    def test_the_handoff_gives_the_palette_for_the_pay_station_theme(self) -> None:
+        code, report, stderr = self.run_style()
+        self.assertEqual(0, code, stderr)
+        step = report["needs_human"][-1]
+        project = self.brief["project"]
+        self.assertIn(
+            f"https://publisher.xsolla.com/{project['merchant_id']}/projects/"
+            f"{project['project_id']}/payments/theme",
+            step,
+        )
+        self.assertIn("surfaces #0b0f1a and #151b2b; texts #ffffff; controls #ffb400", step)
+        self.assertIn("every project in this Publisher Account", step)
+
+    def test_no_palette_no_pay_station_step(self) -> None:
+        self.assertIsNone(apply_style.pay_station_step(None, {"merchant_id": 1, "project_id": 2}))
+        self.assertIsNone(
+            apply_style.pay_station_step({"isDark": True}, {"merchant_id": 1, "project_id": 2})
+        )
 
     def test_a_rerun_writes_nothing(self) -> None:
         self.assertEqual(0, self.run_style()[0])

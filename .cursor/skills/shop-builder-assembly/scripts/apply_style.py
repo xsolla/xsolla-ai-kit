@@ -64,6 +64,21 @@ RECALCULATE_IN_EDITOR = (
     "global theme back on. With Use global theme off, Save as global theme saves that "
     "page's own copy over the site theme, so check the colors in the panel first: {colors}"
 )
+PAY_STATION_THEME = (
+    "Give checkout the site's look: in Publisher Account, open Payments > Payment interface "
+    "> Pay Station customization (https://publisher.xsolla.com/{merchant_id}/projects/"
+    "{project_id}/payments/theme) and click Create new theme. On the Colors tab, use the "
+    "site's palette: {colors}. Check the desktop and mobile previews, then click Publish. "
+    "Set as default applies the theme to every project in this Publisher Account, so turn "
+    "it on only if that is intended. No API or CLI command sets this theme yet."
+)
+# Pay Station's color groups, and the palette keys that fill them.
+PAY_STATION_COLORS = (
+    ("surfaces", ("bg", "overlay")),
+    ("texts", ("text",)),
+    ("controls", ("primary", "secondary")),
+    ("borders", ("border",)),
+)
 OWN_THEME_IN_EDITOR = (
     "Page {path} existed before this assembly and uses its own theme, so it ignores the "
     "site colors. Turn on Use global theme for it in the Site Builder editor if it "
@@ -164,6 +179,24 @@ def site_theme_changes(site_theme: object, palette: dict) -> tuple[list[dict], d
     for key, value in written.items():
         patches.append({"op": "replace", "path": ["theme", "input", key], "value": value})
     return patches, written, skipped
+
+
+def pay_station_step(palette: object, project: dict) -> str | None:
+    """The handoff step for a Pay Station theme in the site's colors (decision D5)."""
+    if not isinstance(palette, dict):
+        return None
+    groups = []
+    for group, keys in PAY_STATION_COLORS:
+        colors = [palette[key] for key in keys if isinstance(palette.get(key), str)]
+        if colors:
+            groups.append(f"{group} {' and '.join(colors)}")
+    if not groups:
+        return None
+    return PAY_STATION_THEME.format(
+        merchant_id=project["merchant_id"],
+        project_id=project["project_id"],
+        colors="; ".join(groups),
+    )
 
 
 def check_reports(reports: list[dict], paths: list[Path], approved: dict, slug: str) -> None:
@@ -818,7 +851,18 @@ def main() -> int:
                     "theme": theme,
                     "images": images,
                     "copy": copy_results,
-                    "needs_human": theme_needs + image_needs + copy_needs,
+                    "needs_human": theme_needs
+                    + image_needs
+                    + copy_needs
+                    + [
+                        step
+                        for step in [
+                            pay_station_step(
+                                approved.get("brand", {}).get("theme"), brief["project"]
+                            )
+                        ]
+                        if step
+                    ],
                     "pending_phases": approved.get("unsupported_phases", []),
                     "published": False,
                 },
