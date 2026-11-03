@@ -63,6 +63,7 @@ class AppearanceFixturesTest(unittest.TestCase):
     def test_pages_recommendation_preserves_opaque_legacy_field(self) -> None:
         fixture = json.loads((FIXTURES / "pages-composition.json").read_text(encoding="utf-8"))
         self.assertEqual(fixture["saved_after"]["values"]["internalBlockValues"]["themeId"], "xsolla-pages")
+        self.assertIn("Fixture-only modeled post-release", fixture["gate_result"])
         grid = fixture["site_evidence"]["quests_grid"]
         self.assertEqual(
             (grid["desktop_columns"], grid["tablet_columns"], grid["mobile_columns"]),

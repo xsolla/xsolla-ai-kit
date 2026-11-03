@@ -13,9 +13,9 @@
     "banner": {"artwork_split": "50/50", "desktop_height_px": 353},
     "quests_grid": {"image_aspect_ratio": "16:9", "desktop_columns": 3, "tablet_columns": 2, "mobile_columns": 1, "pagination": false, "all_selected_visible_up_to_max_quests": true}
   },
-  "recommendation": {"theme_id": "xsolla-pages", "reason": "Actual neighboring Pages composition and rendered layout are verified.", "operation": {"op": "update", "values": {"themeId": "xsolla-pages"}}},
-  "gate_result": "fixture exact plan approved and applied",
-  "whole_page_result": "After reload, compare header through footer; preserve the existing 50/50 banner, and show every selected quest up to maxQuests in a continuous 3/2/1 image-first grid aligned to the measured 1184px container.",
+  "recommendation": {"theme_id": "xsolla-pages", "reason": "Fixture-only modeled recommendation from the included neighbor measurements; not live-site evidence.", "operation": {"op": "update", "values": {"themeId": "xsolla-pages"}}},
+  "gate_result": "Fixture-only modeled post-release gate result; no actual artifact release or site apply is claimed",
+  "whole_page_result": "Fixture-only modeled post-release visual outcome: preserve the existing 50/50 banner and show every selected quest up to maxQuests in a continuous 3/2/1 image-first grid aligned to the measured 1184px container; no actual reload or runtime validation is claimed.",
   "saved_before": {
     "_id": "fixture-quests-pages",
     "module": "_quest-platform_quests-block",
