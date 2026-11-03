@@ -60,8 +60,8 @@ Notes:
 Source: the block contract at commit 0b1586eb59. Version pins live only in
 [block-versions.md](block-versions.md).
 
-- `themeId` is `site-builder`, `xsolla-pages` or `custom`. `themeAppearance` is allowed only for themeId custom
-  (a custom appearance object). The schema keys `themeAppearance` by theme id: do not send the custom entry unless `themeId` is custom.
+- `themeId` is `site-builder`, `xsolla-pages` or `custom`. `themeAppearance` leaves are keyed by preset (valid for that preset); `custom` is sent only when `themeId` is custom.
+  The preset-keyed leaves under `site-builder` and `xsolla-pages` are listed in the table above.
 - `questIds` absent means the block never had a selection and the editor fills it once, while `questIds` set to `[]` means the publisher cleared it and it is never refilled.
 - `maxQuests` is a whole number from 1-24, and the default is 6.
 - `overrides` image values must be https only. Reward overrides are ignored by the block.

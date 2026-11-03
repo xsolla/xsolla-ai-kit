@@ -12,7 +12,7 @@ loads) as `python3 "<skill base dir>/scripts/qp_request.py" ...`:
 | Use | Command |
 |---|---|
 | Merchant and project ids for building paths | `whoami` |
-| Quest Platform read or write | `METHOD /api/v2/merchants/{merchant_id}/projects/{project_id}[/quests[/{quest_id}]\|/events\|/onboard]` with optional `--body-file FILE` and `--query k=v` (scope keys are refused in `--query`) |
+| Quest Platform read or write | `METHOD /api/v2/merchants/{merchant_id}/projects/{project_id}[/quests[/{quest_id}]\|/events]` with optional `--body-file FILE` and `--query k=v` (scope keys are refused in `--query`) |
 | Store admin catalog read (GET only) | `GET /api/v2/project/{project_id}/admin/items/virtual_items --store`, or `.../virtual_items/sku/<sku>` |
 
 Example: `python3 "<skill base dir>/scripts/qp_request.py" GET /api/v2/merchants/<merchant>/projects/<project>/quests --query page=1 --query limit=50`
@@ -70,7 +70,9 @@ Never fall back to another configuration, ask the publisher to paste secrets or
 search for another key. If access is missing, report only that Quest Platform access
 isn't set up for this project, and stop. Keep service names and environment names
 out of user-facing replies. **Onboarding is a separate, offered write**, never
-silent, offered only after the developer says the project is their merchant's; see
+silent, offered only when Get project returns 404: ask once, then run
+`qp_preflight.py onboard` after the publisher's yes (onboarding also gives the merchant's
+publisher keys access to every project of the merchant); see
 [Onboarding](auth-credentials.md#onboarding).
 
 No other key is ever a fallback (see [Credential](auth-credentials.md#credential)).
@@ -126,7 +128,8 @@ credential lane as `qp_request.py` and never prints the key:
 - Onboarding goes only through `qp_preflight.py`, never through `qp_request.py` directly.
 - Onboarding needs two names, `merchant_name` and `project_name`. The agent never invents or
   guesses them: the question to the publisher asks for both names, and the proposal shows both
-  exactly as they will be sent.
+  exactly as they will be sent. The proposal also states the side effect from the live docs:
+  onboarding gives the merchant's publisher keys access to every project of the merchant.
 - `qp_preflight.py onboard --merchant-name N --project-name N` without `--yes` only prints the
   proposal and exits non-zero with no POST. After an explicit yes in the same conversation, rerun
   it with `--yes`: Get project, Onboard project (2xx is success), then Get project again as the

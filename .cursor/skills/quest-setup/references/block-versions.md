@@ -20,7 +20,7 @@ candidate) for the version differences.
 |---|---|
 | 0.1.5 | Plain block creation (the stable pin). No theme keys. |
 | 0.1.12 | Stable line: plain creation and edits. No theme keys: no `themeId`, no `themeAppearance`. Supported for writes that need no theme. |
-| 0.2.7 (candidate `0.2.7-qp-3256.0`) | Adds `themeId`, `themeAppearance`, `autoEvents` and `loginEventName`. |
+| 0.2.7 (candidate `0.2.7-qp-3256.0`) | Adds `themeId`, `themeAppearance`, `autoEvents` and `loginEventName`. Only the pinned candidate `0.2.7-qp-3256.0` is supported for theme writes; plain 0.2.7 is not pinned, so it is not supported for theme writes: ask once or stop. |
 | 0.2.8 | Same as 0.2.7 but `autoEvents` and `loginEventName` are removed. Supported for theme writes. |
 | 0.2.1 candidate | The only version with `backpackAction`. It is not a target for any write. |
 
