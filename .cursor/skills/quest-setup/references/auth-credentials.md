@@ -127,6 +127,7 @@ credential lane as `qp_request.py` and never prints the key:
   proposal and exits non-zero with no POST. After an explicit yes in the same conversation, rerun
   it with `--yes`: Get project, Onboard project (2xx is success), then Get project again as the
   readback. Report onboarded only when that readback returns 200; if it does not, say so and stop.
+  Pass `--yes` only after the publisher's explicit yes to the exact onboarding proposal in the same conversation.
 - Onboard accepts only the body keys `merchant_name` and `project_name`; the request script
   refuses any other key.
 
