@@ -12,9 +12,8 @@ Do not source or print `.env`. Never copy ledger step IDs into the target projec
 
 - `loaded`: reuse usable recorded values below, even if no `intake` step status exists.
 - `absent`: keep answers already given in conversation and ask only for remaining gaps.
-- Nonzero exit: stop. A corrupt/unsupported ledger is not absent. If the ledger is for a
-  shop the user codes, open `shop-setup`. Do not choose a source, overwrite the ledger, or
-  repeat the full interview.
+- Nonzero exit: stop. A corrupt/unsupported ledger is not absent. Do not choose a source,
+  overwrite the ledger, or repeat the full interview.
 - `site_kind: portal`: delegate to `game-web-portal`, not assembly. A shop the user codes
   never enters this intake. An absent or empty `site_kind` in the ledger means `shop`.
 
