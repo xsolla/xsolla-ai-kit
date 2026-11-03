@@ -31,6 +31,10 @@ to copy.
 - The reward text and image on a Quests block card come from the quest and can't be changed on the block. To change them, offer to change the quest's reward.
 - The Site Builder editor link is the one place a reply shows merchant and project IDs. Give it only in the hand-off after a successful apply.
 - Access missing: use the access-missing example below word for word. Don't explain credentials, and don't offer another way to get access.
+- A status or list reply names only quests, values and history that appear in the data just read. Never infer or add history ("never activated", "older copies of X", variant names) the read did not return; if asked about history, say the read does not show it.
+- When the gate reports that the site's layout needs a newer CLI, repeat that warning in one line in each plan that shows it.
+- Theme or appearance change on a block whose reported version is below the pinned theme-capable candidate ([block-versions.md](block-versions.md)): say so, name the pinned candidate version, and offer the upgrade as a separate step with its own yes. Do not just refuse.
+- "Show my block again" with exactly one hidden Quests block on the chosen site: show the plan for the show operation in the same turn, not only a summary.
 - A limit outside 1 to 24 gets one line that names only the range, 1 to 24. Don't offer to hide the block.
 
 ## Shape
@@ -131,6 +135,19 @@ Plan:
 - Using the CLI test environment (sandbox off)
 - Not published; you publish in Publisher Account
 - Confirmation: sha256:ab12cd34
+
+Next: reply "yes" to apply this exact plan.
+```
+
+Quest create (the one yes covers create, activate and read-back; label values the publisher did not give):
+
+```
+**Plan: create the "Monster Hunter" quest in My Game**
+- What the player does: defeats a monster; event name monster_defeated (my default, change it if you like)
+- Reward: Welcome Badge, quantity 1
+- Schedule (UTC): 2026-11-04 12:00 to 2026-11-11 12:00 (my default, change it if you like)
+- Status after your yes: ACTIVE (live) from 2026-11-04 12:00 to 2026-11-11 12:00
+- Repeat limit: one per player
 
 Next: reply "yes" to apply this exact plan.
 ```

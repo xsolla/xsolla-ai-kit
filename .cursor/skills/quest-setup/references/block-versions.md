@@ -48,3 +48,6 @@ tables above.
   support from version ordering or package metadata.
 - For an unsupported version, say that the block needs a verified upgrade, make no write, and
   offer the supported path.
+- A theme or appearance request on a block below the appearance candidate: the reply says the
+  block's version cannot take a theme, names the pinned candidate version `0.2.7-qp-3256.0`, and
+  offers the upgrade as a SEPARATE step with its own yes. It does not just refuse.

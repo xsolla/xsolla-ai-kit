@@ -15,6 +15,10 @@ excluded from the active public quest list.
 
 One approval of the exact publisher proposal authorizes this ordered sequence:
 
+Write each request body to a file inside the one `mktemp -d` folder and pass it with
+`--body-file <that file>`; never pipe a body through `/dev/stdin` or a heredoc (the script rejects
+it). After one failed write, report it; never retry in a loop.
+
 1. `POST` a complete inactive quest with the full graph and reward from the
    approved proposal (required fields plus nodes and connections).
 2. `GET` the created quest by id and confirm scope, graph, and reward.
@@ -102,12 +106,20 @@ proposal only. Bold line first, then these bullets, in business terms:
 **Plan: create the "<quest name>" quest in <project name>**
 - What the player does:
 - Reward: <item name>, quantity 1
-- Schedule (UTC):
+- Schedule (UTC): <start> to <end>
+- Status after your yes: ACTIVE (live) from <start> to <end>
 - Repeat limit:
 - Payout impact:
 
 Next: reply "yes" to apply this exact plan.
 ```
+
+The `Status after your yes` bullet is always present: the one approval covers create, activate
+and read-back, so the plan says plainly that the quest goes live. If the publisher wants it left
+inactive, the bullet says `Status after your yes: INACTIVE (not live)` and the activation step is
+skipped. Label every value the publisher did not give (the event name, the schedule window) with
+"my default, change it if you like", for example `Event name: monster_defeated (my default, change it
+if you like)`. The one reply line may carry the label next to the value; it never replaces the bullet.
 
 If the publisher asks for a change instead, show the revised plan in the same shape.
 
