@@ -498,6 +498,7 @@ class BlockOpsApplyTests(BlockOpsApplyBase):
 
     def test_invalid_candidate_preflight_makes_zero_mutating_calls(self) -> None:
         for unsupported_version in (
+            "0.2.6-qp-3256.0",
             "0.2.5-qp-3256.0",
             "0.2.4-qp-3256.0",
             "0.2.3-qp-3256.0",
