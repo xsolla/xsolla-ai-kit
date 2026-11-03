@@ -98,8 +98,9 @@ Never recreate discovered existing entities.
    Launcher on the project, an uploaded build, a generated installer, and a verified
    installer download. Refuse publish-anyway when that evidence is missing.
 5. **Access expiry losing progress.** On `401/403` mid-run, preserve the ledger and return
-   `needs_access`, then re-run `xsolla auth login`, re-read state, and resume — do not
-   restart the portal.
+   `needs_access`, then have the partner re-run `xsolla auth login` in their own terminal
+   (it opens a browser and doesn't complete from the agent's shell), re-read state, and
+   resume — do not restart the portal.
 6. **Reporting completion without read-back.** Nothing enters **Completed** while
    read-back is pending.
 

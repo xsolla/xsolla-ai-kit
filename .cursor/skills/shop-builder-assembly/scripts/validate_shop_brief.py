@@ -37,6 +37,129 @@ VERIFIED_BLOCK_MODULES = {
     "footer",
     "newStore",
 }
+# The site theme's colors, by their Shop Builder names (`theme.input` on the site).
+THEME_COLORS = ("bg", "overlay", "border", "primary", "secondary", "text")
+HEX_COLOR = re.compile(r"#[0-9a-fA-F]{6}")
+
+
+def theme_errors(theme: object) -> list[str]:
+    """Check `brand.theme`: the site palette, as `#rrggbb` colors and `isDark`."""
+    if not isinstance(theme, dict) or not theme:
+        return ["brand.theme must be a non-empty object"]
+    errors = []
+    unknown = sorted(set(theme) - set(THEME_COLORS) - {"isDark"})
+    if unknown:
+        errors.append(
+            "brand.theme has unknown keys: "
+            + ", ".join(unknown)
+            + f"; use {', '.join(THEME_COLORS)} and isDark"
+        )
+    for key in THEME_COLORS:
+        value = theme.get(key)
+        if key in theme and (not isinstance(value, str) or not HEX_COLOR.fullmatch(value)):
+            errors.append(f"brand.theme.{key} must be a #rrggbb color")
+    if "isDark" in theme and not isinstance(theme["isDark"], bool):
+        errors.append("brand.theme.isDark must be true or false")
+    return errors
+
+
+# Where an image goes on a block: the block's background, or its logo.
+IMAGE_SLOTS = {"background": ("values", "background", "img"), "logo": ("values", "logo", "img")}
+# The image types `upload-asset --type image` accepts.
+IMAGE_EXTENSIONS = {
+    ".gif", ".png", ".jpg", ".jpeg", ".webp", ".bmp", ".ico", ".tif", ".tiff", ".svg"
+}
+
+
+def image_errors(images: object) -> list[str]:
+    """Check `brand.images`: local image files, each placed on a block module's slot."""
+    if not isinstance(images, list) or not images:
+        return ["brand.images must be a non-empty list"]
+    errors = []
+    for index, image in enumerate(images):
+        prefix = f"brand.images[{index}]"
+        if not isinstance(image, dict):
+            errors.append(f"{prefix} must be an object")
+            continue
+        unknown = sorted(set(image) - {"file", "module", "slot", "page"})
+        if unknown:
+            errors.append(f"{prefix} has unknown keys: " + ", ".join(unknown))
+        file = image.get("file")
+        if not isinstance(file, str) or not file.strip():
+            errors.append(f"{prefix}.file is required")
+        elif "://" in file:
+            errors.append(f"{prefix}.file must be a local file; download it first")
+        elif Path(file).suffix.lower() not in IMAGE_EXTENSIONS:
+            errors.append(
+                f"{prefix}.file must be one of: " + ", ".join(sorted(IMAGE_EXTENSIONS))
+            )
+        if image.get("module") not in VERIFIED_BLOCK_MODULES:
+            errors.append(f"{prefix}.module must be a verified block module")
+        if image.get("slot") not in IMAGE_SLOTS:
+            errors.append(f"{prefix}.slot must be one of: " + ", ".join(IMAGE_SLOTS))
+        page = image.get("page")
+        if page is not None and (not isinstance(page, str) or not page.startswith("/")):
+            errors.append(f"{prefix}.page must be a page path such as /")
+    return errors
+
+
+# Block text fields the copy step writes: `values.<field>.id` holds the string's `L:` id.
+COPY_FIELDS = ("title", "subtitle", "description")
+
+
+def html_errors(value: object, label: str) -> list[str]:
+    """Copy is HTML. A title doesn't render `<img>`, and scripts never go in copy."""
+    if not isinstance(value, str) or not value.strip():
+        return [f"{label} must be non-empty HTML"]
+    lowered = value.lower()
+    if "<script" in lowered or "<img" in lowered:
+        return [f"{label} must not contain <script> or <img>"]
+    if "<" not in value:
+        return [f"{label} must be HTML, such as <p>…</p>: a bare string renders unstyled"]
+    return []
+
+
+def copy_errors(copy_value: object) -> list[str]:
+    """Check `content.copy`: approved HTML for a text field of a planned block module."""
+    if not isinstance(copy_value, list) or not copy_value:
+        return ["content.copy must be a non-empty list"]
+    errors = []
+    for index, item in enumerate(copy_value):
+        prefix = f"content.copy[{index}]"
+        if not isinstance(item, dict):
+            errors.append(f"{prefix} must be an object")
+            continue
+        unknown = sorted(set(item) - {"module", "field", "html", "page"})
+        if unknown:
+            errors.append(f"{prefix} has unknown keys: " + ", ".join(unknown))
+        if item.get("module") not in VERIFIED_BLOCK_MODULES:
+            errors.append(f"{prefix}.module must be a verified block module")
+        if item.get("field") not in COPY_FIELDS:
+            errors.append(f"{prefix}.field must be one of: " + ", ".join(COPY_FIELDS))
+        errors.extend(html_errors(item.get("html"), f"{prefix}.html"))
+        page = item.get("page")
+        if page is not None and (not isinstance(page, str) or not page.startswith("/")):
+            errors.append(f"{prefix}.page must be a page path such as /")
+    return errors
+
+
+def faq_errors(faq: object) -> list[str]:
+    """Check `content.faq`: the approved questions and answers, in order."""
+    if not isinstance(faq, list) or not faq:
+        return ["content.faq must be a non-empty list"]
+    errors = []
+    for index, item in enumerate(faq):
+        prefix = f"content.faq[{index}]"
+        if not isinstance(item, dict) or set(item) != {"question", "answer"}:
+            errors.append(f"{prefix} must have question and answer only")
+            continue
+        errors.extend(html_errors(item["question"], f"{prefix}.question"))
+        errors.extend(html_errors(item["answer"], f"{prefix}.answer"))
+        if isinstance(item["question"], str) and "<h4" not in item["question"].lower():
+            errors.append(f"{prefix}.question must be an <h4>: the FAQ block needs it")
+    return errors
+
+
 SECRET_KEY_SUFFIXES = (
     "apikey",
     "password",
@@ -232,6 +355,15 @@ def validate(brief: dict) -> list[str]:
                             f"{prefix}.blocks contains unverified modules: "
                             + ", ".join(unverified)
                         )
+
+    if isinstance(brand_value, dict) and "theme" in brand_value:
+        errors.extend(theme_errors(brand_value["theme"]))
+    if isinstance(brand_value, dict) and "images" in brand_value:
+        errors.extend(image_errors(brand_value["images"]))
+    if "copy" in content:
+        errors.extend(copy_errors(content["copy"]))
+    if "faq" in content:
+        errors.extend(faq_errors(content["faq"]))
 
     sources = brief.get("sources")
     if not isinstance(sources, list) or not sources:

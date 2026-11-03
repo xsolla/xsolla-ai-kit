@@ -75,9 +75,9 @@ until [expert-review.md](references/expert-review.md) records approval.
    sections each new page comes with that are removed (`template_removals`), catalog
    mappings (for an `__all__` section, every enabled item it pulls in, with test or
    leftover entries flagged; disabling them goes in the catalog proposal under the same
-   yes), that a preview
-   link anyone can open will be created for the visual review after the build, and what
-   is still to connect, with a desktop and mobile
+   yes), existing pages the theme puts on the site colors, that a preview link anyone can
+   open will be created for the visual review after the build, and what is still to
+   connect, with a desktop and mobile
    [mockup](references/visual-style.md#mockup-for-the-approval). Call each section by its block name in the
    [block catalog](references/block-catalog.md), such as Offer chain or Reward system,
    never by a module ID such as `sb-offer-chain`. Don't show the developer module IDs or
@@ -118,11 +118,9 @@ when the preview session expired, is a request, not a new approval.
 
 ## Assembly order
 
-After confirmation, `apply_plan.py` applies steps 1–5 in this dependency order. Steps 6
-and 7 have no script yet (R1 in the
-[spec](../nocode-shop-setup/references/storefront-by-default.md)): run them by hand with
-the CLI commands in [CLI operations](references/cli-operations.md), as the plan showed,
-after the last apply run (run 2 for a new site), when the site and its blocks exist.
+After confirmation, `apply_plan.py` applies steps 1–5 in this dependency order, and
+`scripts/apply_style.py` steps 6–8 after the last apply run (run 2 for a new site), from
+a fresh backup, as [CLI operations](references/cli-operations.md) describes.
 
 1. **Pages** — create all page paths before linking navigation.
 2. **Site layout** — after page/template creation, add `common-layout` only if the
@@ -134,15 +132,16 @@ after the last apply run (run 2 for a new site), when the site and its blocks ex
 3. **Navigation** — resolve page IDs and add internal links only after pages exist.
 4. **Blocks** — add/move/update blocks page by page; resolve IDs after each structural
    change and use targeted patches rather than replacing `values` or `components`.
-5. **Catalog links** — configure `newStore` sections only after catalog groups and
-   SKUs have been verified in the same project. Localize a section title before
-   enabling its `L:` ID.
-6. **Theme** — set site and page theme source fields; page theme overrides site theme.
-   Take the palette from the game's own art: [visual style](references/visual-style.md).
-7. **Copy and assets** — upload local assets, then patch returned CDN URLs; write
-   localized HTML through localization commands, never through block value patches.
-   Give sections the game's art and gradients; an opaque `background.color` hides the
-   image under it. See [visual style](references/visual-style.md).
+5. **Catalog links** — configure `newStore` sections after this project's groups and SKUs
+   are verified. Localize a section title before enabling its `L:` ID.
+6. **Theme** — `apply_style.py` sets the brief's `brand.theme` on the site theme and puts
+   planned pages on it; a page's own theme overrides the site's. Take the palette from the
+   game's art ([visual style](references/visual-style.md)). Hand over its `needs_human`.
+7. **Images** — it uploads each `brand.images` file once and puts the CDN URL in the
+   block's background or logo. An opaque `background.color` hides the image under it.
+8. **Copy** — it writes `content.copy` and the `content.faq` items in the primary locale
+   through `update-many-localization`, never block patches; `shopbuilder-translate` adds
+   other locales. Follow the text rules in [visual style](references/visual-style.md).
 
 Use pre-written scripts for repeated work; never pass `--force` or invent HTTP or
 `curl` workarounds. If an operation requires `--force`, stop and report it.

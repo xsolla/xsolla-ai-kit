@@ -9,7 +9,9 @@ description: >-
   to write code or run my own servers". With no local repo, or when the user
   says they don't code, the shop is on Xsolla's side: say so and continue.
   Ask only when a repo with storefront code exists and the user has not said.
-  If the user will write and deploy the code, open shop-setup.
+  Also the first-run setup for Shop Builder: it installs the Xsolla CLI this path
+  runs on and has the user sign in. If the user will write and deploy the code, open
+  shop-setup.
 metadata:
   owner: a.pyanzin
   domain: store
@@ -22,8 +24,9 @@ The user arranges blocks, configures them, and publishes. Payments use Pay Stati
 Custom blocks are possible, and that code still runs on Xsolla's side.
 
 The user acts three times: the build request, one batch of answers (only when a value
-is still missing), and one yes. Everything else runs without them. Never stop to ask
-"should I continue?".
+is still missing), and one yes. When the Xsolla CLI isn't signed in yet, signing in, in
+their own terminal, comes before the batch. Everything else runs without them. Never
+stop to ask "should I continue?".
 
 ## Which side
 
@@ -40,10 +43,16 @@ is still missing), and one yes. Everything else runs without them. Never stop to
 Run these first, so a blocker shows up in the first message, not after the catalog is
 built.
 
-1. **The latest CLI and kit.** Run `xsolla update --check`; when it can't tell (it has
-   reported "not published") and the CLI came from Homebrew, run `brew upgrade xsolla`.
-   Then refresh the kit with `xsolla skills install --global --source ai-kit`. Name both
-   versions in the first message. The checks below are read-only.
+1. **The CLI: installed, signed in, current.** This path runs only through the Xsolla
+   CLI. If `xsolla --version` fails, say so in one line and install it now; on Windows,
+   too. Then the user runs `xsolla auth login` in their own terminal: it opens a browser
+   and doesn't complete from the agent's shell. Steps per platform:
+   [CLI setup](references/cli-setup.md). Never ask for a pasted API key, or for a
+   Publisher Account link to make one, instead. Then run `xsolla update --check`; when it
+   can't tell (it has reported "not published") and the CLI came from Homebrew, run
+   `brew upgrade xsolla`. Refresh the kit with
+   `xsolla skills install --global --source ai-kit`. Name both versions in the first
+   message. The checks below are read-only.
 2. **The project and sandbox mode.** Take the merchant and project from the Publisher
    Account link in the request, else from `xsolla config list --json`; with neither, ask
    for the project link in the batch. Shop Builder needs CLI sandbox mode off. When the
@@ -133,11 +142,11 @@ placeholders such as `<name>` or `<link>` for the user to fill in.
 Run these before the storefront. Do not run Headless Checkout or the headless login
 widget: this site renders its own checkout and login.
 
-1. `merchant-setup` — Publisher Account, project, and API key. When the Xsolla CLI is
-   signed in (`xsolla auth login`), it holds the project key: don't ask the user for one,
-   in the batch or later. Only without the CLI, follow that skill's rule for a key pasted
-   into chat. Creating a project key is a write: never before the yes. If the CLI's key
-   fails a read, put creating one in the batch.
+1. `merchant-setup` — Publisher Account, project, and API key. The CLI signed in at
+   check 1 holds the project key: don't ask the user for one, in the batch or later, and
+   don't take that skill's pasted-key route: this path has none. Creating a project key
+   is a write: never before the yes. If the CLI's key fails a read, put creating one in
+   the batch.
 2. `catalog-design` — the items, packs, bundles and LiveOps the site will sell, through
    the CLI's `catalog` and `liveops` commands. Only its catalog steps: the archetype, the
    proposal and pricing. No client catalog, purchase code or checkout: the site has its

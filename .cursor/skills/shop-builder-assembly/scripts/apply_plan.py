@@ -67,6 +67,14 @@ AUTH_FAILURE_MARKERS = (
 RUN_AUTH: dict = {"logged_in": False, "context": None}
 
 
+# `xsolla auth login` opens a browser and waits for it; run from an agent's shell it
+# often doesn't complete. The user then signs in from their own terminal.
+OWN_TERMINAL_LOGIN = (
+    "; ask the user to run `xsolla auth login` in their own terminal and finish the "
+    "sign-in in the browser it opens, then rerun"
+)
+
+
 def refresh_supported_login() -> None:
     for attempt in range(2):
         try:
@@ -81,13 +89,15 @@ def refresh_supported_login() -> None:
             if attempt == 0:
                 time.sleep(LOGIN_RETRY_DELAY_SECONDS)
                 continue
-            raise RuntimeError("supported Publisher login refresh timed out") from None
+            raise RuntimeError(
+                "supported Publisher login refresh timed out" + OWN_TERMINAL_LOGIN
+            ) from None
         if result.returncode == 0:
             time.sleep(LOGIN_SETTLE_SECONDS)
             return
         if attempt == 0:
             time.sleep(LOGIN_RETRY_DELAY_SECONDS)
-    raise RuntimeError("supported Publisher login refresh failed")
+    raise RuntimeError("supported Publisher login refresh failed" + OWN_TERMINAL_LOGIN)
 
 
 def auth_failure(returncode: int, detail: str) -> bool:
@@ -114,7 +124,8 @@ def login_once(detail: str) -> None:
     if RUN_AUTH["logged_in"]:
         raise RuntimeError(
             "authentication still fails after this run's one `xsolla auth login`. "
-            "The failed command made no change, so it is safe to rerun. CLI error: "
+            "The failed command made no change, so it is safe to rerun once the user "
+            "has run `xsolla auth login` in their own terminal. CLI error: "
             + detail
         )
     approved = RUN_AUTH["context"]
@@ -1152,9 +1163,9 @@ def main() -> int:
                     "a complete verified backup created before confirmation is required"
                 )
             saved_structure = backup_structure(args.backup_dir)
-            plan = build_plan(brief, saved_structure, created)
+            plan = build_plan(brief, saved_structure, created, args.brief.resolve().parent)
         else:
-            plan = build_plan(brief)
+            plan = build_plan(brief, base_dir=args.brief.resolve().parent)
 
         check_approval(args, plan, approved, report)
         approved_id = approved["confirmation_id"]
@@ -1279,7 +1290,9 @@ def main() -> int:
             json.dumps(
                 {
                     "operation_succeeded": True,
-                    "assembly_complete": not plan["unsupported_phases"],
+                    "assembly_complete": not (
+                        plan["style_phases"] or plan["unsupported_phases"]
+                    ),
                     "status": "implemented-phases-applied",
                     "confirmation_id": plan["confirmation_id"],
                     "approved_confirmation_id": approved_id,
@@ -1292,7 +1305,11 @@ def main() -> int:
                     "catalog_links": catalog_links,
                     "locales": locales,
                     "completed_phases": plan["implemented_phases"],
-                    "pending_phases": plan["unsupported_phases"],
+                    "pending_phases": plan["style_phases"] + plan["unsupported_phases"],
+                    "next_action": (
+                        "Back up the site, then run apply_style.py under the same yes for "
+                        "the theme and images."
+                    ),
                     "warnings": (
                         [CUSTOM_CODE_WARNING]
                         if any(page.get("hidden_custom_code") for page in pages)
