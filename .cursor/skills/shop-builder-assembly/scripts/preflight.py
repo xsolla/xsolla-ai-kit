@@ -261,17 +261,9 @@ def main() -> int:
             for external_id, group_type in requested_groups
             if external_id not in available_group_ids
         )
-        if missing_groups:
-            raise RuntimeError(
-                "catalog groups do not exist in the configured project: "
-                + ", ".join(
-                    f"{group_type}:{external_id}"
-                    for external_id, group_type in missing_groups
-                )
-            )
 
         result = {
-            "ok": True,
+            "ok": not missing_groups,
             "context": {
                 "merchant_id": expected["merchant_id"],
                 "project_id": expected["project_id"],
@@ -296,10 +288,28 @@ def main() -> int:
                 "verified_groups": [
                     {"external_id": external_id, "type": group_type}
                     for external_id, group_type in sorted(requested_groups)
-                ]
+                    if (external_id, group_type) not in missing_groups
+                ],
+                "missing_groups": [
+                    {"external_id": external_id, "type": group_type}
+                    for external_id, group_type in missing_groups
+                ],
             },
         }
+        # Print the read-back even when groups are missing: with a catalog proposal
+        # still waiting for the developer's yes, the plan shows this context. The exit
+        # code stays 1, so apply_plan.py refuses to write until every group exists.
         print(json.dumps(result, indent=2))
+        if missing_groups:
+            print(
+                "Preflight failed: catalog groups do not exist in the configured project: "
+                + ", ".join(
+                    f"{group_type}:{external_id}"
+                    for external_id, group_type in missing_groups
+                ),
+                file=sys.stderr,
+            )
+            return 1
         return 0
     except (OSError, RuntimeError, ValueError) as exc:
         print(f"Preflight failed: {exc}", file=sys.stderr)

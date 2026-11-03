@@ -1704,6 +1704,40 @@ class CommonLayoutPreflightTests(unittest.TestCase):
         self.assertEqual("skip", json.loads(stdout)["target"]["layout_step"])
         has_command.assert_called_once_with("shopbuilder", "create-block")
 
+    def test_missing_groups_fail_but_still_print_the_read_back(self) -> None:
+        brief = json.loads(EXAMPLE_BRIEF.read_text(encoding="utf-8"))
+        brief["catalog"]["groups"] = [
+            {"external_id": "gem-packs", "type": "virtual_currency", "placement": "primary"}
+        ]
+        stdout, stderr = io.StringIO(), io.StringIO()
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "brief.json"
+            path.write_text(json.dumps(brief), encoding="utf-8")
+            with (
+                mock.patch.object(sys, "argv", ["preflight.py", str(path)]),
+                mock.patch.object(preflight.shutil, "which", return_value="xsolla"),
+                mock.patch.object(
+                    preflight,
+                    "approved_test_project",
+                    return_value={"approval_reference": "test approval"},
+                ),
+                mock.patch.object(preflight, "run_json", side_effect=FakePreflightCli()),
+                mock.patch.object(preflight, "cli_has_command", return_value=True),
+                contextlib.redirect_stdout(stdout),
+                contextlib.redirect_stderr(stderr),
+            ):
+                code = preflight.main()
+        self.assertEqual(1, code)
+        result = json.loads(stdout.getvalue())
+        self.assertFalse(result["ok"])
+        self.assertEqual(
+            [{"external_id": "gem-packs", "type": "virtual_currency"}],
+            result["catalog"]["missing_groups"],
+        )
+        self.assertEqual([], result["catalog"]["verified_groups"])
+        self.assertEqual("create", result["target"]["layout_step"])
+        self.assertIn("virtual_currency:gem-packs", stderr.getvalue())
+
     def test_new_site_on_cli_with_create_block_passes(self) -> None:
         code, stdout, stderr, _ = self.run_preflight(
             FakePreflightCli(), has_create_block=True

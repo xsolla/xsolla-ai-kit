@@ -51,7 +51,8 @@ worse than a question.
 
 | Field | Req | Inferable | Default | Notes |
 |---|---|---|---|---|
-| `platform` | ✅ | usually | none | `mobile`/`pc`/`console`/`cross-platform`. **Selects the archetype** — highest-leverage field. |
+| `platform` | ✅ | usually | none | Any of `mobile`, `pc`, `console`, `web`; a cross-platform game lists each one. **Selects the archetype** — highest-leverage field. |
+| `lifecycle` | ✅ | usually | none | `launch` (not released yet, or a pre-order), `live-service` (regular updates, events or a season), or `evergreen`. Infer it from the store listing and confirm it in the plan. Selects the preset with `platform`. |
 | `primary_regions` | ⬜ | ✕ | global | Informs languages and currency, not geo-restrictions (out of scope). |
 | `audience_note` | ⬜ | often | omit | Tone only. |
 
@@ -79,7 +80,7 @@ structure. Collect groups first, items only as their contents.
 
 | Field | Req | Inferable | Default | Notes |
 |---|---|---|---|---|
-| `catalog_exists` | ✅ | ✕ | none | If no, stop — seeding is a prerequisite, not part of this run. |
+| `catalog_exists` | ✅ | ✕ | none | Yes when the project has the catalog, or when `catalog-design`'s pending proposal creates it under the same yes. Otherwise stop — seeding is a prerequisite, not part of this run. |
 | `groups[]` | ✅ | partly | read from catalog | Each: `external_id`, `type` (`bundle`/`virtual_good`/`virtual_currency`), `placement` (`featured`/`primary`/`secondary`). |
 | `group_order` | ✅ | ✅ | catalog order | Section order down the page. |
 | `featured_group` | ⬜ | ✅ | first group | Gets the `featured` card layout. |

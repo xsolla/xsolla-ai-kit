@@ -61,8 +61,8 @@ Entry conditions:
 - Approved content and brand assets: the partner's own, or approved Steam content. Never
   invent content or use anything the partner hasn't approved.
 - Required input, collected in a single question rather than one at a time. Read what is
-  already known instead of asking again: intake from the ledger, the merchant
-  and project from `.env`:
+  already known instead of asking again: intake from the ledger or the conversation, the
+  merchant and project from `xsolla config list --json`:
 
 ```yaml
 merchant_id:
@@ -91,13 +91,13 @@ Intake → Preflight → Discover → Back up → Plan and confirm → Draft →
 Verify (read-back) → Human review → Handoff
 ```
 
-1. **Intake** — once `.env` passes the path and site-kind check in Entry conditions, the
+1. **Intake** — once the Entry conditions hold (site kind from the ledger or the chat), the
    first message, before any question, tells the partner to create the site first if they
    haven't (Storefronts → Websites → Multi-page web portal → Manual), and
    [what the run can change](references/portal-api.md#what-the-run-can-change) and what stays
-   an Editor step for them. The same message collects the required input above; with a
-   Steam URL, it asks whether the page is theirs and its art and text may be used. Resolve
-   every ambiguity by asking; never choose an ambiguous match.
+   an Editor step for them. It asks only the required input `nocode-shop-setup`'s batch
+   didn't; with a Steam URL, whether the page is theirs and its art and text may be used.
+   Resolve every ambiguity by asking; never choose an ambiguous match.
 2. **Preflight** — confirm PC scope, domain, and locale, then run
    [`scripts/preflight.py`](scripts/preflight.py) with `--merchant-id`, `--project-id` and
    `--approved-test-projects <file>`. It checks that the CLI points at that merchant and
@@ -119,8 +119,9 @@ Verify (read-back) → Human review → Handoff
    export stops the run before any write.
 5. **Plan and confirm** — show the ordered change groups (sections, pages, blocks, theme, copy
    word for word, images by source, catalog links) and the seeded blocks it will hide, which
-   the partner then deletes in the builder; wait for an explicit yes. Earlier permission to
-   "set up my portal" is not confirmation of a plan. Re-confirm if the plan changes.
+   the partner then deletes in the builder, with any pending `catalog-design` proposal in the
+   same message; wait for one explicit yes to both. Earlier permission to "set up my portal"
+   is not confirmation of a plan. Re-confirm if the plan changes.
 6. **Draft** — map each section to the template's page by path, then build only the missing
    ones: `add-page`, its blocks with `add-block --index`, and `update-block` to hide the
    seeded blocks it doesn't keep, following the portal layout in
@@ -137,9 +138,9 @@ Verify (read-back) → Human review → Handoff
    `update-restrictions` when the plan lists them. A change with no CLI command is
    `needs_human`: say what to do in Publisher Account and record it. Apply one change group
    at a time across Home, News, Rewards, Web Shop, and Community; the Launcher section is the
-   partner's. Delegate the surrounding products rather than duplicating their recipes:
-   `merchant-setup` for merchant/project/API key, `catalog-design` for the catalog and
-   pricing the Web Shop sells, `login-setup` for Login. Checkout is the Web Shop's hosted Pay
+   partner's. `nocode-shop-setup` runs the surrounding products before this skill; don't
+   repeat their recipes: `merchant-setup`, `catalog-design` (it creates the catalog after the
+   yes in step 5) and `login-setup`. Checkout is the Web Shop's hosted Pay
    Station, so there is nothing to integrate. Placeholders require approval and a visible
    label.
 7. **Verify (read-back)** — read back every changed entity (`get-structure`,
@@ -173,9 +174,9 @@ both loaded before issuing changes:
 
 ## Hard stops
 
-The agent runs only the commands listed in
+This skill runs only the commands listed in
 [references/portal-api.md](references/portal-api.md), and `--help` on them or on the CLI itself
-(`xsolla --help`), even when the partner asks for another.
+(`xsolla --help`), even when the partner asks for another. `catalog-design` runs its own.
 Every other `xsolla` command is out of bounds, including `delete-block`, `delete-domain`,
 `change-domain` and `delete-ai-block`; what a run needs beyond the list is `needs_human`.
 

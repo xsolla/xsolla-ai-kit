@@ -52,11 +52,13 @@ When the publisher delegates routine choices ("decide for me"), choose the prese
 layout, visual treatment and draft copy yourself and show them in assembly's plan
 instead of asking.
 
-Ask for missing required facts and unresolved conflicts in one batch: the same batch as
-`nocode-shop-setup`'s questions when it started this run. Use read-only discovery for the
-active CLI project and its catalog groups. If the catalog is absent, or a named group
-does not exist and isn't in `catalog-design`'s pending proposal, stop and point at the
-catalog skill. Never create entities here.
+When `nocode-shop-setup` started this run, its one batch already asked the intake: read
+those answers and ask nothing new, except about a conflict. Otherwise, ask for missing
+required facts and unresolved conflicts in one batch. Use read-only discovery for the
+active CLI project and its catalog groups. A catalog that `catalog-design` has proposed
+and that waits for the same yes counts as existing. If the catalog is absent with no such
+proposal, or a named group is in neither, stop and point at the catalog skill. Never
+create entities here.
 
 ## 2. Produce the shared brief
 
@@ -71,7 +73,9 @@ version-1 JSON object:
 - `catalog.liveops` — the promo code or coupon promotions, reward chains and offer chains
   found by read-only `xsolla liveops list-promo-codes`, `list-coupons`,
   `list-reward-chain` and `list-offer-chain`. The lists include inactive entries: count
-  only those with `is_enabled: true`.
+  only those with `is_enabled: true`. Also count the ones `catalog-design`'s pending
+  proposal creates and activates under the same yes, so their blocks are in the plan the
+  developer approves.
 - `content` — approved copy and publisher page overrides.
 - `brand` — the listing's app icon as the logo and its art for the hero, once the
   publisher confirmed they may be used, unless they supplied their own.
