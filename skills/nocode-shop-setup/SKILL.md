@@ -100,8 +100,10 @@ placeholders such as `<name>` or `<link>` for the user to fill in.
 Run these before the storefront. Do not run Headless Checkout or the headless login
 widget: this site renders its own checkout and login.
 
-1. `merchant-setup` — Publisher Account, project, and API key. With no local repo, follow
-   that skill's rule for a key pasted into chat.
+1. `merchant-setup` — Publisher Account, project, and API key. When the Xsolla CLI is
+   signed in (`xsolla auth login`), it holds the project key: don't ask the user for one,
+   in the batch or later. Only without the CLI, follow that skill's rule for a key pasted
+   into chat.
 2. `catalog-design` — the items the site will sell. If the project already has that
    catalog, do not rebuild it. Its proposal waits for the one yes below.
 3. `login-setup` — how the player signs in.
