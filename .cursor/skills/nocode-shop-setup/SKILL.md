@@ -166,7 +166,8 @@ show. When the catalog already exists, the plan alone is the message.
 
 Before showing the proposal, check it against the limits in `catalog-design`'s LiveOps
 reference: each offer chain or reward chain step takes one item, and offer chain steps
-only items and bundles. After the yes, if something can't be created exactly as proposed,
+only items and bundles. Include every value the catalog API requires, such as the virtual
+currency's own unit price, so none has to be invented later. After the yes, if something can't be created exactly as proposed,
 create the rest, then show what differs and ask before substituting anything: an extra
 bundle or a changed step is a change the yes didn't cover.
 
