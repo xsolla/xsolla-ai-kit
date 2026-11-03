@@ -102,8 +102,9 @@ list; do not invent additional paths.
   Palette leaves are `accent`, `sectionBackground`, `cardBackground`, `primaryText`,
   `secondaryText`, `border`, and `actionText`, each a literal `#RRGGBB`.
 - Custom font fields are `bodyFont`, `headingFont`, and `buttonFont`; use `host-body`,
-  `host-heading`, `host-button`, or a safe 1-64 character `loadedFont` family already
-  verified loaded on the page. Weights are 400, 500, 600 or 700. Heading/body/button
+  `host-heading`, `host-button`, or a `loadedFont` family already verified loaded on the
+  page. A `loadedFont` family must match `[A-Za-z0-9 _-]{1,64}`: reject anything else
+  (quotes, semicolons, commas, other characters) before proposing it. Weights are 400, 500, 600 or 700. Heading/body/button
   sizes are 16-64/12-24/12-24px. Line-height multipliers are finite 1-2 and the gate
   rounds them to two decimals using JavaScript positive rounding.
 - Custom geometry: `maxWidth` 640-1920; `gutter` and `mobileGutter` 0-64;
@@ -132,9 +133,9 @@ example:
 ```
 
 This is a shape example, not a recommended design. Use only measured and approved
-values. The released candidate `0.2.7-qp-3256.0` is the exact appearance capability pin;
-its release and CDN artifact have been verified. Ordinary block creation remains pinned
-to stable `0.1.5`. An `add` may use the candidate only when its version is explicit.
+values. Which block versions support appearance, and which version ordinary creation
+uses, is in [block-versions.md](block-versions.md). An `add` may use an appearance-capable
+version only when its version is explicit.
 Never infer support from version ordering or package metadata. Existing-block
 updates/resets require the exact supported version in saved readback. If the block version
 or schema is unsupported, stop before the plan/write and report a verified-upgrade gate.

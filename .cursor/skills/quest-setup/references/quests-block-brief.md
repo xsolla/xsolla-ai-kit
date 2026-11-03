@@ -4,8 +4,8 @@ Brief keys, settings and operations for the `block_operations` brief that the
 `shop-builder-assembly` gate validates. The agent never shows these keys to the publisher.
 Appearance recommendations and fitting rules are in
 [quests-block-appearance.md](quests-block-appearance.md). Appearance leaves are
-supported on the released candidate `0.2.7-qp-3256.0`; its release and CDN artifact
-have been verified. Ordinary Quests creation remains pinned to stable `0.1.5`. Existing
+supported only on block versions that
+[block-versions.md](block-versions.md) lists as supporting them. Existing
 block appearance updates and resets require an exact saved-version match.
 
 ## Block settings
@@ -61,7 +61,7 @@ Source: the block contract at commit 0b1586eb59. Version pins live only in
 [block-versions.md](block-versions.md).
 
 - `themeId` is `site-builder`, `xsolla-pages` or `custom`. `themeAppearance` is allowed only for themeId custom
-  (a custom appearance object). Never send `themeAppearance` with another theme.
+  (a custom appearance object). The schema keys `themeAppearance` by theme id: do not send the custom entry unless `themeId` is custom.
 - `questIds` absent means the block never had a selection and the editor fills it once, while `questIds` set to `[]` means the publisher cleared it and it is never refilled.
 - `maxQuests` is a whole number from 1-24, and the default is 6.
 - `overrides` image values must be https only. Reward overrides are ignored by the block.
@@ -72,7 +72,7 @@ Source: the block contract at commit 0b1586eb59. Version pins live only in
 
 ### Theme selector
 
-Map the publisher's words to `themeId`: default or the site's own look maps to site-builder, Xsolla Pages maps to xsolla-pages, and a fully custom design maps to custom. Never set `themeAppearance` for the first two.
+Map the publisher's words to `themeId`: default or the site's own look maps to site-builder, Xsolla Pages maps to xsolla-pages, and a fully custom design maps to custom. For the first two, do not send the custom entry; only the preset-keyed leaves in [quests-block-appearance.md](quests-block-appearance.md) apply.
 
 ### Fully custom design
 

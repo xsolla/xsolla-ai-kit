@@ -6,7 +6,7 @@ Loaded for a Quests block request on a Shop Builder site. Settings and the opera
 ## Hard rules
 
 1. **Writes only through the gate.** Every change to a site goes through the gate's
-   scripts, which drive the `xsolla shopbuilder` CLI (1.9.4 or newer): preflight,
+   scripts, which drive the `xsolla shopbuilder` CLI (minimum version in [block-versions.md](block-versions.md)): preflight,
    backup of the target site, rendered plan, then an explicit publisher confirmation
    of the plan's `confirmation_id` right before the first remote write. The only
    `xsolla shopbuilder` commands you run directly are the read-only `list-websites`,

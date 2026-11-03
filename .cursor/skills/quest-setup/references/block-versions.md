@@ -10,9 +10,19 @@ candidate) for the version differences.
 
 | Item | Pin | Use |
 |---|---|---|
-| Quests block, stable | `0.1.5` | Ordinary block creation. Its settings have no theme keys. |
+| Quests block, stable | `0.1.5` | Current stable pin for ordinary block creation, as in the base. Its settings have no theme keys. |
 | Quests block, appearance candidate | `0.2.7-qp-3256.0` | The exact version that supports `themeId` and `themeAppearance`. Use it only when its version is explicit. |
-| Shop Builder CLI | `1.9.4` | Minimum named in quests-block-flow.md. PR #87 also mentions `1.4.0`. Both are recorded here, and the agent uses the version the CLI reports. |
+| Shop Builder CLI | `1.9.4` | A minimum: 1.9.4 or newer is supported. PR #87 also mentions `1.4.0`. The agent uses the version the CLI reports. |
+
+## Known block versions and what they support
+
+| Version | Supports |
+|---|---|
+| 0.1.5 | Plain block creation (the stable pin). No theme keys. |
+| 0.1.12 | Stable line: plain creation and edits. No theme keys: no `themeId`, no `themeAppearance`. Supported for writes that need no theme. |
+| 0.2.7 (candidate `0.2.7-qp-3256.0`) | Adds `themeId`, `themeAppearance`, `autoEvents` and `loginEventName`. |
+| 0.2.8 | Same as 0.2.7 but `autoEvents` and `loginEventName` are removed. Supported for theme writes. |
+| 0.2.1 candidate | The only version with `backpackAction`. It is not a target for any write. |
 
 ## Version facts (snapshot of the block contract)
 
@@ -26,10 +36,14 @@ candidate) for the version differences.
 
 The agent never trusts memory for a version. Before any block write it reads the block
 version (and the CLI version) that Shop Builder or the CLI reports, then compares it with the
-table above.
+tables above.
 
-- A reported version equal to a pinned version is **supported**.
-- Any other reported version is **unsupported** for writes that need a pinned capability.
+- The CLI is **supported** when it is the pinned version or newer.
+- A block version listed in the known-versions table is **supported** for the capabilities
+  in its row. A write that needs a capability the version lacks (for example a theme on
+  0.1.5 or 0.1.12) is **unsupported**.
+- Any other reported block version is **unsupported** for writes that need a pinned
+  capability.
 - An unknown or unreported version: ask the user or stop. Do not guess, and do not infer
   support from version ordering or package metadata.
 - For an unsupported version, say that the block needs a verified upgrade, make no write, and
