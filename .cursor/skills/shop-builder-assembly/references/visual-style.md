@@ -186,10 +186,11 @@ Check:
 
 The developer's yes covers fixes that bring the site to what the plan showed: background
 fixes on blocks this assembly created, applied with `scripts/patch_backgrounds.py` (see
-`SKILL.md`), and theme, font and wording fixes back to the approved values. An image must be
-one uploaded to the site with `upload-asset`, and a gradient must have the shape of one
-already on the site. Show a fix that goes beyond the plan, such as new wording, another font
-or a layout change, and ask before making it.
+[runs under one yes](cli-operations.md#runs-under-one-yes)), and theme, font and wording
+fixes back to the approved values. An image must be one uploaded to the site with
+`upload-asset`, and a gradient must have the shape of one already on the site. Show a fix
+that goes beyond the plan, such as new wording, another font or a layout change, and ask
+before making it.
 
 If the preview can't be opened, say the visual review wasn't done and why: no browser
 signed in to Publisher Account, or a site without the common layout, which private preview
