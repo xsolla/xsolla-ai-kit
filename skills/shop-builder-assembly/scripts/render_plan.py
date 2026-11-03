@@ -131,12 +131,6 @@ NO_OWN_HEADER = (
     "Page {path} has no header block of its own, and the site has no common layout "
     "that could hold one. Nothing was written."
 )
-TEMPLATE_MULTI_PAGE = (
-    "This site was made from a Publisher Account template, so its header sits in the "
-    "site layout. Assembly builds on such a site with a one-page plan for now (preset "
-    "mobile-single-page): a page it adds would get a header of its own next to the "
-    "shared one. Nothing was written."
-)
 
 
 def choose_preset(brief: dict) -> str:
@@ -270,11 +264,28 @@ def common_layout_id(
     return None
 
 
-def has_own_header(page: dict) -> bool:
+def has_own_header(page: dict, created_block_ids: frozenset = frozenset()) -> bool:
+    """Whether the page has a header block of its own. A header this assembly created,
+    with a page it added, doesn't count: on a template site that page uses the shared one."""
     blocks = page.get("blocks")
     return any(
-        isinstance(block, dict) and effective_module(block) == "header"
+        isinstance(block, dict)
+        and effective_module(block) == "header"
+        and block.get("_id") not in created_block_ids
         for block in (blocks if isinstance(blocks, list) else [])
+    )
+
+
+def is_template_site(current: dict, pages: list[dict]) -> bool:
+    """A site made from a Publisher Account template: it has a site layout, and a planned
+    page on it has no header block at all, because the header and footer sit in that
+    layout. A site this assembly built has headers on every page it added."""
+    layouts = current.get("layouts")
+    if not (isinstance(layouts, list) and layouts):
+        return False
+    by_path = {page_path(page): page for page in current.get("pages", [])}
+    return any(
+        not has_own_header(by_path[page["path"]]) for page in pages if page["path"] in by_path
     )
 
 
@@ -282,10 +293,10 @@ def require_header_source(pages: list[dict], structure: object) -> None:
     """Stop when a planned page already on the site has no header it can use.
 
     A site created from a Publisher Account template keeps its header and footer as
-    site-level blocks next to the common layout, and its pages have none of their own.
-    Assembly builds on such a site with a one-page plan: a page it adds gets a header
-    of its own, which would sit next to the shared one. A page with no header and a
-    site with no layout is broken, and stops too. Pages the plan creates pass.
+    site-level blocks next to the common layout, and its pages have none of their own;
+    pages the plan adds there drop the header and footer `add-page` gives them. A page
+    with no header on a site with no layout is broken, and stops. Pages the plan creates
+    pass.
     """
 
     current = structure_data(structure)
@@ -295,16 +306,12 @@ def require_header_source(pages: list[dict], structure: object) -> None:
     layouts = current.get("layouts")
     has_layout = isinstance(layouts, list) and bool(layouts)
     by_path = {page_path(page): page for page in current_pages}
-    template_pages = []
     for page_plan in pages:
         current_page = by_path.get(page_plan["path"])
         if current_page is None or has_own_header(current_page):
             continue
         if not has_layout:
             raise ValueError(NO_OWN_HEADER.format(path=page_plan["path"]))
-        template_pages.append(page_plan["path"])
-    if template_pages and len(pages) > 1:
-        raise ValueError(TEMPLATE_MULTI_PAGE)
 
 
 def adapt_to_template_page(modules: list[str], on_page: set) -> list[str]:
@@ -470,6 +477,7 @@ def bind_current_state(
                 }
             )
 
+    template_site = is_template_site(current, pages)
     for page_plan in pages:
         page_plan["page_id"] = None
         page_plan["current_blocks"] = []
@@ -478,6 +486,12 @@ def bind_current_state(
         page_plan["template_removals"] = []
         current_page = by_path.get(page_plan["path"])
         if current_page is None:
+            if template_site:
+                # The page `add-page` makes comes with its own header and footer; on a
+                # template site they would sit next to the shared ones, so they go.
+                page_plan["site_header"] = "layout"
+                for key in ("blocks", "requested_blocks"):
+                    page_plan[key] = adapt_to_template_page(page_plan[key], set())
             page_plan["template_removals"] = template_removals(page_plan)
             continue
         page_plan["page_id"] = current_page.get("_id")
@@ -488,14 +502,14 @@ def bind_current_state(
             raise ValueError(
                 "current pages[].blocks must contain full block objects from get-structure"
             )
-        layouts = current.get("layouts")
-        if (
-            isinstance(layouts, list)
-            and layouts
-            and not has_own_header(current_page)
-        ):
+        if template_site and not has_own_header(current_page, created_block_ids):
             page_plan["site_header"] = "layout"
-            on_page = {effective_module(block) for block in blocks}
+            # Blocks this assembly created are template blocks, not the template's own.
+            on_page = {
+                effective_module(block)
+                for block in blocks
+                if block.get("_id") not in created_block_ids
+            }
             for key in ("blocks", "requested_blocks"):
                 page_plan[key] = adapt_to_template_page(page_plan[key], on_page)
         omitted_on_page = {
@@ -718,6 +732,33 @@ def copy_plan(
     }, warnings
 
 
+def drop_pages_without_content(
+    pages: list[dict], structure: object | None
+) -> tuple[list[dict], list[str]]:
+    """Leave out a page the plan would add with nothing on it but a header and footer.
+
+    Its sections were omitted for missing content, so it would be an empty page. A page
+    already on the site, and the home page, stay.
+    """
+    existing = set()
+    if structure is not None:
+        existing = {page_path(page) for page in structure_data(structure).get("pages", [])}
+    kept, warnings = [], []
+    for page in pages:
+        if (
+            page["path"] != "/"
+            and page["path"] not in existing
+            and not set(page["blocks"]) - {"header", "footer"}
+        ):
+            warnings.append(
+                f"Page {page['path']} would have no sections: the content they need isn't "
+                "in the brief (see omissions). It isn't created."
+            )
+            continue
+        kept.append(page)
+    return kept, warnings
+
+
 def build_plan(
     brief: dict,
     current_structure: object | None = None,
@@ -728,10 +769,12 @@ def build_plan(
     preset = choose_preset(brief)
     catalog_groups = catalog_sections(brief, preset)
     pages, omissions = omit_unwritable_blocks(selected_pages(brief, preset), brief)
+    pages, empty_warnings = drop_pages_without_content(pages, current_structure)
     current_state = bind_current_state(
         pages, omissions, current_structure, created_block_ids
     )
     images, warnings = images_plan(brief, pages, created_block_ids, base_dir)
+    warnings[:0] = empty_warnings
     copy_section, copy_warnings = copy_plan(brief, pages, created_block_ids, base_dir)
     warnings.extend(copy_warnings)
     brand = brief.get("brand", {})

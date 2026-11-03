@@ -66,8 +66,8 @@ version-1 JSON object:
 
 - `game` — platforms and lifecycle.
 - `site` — proposed slug, locales, and `auto` or an explicit preset. On a site the
-  developer made from the Single-page shop template, use that site's slug and preset
-  `mobile-single-page`.
+  developer made from a Publisher Account template, use that site's slug; any preset
+  builds there.
 - `catalog.groups` — same-project groups that exist, or that `catalog-design`'s pending
   proposal creates under the same yes; `__all__` for all items of a supported type.
   Assembly's preflight checks every group exists before any site write.
