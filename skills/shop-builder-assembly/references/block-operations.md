@@ -105,14 +105,16 @@ The plan runs against the backup structure and rejects these before confirmation
 ## Appearance capability
 
 Ordinary `add` keeps using the stable creation pin `0.1.5`. An `add` operation may
-select a different artifact only through its explicit `version` field. The only verified
-candidate capability currently enabled is `0.2.5-qp-3256.0`; this is candidate-only
-support, not a stable-version claim. Updates and resets that use these fields require the
-target block's exact `values.version` to match that candidate. No other version is
-accepted by inference.
+select a different artifact only through its explicit `version` field. The planned
+candidate capability is `0.2.6-qp-3256.0`; this is candidate-only support, not a
+stable-version claim. Its artifact is pending release and CDN verification, so do not
+apply plans that target it until that evidence is recorded. Updates and resets that use
+these fields require the target block's exact `values.version` to match that candidate.
+No other version is accepted by inference.
 
-The candidate artifact defaults `themeId` to `site-builder`; `themeAppearance` is optional
-and stored as an open map. The operation paths below it are therefore leaf patches under
+The last verified candidate artifact defaulted `themeId` to `site-builder` and used an
+optional open `themeAppearance` map. Verify these defaults against the planned `0.2.6`
+artifact after release. The operation paths below it are leaf patches under
 `values.internalBlockValues`.
 
 On that candidate, the gate accepts the `themeId` values `site-builder`, `xsolla-pages`
@@ -137,7 +139,8 @@ actual loaded-font evidence; otherwise use a host font token or inherit the base
 `actionText` and `accent` are explicit, the pair must reach 4.5:1 contrast. Omitting
 `actionText` leaves the block's safe derived-color behavior in control.
 
-`0.2.5-qp-3256.0` is the verified exact-version source pin for appearance capability
-only. Older saved action-looking fields are opaque legacy data: this gate does not accept
+`0.2.6-qp-3256.0` is the planned exact-version source pin for appearance capability
+only. Its artifact is pending release and CDN verification. Older saved action-looking
+fields are opaque legacy data: this gate does not accept
 them as operation leaves or expose/configure their values. Ordinary leaf updates and
 resets leave them untouched.
