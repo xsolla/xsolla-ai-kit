@@ -32,11 +32,12 @@ event itself.
 
 Before sending an event:
 
-1. Confirm `POST /api/v2/events` on the public production base from
-   [`qp-api-contract.md`](qp-api-contract.md), including the publisher Basic
-   lane and required `publisher` body fields.
-2. Confirm that the event's publisher/project block matches the selected
-   production quest scope.
+1. Confirm `POST /api/v2/merchants/{merchant_id}/projects/{project_id}/events` on the
+   public production base against the live docs (snapshot in
+   [`qp-api-contract.md`](qp-api-contract.md)), including the publisher Basic lane.
+2. Confirm that the merchant and project ids in the path match the selected
+   production quest scope. The publisher comes from the path: the body has no
+   `publisher` block.
 3. If the contract marks the route unavailable to the publisher key, or the
    documented probe shows a router miss, stop and report that production event
    execution is not verified. Do not fetch OpenAPI.
@@ -49,6 +50,10 @@ Do not claim the quest was verified.
 
 ## Payload
 
+Snapshot of the live docs for `POST /api/v2/merchants/{merchant_id}/projects/{project_id}/events`.
+The body accepts only the fields below: any other field, including `publisher`, is
+rejected. If the live docs differ, the live docs win.
+
 ```json
 {
   "idempotency_key": "<uuid>",
@@ -57,20 +62,18 @@ Do not claim the quest was verified.
   "user_ids": [{"identifier_type": "xsolla_id", "value": "<uuid>"}],
   "quest_id": "<uuid>",
   "scope": "private",
-  "publisher": {"publisher_id": "<string>", "project_id": "<string>"},
   "properties": {"key": "string value"}
 }
 ```
 
 | Field | Required | Rules |
 |---|---|---|
-| `idempotency_key` | yes | valid, non-zero UUID; generate a fresh one per event |
+| `idempotency_key` | yes | a UUID; generate a fresh one per event, reuse the same one only when retrying that event |
 | `name` | yes | must match the quest trigger's `event_name` |
 | `client_timestamp` | yes | RFC3339 |
 | `user_ids` | yes | at least one entry |
 | `quest_id` | no | valid UUID when present; restricts matching to one quest |
-| `scope` | no | default `private` unless the developer asks otherwise |
-| `publisher` | yes for Basic lane | must match the quest's read-back scope; positive integer Xsolla IDs |
+| `scope` | no | one of `global`, `private`, `within_project`, `within_quest`, `within_publisher`; default `private` unless the developer asks otherwise |
 | `properties` | no | use only values accepted by the contract; never include secrets |
 
 `user_ids[].identifier_type` is `xsolla_id`, `gamer_id`, `guest_id` or `email`

@@ -42,6 +42,8 @@ Use the merchant/project-scoped Quest Platform route family in the
 | `GET /api/v2/merchants/{merchant_id}/projects/{project_id}/quests` | find an existing quest by paging |
 | `POST /api/v2/merchants/{merchant_id}/projects/{project_id}/quests` | create with `status: inactive` first, activate after approval |
 | `GET` or `PUT /api/v2/merchants/{merchant_id}/projects/{project_id}/quests/{quest_id}` | read or replace one quest |
+| `POST /api/v2/merchants/{merchant_id}/projects/{project_id}/onboard` | onboard the project; only through `qp_preflight.py` after the publisher's yes |
+| `POST /api/v2/merchants/{merchant_id}/projects/{project_id}/events` | send an event (snapshot of the live docs; body fields in [events.md](events.md#payload)) |
 
 Do not substitute an account-scoped, publisher-scoped or unscoped route from a
 different authentication lane. A route absent from the versioned contract is

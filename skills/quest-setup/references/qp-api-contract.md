@@ -47,6 +47,12 @@ production quest.
 | Create quest | `POST /api/v2/merchants/{merchant_id}/projects/{project_id}/quests` | Create with `status: inactive`, activate after approval |
 | Read quest | `GET /api/v2/merchants/{merchant_id}/projects/{project_id}/quests/{quest_id}` | Read the full quest document |
 | Replace quest | `PUT /api/v2/merchants/{merchant_id}/projects/{project_id}/quests/{quest_id}` | Replace the full quest document |
+| Onboard project | `POST /api/v2/merchants/{merchant_id}/projects/{project_id}/onboard` | Body `merchant_name` and `project_name` only. Runs only through `qp_preflight.py` after the publisher's yes ([Onboarding](auth-credentials.md#onboarding)) |
+| Send event | `POST /api/v2/merchants/{merchant_id}/projects/{project_id}/events` | Report a player action. Gate and payload in [events.md](events.md) |
+
+The request script also lists a `custom-blocks` route under the project path. It is not in
+the public docs. It exists only to detect the 403 case on creating a custom block
+(SKILL.md), and must not be called otherwise.
 
 There is no partial update route in this contract. Create the quest with
 `status: inactive`, then activate it in a later full-document `PUT`, after a fresh
@@ -75,23 +81,23 @@ guess another path or change environment based on the status alone.
 | Item | Value |
 |---|---|
 | Production base | `https://quests-platform.xsolla.com` |
-| Route | `POST /api/v2/events` |
-| Publisher auth lane | HTTP Basic `base64(merchant_id:api_key)` (merchant ID username, project API key password). A Publisher Account Bearer JWT is also accepted; this skill uses only the Basic lane. |
-| Publisher body scope | For the Basic lane, `publisher.publisher_id` and `publisher.project_id` are required positive integer Xsolla IDs in the JSON body. |
+| Route | `POST /api/v2/merchants/{merchant_id}/projects/{project_id}/events` |
+| Publisher auth lane | HTTP Basic `base64(merchant_id:api_key)` (merchant ID username, project API key password). A Publisher Account Bearer JWT is also accepted; this skill uses only the Basic lane. Player tokens are not accepted. |
+| Publisher scope | The publisher is taken from the path. The body has no `publisher` block: any field outside the table below, including `publisher`, is rejected. |
 | Credential check | The service validates the Basic header itself. The publisher never calls a credential-validation route, and this skill never uses a master or request API key. |
 
-Required payload fields (hand-written validator):
+Snapshot of the live docs page for this route (2026-11-03). The live docs win on any
+difference. Payload fields:
 
 | Field | Required | Rules |
 |---|---|---|
-| `idempotency_key` | yes | non-zero UUID |
-| `name` | yes | non-empty |
-| `client_timestamp` | yes | RFC3339 |
-| `user_ids` | yes | at least one entry; `identifier_type` one of `xsolla_id`, `gamer_id`, `guest_id`, `email`, with type-specific `value` rules |
-| `publisher` | yes for Basic lane | `publisher_id` and `project_id` positive integer strings |
-| `quest_id` | no | UUID when present |
-| `scope` | no | default `private`; also `global` or `within_project` |
-| `properties` | no | string map; never include secrets |
+| `idempotency_key` | yes | a UUID; new per event, the same one on a retry |
+| `name` | yes | the event name |
+| `client_timestamp` | yes | RFC 3339 |
+| `user_ids` | yes | at least one entry `{identifier_type, value}`; `identifier_type` one of `xsolla_id` (UUID), `gamer_id`, `guest_id`, `email` (must contain `@`); `value` not empty |
+| `quest_id` | no | string |
+| `scope` | no | `global`, `private`, `within_project`, `within_quest` or `within_publisher`; default `private` |
+| `properties` | no | object; never include secrets |
 
 Success body: `idempotency_key` echoed and `event_id` (new event identifier). Keep
 `event_id` for correlation.
@@ -108,7 +114,7 @@ Production probes without credentials (2026-09-30, no Authorization, no secrets)
 
 | Request | Status | Interpretation |
 |---|---:|---|
-| `POST https://quests-platform.xsolla.com/api/v2/events` with `Content-Type: application/json` and body `{}` | 401 | Routed (`{"error":"Authentication required"}`) |
+| `POST https://quests-platform.xsolla.com/api/v2/events` with `Content-Type: application/json` and body `{}` | 401 | Legacy route, no longer used by this skill. Only the project-scoped route above is called. |
 | `GET https://quests-platform.xsolla.com/openapi.json` | 404 | OpenAPI blocked on the production gateway |
 
 Publisher Basic lane: **yes**, a publisher project key may submit events on
