@@ -19,7 +19,7 @@ project overrides after preflight.
 | Site layout | `create-block --slug <slug> --block common-layout` (only if missing) | Pages already created | Site-level layout required by Editor, Publish, and preview; avoids suppressing template header/footer |
 | Blocks | `add-block`, `move-block`, and page-scoped `update-block` removal patches | Landing/page/block IDs | Ordered page block list |
 | Theme | `update-block` with `type:site` and `type:page`, through `apply_style.py` | Landing/page IDs, targeted patches | Site theme `theme.input`; pages on the site theme |
-| Assets | `upload-asset` | Landing ID, local file | Permanent CDN URL |
+| Assets | `upload-asset --type image`, through `apply_style.py` | Landing ID, local file | Permanent CDN URL in a block's background or logo |
 | Copy | `add-language`, `update-localization`, `update-many-localization` | Slug, page and `L:` IDs | Localized HTML |
 | Catalog | `update-block` on `newStore.components` | Same-project group IDs | Store sections |
 | Verify | `get-structure`, `get-localization`, `verify-website` | Slug | Plan comparison and readiness result |
@@ -66,7 +66,7 @@ any write. Every script that writes (`apply_plan.py`, `apply_style.py`,
   `{"block_id": …, "leaf": …, "value": …}`. It refuses anything else, an image not
   uploaded to the site, a gradient unlike the ones already on it, and an opaque color
   over a block that keeps its image.
-- **The theme, after the last apply run.** Export again, then run
+- **The theme and images, after the last apply run.** Export again, then run
   `scripts/apply_style.py <brief.json> --approved-plan approved-plan.json --run-report
   <report> --backup-dir <dir> --approved-test-projects <allowlist>`, with `--run-report`
   once for every earlier run, as above. It sets the approved `brand.theme` on the site
@@ -76,6 +76,14 @@ any write. Every script that writes (`apply_plan.py`, `apply_style.py`,
   (`theme.pages_to_site_theme`). It reads `get-localization` before and after, and stops
   if the text changed. A rerun writes nothing. When the CLI doesn't recalculate
   `calculatedTheme`, the report's `needs_human` has the Editor step for the handoff.
+  Then the images: each `brand.images` file must be the one the plan showed (its
+  `sha256`), at most 10 MB. It uploads each file once with `upload-asset --landing-id <id>
+  --file <path> --type image` and keeps the returned URL in `asset-cache.json` next to the
+  approved plan (`--asset-cache` to move it); a rerun reuses a cached URL that is still in
+  the site's asset list. It puts the URL in `values.background.img` or `values.logo.img`
+  of the planned module's blocks that the runs created, and of existing blocks only when
+  the plan listed them (`images[].existing_block_ids`). A block without that slot, a
+  federated block, and an opaque background color over the image go to `needs_human`.
 
 ## ID dependencies
 

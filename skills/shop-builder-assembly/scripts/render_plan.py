@@ -97,6 +97,8 @@ LIVEOPS_BLOCKS = {
     "sb-offer-chain": ("offer_chain", "no offer chain configured in the project"),
 }
 COMMON_LAYOUT = "common-layout"
+# Hero blocks: the presets use `leadGameSales`; template pages carry `lead` or `hero`.
+HERO_MODULES = ("leadGameSales", "lead", "hero")
 # The blocks `add-page` puts on a new store page with CLI 1.9.4 (test-findings.md).
 NEW_PAGE_TEMPLATE = [
     "header",
@@ -583,20 +585,93 @@ def theme_plan(brief: dict, pages: list[dict], structure: object | None) -> dict
     return {"site": site, "pages_to_site_theme": switch}
 
 
+def file_sha256(path: Path) -> str | None:
+    try:
+        return hashlib.sha256(path.read_bytes()).hexdigest()
+    except OSError:
+        return None
+
+
+def images_plan(
+    brief: dict,
+    pages: list[dict],
+    created_block_ids: frozenset,
+    base_dir: Path | None,
+) -> tuple[list[dict], list[str]]:
+    """Where each image in `brand.images` goes, for `apply_style.py`.
+
+    ``sha256`` binds the yes to the file's content; it is None without ``base_dir`` or
+    when the file is missing. ``existing_block_ids`` are blocks that were on the site
+    before this assembly and stay: the yes covers giving them the image only because the
+    plan lists them.
+    """
+    images, warnings = [], []
+    for image in brief.get("brand", {}).get("images", []):
+        page_modules = {}
+        for page in pages:
+            if image.get("page") not in (None, page["path"]):
+                continue
+            module = image["module"]
+            if module not in page["blocks"] and module in HERO_MODULES:
+                # A template page keeps its own hero (`lead`) in place of the preset's.
+                module = next((m for m in page["blocks"] if m in HERO_MODULES), module)
+            if module in page["blocks"]:
+                page_modules[page["path"]] = module
+        targets = [page for page in pages if page["path"] in page_modules]
+        if not targets:
+            warnings.append(
+                f"Image {image['file']} has no {image['module']} block to go on"
+                + (f" on {image['page']}" if image.get("page") else "")
+                + "; it isn't placed."
+            )
+        sha256 = None
+        if base_dir is not None:
+            path = Path(image["file"])
+            sha256 = file_sha256(path if path.is_absolute() else base_dir / path)
+            if sha256 is None:
+                warnings.append(f"Image {image['file']} was not found next to the brief.")
+        existing = []
+        for page in targets:
+            removed = {removal["block_id"] for removal in page.get("removals", [])}
+            existing.extend(
+                block["block_id"]
+                for block in page.get("current_blocks", [])
+                if block["module"] == page_modules[page["path"]]
+                and block["block_id"] not in removed
+                and block["block_id"] not in created_block_ids
+            )
+        images.append(
+            {
+                "file": image["file"],
+                "sha256": sha256,
+                "module": image["module"],
+                "slot": image["slot"],
+                "pages": [page["path"] for page in targets],
+                "page_modules": page_modules,
+                "existing_block_ids": existing,
+            }
+        )
+    return images, warnings
+
+
 def build_plan(
     brief: dict,
     current_structure: object | None = None,
     created_block_ids: frozenset = frozenset(),
+    base_dir: Path | None = None,
 ) -> dict:
+    """``base_dir`` is the brief's folder, where `brand.images` files are read from."""
     preset = choose_preset(brief)
     catalog_groups = catalog_sections(brief, preset)
     pages, omissions = omit_unwritable_blocks(selected_pages(brief, preset), brief)
     current_state = bind_current_state(
         pages, omissions, current_structure, created_block_ids
     )
-    warnings = []
+    images, warnings = images_plan(brief, pages, created_block_ids, base_dir)
     brand = brief.get("brand", {})
-    if not brand.get("logo"):
+    if not brand.get("logo") and not any(
+        image.get("slot") == "logo" for image in brand.get("images", [])
+    ):
         warnings.append(
             "No logo supplied; keep the template text identity until approved."
         )
@@ -621,7 +696,7 @@ def build_plan(
         "requires_confirmation": True,
         "publication": "forbidden",
         # Matches SKILL.md "Assembly order": apply_plan.py runs pages through catalog
-        # links, apply_style.py the theme after the last apply run; copy and assets are
+        # links, apply_style.py the theme and images after the last apply run; copy is
         # hand-run.
         "order": [
             "backup",
@@ -631,7 +706,8 @@ def build_plan(
             "blocks",
             "catalog_links",
             "theme",
-            "copy_assets",
+            "images",
+            "copy",
             "verify",
             "preview",
         ],
@@ -651,6 +727,7 @@ def build_plan(
         "featured_skus": brief["catalog"].get("featured_skus", []),
         "brand": brand,
         "theme": theme_plan(brief, pages, current_structure),
+        "images": images,
         "content": brief.get("content", {}),
         "sources": brief["sources"],
         "omissions": omissions,
@@ -666,9 +743,9 @@ def build_plan(
             "catalog_links",
         ],
         # Applied by apply_style.py after the last apply_plan.py run.
-        "style_phases": ["theme"],
+        "style_phases": ["theme", "images"],
         "unsupported_phases": [
-            "copy_assets",
+            "copy",
             "verify",
             "preview",
         ],
@@ -812,7 +889,10 @@ def main() -> int:
         return 1
     try:
         plan = build_plan(
-            brief, structure, created_block_ids(report) if report else frozenset()
+            brief,
+            structure,
+            created_block_ids(report) if report else frozenset(),
+            args.brief.resolve().parent,
         )
         if structure is not None:
             require_header_source(plan["pages"], structure)

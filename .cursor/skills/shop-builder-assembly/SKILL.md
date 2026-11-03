@@ -119,8 +119,8 @@ when the preview session expired, is a request, not a new approval.
 ## Assembly order
 
 After confirmation, `apply_plan.py` applies steps 1–5 in this dependency order, and
-`scripts/apply_style.py` step 6 after the last apply run (run 2 for a new site), from a
-fresh backup. Step 7 has no script yet (R1 in the
+`scripts/apply_style.py` steps 6–7 after the last apply run (run 2 for a new site), from
+a fresh backup. Step 8 has no script yet (R1 in the
 [spec](../nocode-shop-setup/references/storefront-by-default.md)): run it by hand with the
 CLI commands in [CLI operations](references/cli-operations.md), as the plan showed.
 
@@ -139,10 +139,10 @@ CLI commands in [CLI operations](references/cli-operations.md), as the plan show
 6. **Theme** — `apply_style.py` sets the brief's `brand.theme` on the site theme and puts
    planned pages on it; a page's own theme overrides the site's. Take the palette from the
    game's art ([visual style](references/visual-style.md)). Hand over its `needs_human`.
-7. **Copy and assets** — upload local assets, then patch returned CDN URLs; write
-   localized HTML through localization commands, never through block value patches.
-   Give sections the game's art and gradients; an opaque `background.color` hides the
-   image under it. See [visual style](references/visual-style.md).
+7. **Images** — it uploads each `brand.images` file once and puts the CDN URL in the
+   block's background or logo. An opaque `background.color` hides the image under it.
+8. **Copy** — write localized HTML through localization commands, never through block
+   value patches. See [visual style](references/visual-style.md).
 
 Use pre-written scripts for repeated work; never pass `--force` or invent HTTP or
 `curl` workarounds. If an operation requires `--force`, stop and report it.

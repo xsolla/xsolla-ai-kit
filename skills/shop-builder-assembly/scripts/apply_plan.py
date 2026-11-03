@@ -1152,9 +1152,9 @@ def main() -> int:
                     "a complete verified backup created before confirmation is required"
                 )
             saved_structure = backup_structure(args.backup_dir)
-            plan = build_plan(brief, saved_structure, created)
+            plan = build_plan(brief, saved_structure, created, args.brief.resolve().parent)
         else:
-            plan = build_plan(brief)
+            plan = build_plan(brief, base_dir=args.brief.resolve().parent)
 
         check_approval(args, plan, approved, report)
         approved_id = approved["confirmation_id"]
@@ -1297,7 +1297,7 @@ def main() -> int:
                     "pending_phases": plan["style_phases"] + plan["unsupported_phases"],
                     "next_action": (
                         "Back up the site, then run apply_style.py under the same yes for "
-                        "the theme."
+                        "the theme and images."
                     ),
                     "warnings": (
                         [CUSTOM_CODE_WARNING]

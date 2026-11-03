@@ -74,6 +74,7 @@ project identity to approval evidence; a self-declared brief is not enough.
 | `catalog.featured_skus` | Optional existing SKUs highlighted by the preset; assembly does not create products. |
 | `catalog.liveops` | Optional LiveOps features active in the same project, or created and activated by `catalog-design`'s pending proposal under the same yes: `promo_codes`, `reward_chain`, `offer_chain`. Each one lets the preset add its block (`promocodes`, `rewards`, `sb-offer-chain`); assembly configures none of them. |
 | `brand` | Optional `logo`, `hero_image`, color, radius, and font inputs. Missing values use preset defaults. |
+| `brand.images` | Optional list of local image files (`.png`, `.jpg`, `.webp`, `.svg` and the other types `upload-asset` takes), each `{"file", "module", "slot"}` with an optional `"page"`. `slot` is `background` or `logo`; `file` is relative to the brief. A hero image (`leadGameSales`) goes on a template page's own hero (`lead`). `apply_style.py` uploads and places them. |
 | `brand.theme` | Optional site palette that `apply_style.py` sets: any of `bg`, `overlay`, `border`, `primary`, `secondary`, `text` as `#rrggbb`, and `isDark` as `true` or `false`. Without it, the site keeps its theme. |
 | `content` | Optional approved copy, page overrides, FAQ, requirements, event copy, and CTA labels. |
 | `sources` | Provenance such as `publisher_answers`, `description`, `external_store`, or `figma`. |

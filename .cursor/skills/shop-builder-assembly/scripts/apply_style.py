@@ -1,10 +1,15 @@
 #!/usr/bin/env python3
-"""Apply the approved site theme after the last apply_plan.py run, under the same yes.
+"""Apply the approved theme and images after the last apply_plan.py run, under the same yes.
 
-Sets the site theme's colors (`theme.input`) to the palette in the approved plan's brand,
-and switches the planned pages to the site theme. Only keys the site theme already has
-are patched, each in the format its current value has. A page that existed before this
-assembly is switched only when the approved plan listed it. Never publishes.
+Theme: sets the site theme's colors (`theme.input`) to the palette in the approved plan's
+brand, and switches the planned pages to the site theme. Only keys the site theme already
+has are patched, each in the format its current value has.
+
+Images: uploads each approved file once (an asset cache keeps the URL across runs) and
+puts its CDN URL in the block slot the plan named.
+
+A page or block that existed before this assembly changes only when the approved plan
+listed it. Never publishes.
 """
 
 from __future__ import annotations
@@ -31,14 +36,21 @@ from apply_plan import (
     structure,
     verified_backup,
 )
+from patch_backgrounds import asset_urls, is_opaque
 from render_plan import (
     canonical_hash,
+    created_block_ids,
+    effective_module,
+    file_sha256,
     load_approved_plan,
     load_run_report,
     structure_hash,
     uses_own_theme,
 )
-from validate_shop_brief import THEME_COLORS, load_brief, validate
+from validate_shop_brief import IMAGE_SLOTS, load_brief, validate
+
+# `upload-asset` takes files up to 10 MB.
+MAX_UPLOAD_BYTES = 10 * 1024 * 1024
 
 RECALCULATE_IN_EDITOR = (
     "Recalculate the theme in the Site Builder editor: the CLI saved the colors but "
@@ -120,9 +132,13 @@ def site_theme_changes(site_theme: object, palette: dict) -> tuple[list[dict], d
     and the keys left alone with the reason."""
     inputs = site_theme.get("input") if isinstance(site_theme, dict) else None
     if not isinstance(inputs, dict):
-        return [], {}, [
-            {"key": key, "reason": "the site theme has no input colors"} for key in palette
-        ]
+        reason = "the site theme has no input colors"
+        if isinstance(site_theme, dict) and isinstance(site_theme.get("mainColors"), dict):
+            reason = (
+                "the site theme still has the older mainColors shape, which Site Builder "
+                "migrates to theme.input; set the colors in the editor's Theme panel"
+            )
+        return [], {}, [{"key": key, "reason": reason} for key in palette]
     patches, written, skipped = [], {}, []
     for key, value in palette.items():
         if key not in inputs:
@@ -158,12 +174,296 @@ def localization(slug: str) -> object:
     return data(run_json("shopbuilder", "get-localization", "--slug", slug))
 
 
+def write_changes(slug: str, landing_id: str, changes: dict, what: str) -> dict:
+    """Send one `update-block` batch, then return the saved structure. Stops if the
+    site's text changed: a patch that hits a string deletes it."""
+    text_before = localization(slug)
+    run_json(
+        "shopbuilder",
+        "update-block",
+        "--landing-id",
+        landing_id,
+        "--data",
+        json.dumps(changes, separators=(",", ":")),
+    )
+    saved = structure(slug)
+    if localization(slug) != text_before:
+        raise RuntimeError(
+            f"the site's text changed during the {what} patch; stop and compare "
+            "get-localization with the backup"
+        )
+    return saved
+
+
+def theme_phase(
+    slug: str, landing_id: str, current: dict, approved: dict, created_pages: set
+) -> tuple[dict, list[str], dict]:
+    """Set the approved palette and put the planned pages on the site theme."""
+    palette = approved.get("brand", {}).get("theme")
+    if not palette:
+        return {"status": "kept: no palette in the approved plan"}, [], current
+    site_patches, written, skipped = site_theme_changes(current.get("theme"), palette)
+    listed = set(approved.get("theme", {}).get("pages_to_site_theme", []))
+    changes: dict[str, dict] = {}
+    if site_patches:
+        changes["site"] = {"type": "site", "id": landing_id, "patches": site_patches}
+    switched, needs_human = [], []
+    for index, page_plan in enumerate(approved.get("pages", [])):
+        page = page_for_path(current, page_plan["path"])
+        if page is None or not isinstance(page.get("_id"), str):
+            raise RuntimeError(f"page {page_plan['path']} is missing; finish apply_plan.py first")
+        if not uses_own_theme(page):
+            continue
+        if page_plan["path"] in listed or page_plan["path"] in created_pages:
+            changes[f"page{index}"] = {
+                "type": "page",
+                "id": page["_id"],
+                "patches": [{"op": "replace", "path": ["theme", "enabled"], "value": False}],
+            }
+            switched.append(page_plan["path"])
+        else:
+            needs_human.append(OWN_THEME_IN_EDITOR.format(path=page_plan["path"]))
+
+    recalculated = None
+    if changes:
+        calculated_before = (current.get("theme") or {}).get("calculatedTheme")
+        current = write_changes(slug, landing_id, changes, "theme")
+        saved_inputs = (current.get("theme") or {}).get("input") or {}
+        missing = [
+            key
+            for key, value in written.items()
+            if not (
+                saved_inputs.get(key) == value
+                if key == "isDark"
+                else same_color(saved_inputs.get(key), value)
+            )
+        ]
+        missing += [path for path in switched if uses_own_theme(page_for_path(current, path))]
+        if missing:
+            raise RuntimeError("the theme change did not persist: " + ", ".join(missing))
+        if site_patches:
+            recalculated = (current.get("theme") or {}).get("calculatedTheme") != calculated_before
+            if not recalculated:
+                colors = ", ".join(
+                    f"{key} {value}" for key, value in palette.items() if key != "isDark"
+                )
+                needs_human.insert(0, RECALCULATE_IN_EDITOR.format(colors=colors))
+    result = {
+        "patched": sorted(written),
+        "unchanged": sorted(set(palette) - set(written) - {item["key"] for item in skipped}),
+        "skipped": skipped,
+        "pages_to_site_theme": switched,
+        "recalculated": recalculated,
+    }
+    return result, needs_human, current
+
+
+def image_path(base_dir: Path, image: dict) -> Path:
+    path = Path(image["file"])
+    return path if path.is_absolute() else base_dir / path
+
+
+def check_image_files(base_dir: Path, images: list[dict]) -> None:
+    """Stop before any upload unless every file is there, small enough, and the one the
+    plan showed."""
+    for image in images:
+        path = image_path(base_dir, image)
+        if image.get("sha256") is None:
+            raise RuntimeError(
+                f"{image['file']} wasn't next to the brief when the plan was rendered; add "
+                "it, render the plan again and show it"
+            )
+        if not path.is_file():
+            raise RuntimeError(f"{image['file']} is missing")
+        if path.stat().st_size > MAX_UPLOAD_BYTES:
+            raise RuntimeError(f"{image['file']} is over the 10 MB upload limit")
+        if file_sha256(path) != image["sha256"]:
+            raise RuntimeError(
+                f"{image['file']} changed after the plan was approved; showing the new "
+                "image needs a new yes"
+            )
+
+
+def slot_problem(block: dict, slot: str) -> str | None:
+    """Why the block's slot can't take an image, or None when it can."""
+    values = block.get("values")
+    if not isinstance(values, dict) or isinstance(values.get("blockId"), str):
+        return "it is a federated block, whose wrapper isn't patched"
+    if not isinstance(values.get(IMAGE_SLOTS[slot][1]), dict):
+        return f"it has no {slot} to put an image in"
+    return None
+
+
+def image_patch(block: dict, slot: str, url: str) -> dict | None:
+    """The patch that puts ``url`` in the block's slot, or None when it is already there.
+    Call it only when ``slot_problem`` found none."""
+    path = IMAGE_SLOTS[slot]
+    parent = block["values"][path[1]]
+    if parent.get("img") == url:
+        return None
+    return {"op": "replace" if "img" in parent else "add", "path": list(path), "value": url}
+
+
+def load_cache(path: Path, landing_id: str) -> dict[str, str]:
+    """Uploads an earlier run made for this site: file sha256 -> CDN URL."""
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return {}
+    except (OSError, json.JSONDecodeError) as exc:
+        raise RuntimeError(f"cannot read the asset cache {path}: {exc}") from exc
+    if not isinstance(value, dict) or value.get("landing_id") != landing_id:
+        return {}
+    uploads = value.get("uploads")
+    return {
+        key: url
+        for key, url in (uploads.items() if isinstance(uploads, dict) else [])
+        if isinstance(key, str) and isinstance(url, str)
+    }
+
+
+def save_cache(path: Path, landing_id: str, uploads: dict[str, str]) -> None:
+    temporary = path.with_name(path.name + ".tmp")
+    temporary.write_text(
+        json.dumps({"landing_id": landing_id, "uploads": uploads}, indent=2), encoding="utf-8"
+    )
+    temporary.replace(path)
+
+
+def upload(landing_id: str, path: Path) -> str:
+    result = data(
+        run_json(
+            "shopbuilder",
+            "upload-asset",
+            "--landing-id",
+            landing_id,
+            "--file",
+            str(path),
+            "--type",
+            "image",
+        )
+    )
+    url = result.get("url") if isinstance(result, dict) else None
+    if not isinstance(url, str) or not url.startswith("https://"):
+        raise RuntimeError(f"upload-asset returned no URL for {path.name}")
+    return url
+
+
+def images_phase(
+    slug: str,
+    landing_id: str,
+    current: dict,
+    approved: dict,
+    created: frozenset,
+    base_dir: Path,
+    site_assets: set[str],
+    cache_path: Path,
+) -> tuple[list[dict], list[str]]:
+    """Upload the approved images once each and put them on their blocks."""
+    images = approved.get("images", [])
+    if not images:
+        return [], []
+    check_image_files(base_dir, images)
+    needs_human: list[str] = []
+    targets: list[tuple[dict, dict]] = []
+    for image in images:
+        allowed = set(image.get("existing_block_ids", [])) | created
+        for path in image["pages"]:
+            module = image.get("page_modules", {}).get(path, image["module"])
+            page = page_for_path(current, path) or {}
+            for block in page.get("blocks", []):
+                if effective_module(block) != module:
+                    continue
+                if block.get("_id") in allowed:
+                    targets.append((image, block))
+                else:
+                    needs_human.append(
+                        f"The {module} block on {path} existed before this "
+                        f"assembly and the plan didn't list it; set its image to "
+                        f"{image['file']} in the editor if it should have it."
+                    )
+
+    cache = load_cache(cache_path, landing_id)
+    urls: dict[str, str] = {}
+    results: list[dict] = []
+    changes: dict[str, dict] = {}
+    written: list[tuple[str, tuple, str]] = []
+    for image, block in targets:
+        module = effective_module(block)
+        entry = {
+            "file": image["file"],
+            "block_id": block["_id"],
+            "module": module,
+            "slot": image["slot"],
+        }
+        problem = slot_problem(block, image["slot"])
+        if problem is not None:
+            # Nothing to put it on, so nothing is uploaded for it.
+            results.append({**entry, "status": "skipped", "reason": problem})
+            needs_human.append(
+                f"{image['file']} wasn't put on the {module} block: {problem}."
+            )
+            continue
+        sha = image["sha256"]
+        if sha not in urls:
+            cached = cache.get(sha)
+            if cached in site_assets:
+                urls[sha] = cached
+            else:
+                urls[sha] = upload(landing_id, image_path(base_dir, image))
+                cache[sha] = urls[sha]
+                save_cache(cache_path, landing_id, cache)
+        patch = image_patch(block, image["slot"], urls[sha])
+        entry["url"] = urls[sha]
+        if patch is not None:
+            changes.setdefault(
+                block["_id"], {"type": "block", "id": block["_id"], "patches": []}
+            )["patches"].append(patch)
+            written.append((block["_id"], IMAGE_SLOTS[image["slot"]], urls[sha]))
+            entry["status"] = "set"
+            background = block["values"].get("background")
+            color = background.get("color") if isinstance(background, dict) else None
+            if image["slot"] == "background" and isinstance(color, str) and is_opaque(color):
+                needs_human.append(
+                    f"The {module} block's background color {color} is opaque "
+                    "and hides its image; set a color with alpha below 1 with "
+                    "patch_backgrounds.py."
+                )
+        else:
+            entry["status"] = "unchanged"
+        results.append(entry)
+
+    if changes:
+        saved = write_changes(slug, landing_id, changes, "image")
+        blocks = {
+            block.get("_id"): block
+            for page in saved.get("pages", [])
+            for block in page.get("blocks", [])
+            if isinstance(block, dict)
+        }
+        missing = []
+        for block_id, path, url in written:
+            node: object = blocks.get(block_id, {})
+            for key in path:
+                node = node.get(key) if isinstance(node, dict) else None
+            if node != url:
+                missing.append(f"{block_id} {path[1]}")
+        if missing:
+            raise RuntimeError("the images did not persist: " + ", ".join(missing))
+    return results, needs_human
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("brief", type=Path)
     parser.add_argument("--approved-plan", type=Path, required=True)
     parser.add_argument("--run-report", type=Path, action="append", required=True)
     parser.add_argument("--backup-dir", type=Path, required=True)
+    parser.add_argument(
+        "--asset-cache",
+        type=Path,
+        help="uploads earlier runs made; default: asset-cache.json next to the approved plan",
+    )
     parser.add_argument("--approved-test-projects", type=Path)
     args = parser.parse_args()
     try:
@@ -177,21 +477,23 @@ def main() -> int:
         slug = brief["site"]["slug"]
         reports = [load_run_report(path) for path in args.run_report]
         check_reports(reports, args.run_report, approved, slug)
-        palette = approved.get("brand", {}).get("theme")
-        if not palette:
+        base_dir = args.brief.resolve().parent
+        if not approved.get("brand", {}).get("theme") and not approved.get("images"):
             print(
                 json.dumps(
                     {
                         "operation_succeeded": True,
-                        "status": "theme-kept",
+                        "status": "nothing-to-apply",
                         "slug": slug,
                         "theme": "no palette in the approved plan; the site keeps its theme",
+                        "images": [],
                         "published": False,
                     },
                     indent=2,
                 )
             )
             return 0
+        check_image_files(base_dir, approved.get("images", []))
 
         run_preflight(args.brief, args.approved_test_projects)
         check_cli_context(brief["project"])
@@ -208,99 +510,36 @@ def main() -> int:
         ):
             raise RuntimeError("the site isn't the one the run reports describe")
 
-        site_patches, written, skipped = site_theme_changes(current.get("theme"), palette)
-        listed = set(approved.get("theme", {}).get("pages_to_site_theme", []))
         created_pages = {
             path
             for report in reports
             for path in report.get("created_pages", [])
             if isinstance(path, str)
         }
-        changes: dict[str, dict] = {}
-        if site_patches:
-            changes["site"] = {"type": "site", "id": landing_id, "patches": site_patches}
-        switched, needs_human = [], []
-        for index, page_plan in enumerate(approved.get("pages", [])):
-            page = page_for_path(current, page_plan["path"])
-            if page is None or not isinstance(page.get("_id"), str):
-                raise RuntimeError(
-                    f"page {page_plan['path']} is missing; finish apply_plan.py first"
-                )
-            if not uses_own_theme(page):
-                continue
-            if page_plan["path"] in listed or page_plan["path"] in created_pages:
-                changes[f"page{index}"] = {
-                    "type": "page",
-                    "id": page["_id"],
-                    "patches": [
-                        {"op": "replace", "path": ["theme", "enabled"], "value": False}
-                    ],
-                }
-                switched.append(page_plan["path"])
-            else:
-                needs_human.append(OWN_THEME_IN_EDITOR.format(path=page_plan["path"]))
-
-        recalculated = None
-        if changes:
-            text_before = localization(slug)
-            calculated_before = (current.get("theme") or {}).get("calculatedTheme")
-            run_json(
-                "shopbuilder",
-                "update-block",
-                "--landing-id",
-                landing_id,
-                "--data",
-                json.dumps(changes, separators=(",", ":")),
-            )
-            saved = structure(slug)
-            if localization(slug) != text_before:
-                raise RuntimeError(
-                    "the site's text changed during the theme patch; stop and compare "
-                    "get-localization with the backup"
-                )
-            saved_inputs = (saved.get("theme") or {}).get("input") or {}
-            missing = [
-                key
-                for key, value in written.items()
-                if not (
-                    saved_inputs.get(key) == value
-                    if key == "isDark"
-                    else same_color(saved_inputs.get(key), value)
-                )
-            ]
-            missing += [
-                path for path in switched if uses_own_theme(page_for_path(saved, path))
-            ]
-            if missing:
-                raise RuntimeError("the theme change did not persist: " + ", ".join(missing))
-            if site_patches:
-                recalculated = (
-                    (saved.get("theme") or {}).get("calculatedTheme") != calculated_before
-                )
-                if not recalculated:
-                    colors = ", ".join(
-                        f"{key} {value}" for key, value in palette.items() if key != "isDark"
-                    )
-                    needs_human.insert(0, RECALCULATE_IN_EDITOR.format(colors=colors))
-
+        theme, theme_needs, current = theme_phase(
+            slug, landing_id, current, approved, created_pages
+        )
+        images, image_needs = images_phase(
+            slug,
+            landing_id,
+            current,
+            approved,
+            frozenset().union(*(created_block_ids(report) for report in reports)),
+            base_dir,
+            asset_urls(args.backup_dir) if approved.get("images") else set(),
+            args.asset_cache or args.approved_plan.resolve().parent / "asset-cache.json",
+        )
         print(
             json.dumps(
                 {
                     "operation_succeeded": True,
-                    "status": "theme-applied",
+                    "status": "style-applied",
                     "approved_confirmation_id": approved["confirmation_id"],
                     "slug": slug,
                     "landing_id": landing_id,
-                    "theme": {
-                        "patched": sorted(written),
-                        "unchanged": sorted(
-                            set(palette) - set(written) - {item["key"] for item in skipped}
-                        ),
-                        "skipped": skipped,
-                        "pages_to_site_theme": switched,
-                        "recalculated": recalculated,
-                    },
-                    "needs_human": needs_human,
+                    "theme": theme,
+                    "images": images,
+                    "needs_human": theme_needs + image_needs,
                     "pending_phases": approved.get("unsupported_phases", []),
                     "published": False,
                 },
@@ -309,7 +548,7 @@ def main() -> int:
         )
         return 0
     except (OSError, RuntimeError, ValueError) as exc:
-        print(f"Theme failed: {exc}", file=sys.stderr)
+        print(f"Style failed: {exc}", file=sys.stderr)
         return 1
 
 
