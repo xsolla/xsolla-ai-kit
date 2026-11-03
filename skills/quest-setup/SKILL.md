@@ -22,6 +22,8 @@ metadata:
 
 # Quest setup
 
+> **No credential inspection, ever.** Never run `ls`, `cat`, `sed`, `grep`, `head` or any other read on the working folder, on a `.env` file or on any config file to look for credentials, not even to redact them. The ONLY way to check access is `qp_preflight.py check` or `qp_request.py whoami`. If access is missing, reply in the access-missing shape of [reply-format.md](references/reply-format.md#examples) and stop.
+
 Quests and the Quests block on a Shop Builder site. Every reply follows
 [reply-format.md](references/reply-format.md): one bold line, up to four bullets, one `Next:` ask. The bold line comes first, with no text before it. Never name environment variables, file paths, tokens, routes, tools, tickets
 or other skills in a reply. Never open `.env`, environment variables or config folders,
@@ -58,6 +60,8 @@ Find the case, load only its reference, and follow its confirmation and readback
 | C15 | Y | Login event with Xsolla ID: events.md | List quests, report any existing login quest, ask ONE question (new quest or edit it); show the dynamic_event trigger and name, ask yes | Get quest trigger |
 | C16 | N | Quest status: verification.md | n/a | Get quest status (read-only) |
 
+C11 with exactly one hidden Quests block on the chosen site: propose the show operation in the same turn, never only a summary. C8 on a block whose reported version is below the pinned theme-capable candidate in [block-versions.md](references/block-versions.md): say so, name that pinned candidate version, and offer the upgrade as a SEPARATE step with its own yes; do not just refuse. C6 test event: it is for a real player of the publisher's project, the Xsolla ID must come from the publisher (a real UUID, never invented or reused), and the quest must be active for the event to run it (activation is its own yes); see [events.md](references/events.md#test-events). C5 "add a reward" appends an action and keeps every existing node and connection ([rewards.md](references/rewards.md#adding-a-reward)).
+
 Notes for the cases: during verification runs, cleanup pauses a quest and never deletes it; the Delete flow (Flow step 7) stays available on its own explicit yes. Remove means hide, never a delete. C15 uses a `dynamic_event` trigger; an "add" request never modifies an existing quest (check for an existing login quest first, see events.md); the docs name no login event, so do not invent or rename an event name on an active quest, and never send `autoEvents` or `loginEventName`. For a Backpack Overlay action, say it is blocked on upstream v2 and make no write. Theme and custom design: [quests-block-brief.md](references/quests-block-brief.md#block-contract-facts-for-every-write).
 
 Reward text editability on a block card is observed block behavior, not a rule this skill enforces: report what the block does, and do not promise it.
@@ -81,7 +85,7 @@ After any completed quest or block change, tell the publisher to publish in Publ
    gateway, the shop's public base URL, or an ad hoc route, even after a failure. Never
    suggest switching environments. Shop Builder writes go only to an approved test
    project ([quests-block-flow.md](references/quests-block-flow.md)).
-4. **No credential inspection.** Never open `.env`, the environment or any credential file,
+4. **No credential inspection.** This is the boxed rule at the top of this file. Never open `.env`, the environment or any credential file,
    never grep for credential patterns, never write a helper that reads or sends credentials,
    and never make a direct HTTP call to Quest Platform or the Store admin catalog. Those reads
    and writes go only through the request script in [Credential](references/auth-credentials.md#credential),
@@ -96,6 +100,8 @@ After any completed quest or block change, tell the publisher to publish in Publ
 7. **Stop points.** End the turn after the proposal, after the publication read-back
    (offer the event there, never send it), and after the event read-back.
 8. **One create, inactive first.** Create the quest inactive, read it back, then activate.
+   The create proposal says so in one bullet: "Status after your yes: ACTIVE (live) from
+   <start> to <end>" (or "INACTIVE (not live)" if the publisher wants it left inactive).
    Never `POST` again for the same proposal:
    [Publication after approval](references/quest-publish.md#publication-after-approval).
 9. **Stop on auth failures.** Never switch credentials, lanes or routes on your own.
@@ -111,9 +117,10 @@ After any completed quest or block change, tell the publisher to publish in Publ
 11. **Image URLs must be https.** This covers block images and a quest's `public_view.image_url`. If the publisher gives an `http` URL,
     stop before any plan with the rejected-value shape (https only). Never change it to https or build
     a plan with it ([reply-format.md](references/reply-format.md#examples)).
-12. **No stray files.** Parse command output in a pipe. The only files you write are the gate's brief, backup and approved plan in the one `mktemp -d` folder from [Gate commands](references/quests-block-brief.md#gate-commands); never in the working folder.
+12. **No stray files.** Parse command output in a pipe. The only files you write are the gate's brief, backup and approved plan, and each request body, in the one `mktemp -d` folder from [Gate commands](references/quests-block-brief.md#gate-commands); never in the working folder. Write each request body to a file in that folder and pass it with `--body-file <that file>`. Never pipe a body through `/dev/stdin` or a heredoc into `qp_request.py`: the script rejects it. Never retry a failed write in a loop: report it after one failure.
 13. **Named sites.** Write only to the site the publisher chose under [Which shop](references/quests-block-flow.md#which-shop). A site they name that is not that choice, or one they say must not be touched, gets no plan and no write.
 14. **Block reward comes from the quest.** The reward text and image on a Quests block card come from the quest's reward (not its description); as observed block behavior they are not changed on the block. A request to change a card's reward gets no tool call, no reads and no write, only the reward-change reply in [reply-format.md](references/reply-format.md#examples): bold "The reward on the card comes from the quest, so it can't be changed on the block.", one bullet "To show a different reward, change the quest's reward.", then "Next: want me to set up that quest edit?". A yes goes to [Editing](references/quest-edit.md#editing).
+15. **Facts only.** A status or list reply names only the quests, values and history that appear in the data just read. Never infer or add history ("never activated", "older copies of X", variant names) that the read did not return. If asked about history, say the read does not show it.
 
 ## Prerequisites
 
