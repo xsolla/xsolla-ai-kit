@@ -96,10 +96,9 @@ built.
 
 ## Store or game home
 
-- A **game home** is a Game Web Portal: a PC game home around the store, with news,
-  rewards, community, and an optional launcher. It is **PC only**. When the game ships
-  only on the App Store or Google Play, don't offer it: build a store and say why in one
-  line.
+- A **game home** is a Game Web Portal: a home around the store, with news, rewards and
+  community, for a game on PC, the App Store or Google Play. Only a PC game gets the
+  optional launcher section.
 - An existing site with pages `/news`, `/rewards`, and `/store` is a game home. The
   partner created it from the Multi-page web portal template. A site without those
   pages is a store.
@@ -117,7 +116,7 @@ answer, so a reply such as "all recommended" settles it:
 
 - which side, only when the rule above says to ask;
 - the project link, or switching the CLI to it with sandbox off, only when check 2 says;
-- store or game home, only for a PC game;
+- store or game home;
 - the test-project approver and approval link, only when the project isn't listed. This
   question has **no** recommended answer: only the user can give it;
 - build without the common layout or wait, only when the CLI lacks `create-block`;
