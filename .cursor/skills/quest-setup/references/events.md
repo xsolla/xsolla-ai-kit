@@ -17,8 +17,16 @@ For "add a login event that uses my Xsolla ID", the live docs support this much 
   invent an event name. Ask the publisher for the name, or propose one and label it as a proposal.
 - Never use `autoEvents` or `loginEventName` on the block: both are removed in 0.2.8.
 
-Show the trigger and event name, wait for a yes in the same conversation, make the change, then read
-the quest back and report the trigger as saved. Say that the site must send this event itself.
+An "add" request never modifies an existing quest. First list the quests (two calls, see SKILL.md)
+and check whether a quest already uses a login-type trigger. Tell the publisher what exists (quest
+name, event name, status) and ask ONE question: create a new quest, or edit that quest. An edit then
+needs its own before/after diff and yes ([quest-edit.md](quest-edit.md#editing)). The event name
+comes from the live docs and the site's real event. Never invent or rename a live event name on an
+active quest, and never re-point an existing quest's trigger as part of an "add".
+
+For a new quest, show the trigger and event name, wait for a yes in the same conversation, make the
+change, then read the quest back and report the trigger as saved. Say that the site must send this
+event itself.
 
 ## Production event gate
 
