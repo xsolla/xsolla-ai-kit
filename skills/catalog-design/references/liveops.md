@@ -35,6 +35,10 @@ Facts that change the proposal:
 - **Chains ignore item settings.** Offer chains and daily rewards ignore the item's purchase
   limits, scheduled availability, promotions and personalization. An offer chain has at most 30
   steps, a reward chain 31. Only one daily chain of the login-reward type can be active at a time.
+  Each offer chain or reward chain step takes one reward item, and offer chain steps accept only
+  virtual items and bundles: more fail with `[0401-6208]`, other types with `[0401-6211]`. A
+  daily chain's type can't change after it is created, and a `calendar_hard` chain ends after
+  its last day unless it is recurrent.
 - **Activation.** Promotions are created inactive: activate them with `is_enabled: true` or
   `xsolla liveops activate-promotions`. Promo code promotions also start with no codes:
   `generate-promo-codes`. Chains take `is_enabled: true` or `toggle-*`. An active promotion or

@@ -26,8 +26,8 @@ QUESTS_ADD_STRATEGY = "federated_patch"
 # explicitly and have a separate exact-version capability entry below.
 QUESTS_VERSION = "0.1.5"
 QUESTS_CANDIDATE_VERSION = "0.2.7-qp-3256.0"
-# Capabilities are keyed by exact artifact pins, never inferred by semver. The planned
-# candidate pin is staged, but release and CDN verification are still pending.
+# Capabilities are keyed by exact artifact pins, never inferred by semver. This
+# candidate release and its CDN artifact have been verified.
 # The stable creation default deliberately remains QUESTS_VERSION.
 QUESTS_CAPABILITIES = {
     QUESTS_VERSION: {"appearance": False},

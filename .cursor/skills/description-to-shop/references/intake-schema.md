@@ -51,7 +51,8 @@ worse than a question.
 
 | Field | Req | Inferable | Default | Notes |
 |---|---|---|---|---|
-| `platform` | ✅ | usually | none | `mobile`/`pc`/`console`/`cross-platform`. **Selects the archetype** — highest-leverage field. |
+| `platform` | ✅ | usually | none | Any of `mobile`, `pc`, `console`, `web`; a cross-platform game lists each one. **Selects the archetype** — highest-leverage field. |
+| `lifecycle` | ✅ | usually | none | `launch` (not released yet, or a pre-order), `live-service` (regular updates, events or a season), or `evergreen`. Infer it from the store listing and confirm it in the plan. Selects the preset with `platform`. |
 | `primary_regions` | ⬜ | ✕ | global | Informs languages and currency, not geo-restrictions (out of scope). |
 | `audience_note` | ⬜ | often | omit | Tone only. |
 
@@ -79,12 +80,12 @@ structure. Collect groups first, items only as their contents.
 
 | Field | Req | Inferable | Default | Notes |
 |---|---|---|---|---|
-| `catalog_exists` | ✅ | ✕ | none | If no, stop — seeding is a prerequisite, not part of this run. |
+| `catalog_exists` | ✅ | ✕ | none | Yes when the project has the catalog, or when `catalog-design`'s pending proposal creates it under the same yes. Otherwise stop — seeding is a prerequisite, not part of this run. |
 | `groups[]` | ✅ | partly | read from catalog | Each: `external_id`, `type` (`bundle`/`virtual_good`/`virtual_currency`), `placement` (`featured`/`primary`/`secondary`). |
 | `group_order` | ✅ | ✅ | catalog order | Section order down the page. |
 | `featured_group` | ⬜ | ✅ | first group | Gets the `featured` card layout. |
 | `real_currency` | ⬜ | ✕ | read from catalog | Display only; the catalog owns the value. |
-| `liveops` | ⬜ | ✕ | read from the project | Promo codes, reward chains and offer chains with `is_enabled: true`; each adds its block. |
+| `liveops` | ⬜ | ✕ | read from the project | Promo codes, reward chains and offer chains with `is_enabled: true`, or created and activated by `catalog-design`'s pending proposal under the same yes; each adds its block. |
 
 ### Translating a description into groups
 
@@ -104,8 +105,9 @@ thing.
 
 ### Never
 
-- **Invent prices, item names or currency codes.** Read them from the catalog. A named
-  group that does not exist is a Missing field, not a thing to create.
+- **Invent prices, item names or currency codes.** Read them from the catalog, or from
+  `catalog-design`'s pending proposal that the same yes approves. A named group that is
+  in neither is a Missing field, not a thing to create.
 - **Create catalog entities**, even when convenient. If the catalog is thin or has no
   offers, limits, rewards or promo codes, say so and point at `catalog-design`, which
   proposes them.
@@ -136,7 +138,7 @@ Part of completeness. Absent → hard stop before any write.
 | `merchant_id` | `xsolla config list` |
 | `project_id` | `xsolla config list` — must be non-zero and in the approved test context |
 | `slug` | Proposed from `game_name`, confirmed in the plan |
-| `auth_ok` | `xsolla auth status` — non-expired token |
+| `auth_ok` | `xsolla auth list-account --json` — an active, unexpired Publisher login |
 
 ## Completeness gate
 

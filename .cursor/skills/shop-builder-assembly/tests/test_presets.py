@@ -179,6 +179,12 @@ class PresetTests(unittest.TestCase):
         self.assertIn("catalog_links", plan["implemented_phases"])
         self.assertNotIn("catalog_links", plan["unsupported_phases"])
 
+    def test_theme_and_copy_come_after_the_scripted_steps(self) -> None:
+        order = render_plan.build_plan(self.brief)["order"]
+        for scripted in ("pages", "site_layout", "navigation", "blocks", "catalog_links"):
+            self.assertLess(order.index(scripted), order.index("theme"))
+            self.assertLess(order.index(scripted), order.index("copy_assets"))
+
     def test_site_layout_follows_page_templates(self) -> None:
         plan = render_plan.build_plan(self.brief)
         self.assertEqual("common-layout", plan["site_layout"]["module"])
