@@ -68,9 +68,9 @@ built.
    the Editor, Publish or private preview until a newer CLI ships. Put the choice in the
    batch. Recommended: the developer creates the site in Publisher Account (Storefronts →
    Websites, from the Single-page shop template) and gives its address; assembly builds on
-   it with the single-page preset, and it opens in the Editor and preview. The other
-   answers: build the structure anyway, or wait. A game home is built on the partner's
-   template site; see **Store or game home**.
+   it, with more pages when the preset has them, and it opens in the Editor and preview.
+   The other answers: build the structure anyway, or wait. A game home is built on the
+   partner's template site; see **Store or game home**.
 4. **The project is an approved test project.** Shop Builder writes need the project on
    the approved test-project allowlist, with its approver and approval reference. The
    format is in [shop brief](../shop-builder-assembly/references/shop-brief.md); the

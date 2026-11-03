@@ -798,16 +798,19 @@ def apply_navigation(slug: str, landing_id: str, plan: dict) -> list[dict]:
     operations: list[dict] = []
     labels_by_page: dict[str, dict[str, str]] = {}
     expected_page_ids = [target["page_id"] for target in plan["navigation"]]
+    paths = [page["path"] for page in plan["pages"]]
     for page_plan in plan["pages"]:
         if page_plan.get("site_header") == "layout":
-            # A template site's header is shared, in the site layout; with a one-page
-            # plan there is nothing to link. Its links are an Editor step.
+            # A template site's header is shared, in the site layout, which the CLI
+            # can't edit: its links are an Editor step.
+            skipped = "the header is shared in the site layout; set its links in the Editor"
+            if len(paths) > 1:
+                skipped = (
+                    "the header is shared in the site layout; in the Editor, link it to "
+                    + ", ".join(paths)
+                )
             results.append(
-                {
-                    "path": page_plan["path"],
-                    "header": "site layout",
-                    "skipped": "the header is shared in the site layout; set its links in the Editor",
-                }
+                {"path": page_plan["path"], "header": "site layout", "skipped": skipped}
             )
             continue
         page = page_for_path(current, page_plan["path"])
