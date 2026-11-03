@@ -137,8 +137,8 @@ the kit, and the host check accepts the three exact hosts and refuses look-alike
 **Needs before coding.** A sanitized export of a Single-page shop site made in a test
 project, as the test fixture (`scripts/extract_block_contracts.py` sanitizes it). The
 LiveOps block contracts are already in
-[exported block contracts](../../skills/shop-builder-assembly/references/exported-block-contracts.md)
-and the [block catalog](../../skills/shop-builder-assembly/references/block-catalog.md).
+[exported block contracts](../../shop-builder-assembly/references/exported-block-contracts.md)
+and the [block catalog](../../shop-builder-assembly/references/block-catalog.md).
 
 **Out of scope.** The agent creating sites in the browser; templates other than
 Single-page shop and Multi-page web portal; removing the template path once `create-block`

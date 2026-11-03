@@ -101,7 +101,7 @@ Setup by `merchant-setup` skill.
 |------|----------|
 | `skills/` | SKILL.md files. One subdirectory per workflow. |
 | `skills/<name>/references/` | Long-form reference docs. Keeps SKILL.md under 200 lines. |
-| `docs/` | Architecture, distribution, and skill-gap guides. `docs/specs/` holds the specs a skill change works against. |
+| `docs/` | Architecture, distribution, and skill-gap guides. |
 | `.cursor/skills/` | Cursor-native skills (synced copy of `skills/`; do not edit manually) |
 | `.cursor/rules/` | Short always-on Cursor pointer rule |
 
