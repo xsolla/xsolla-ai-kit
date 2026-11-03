@@ -67,23 +67,23 @@ until [expert-review.md](references/expert-review.md) records approval.
    preflight; never override later commands.
 3. If the target site exists, export it before the first write with
    `scripts/backup_shop.py --brief <brief.json> --slug <slug> --output-dir <dir>`.
-4. Render with
-   `scripts/render_plan.py <brief.json> --structure <backup-dir>/structure.json`, save
-   the output as `approved-plan.json`, and show one plan in plain language: each page and
-   its sections in order, the products and offers in each, the visual direction (palette,
-   backgrounds, artwork and where it came from), exact block removals, the template
+4. Render with `scripts/render_plan.py <brief.json> --structure
+   <backup-dir>/structure.json`, save the output as `approved-plan.json`, and show one
+   plan in plain language: each page and its sections in order, the products and offers in
+   each, the visual direction (palette, backgrounds, artwork and where it came from), each
+   page's search title, description and share image, exact block removals, the template
    sections each new page comes with that are removed (`template_removals`), catalog
    mappings (for an `__all__` section, every enabled item it pulls in, with test or
    leftover entries flagged; disabling them goes in the catalog proposal under the same
    yes), existing pages the theme puts on the site colors, that a preview link anyone can
    open will be created for the visual review after the build, and what is still to
    connect, with a desktop and mobile
-   [mockup](references/visual-style.md#mockup-for-the-approval). Call each section by its block name in the
-   [block catalog](references/block-catalog.md), such as Offer chain or Reward system,
-   never by a module ID such as `sb-offer-chain`. Don't show the developer module IDs or
-   the `confirmation_id`, not even labelled as audit details. Preserve configured blocks
-   lacking replacement data. Omit `--structure` only for a new slug's bootstrap-only
-   plan; it still shows every page and section to be built.
+   [mockup](references/visual-style.md#mockup-for-the-approval). Call each section by its
+   block name in the [block catalog](references/block-catalog.md), such as Offer chain or
+   Reward system, never by a module ID such as `sb-offer-chain`. Don't show the developer
+   module IDs or the `confirmation_id`, not even labelled as audit details. Preserve
+   configured blocks lacking replacement data. Omit `--structure` only for a new slug's
+   bootstrap-only plan; it still shows every page and section to be built.
 5. Ask for one explicit yes to that plan before the first remote write. When
    `nocode-shop-setup` shows it in one message with a pending catalog proposal, that yes
    covers creating the catalog too. Earlier permission to "build a shop" is not that
@@ -139,9 +139,10 @@ a fresh backup, as [CLI operations](references/cli-operations.md) describes.
    game's art ([visual style](references/visual-style.md)). Hand over its `needs_human`.
 7. **Images** — it uploads each `brand.images` file once and puts the CDN URL in the
    block's background or logo. An opaque `background.color` hides the image under it.
-8. **Copy** — it writes `content.copy` and the `content.faq` items in the primary locale
-   through `update-many-localization`, never block patches; `shopbuilder-translate` adds
-   other locales. Follow the text rules in [visual style](references/visual-style.md).
+8. **Copy** — it writes `content.copy`, the `content.faq` items and each page's
+   `content.seo` (title, description, share image) in the primary locale through
+   `update-many-localization`, never block patches; `shopbuilder-translate` adds other
+   locales. Follow the text rules in [visual style](references/visual-style.md).
 
 Use pre-written scripts for repeated work; never pass `--force` or invent HTTP or
 `curl` workarounds. If an operation requires `--force`, stop and report it.

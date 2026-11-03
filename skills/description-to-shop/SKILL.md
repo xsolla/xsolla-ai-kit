@@ -80,6 +80,8 @@ version-1 JSON object:
 - `content` — publisher page overrides, and the copy the plan will show word for word:
   `content.copy` for block titles, subtitles and descriptions, and `content.faq` for the
   questions and answers, in the primary locale, as the shop brief reference describes.
+  Fill `content.seo` by default, without asking: per page, a search title with the game's
+  name, a one-line description from the listing, and the key art as the share image.
 - `brand` — the listing's art and app icon, once the publisher confirmed they may be
   used, unless they supplied their own: download them next to the brief and list them in
   `brand.images` (key art on the `leadGameSales` background, the icon as the `footer`
