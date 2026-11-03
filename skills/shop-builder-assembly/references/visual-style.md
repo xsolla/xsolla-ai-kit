@@ -160,8 +160,8 @@ the site isn't reviewed.
    see [test-findings.md](test-findings.md)), use the browser the agent has that is signed
    in to Publisher Account: open the site's editor, press Preview, and load the preview it
    opens. Close the editor tab before the next CLI write. If the preview session has
-   expired and can't be started, ask the developer once to press Preview in the editor:
-   the only question allowed between the yes and the handoff.
+   expired and can't be started, ask the developer once to press Preview in the editor.
+   That's a request, not a new approval; what needs one is in `SKILL.md`.
 2. **Screenshot every page at 1440 and 390 px.** A browser window often won't shrink below
    desktop width: load the preview in an iframe of that width, from a page on the preview's
    own origin.
@@ -184,13 +184,13 @@ Check:
 - copy that promises something real: a login prompt names a benefit, and "see more" appears
   only when more exists.
 
-The developer's yes covers fixes that bring the site to what the plan showed: background
-fixes on blocks this assembly created, applied with `scripts/patch_backgrounds.py` (see
-[runs under one yes](cli-operations.md#runs-under-one-yes)), and theme, font and wording
-fixes back to the approved values. An image must be one uploaded to the site with
-`upload-asset`, and a gradient must have the shape of one already on the site. Show a fix
-that goes beyond the plan, such as new wording, another font or a layout change, and ask
-before making it.
+What the yes covers is listed once, under **What the yes covers** in `SKILL.md`: fixes
+that bring the site back to what the plan showed are covered. Background fixes go through
+`scripts/patch_backgrounds.py` (see [runs under one yes](cli-operations.md#runs-under-one-yes));
+theme, font and wording fixes back to the approved values are CLI commands. An image must
+be one uploaded to the site with `upload-asset`, and a gradient must have the shape of one
+already on the site. Show a fix that goes beyond the plan, such as new wording, another
+font or a layout change, and ask before making it.
 
 If the preview can't be opened, say the visual review wasn't done and why: no browser
 signed in to Publisher Account, or a site without the common layout, which private preview

@@ -39,7 +39,8 @@ No script passes `--force`; an operation that requires it stops for review.
 
 The developer's one yes can cover more than one `apply_plan.py` run. Each later run is
 covered only when its render says so; `apply_plan.py` checks this again and stops before
-any write.
+any write. Every script that writes (`apply_plan.py`, `patch_backgrounds.py`) also takes
+`--approved-test-projects <allowlist>`, and refuses to write without it.
 
 - **A new site's two runs.** A new site's generated blocks have no IDs before creation, so
   it is applied in two runs: the bootstrap, then the rest. Save run 1's report as
@@ -56,8 +57,13 @@ any write.
   "Covered by the approved plan"; otherwise ask again.
 - **Background fixes after the visual review.** The yes covers `values.background` leaves
   (color, gradient, image, position, size) on blocks this assembly created, applied with
-  `scripts/patch_backgrounds.py` after a fresh export. It refuses anything else, an image
-  not uploaded to the site, a gradient unlike the ones already on it, and an opaque color
+  `scripts/patch_backgrounds.py <brief.json> --approved-plan approved-plan.json
+  --run-report <report> --backup-dir <dir> --fixes fixes.json --approved-test-projects
+  <allowlist>` after a fresh export. Pass `--run-report` once for every earlier run
+  (`run1-report.json` and run 2's report for a new site): run 1's report is the one that
+  lists the blocks it created. `fixes.json` is a list of
+  `{"block_id": …, "leaf": …, "value": …}`. It refuses anything else, an image not
+  uploaded to the site, a gradient unlike the ones already on it, and an opaque color
   over a block that keeps its image.
 
 ## ID dependencies
