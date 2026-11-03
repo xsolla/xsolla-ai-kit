@@ -94,6 +94,9 @@ any write. Every script that writes (`apply_plan.py`, `apply_style.py`,
   the `L:` ids in `page.seo.title`, `page.seo.description` and `page.seo.ogImage`, a
   sibling of `page.blocks`: plain text, and for `ogImage` the uploaded image's CDN URL,
   through the same upload cache. A page without those fields goes to `needs_human`.
+  With a palette, the report's `needs_human` ends with the Pay Station theme step (decision
+  D5): the palette by Pay Station's color groups (surfaces, texts, controls, borders) and
+  the Pay Station customization link. No API or CLI command sets that theme yet.
 
 ## ID dependencies
 
