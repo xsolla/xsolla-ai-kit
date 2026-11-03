@@ -6,6 +6,16 @@ reports, and this skill does not claim delivery to the player's Backpack. Do not
 `inventory_item`, Store API grants, direct Backpack grants, ERC-20 claim
 endpoints or a provider-default catalog as fallbacks.
 
+## Reward types come from the live docs
+
+The reward type comes from the live docs and from nothing else: run
+`python3 "<skill base dir>/scripts/qp_docs.py"` and read the reward section. A type absent from the live docs is rejected,
+with no write. The type shapes below are a snapshot for orientation only. If they differ from the live docs, the live docs win.
+If the docs are unreachable, say so and treat the snapshot as possibly stale.
+
+Whether the reward text on a block card can be edited there is observed block behavior, not a
+rule this skill enforces (see SKILL.md).
+
 These are the `parameters` of a node with `type: action` and
 `subtype: issue_reward`:
 

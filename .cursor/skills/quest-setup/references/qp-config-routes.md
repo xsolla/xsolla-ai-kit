@@ -40,7 +40,7 @@ Use the merchant/project-scoped Quest Platform route family in the
 |---|---|
 | `GET /api/v2/merchants/{merchant_id}/projects/{project_id}` | verify scope and visibility |
 | `GET /api/v2/merchants/{merchant_id}/projects/{project_id}/quests` | find an existing quest by paging |
-| `POST /api/v2/merchants/{merchant_id}/projects/{project_id}/quests` | create with `status: inactive` for a draft |
+| `POST /api/v2/merchants/{merchant_id}/projects/{project_id}/quests` | create with `status: inactive` first, activate after approval |
 | `GET` or `PUT /api/v2/merchants/{merchant_id}/projects/{project_id}/quests/{quest_id}` | read or replace one quest |
 
 Do not substitute an account-scoped, publisher-scoped or unscoped route from a

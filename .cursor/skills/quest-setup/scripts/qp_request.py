@@ -193,7 +193,21 @@ def load_body(path_text: str) -> bytes:
         json.loads(data.decode("utf-8"))
     except (OSError, UnicodeDecodeError, ValueError):
         raise Refusal("invalid_body") from None
+    require_https_images(json.loads(data.decode("utf-8")))
     return data
+
+
+def require_https_images(node: Any) -> None:
+    """Quest public_view.image_url and block image overrides must be https. Nothing is sent otherwise."""
+    if isinstance(node, dict):
+        for key, value in node.items():
+            if isinstance(value, str) and "image" in str(key).lower() \
+                    and value.strip().lower().startswith("http://"):
+                raise Refusal("https only: image URLs must start with https://")
+            require_https_images(value)
+    elif isinstance(node, list):
+        for item in node:
+            require_https_images(item)
 
 
 def _network_detail(exc: BaseException, creds: Credentials) -> str:

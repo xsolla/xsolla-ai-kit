@@ -55,7 +55,7 @@ to copy.
   stops with `SandboxConfirmationNeeded`, do not show a site plan; use the separate
   command-confirmation shape below.
 - Last line: `Next: reply "yes" to apply this exact plan.`
-- Show one plan, after preflight, backup and render. Never show a draft plan first, and
+- Show one plan, after preflight, backup and render. Never show a preliminary plan first, and
   never ask the publisher to confirm a dedicated test project. One yes applies the plan.
 
 ## Sandbox command confirmation
@@ -92,7 +92,7 @@ Next: what would you like to do?
 - Block: add it, move it, duplicate it, hide or show it (you delete it in the Site Builder editor)
 - Cards: pick and order the quests, set how many show, change the heading, and set a card's title, text or image
 - Reward on a card comes from the quest, so I change it on the quest, not on the block
-- Changes stay a draft until you publish them in Publisher Account
+- Changes go live only after you publish in Publisher Account
 
 Next: which shop should I look at?
 ```
@@ -164,7 +164,7 @@ Quest Platform access missing:
 Next: set it up, then ask me again.
 ```
 
-Rejected value (say what is required, never repeat the value). An `http` image URL gets this reply before any plan. Never change it to https or draft a plan with it:
+Rejected value (say what is required, never repeat the value). An `http` image URL gets this reply before any plan. Never change it to https or build a plan with it (the request script also refuses it with "https only"):
 
 ```
 **The image needs an https link.**
@@ -197,7 +197,7 @@ Missing quest (offer the create flow; no creation details until a yes):
 **Summit Run Challenge doesn't exist on my-test-site yet.**
 - It can be created first, then added to the block.
 
-Next: want me to draft it?
+Next: want me to set it up?
 ```
 
 No quests in the project (only after a successful list read; offer the create flow first):
@@ -206,7 +206,7 @@ No quests in the project (only after a successful list read; offer the create fl
 **This project has no quests yet, so the Quests block has nothing to show.**
 - Create a quest first, then I'll add the block. How quests work: https://developers.xsolla.com/api/quests
 
-Next: want me to draft your first quest?
+Next: want me to set up your first quest?
 ```
 
 Reward change request, for the reward text or the reward image (read-only on the block):
@@ -215,7 +215,7 @@ Reward change request, for the reward text or the reward image (read-only on the
 **The reward on the card comes from the quest, so it can't be changed on the block.**
 - To show a different reward, change the quest's reward.
 
-Next: want me to draft that quest edit?
+Next: want me to set up that quest edit?
 ```
 
 Hand-off after apply (end with the Site Builder editor link; no bullet about the gate,
@@ -248,7 +248,7 @@ Discovery read failed (still answer the capability question, then one ask):
 **I couldn't read your Shop Builder sites just now.**
 - The Quests block can show quest cards with a title, text, image and the quest's reward.
 - You can choose and order the quests, set the limit, and hide or show the block.
-- Changes stay a draft until you publish them in Publisher Account.
+- Changes go live only after you publish in Publisher Account.
 
 Next: which shop should I look at: a Shop Builder site by name, or a headless storefront?
 ```

@@ -55,6 +55,33 @@ Notes:
 - Hiding the whole block is the `hide` operation. There is no other visibility
   toggle beyond the three `layout.show*` settings.
 
+## Block contract (facts for every write)
+
+Source: the block contract at commit 0b1586eb59. Version pins live only in
+[block-versions.md](block-versions.md).
+
+- `themeId` is `site-builder`, `xsolla-pages` or `custom`. `themeAppearance` is allowed only for themeId custom
+  (a custom appearance object). Never send `themeAppearance` with another theme.
+- `questIds` absent means the block never had a selection and the editor fills it once, while `questIds` set to `[]` means the publisher cleared it and it is never refilled.
+- `maxQuests` is a whole number from 1-24, and the default is 6.
+- `overrides` image values must be https only. Reward overrides are ignored by the block.
+- The layout flags are `showHeading`, `showDescription`, `showImage`, `cardAlign`, `imageFit`, `buttonStyle`, `blockBackground` and `cardBackground`.
+- Stable 0.1.12 has no theme keys. 0.2.7 adds `themeId`, `themeAppearance`, `autoEvents` and `loginEventName`. In 0.2.8 `autoEvents` and `loginEventName` are removed.
+- `backpackAction` exists only in candidate 0.2.1. A request for a Backpack Overlay action is blocked on upstream v2: decline it and make no write.
+- A 403 on creating a custom block means the account lacks permission to create custom blocks. Say that, name Xsolla support as the next step, do not retry, and create no file.
+
+### Theme selector
+
+Map the publisher's words to `themeId`: default or the site's own look maps to site-builder, Xsolla Pages maps to xsolla-pages, and a fully custom design maps to custom. Never set `themeAppearance` for the first two.
+
+### Fully custom design
+
+1. Collect brand inputs: colors, fonts, radii, spacing, button style, columns, and a CSS sample, URL or screenshot if the publisher has one.
+2. Map them into themeId custom plus themeAppearance.custom, inside the ranges in [quests-block-appearance.md](quests-block-appearance.md): palette, typography (body, heading and button font, sizes, weights, line heights) and geometry (`maxWidth` 640-1920, `railInset` 0-20, `gutter` 0-64, `mobileGutter` 0-64, `sectionPadding` 0-128, `cardPadding` 8-64, `gap` 8-48, `radius` 0-32, `buttonRadius` 0-32, `buttonHeight` 32-64, `columns` 1-4).
+3. Validate every value. A value outside its range is clamped only after the publisher agrees, or asked about. Never clamp silently.
+4. The reply lists the properties the schema cannot express: arbitrary CSS, stylesheet injection, runtime font loading, card structure or placement beyond the grid and pages layouts, and per-element colors beyond the palette.
+5. If the design depends on something the schema cannot express, state the limitation, name the alternative (a Site Builder theme or an Xsolla Pages theme, or the headless module in [web-shop-module.md](web-shop-module.md) for a site not built on Site Builder), and make no write until the publisher chooses.
+
 ## Operations
 
 Operations go in the brief's `block_operations` list and run in order. The brief
@@ -180,7 +207,7 @@ the site changed in the meantime, and show the new plan for a new "yes".
   and must not carry user credentials (`user:password@host`). If the publisher gives an
   `http` URL or one with credentials, stop with the rejected-value shape before any plan
   or brief. Never change http to https or otherwise modify a URL the publisher gave, and
-  never draft a plan with it. Ask for an https image URL or a media library image instead.
+  never build a plan with it. The request script rejects it with "https only". Ask for an https image URL or a media library image instead.
 - `index` is a position on the page, counted from 0, against the page as it is when
   that operation runs: earlier `add` and `duplicate` ops on the same page count. `add`
   and `duplicate` take 0 to the current block count (the count is the end of the page);

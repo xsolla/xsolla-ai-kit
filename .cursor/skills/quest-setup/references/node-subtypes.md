@@ -1,12 +1,13 @@
 # Node subtypes
 
-The node shapes below are reference material. Confirm them against
-[`qp-api-contract.md`](qp-api-contract.md) and the read-back of the saved quest
-before using an optional subtype. A published OpenAPI may type `subtype` as a
-bare `string`; use only values this skill's `references/` accept. On conflict,
-`references/` wins on node rules.
+The live docs are the source of truth for node subtypes and their parameters:
+run `python3 "<skill base dir>/scripts/qp_docs.py"` and read the node pages. The
+list below is a snapshot for orientation only, and it is not authoritative. On
+conflict the live docs win. If the docs are unreachable, say so and use this
+snapshot, flagged as possibly stale. Confirm the read-back of the saved quest
+before using an optional subtype.
 
-## Accepted
+## Accepted (snapshot, orientation only)
 
 | `subtype` | Used with `type` | `parameters` |
 |---|---|---|
@@ -82,7 +83,7 @@ the platform accepted the action, not that the user saw the message.
 
 Use this only when the developer chooses it as a labelled no-op or when live
 production support is confirmed. A CRUD smoke test may use
-`{"items": [{"id": "e2e-noop"}]}` in an inactive draft. Never present a no-op
+`{"items": [{"id": "e2e-noop"}]}` in an inactive quest. Never present a no-op
 as a working personalization effect.
 
 ## Accepted, but not yet production-confirmed

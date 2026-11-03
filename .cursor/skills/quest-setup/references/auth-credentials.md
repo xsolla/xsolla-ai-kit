@@ -106,13 +106,23 @@ Do not switch to another credential, environment or route after a failure.
 
 ## Onboarding
 
-If the selected service contract documents onboarding, treat it as a separate
-write. Offer it only after the developer confirms that the selected project
-belongs to the selected merchant and provides any required non-secret names.
-Show the request without credentials and wait for explicit confirmation.
+The live docs describe Onboard project as
+`POST /api/v2/merchants/{merchant_id}/projects/{project_id}/onboard` with a JSON body
+`{"merchant_name": "...", "project_name": "..."}` (both required). It is idempotent and accepts
+the publisher key (Basic) or a Publisher Account Bearer token. It returns 404 when the project
+is not found or there is no access, and 401 for a bad key. Get project is
+`GET /api/v2/merchants/{merchant_id}/projects/{project_id}`. A 404 there means the project is
+not onboarded or not accessible. If the docs differ, the live docs win.
+
+The onboarding preflight (implemented in `scripts/qp_preflight.py`, sent through the same request lane) runs in this order:
+Get project first. A 200 means onboarded and nothing is written. A 404 is reported as not
+onboarded, and the agent asks the publisher once, showing the project name. Onboard project is
+called only after an explicit yes in the same conversation. Then Get project runs again as the
+readback, and the project is reported as onboarded only when that readback returns 200.
+Never send the key in the body or in a reply.
 
 After a timeout or server error, read the project before offering onboarding
-again. Never use onboarding as a probe and never infer that a 404 requires it.
+again. Never use onboarding as a probe and never infer that a 404 always requires it.
 
 ## Scope
 
