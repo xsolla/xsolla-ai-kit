@@ -44,13 +44,26 @@ CREDENTIAL_NAMES = (ENV_MERCHANT, ENV_PROJECT, ENV_KEY)
 METHODS = ("GET", "POST", "PUT", "PATCH", "DELETE")
 
 ID_PATTERN = re.compile(r"[0-9]+")
-QP_PATH_PATTERN = re.compile(r"/api/v2/[A-Za-z0-9_./-]+")
+# Documented project-scoped routes only: the merchant and project segments are checked against
+# the configured ids in build_url. Methods are fixed per route kind.
+QP_PATH_PATTERN = re.compile(
+    r"/api/v2/merchants/([0-9]+)/projects/([0-9]+)"
+    r"(?:/(quests|events|onboard|custom-blocks)|/quests/([A-Za-z0-9_-]+))?"
+)
+QP_ROUTE_METHODS = {
+    "project": ("GET",),
+    "quests": ("GET", "POST"),
+    "quest": ("GET", "PUT", "DELETE"),
+    "events": ("GET", "POST"),
+    "onboard": ("POST",),
+    "custom-blocks": ("GET", "POST"),  # SKILL.md: a 403 on creating a custom block gets one reply
+}
+ONBOARD_BODY_KEYS = frozenset({"merchant_name", "project_name"})
 STORE_PATH_PATTERN = re.compile(
     r"/api/v2/project/(\{project_id\}|[0-9]+)/admin/items/virtual_items(?:/sku/([A-Za-z0-9_.:-]+))?"
 )
-MERCHANT_SEGMENT = re.compile(r"/merchants/([^/]+)(?=/|$)")
-PROJECT_SEGMENT = re.compile(r"/projects/([^/]+)(?=/|$)")
 QUERY_KEY_PATTERN = re.compile(r"[A-Za-z0-9_.\[\]-]+")
+FORBIDDEN_QUERY_KEYS = frozenset({"merchant_id", "project_id", "merchant", "project"})
 
 
 class Refusal(Exception):
@@ -141,16 +154,44 @@ def resolve_credentials(environ: Mapping[str, str], cwd: Path) -> Credentials:
     return creds
 
 
+def route_kind(path: str) -> Optional[str]:
+    """Return the route kind for a Quest Platform path, or None when it is not documented."""
+    match = QP_PATH_PATTERN.fullmatch(path)
+    if match is None:
+        return None
+    if match.group(4):
+        return "quest"
+    return match.group(3) or "project"
+
+
 def check_shape(method: str, path: str, store: bool) -> None:
     """Refuse anything that is not an allowed target, before credentials are read."""
-    if method not in METHODS or not isinstance(path, str) or ".." in path:
+    if method not in METHODS or not isinstance(path, str):
+        raise Refusal("target_not_allowed")
+    lowered = path.lower()
+    if ".." in path or "//" in path or "%" in path or "\\" in path or "://" in path \
+            or "publish" in lowered or "?" in path or "#" in path:
         raise Refusal("target_not_allowed")
     if store:
         if method != "GET" or not STORE_PATH_PATTERN.fullmatch(path):
             raise Refusal("target_not_allowed")
         return
-    if not QP_PATH_PATTERN.fullmatch(path) or "//" in path:
+    kind = route_kind(path)
+    if kind is None or method not in QP_ROUTE_METHODS[kind]:
         raise Refusal("target_not_allowed")
+
+
+def check_onboard_body(data: bytes) -> None:
+    """Onboard project accepts exactly merchant_name and project_name, both non-empty strings."""
+    try:
+        obj = json.loads(data.decode("utf-8"))
+    except (UnicodeDecodeError, ValueError):
+        raise Refusal("invalid_body") from None
+    if not isinstance(obj, dict) or set(obj) != ONBOARD_BODY_KEYS:
+        raise Refusal("invalid_body")
+    for value in obj.values():
+        if not isinstance(value, str) or not value.strip():
+            raise Refusal("invalid_body")
 
 
 def build_url(path: str, store: bool, creds: Credentials) -> str:
@@ -165,12 +206,11 @@ def build_url(path: str, store: bool, creds: Credentials) -> str:
         suffix = f"/sku/{match.group(2)}" if match.group(2) else ""
         return f"{STORE_BASE}/api/v2/project/{creds.project_id}/admin/items/virtual_items{suffix}"
 
-    for merchant in MERCHANT_SEGMENT.findall(path):
-        if merchant != creds.merchant_id:
-            raise Refusal("scope_mismatch")
-    for project in PROJECT_SEGMENT.findall(path):
-        if project != creds.project_id:
-            raise Refusal("scope_mismatch")
+    match = QP_PATH_PATTERN.fullmatch(path)
+    if match is None:
+        raise Refusal("target_not_allowed")
+    if match.group(1) != creds.merchant_id or match.group(2) != creds.project_id:
+        raise Refusal("scope_mismatch")
     return QP_BASE + path
 
 
@@ -178,7 +218,7 @@ def parse_query(pairs: List[str]) -> List[tuple]:
     query = []
     for pair in pairs:
         key, sep, value = pair.partition("=")
-        if not sep or not QUERY_KEY_PATTERN.fullmatch(key):
+        if not sep or not QUERY_KEY_PATTERN.fullmatch(key) or key.lower() in FORBIDDEN_QUERY_KEYS:
             raise Refusal("invalid_query")
         query.append((key, value))
     return query
@@ -278,13 +318,17 @@ def main(argv: Optional[List[str]] = None, environ: Optional[Mapping[str, str]] 
         args = parser.parse_args(args_list)
 
         method = args.method.upper()
-        check_shape(method, args.path, args.store)
-        query = parse_query(args.query)
         body = None
         if args.body_file is not None:
             if method == "GET" or args.store:
                 raise Refusal("invalid_body")
             body = load_body(args.body_file)
+        check_shape(method, args.path, args.store)
+        query = parse_query(args.query)
+        if not args.store and route_kind(args.path) == "onboard":
+            if body is None:
+                raise Refusal("invalid_body")
+            check_onboard_body(body)
         creds = resolve_credentials(env, folder)
         url = build_url(args.path, args.store, creds)
         if query:
