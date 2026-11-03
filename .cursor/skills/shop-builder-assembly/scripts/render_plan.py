@@ -130,9 +130,14 @@ APPROVAL_SCOPE = (
     ("brief_sha256", "the shop brief"),
 )
 NO_OWN_HEADER = (
-    "Page {path} has no header block of its own. Sites created from a Publisher "
-    "Account template keep the header in the common layout, and assembly can't build "
-    "on them yet. Nothing was written."
+    "Page {path} has no header block of its own, and the site has no common layout "
+    "that could hold one. Nothing was written."
+)
+TEMPLATE_MULTI_PAGE = (
+    "This site was made from a Publisher Account template, so its header sits in the "
+    "site layout. Assembly builds on such a site with a one-page plan for now (preset "
+    "mobile-single-page): a page it adds would get a header of its own next to the "
+    "shared one. Nothing was written."
 )
 
 
@@ -267,29 +272,64 @@ def common_layout_id(
     return None
 
 
-def require_own_header(pages: list[dict], structure: object) -> None:
-    """Stop when a planned page already on the site has no header block of its own.
+def has_own_header(page: dict) -> bool:
+    blocks = page.get("blocks")
+    return any(
+        isinstance(block, dict) and effective_module(block) == "header"
+        for block in (blocks if isinstance(blocks, list) else [])
+    )
 
-    A site created from a Publisher Account template keeps its header and footer in
-    the common layout. Navigation looks for the header among the page's own blocks,
-    so assembly would add a second header and footer or fail halfway. Pages the plan
-    creates are not on the site yet and pass.
+
+def require_header_source(pages: list[dict], structure: object) -> None:
+    """Stop when a planned page already on the site has no header it can use.
+
+    A site created from a Publisher Account template keeps its header and footer as
+    site-level blocks next to the common layout, and its pages have none of their own.
+    Assembly builds on such a site with a one-page plan: a page it adds gets a header
+    of its own, which would sit next to the shared one. A page with no header and a
+    site with no layout is broken, and stops too. Pages the plan creates pass.
     """
 
-    current_pages = structure_data(structure).get("pages")
+    current = structure_data(structure)
+    current_pages = current.get("pages")
     if not isinstance(current_pages, list):
         raise ValueError("structure.pages must be a list")
+    layouts = current.get("layouts")
+    has_layout = isinstance(layouts, list) and bool(layouts)
     by_path = {page_path(page): page for page in current_pages}
+    template_pages = []
     for page_plan in pages:
         current_page = by_path.get(page_plan["path"])
-        if current_page is None:
+        if current_page is None or has_own_header(current_page):
             continue
-        blocks = current_page.get("blocks")
-        if not any(
-            isinstance(block, dict) and effective_module(block) == "header"
-            for block in (blocks if isinstance(blocks, list) else [])
-        ):
+        if not has_layout:
             raise ValueError(NO_OWN_HEADER.format(path=page_plan["path"]))
+        template_pages.append(page_plan["path"])
+    if template_pages and len(pages) > 1:
+        raise ValueError(TEMPLATE_MULTI_PAGE)
+
+
+def adapt_to_template_page(modules: list[str], on_page: set) -> list[str]:
+    """Fit a preset's module list to a page made from a Publisher Account template.
+
+    The header and footer stay in the site layout; the template's ``lead`` hero stands
+    in for ``leadGameSales``; the template's daily rewards block is kept, because the
+    kit can't add one back.
+    """
+    result = [
+        module
+        for module in modules
+        if module != "header" and (module != "footer" or "footer" in on_page)
+    ]
+    if "leadGameSales" in result and "leadGameSales" not in on_page and "lead" in on_page:
+        result[result.index("leadGameSales")] = "lead"
+    if "sb-daily-reward" in on_page and "sb-daily-reward" not in result:
+        hero = next(
+            (index for index, module in enumerate(result) if module in ("lead", "leadGameSales")),
+            -1,
+        )
+        result.insert(hero + 1, "sb-daily-reward")
+    return result
 
 
 def custom_code_warnings(pages: list[dict]) -> list[str]:
@@ -470,6 +510,16 @@ def bind_current_state(
             raise ValueError(
                 "current pages[].blocks must contain full block objects from get-structure"
             )
+        layouts = current.get("layouts")
+        if (
+            isinstance(layouts, list)
+            and layouts
+            and not has_own_header(current_page)
+        ):
+            page_plan["site_header"] = "layout"
+            on_page = {effective_module(block) for block in blocks}
+            for key in ("blocks", "requested_blocks"):
+                page_plan[key] = adapt_to_template_page(page_plan[key], on_page)
         omitted_on_page = {
             omission["module"]: omission
             for omission in omissions
@@ -774,7 +824,7 @@ def main() -> int:
             lambda block_id: site_block_module(slug, block_id),
         )
         if structure is not None:
-            require_own_header(plan["pages"], structure)
+            require_header_source(plan["pages"], structure)
     except (RuntimeError, ValueError) as exc:
         print(str(exc), file=sys.stderr)
         return 1

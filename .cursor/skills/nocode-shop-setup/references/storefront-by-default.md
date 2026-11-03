@@ -63,7 +63,7 @@ waits for a CLI release. **Open** has nothing merged yet.
 | R3 | Approve a mockup made with any available tool | Every approval request includes a picture of the site | shop-builder-assembly, nocode-shop-setup | Done for a store; a game home shows `game-web-portal`'s plan instead. A Figma kit of real blocks at true sizes is open (design team) | [#117](https://github.com/xsolla/xsolla-ai-kit/pull/117), [#130](https://github.com/xsolla/xsolla-ai-kit/pull/130) |
 | R4 | Visual loop at 1440 and 390 px as the definition of done | Every report says `real_visual_check: yes` for desktop and mobile | shop-builder-assembly | Done. A new site can't open in preview until the CLI ships `create-block`, and the review needs a signed-in browser: without one, the handoff says the site isn't reviewed | [#117](https://github.com/xsolla/xsolla-ai-kit/pull/117) |
 | R5 | Ship the Shop Builder render rules | None of the rules shows up as a fix in a test run's friction log | shop-builder-assembly | Done: the rules and the opaque-color refusal. The other warnings the spec names cover writes the scripts don't make yet (theme, list items) and come with R1. Open check: `apply_plan.py` writes header navigation labels as `<span>` HTML, which the render rules call plain text; the earlier verified runs rendered them, so confirm on the next test site before changing it. The plan's step order matches the skill (theme and copy last) | [#117](https://github.com/xsolla/xsolla-ai-kit/pull/117), [#118](https://github.com/xsolla/xsolla-ai-kit/pull/118), [#130](https://github.com/xsolla/xsolla-ai-kit/pull/130) |
-| R6 | Support Publisher Account templates and mobile game homes | An App Store link becomes a multi-page hub with LiveOps through the kit; see [R6 in detail](#r6-in-detail) | shop-builder-assembly, game-web-portal, nocode-shop-setup | Decision (D3); specified below | — |
+| R6 | Support Publisher Account templates and mobile game homes | An App Store link becomes a multi-page hub with LiveOps through the kit; see [R6 in detail](#r6-in-detail) | shop-builder-assembly, game-web-portal, nocode-shop-setup | Partial: part (b) works for the single-page preset on a Single-page shop template site, tested on the masked real-export fixture and a scripted run (D3 decided). A multi-page plan on a template, and part (c), are open | [#134](https://github.com/xsolla/xsolla-ai-kit/pull/134) |
 | R7 | Helpers for CLI gaps instead of a stop | The agent neither stops nor improvises on known gaps | shop-builder-assembly, catalog-design | Decision (D4): conflicts with the kit's "no raw HTTP" rule. Most gaps close with the CLI release | — |
 | R8 | Research, real art and the full feature set by default | No follow-up prompt for art, SEO or features | description-to-shop, catalog-design | Partial: full shop proposal, store-listing art, an image per product, and design defaults are merged. SEO and OG tags are open; the sandbox purchase test is a decision (D6) | [#118](https://github.com/xsolla/xsolla-ai-kit/pull/118) |
 | R9 | Setup without manual steps | Setup takes one prompt and no manual step besides signing in | nocode-shop-setup, merchant-setup | Partial: the approver is asked first, the CLI and kit are refreshed first, the key comes from `auth login` without asking, and no key or Login project is created before the yes. Self-attestation by the project owner stays out of 1.5.0 (D2) | [#117](https://github.com/xsolla/xsolla-ai-kit/pull/117), [#118](https://github.com/xsolla/xsolla-ai-kit/pull/118), [#128](https://github.com/xsolla/xsolla-ai-kit/pull/128), [#130](https://github.com/xsolla/xsolla-ai-kit/pull/130) |
@@ -96,26 +96,31 @@ CLI can't add yet: daily rewards, offer chain, reward system and promo codes.
    module with `get-block`, and each page's blocks by module.
 3. **Plan.** Render with `--structure` and map the preset's sections onto the template's
    blocks by module:
-   - keep a block whose module the preset uses;
-   - list every demo block the preset doesn't use as an exact removal, by ID;
-   - rebind `newStore` sections from the demo groups to the brief's groups;
-   - bind the daily rewards, offer chain, reward system and promo codes blocks to the
-     active LiveOps the brief lists, or list them for removal when the project has none.
+   - the header and footer stay in the site layout, so the page plan leaves them out;
+   - the template's `lead` hero counts as the preset's hero and is kept;
+   - the template's daily rewards block is kept: the kit can't add one back;
+   - keep a block whose module the preset uses, and list every other demo block, and
+     duplicate store blocks, as exact removals by ID;
+   - rebind the kept `newStore` block's sections from the demo groups to the brief's groups;
+   - keep the offer chain, reward system and promo codes blocks; with no LiveOps in the
+     brief they are preserved as configured, as on any site.
 
-   The plan shows all of this, so the one yes covers it.
+   The plan shows all of this, so the one yes covers it. First release: the single-page
+   preset only. A plan with more pages on a template site stops before any write, because
+   a page the kit adds would get a header of its own next to the shared one.
 4. **Apply.** One run under the yes, since the template's blocks already have IDs; the
    two-run bootstrap is for new sites only. Same preflight, backup and coverage checks.
-   Navigation patches the header in the common layout, with the `values` prefix that
-   layout blocks need.
-5. **Verify.** `verify_structure.py` accepts a header and footer in the common layout.
-   The site opens in preview, so the visual review at 1440 and 390 px runs.
+   Navigation in the shared header is an Editor step: a single page has nothing to link.
+5. **Verify.** `verify_structure.py` compares the page without the header and footer, and
+   finds the existing common layout. The site opens in preview, so the visual review at
+   1440 and 390 px runs.
 
 Done when, for part (b):
 
 - render and apply no longer stop on a page whose header is in the common layout;
 - one run under one yes turns a store template site into the plan: the brief's catalog
   and LiveOps, and no demo blocks, groups or text left;
-- navigation is written to the layout header, and `verify_structure.py` passes;
+- `verify_structure.py` passes on the result;
 - the site opens in the editor and preview;
 - unit tests on a sanitized export of a Single-page shop site: the render lists exact
   removals and rebindings, apply makes no write before the yes, and a page without its
@@ -134,9 +139,11 @@ Done when, for part (b):
 Done when, for part (c): an App Store link becomes a multi-page hub with LiveOps through
 the kit, and the host check accepts the three exact hosts and refuses look-alikes.
 
-**Needs before coding.** A sanitized export of a Single-page shop site made in a test
-project, as the test fixture (`scripts/extract_block_contracts.py` sanitizes it). The
-LiveOps block contracts are already in
+**Test data.** The masked export of a real template site already in the assembly tests
+(`publisher_template_site`) is the fixture: header and footer as site-level blocks, and a
+page with `lead`, three store blocks, daily rewards, offer chain, reward system, promo
+codes, an offerwall and FAQ. A fresh Single-page shop export is still worth a check before
+relying on details beyond that. The LiveOps block contracts are already in
 [exported block contracts](../../shop-builder-assembly/references/exported-block-contracts.md)
 and the [block catalog](../../shop-builder-assembly/references/block-catalog.md).
 
@@ -213,6 +220,8 @@ Google Play titles.
 - Recommendation: (b) now, then (c). A template site already has the common layout, so (b)
   gives a site that opens in the editor and preview before the CLI ships `create-block`.
   Specified in [R6 in detail](#r6-in-detail).
+- **Decided 2026-11-03: (b) now,** by the Shop Builder skills' code owner (apyanzin-xsolla);
+  (c) stays open.
 - Effect: `reached_storefront` and `real_visual_check` can reach yes without waiting for
   the CLI.
 

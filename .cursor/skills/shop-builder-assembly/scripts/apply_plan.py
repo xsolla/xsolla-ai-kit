@@ -33,7 +33,7 @@ from render_plan import (
     load_approved_plan,
     load_run_report,
     page_path,
-    require_own_header,
+    require_header_source,
     site_block_ids,
     structure_data,
     structure_hash,
@@ -402,10 +402,13 @@ def reconcile_page(slug: str, landing_id: str, page_plan: dict) -> dict:
 
     page_id = page["_id"]
     desired = page_plan["blocks"]
-    unverified = sorted(set(desired) - VERIFIED_BLOCK_MODULES)
+    # Only a module this run adds must have a verified contract. A block already on the
+    # page, such as a template's own hero, is kept or moved as it is.
+    on_page = {effective_module(block) for block in page.get("blocks", [])}
+    unverified = sorted(set(desired) - VERIFIED_BLOCK_MODULES - on_page)
     if unverified:
         raise RuntimeError(
-            "plan contains unverified block modules: " + ", ".join(unverified)
+            "plan would add unverified block modules: " + ", ".join(unverified)
         )
     kept: set[str] = set()
     removals: list[dict] = []
@@ -785,6 +788,17 @@ def apply_navigation(slug: str, landing_id: str, plan: dict) -> list[dict]:
     labels_by_page: dict[str, dict[str, str]] = {}
     expected_page_ids = [target["page_id"] for target in plan["navigation"]]
     for page_plan in plan["pages"]:
+        if page_plan.get("site_header") == "layout":
+            # A template site's header is shared, in the site layout; with a one-page
+            # plan there is nothing to link. Its links are an Editor step.
+            results.append(
+                {
+                    "path": page_plan["path"],
+                    "header": "site layout",
+                    "skipped": "the header is shared in the site layout; set its links in the Editor",
+                }
+            )
+            continue
         page = page_for_path(current, page_plan["path"])
         if page is None or not isinstance(page.get("_id"), str):
             raise RuntimeError(f"missing page during navigation: {page_plan['path']}")
@@ -851,6 +865,8 @@ def apply_navigation(slug: str, landing_id: str, plan: dict) -> list[dict]:
 
     refreshed = structure(slug)
     for result in results:
+        if "skipped" in result:
+            continue
         page = page_for_path(refreshed, result["path"])
         header = next(
             (
@@ -1078,7 +1094,7 @@ def require_created_slug(slug: str, before: set[str]) -> None:
 
 
 def stopped_partway_report(progress: dict, error: str) -> dict:
-    """The report of a run that stopped after its writes began.
+    """The report of a run that stopped after the yes, possibly partway through its writes.
 
     It binds the run to the developer's yes, the site and the blocks earlier runs under
     that yes created, so a rerun can show the remaining plan is still covered.
@@ -1168,7 +1184,7 @@ def main() -> int:
                     "target contains pages outside the confirmed plan and the CLI cannot "
                     f"delete pages safely: {paths}"
                 )
-            require_own_header(plan["pages"], current)
+            require_header_source(plan["pages"], current)
         else:
             slugs_before = website_slugs(websites)
             run_json(
@@ -1300,8 +1316,8 @@ def main() -> int:
         if progress is not None:
             print(json.dumps(stopped_partway_report(progress, str(exc)), indent=2))
             print(
-                "The run stopped after its writes began; the report above lets a rerun "
-                "continue under the same yes.",
+                "The run stopped after the yes, and may have written part of the plan; "
+                "the report above lets a rerun continue under the same yes.",
                 file=sys.stderr,
             )
         return 1

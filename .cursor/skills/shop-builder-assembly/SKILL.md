@@ -190,9 +190,10 @@ Preserve completed safe work and explain the smallest action needed to continue.
 
 ## Known limitations
 
-- Sites created from a Publisher Account template keep the header in the common layout;
-  render and apply stop on them before any write. Report the stop and suggest nothing
-  else: not another site, not manual edits, no other workaround.
+- A site made from a Publisher Account template (Single-page shop) keeps its header and
+  footer in the site layout. Assembly builds on it with the single-page preset in one
+  run: the template's hero and daily rewards block stay, demo blocks are exact removals,
+  and the shared header's links are an Editor step. A plan with more pages stops first.
 - When the requested slug is taken elsewhere in Shop Builder, `create-website` creates
   the site under another slug; `apply_plan.py` stops and names it. The new address needs
   a new yes, so propose a distinctive slug in the plan, not a generic `<game>-shop`.
