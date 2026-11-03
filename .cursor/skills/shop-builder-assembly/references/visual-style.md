@@ -10,7 +10,10 @@ colors, placeholder art and hard section edges read as unfinished.
   publisher confirmed it's theirs (app icon, screenshots, key art), then the developer's
   own files. The plan lists every asset and where it came from.
 - Take the palette from that art: a dark or light base, one accent for calls to action, and
-  one or two supporting colors. Keep it on every page.
+  one or two supporting colors. Keep it on every page. Write it into the brief's
+  `brand.theme` with the site theme's names: `bg` the base, `overlay` the card surface,
+  `border`, `primary` the call-to-action accent, `secondary`, `text`, and `isDark`.
+  `apply_style.py` sets it on the site.
 - Without key art, build section backgrounds as gradients in that palette, not one flat
   color.
 - Hero default: the key art centered, a blurred and darkened copy of it filling the sides,
@@ -73,8 +76,8 @@ below against the result.
 **Theme and fonts**
 
 - A theme patch through the CLI saves, but doesn't recompute `calculatedTheme`, so the
-  preview keeps the old colors. Until the CLI recomputes it, the developer recalculates the
-  theme in the editor's Theme panel: list it as a manual step in the handoff.
+  preview keeps the old colors. `apply_style.py` checks whether it changed; when it
+  didn't, its report's `needs_human` has the Editor step: put it in the handoff.
 - A page-theme patch detaches that page from the global theme. Say so in the handoff.
 - The preview loads only the three theme fonts. Any other font named inline falls back to
   serif: always add a generic fallback, such as `sans-serif`.

@@ -560,6 +560,29 @@ def bind_current_state(
     }
 
 
+def uses_own_theme(page: object) -> bool:
+    """Whether a page renders from its own copy of the theme ("Use global theme" off)."""
+    theme = page.get("theme") if isinstance(page, dict) else None
+    return isinstance(theme, dict) and theme.get("enabled") is True
+
+
+def theme_plan(brief: dict, pages: list[dict], structure: object | None) -> dict:
+    """The site colors `apply_style.py` sets, and the existing planned pages it switches
+    to the site theme. A page on its own theme ignores the site colors."""
+    site = brief.get("brand", {}).get("theme")
+    if not site:
+        return {"site": None, "pages_to_site_theme": []}
+    switch = []
+    if structure is not None:
+        planned = {page["path"] for page in pages}
+        switch = sorted(
+            path
+            for page in structure_data(structure).get("pages", [])
+            if (path := page_path(page)) in planned and uses_own_theme(page)
+        )
+    return {"site": site, "pages_to_site_theme": switch}
+
+
 def build_plan(
     brief: dict,
     current_structure: object | None = None,
@@ -598,7 +621,8 @@ def build_plan(
         "requires_confirmation": True,
         "publication": "forbidden",
         # Matches SKILL.md "Assembly order": apply_plan.py runs pages through catalog
-        # links; theme and copy are hand-run after the last apply run.
+        # links, apply_style.py the theme after the last apply run; copy and assets are
+        # hand-run.
         "order": [
             "backup",
             "pages",
@@ -626,6 +650,7 @@ def build_plan(
         "catalog_sections": catalog_groups,
         "featured_skus": brief["catalog"].get("featured_skus", []),
         "brand": brand,
+        "theme": theme_plan(brief, pages, current_structure),
         "content": brief.get("content", {}),
         "sources": brief["sources"],
         "omissions": omissions,
@@ -640,8 +665,9 @@ def build_plan(
             "locales",
             "catalog_links",
         ],
+        # Applied by apply_style.py after the last apply_plan.py run.
+        "style_phases": ["theme"],
         "unsupported_phases": [
-            "theme",
             "copy_assets",
             "verify",
             "preview",

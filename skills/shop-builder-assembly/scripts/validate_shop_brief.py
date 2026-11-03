@@ -37,6 +37,32 @@ VERIFIED_BLOCK_MODULES = {
     "footer",
     "newStore",
 }
+# The site theme's colors, by their Shop Builder names (`theme.input` on the site).
+THEME_COLORS = ("bg", "overlay", "border", "primary", "secondary", "text")
+HEX_COLOR = re.compile(r"#[0-9a-fA-F]{6}")
+
+
+def theme_errors(theme: object) -> list[str]:
+    """Check `brand.theme`: the site palette, as `#rrggbb` colors and `isDark`."""
+    if not isinstance(theme, dict) or not theme:
+        return ["brand.theme must be a non-empty object"]
+    errors = []
+    unknown = sorted(set(theme) - set(THEME_COLORS) - {"isDark"})
+    if unknown:
+        errors.append(
+            "brand.theme has unknown keys: "
+            + ", ".join(unknown)
+            + f"; use {', '.join(THEME_COLORS)} and isDark"
+        )
+    for key in THEME_COLORS:
+        value = theme.get(key)
+        if key in theme and (not isinstance(value, str) or not HEX_COLOR.fullmatch(value)):
+            errors.append(f"brand.theme.{key} must be a #rrggbb color")
+    if "isDark" in theme and not isinstance(theme["isDark"], bool):
+        errors.append("brand.theme.isDark must be true or false")
+    return errors
+
+
 SECRET_KEY_SUFFIXES = (
     "apikey",
     "password",
@@ -232,6 +258,9 @@ def validate(brief: dict) -> list[str]:
                             f"{prefix}.blocks contains unverified modules: "
                             + ", ".join(unverified)
                         )
+
+    if isinstance(brand_value, dict) and "theme" in brand_value:
+        errors.extend(theme_errors(brand_value["theme"]))
 
     sources = brief.get("sources")
     if not isinstance(sources, list) or not sources:

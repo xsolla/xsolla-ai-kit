@@ -1279,7 +1279,9 @@ def main() -> int:
             json.dumps(
                 {
                     "operation_succeeded": True,
-                    "assembly_complete": not plan["unsupported_phases"],
+                    "assembly_complete": not (
+                        plan["style_phases"] or plan["unsupported_phases"]
+                    ),
                     "status": "implemented-phases-applied",
                     "confirmation_id": plan["confirmation_id"],
                     "approved_confirmation_id": approved_id,
@@ -1292,7 +1294,11 @@ def main() -> int:
                     "catalog_links": catalog_links,
                     "locales": locales,
                     "completed_phases": plan["implemented_phases"],
-                    "pending_phases": plan["unsupported_phases"],
+                    "pending_phases": plan["style_phases"] + plan["unsupported_phases"],
+                    "next_action": (
+                        "Back up the site, then run apply_style.py under the same yes for "
+                        "the theme."
+                    ),
                     "warnings": (
                         [CUSTOM_CODE_WARNING]
                         if any(page.get("hidden_custom_code") for page in pages)
