@@ -6,6 +6,20 @@ contract's publisher Basic lane and the production probe result before the
 first event. Never use another environment's service, an internal key or a
 guessed route as a fallback.
 
+## Login event with Xsolla ID
+
+For "add a login event that uses my Xsolla ID", the live docs support this much and no more:
+
+- The quest trigger is a `dynamic_event` node whose `event_name` the publisher chooses.
+- A publisher event identifies the player in `user_ids[]` with `identifier_type` `xsolla_id`
+  (other types: `gamer_id`, `guest_id`, `email`).
+- The docs do not name a standard login event and do not describe how a site sends one. Never
+  invent an event name. Ask the publisher for the name, or propose one and label it as a proposal.
+- Never use `autoEvents` or `loginEventName` on the block: both are removed in 0.2.8.
+
+Show the trigger and event name, wait for a yes in the same conversation, make the change, then read
+the quest back and report the trigger as saved. Say that the site must send this event itself.
+
 ## Production event gate
 
 Before sending an event:

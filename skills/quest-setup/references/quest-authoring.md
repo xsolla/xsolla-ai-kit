@@ -31,7 +31,7 @@ in this skill.
 | `publisher_id` | string | server-set | set by the server from the selected production route. Never ask for it or invent it; on a `PUT`, send it back as the last read returned it |
 | `project_id` | string | server-set | set by the server from the selected production route. On a `PUT`, send it exactly as the last read returned it. See Scope in the auth reference |
 | `start_date` | RFC3339 | **only when `active`** | not earlier than exactly 24 hours before the server's now; see below |
-| `end_date` | RFC3339 | **only when `active`** | not in the past, and at or after `start_date`. For a new quest without a requested end or duration, default to 7 days after the selected start; show this in the draft without asking for a date |
+| `end_date` | RFC3339 | **only when `active`** | not in the past, and at or after `start_date`. For a new quest without a requested end or duration, default to 7 days after the selected start; show this in the proposal without asking for a date |
 | `nodes` | array | **at least 2 when `active`** | optional and may be empty when `inactive` |
 | `connections` | object | required unless `inactive` and empty | see below |
 | `activation_limits` | array | no | see below |
@@ -66,7 +66,7 @@ time. A future `start_date` is accepted, but events before it do not run the
 quest; warn before sending an event outside the window.
 
 Dates are RFC3339 instants. State exact times in UTC whenever you show them,
-including a fixed schedule in the draft and a publication read-back. Dates come back in the
+including a fixed schedule in the proposal and a publication read-back. Dates come back in the
 server's local offset, for example `+03:00`, even when sent in `Z`; convert
 them to UTC and compare instants, not strings.
 
