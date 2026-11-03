@@ -105,7 +105,7 @@ The plan runs against the backup structure and rejects these before confirmation
 ## Appearance capability
 
 Ordinary `add` keeps using the stable creation pin `0.1.5`. An `add` operation may
-select a different artifact only through its explicit `version` field. The planned
+select a different artifact only through its explicit `version` field. The released
 candidate capability is `0.2.7-qp-3256.0`; this is candidate-only support, not a
 stable-version claim. Its release and CDN artifact have been verified. Updates and
 resets that use these fields require the target block's exact `values.version` to match

@@ -56,10 +56,10 @@ the page has loaded that font.
 ## Fit the block to the page
 
 Compare the Quests section and its neighbors as one page. Preserve quest order, IDs,
-localized text refs, card overrides, auth, rewards, legacy external Backpack behavior,
-banner artwork and surrounding page composition. Fix a copy or reward-
-data mismatch in its owning quest flow, never through appearance or a hard-coded card
-label.
+localized text refs, card overrides, auth, rewards, banner artwork and surrounding page
+composition. Leave opaque legacy action fields untouched; do not infer or claim their
+behavior. Fix a copy or reward-data mismatch in its owning quest flow, never through
+appearance or a hard-coded card label.
 
 - Preserve the existing Pages banner above the surrounding content. Render Pages Quests
   as a uniform, image-first 16:9 card grid without a featured first card, rail, carousel,
@@ -132,21 +132,15 @@ example:
 ```
 
 This is a shape example, not a recommended design. Use only measured and approved
-values. For `add`, ordinary creation remains stable `0.1.5`; the planned appearance
-candidate is `0.2.7-qp-3256.0`. Its artifact is pending release and CDN verification.
-Do not apply candidate plans until that evidence is recorded. Ordinary creation stays on
-stable `0.1.5`.
-
-Candidate `0.2.7-qp-3256.0` is the planned appearance capability pin, pending artifact
-release and CDN verification. Ordinary block creation remains pinned to stable `0.1.5`;
-never change that default. Do not apply candidate plans until release and CDN evidence is
-recorded. Never infer support from version ordering or package metadata. Existing-block
+values. The released candidate `0.2.7-qp-3256.0` is the exact appearance capability pin;
+its release and CDN artifact have been verified. Ordinary block creation remains pinned
+to stable `0.1.5`. An `add` may use the candidate only when its version is explicit.
+Never infer support from version ordering or package metadata. Existing-block
 updates/resets require the exact supported version in saved readback. If the block version
 or schema is unsupported, stop before the plan/write and report a verified-upgrade gate.
-Preserve a before snapshot
-and, after an approved upgrade, read back quest IDs/order, refs, overrides, layout, auth
-and all unrelated saved fields before any appearance edit. Do not promise downgrade
-preservation unless it is verified.
+Preserve a before snapshot and, after an approved upgrade, read back quest IDs/order,
+refs, overrides, layout, auth and all unrelated saved fields before any appearance edit.
+Do not promise downgrade preservation unless it is verified.
 
 The requested Backpack button under Web3 rewards must open the installed stock Overlay.
 The current deployed Quests v1 has no supported host API for that action, so this feature
