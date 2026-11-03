@@ -41,7 +41,7 @@ scripts/apply.sh <domain> ja-JP --commit --confirm-overwrites
 scripts/verify.sh <domain> ja-JP
 ```
 
-`export-backup.sh` reads the live site with `get-structure` and `get-localization` and writes those two files. It does not change the site. Before any write, the project must be on the approved-test-project allowlist (`XSOLLA_APPROVED_TEST_PROJECTS`). A project that is not on the list is not written. The slug must also appear in that project's `list-websites` result. `get-structure` is not that check.
+`export-backup.sh` reads the live site with `get-structure` and `get-localization` and writes those two files. It does not change the site. Before any write, the project must be on the approved-test-project allowlist (`XSOLLA_APPROVED_TEST_PROJECTS`). The scripts read that path and `XSOLLA_MERCHANT_ID` and `XSOLLA_PROJECT_ID` only from the environment; on the Shop Builder path, set the IDs from `xsolla config list --json` for each run. A project that is not on the list is not written. The slug must also appear in that project's `list-websites` result. `get-structure` is not that check.
 
 `--commit` enables the language with `add-language`, then writes the copy. It runs `add-language` only after the allowlist, the `list-websites` check and the pre-write export. If the pre-write export already lists the locale, `add-language` is skipped. A 400 with the message "language is taken" is also success. Any other failure stops the run before any copy is written. If the copy write fails after this run enabled the language, the run prints the `delete-language` command for it. Show it to the user. This skill does not run it.
 

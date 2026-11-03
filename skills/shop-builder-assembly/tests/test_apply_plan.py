@@ -1721,6 +1721,40 @@ class CommonLayoutPreflightTests(unittest.TestCase):
         self.assertEqual("skip", json.loads(stdout)["target"]["layout_step"])
         has_command.assert_called_once_with("shopbuilder", "create-block")
 
+    def test_missing_groups_fail_but_still_print_the_read_back(self) -> None:
+        brief = json.loads(EXAMPLE_BRIEF.read_text(encoding="utf-8"))
+        brief["catalog"]["groups"] = [
+            {"external_id": "gem-packs", "type": "virtual_currency", "placement": "primary"}
+        ]
+        stdout, stderr = io.StringIO(), io.StringIO()
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "brief.json"
+            path.write_text(json.dumps(brief), encoding="utf-8")
+            with (
+                mock.patch.object(sys, "argv", ["preflight.py", str(path)]),
+                mock.patch.object(preflight.shutil, "which", return_value="xsolla"),
+                mock.patch.object(
+                    preflight,
+                    "approved_test_project",
+                    return_value={"approval_reference": "test approval"},
+                ),
+                mock.patch.object(preflight, "run_json", side_effect=FakePreflightCli()),
+                mock.patch.object(preflight, "cli_has_command", return_value=True),
+                contextlib.redirect_stdout(stdout),
+                contextlib.redirect_stderr(stderr),
+            ):
+                code = preflight.main()
+        self.assertEqual(1, code)
+        result = json.loads(stdout.getvalue())
+        self.assertFalse(result["ok"])
+        self.assertEqual(
+            [{"external_id": "gem-packs", "type": "virtual_currency"}],
+            result["catalog"]["missing_groups"],
+        )
+        self.assertEqual([], result["catalog"]["verified_groups"])
+        self.assertEqual("create", result["target"]["layout_step"])
+        self.assertIn("virtual_currency:gem-packs", stderr.getvalue())
+
     def test_new_site_on_cli_with_create_block_passes(self) -> None:
         code, stdout, stderr, _ = self.run_preflight(
             FakePreflightCli(), has_create_block=True
@@ -2028,7 +2062,11 @@ class OneApprovalTests(unittest.TestCase):
         self.cli = FakeShopBuilderCli(self.brief)
 
     def apply(
-        self, *extra: str, brief: dict | None = None, confirmation_id: str | None = None
+        self,
+        *extra: str,
+        brief: dict | None = None,
+        confirmation_id: str | None = None,
+        navigation_error: str | None = None,
     ) -> tuple[int, dict | None, str, mock.Mock]:
         brief_path = self.root / "brief.json"
         brief_path.write_text(json.dumps(brief or self.brief), encoding="utf-8")
@@ -2065,13 +2103,19 @@ class OneApprovalTests(unittest.TestCase):
             mock.patch.object(
                 apply_plan, "reconcile_page", side_effect=reconciled
             ) as reconcile,
-            mock.patch.object(apply_plan, "apply_navigation", return_value=[]),
+            mock.patch.object(
+                apply_plan,
+                "apply_navigation",
+                return_value=[],
+                side_effect=RuntimeError(navigation_error) if navigation_error else None,
+            ),
             mock.patch.object(apply_plan, "wire_catalog_sections", return_value=[]),
             contextlib.redirect_stdout(stdout),
             contextlib.redirect_stderr(stderr),
         ):
             code = apply_plan.main()
-        report = json.loads(stdout.getvalue()) if code == 0 else None
+        # A run prints a report when it finishes, and when it stops after writing.
+        report = json.loads(stdout.getvalue()) if stdout.getvalue().strip() else None
         return code, report, stderr.getvalue(), reconcile
 
     def bootstrap(self) -> Path:
@@ -2278,6 +2322,86 @@ class OneApprovalTests(unittest.TestCase):
         )
 
 
+    def save(self, name: str, report: dict) -> Path:
+        path = self.root / name
+        path.write_text(json.dumps(report, indent=2), encoding="utf-8")
+        return path
+
+    def stop_second_run_partway(self) -> tuple[Path, dict]:
+        run_report = self.bootstrap()
+        code, report, stderr, _ = self.apply(
+            "--run-report",
+            str(run_report),
+            "--backup-dir",
+            str(self.root),
+            navigation_error="authentication still fails",
+        )
+        self.assertEqual(1, code)
+        self.assertIn("authentication still fails", stderr)
+        return run_report, report
+
+    def test_a_run_that_stops_partway_prints_a_report_bound_to_the_yes(self) -> None:
+        run_report, report = self.stop_second_run_partway()
+        first = json.loads(run_report.read_text(encoding="utf-8"))
+        self.assertEqual(render_plan.STOPPED_PARTWAY, report["status"])
+        self.assertFalse(report["operation_succeeded"])
+        self.assertEqual(self.approved["confirmation_id"], report["approved_confirmation_id"])
+        self.assertEqual(self.brief["site"]["slug"], report["slug"])
+        self.assertEqual("landing-1", report["landing_id"])
+        self.assertEqual(
+            sorted(render_plan.created_block_ids(first)), report["created_block_ids"]
+        )
+        self.assertFalse(report["published"])
+
+    def test_rerun_after_a_partial_run_is_covered_by_the_same_yes(self) -> None:
+        _, report = self.stop_second_run_partway()
+        partial = self.save("partial-report.json", report)
+        self.assertEqual(
+            report, render_plan.load_run_report(partial)
+        )
+        code, final, stderr, _ = self.apply(
+            "--run-report", str(partial), "--backup-dir", str(self.root)
+        )
+        self.assertEqual(0, code, stderr)
+        self.assertEqual("implemented-phases-applied", final["status"])
+        self.assertEqual(self.approved["confirmation_id"], final["approved_confirmation_id"])
+
+    def test_a_partial_report_from_another_approval_needs_a_new_yes(self) -> None:
+        _, report = self.stop_second_run_partway()
+        report["approved_confirmation_id"] = "sha256:000000000000"
+        partial = self.save("partial-report.json", report)
+        code, _, stderr, _ = self.apply(
+            "--run-report", str(partial), "--backup-dir", str(self.root)
+        )
+        self.assertEqual(1, code)
+        self.assertIn("belongs to another approval", stderr)
+
+    def test_a_failed_run_without_the_partial_status_is_not_a_run_report(self) -> None:
+        path = self.save("failed.json", {"operation_succeeded": False, "status": "error"})
+        with self.assertRaises(ValueError):
+            render_plan.load_run_report(path)
+
+    def test_a_taken_slug_stops_before_any_page_is_written(self) -> None:
+        cli = self.cli
+        create = cli.__call__
+
+        def taken_slug(*args: str) -> object:
+            if args[1:2] == ("create-website",):
+                result = create(*args)
+                cli.landing["domain"] = f"{self.brief['site']['slug']}-0f4f"
+                return result
+            return create(*args)
+
+        self.cli = mock.Mock(side_effect=taken_slug)
+        code, report, stderr, _ = self.apply()
+        self.assertEqual(1, code)
+        self.assertIsNone(report)
+        self.assertIn(f"as {self.brief['site']['slug']}-0f4f", stderr)
+        self.assertIn("that slug is taken", stderr)
+        self.assertNotIn(
+            "add-page", [call[1] for call in cli.calls if len(call) > 1]
+        )
+
 def load_patch_backgrounds():
     path = ROOT / "scripts" / "patch_backgrounds.py"
     spec = importlib.util.spec_from_file_location("patch_backgrounds_for_tests", path)
@@ -2290,6 +2414,53 @@ def load_patch_backgrounds():
 
 patch_backgrounds = load_patch_backgrounds()
 
+
+class OpaqueColorTests(unittest.TestCase):
+    """An opaque background color hides the block's image (render rules)."""
+
+    def test_only_clearly_opaque_colors_count(self) -> None:
+        for color in ("#000", "#0e6fd6", "#0E6FD6FF", "#000f", "rgb(1, 2, 3)", "rgba(0,0,0,1)"):
+            with self.subTest(color=color):
+                self.assertTrue(patch_backgrounds.is_opaque(color))
+        for color in ("rgba(0, 0, 0, 0)", "rgba(0,0,0,0.4)", "#00000080", "transparent", "black"):
+            with self.subTest(color=color):
+                self.assertFalse(patch_backgrounds.is_opaque(color))
+
+    def blocks(self, image: str) -> dict:
+        return {"hero": {"values": {"background": {"img": image, "color": "rgba(0,0,0,0)"}}}}
+
+    def refused(self, fixes: list[dict], image: str) -> list[str]:
+        return patch_backgrounds.refused_fixes(
+            fixes, self.blocks(image), frozenset({"hero"}), {"https://cdn.example/a.webp"}
+        )
+
+    def test_an_opaque_color_over_an_image_is_refused(self) -> None:
+        errors = self.refused(
+            [{"block_id": "hero", "leaf": "color", "value": "#101820"}],
+            "https://cdn.example/a.webp",
+        )
+        self.assertEqual(1, len(errors))
+        self.assertIn("would hide the block's image", errors[0])
+
+    def test_a_tint_with_alpha_over_an_image_is_allowed(self) -> None:
+        self.assertEqual(
+            [],
+            self.refused(
+                [{"block_id": "hero", "leaf": "color", "value": "rgba(16, 24, 32, 0.5)"}],
+                "https://cdn.example/a.webp",
+            ),
+        )
+
+    def test_an_opaque_color_is_allowed_when_the_image_is_cleared(self) -> None:
+        fixes = [
+            {"block_id": "hero", "leaf": "img", "value": ""},
+            {"block_id": "hero", "leaf": "color", "value": "#101820"},
+        ]
+        self.assertEqual([], self.refused(fixes, "https://cdn.example/a.webp"))
+        self.assertEqual(
+            [],
+            self.refused([{"block_id": "hero", "leaf": "color", "value": "#101820"}], ""),
+        )
 
 class BackgroundFixTests(unittest.TestCase):
     """Background fixes after the visual review touch only blocks the assembly created."""
@@ -2414,7 +2585,7 @@ class BackgroundFixTests(unittest.TestCase):
     def test_refuses_anything_but_a_background_leaf(self) -> None:
         code, stderr = self.run_fixes([{"block_id": "new-hero", "leaf": "title", "value": "x"}])
         self.assertEqual(1, code)
-        self.assertIn("anything else needs a new yes", stderr)
+        self.assertIn("this script handles only background leaves", stderr)
         self.assertEqual([], self.calls)
 
     def test_an_image_must_be_uploaded_to_the_site(self) -> None:

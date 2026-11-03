@@ -44,7 +44,8 @@ the shared contract.
 ## Rules
 
 1. Every required field is stated, safely inferred, or explicitly answered.
-2. Every catalog mapping exists in the same project.
+2. Every catalog mapping exists in the same project, or is in `catalog-design`'s pending
+   proposal under the same yes.
 3. `sources` records the description and any publisher answers.
 4. The shared validator passes.
 5. No Shop Builder write and no separate approval happens in this skill.

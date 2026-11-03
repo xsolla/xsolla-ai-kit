@@ -8,7 +8,7 @@ description: >-
   my portal": that is nocode-shop-setup. It hands off here when the user wants a game
   home, or the existing site has /news, /rewards, and /store. Use for
   "continue my Game Web Portal", "resume my portal without duplicating pages", "add the
-  Community section to my portal", or wiring an existing catalog and Login into a portal.
+  Community section to my portal", or reporting how a portal's catalog and Login are wired.
   The agent never publishes, never runs the readiness check, and never generates a preview
   key — those are handed to the human in Publisher Account. PC only; App Store and Google
   Play titles return needs_input. For a store without a game home, use nocode-shop-setup.
@@ -61,8 +61,8 @@ Entry conditions:
 - Approved content and brand assets: the partner's own, or approved Steam content. Never
   invent content or use anything the partner hasn't approved.
 - Required input, collected in a single question rather than one at a time. Read what is
-  already known instead of asking again: intake from the ledger, the merchant
-  and project from `.env`:
+  already known instead of asking again: intake from the ledger or the conversation, the
+  merchant and project from `xsolla config list --json`:
 
 ```yaml
 merchant_id:
@@ -91,13 +91,13 @@ Intake → Preflight → Discover → Back up → Plan and confirm → Draft →
 Verify (read-back) → Human review → Handoff
 ```
 
-1. **Intake** — once `.env` passes the path and site-kind check in Entry conditions, the
+1. **Intake** — once the Entry conditions hold (site kind from the ledger or the chat), the
    first message, before any question, tells the partner to create the site first if they
    haven't (Storefronts → Websites → Multi-page web portal → Manual), and
    [what the run can change](references/portal-api.md#what-the-run-can-change) and what stays
-   an Editor step for them. The same message collects the required input above; with a
-   Steam URL, it asks whether the page is theirs and its art and text may be used. Resolve
-   every ambiguity by asking; never choose an ambiguous match.
+   an Editor step for them. It asks only the required input `nocode-shop-setup`'s batch
+   didn't; with a Steam URL, whether the page is theirs and its art and text may be used.
+   Resolve every ambiguity by asking; never choose an ambiguous match.
 2. **Preflight** — confirm PC scope, domain, and locale, then run
    [`scripts/preflight.py`](scripts/preflight.py) with `--merchant-id`, `--project-id` and
    `--approved-test-projects <file>`. It checks that the CLI points at that merchant and
@@ -109,7 +109,8 @@ Verify (read-back) → Human review → Handoff
    (`xsolla shopbuilder list-websites`, `get-landing`, `get-structure`). Capture the landing
    `_id`, page IDs, and block IDs before any mutation — block and theme calls are keyed by
    landing `_id`, not the domain. Confirm the template's `/news`, `/rewards` and `/store`
-   pages, and read its catalog groups and sign-in ([Discover](references/portal-api.md#discover)).
+   pages, and read its catalog groups (a test or demo group means sample items) and sign-in
+   ([Discover](references/portal-api.md#discover)).
    Never recreate a discovered existing entity; resume at the first incomplete item.
 4. **Back up** — before the first write, export the site: `get-landing`,
    `get-structure` and `get-localization` for the slug, and `list-assets` for the
@@ -117,9 +118,10 @@ Verify (read-back) → Human review → Handoff
    `.gitignore` first if it isn't there: a site export can hold a preview token. A failed
    export stops the run before any write.
 5. **Plan and confirm** — show the ordered change groups (sections, pages, blocks, theme, copy
-   word for word, images by source, catalog links) and the seeded blocks it will hide, which
-   the partner then deletes in the builder; wait for an explicit yes. Earlier permission to
-   "set up my portal" is not confirmation of a plan. Re-confirm if the plan changes.
+   word for word, images by source), the seeded blocks it will hide for the partner to delete,
+   and, as Editor steps for the partner, binding the Web Shop and Rewards to the new catalog
+   and LiveOps. Put any pending `catalog-design` proposal in the same message; wait for one
+   explicit yes to both. "Set up my portal" is not that yes. Re-confirm if the plan changes.
 6. **Draft** — map each section to the template's page by path, then build only the missing
    ones: `add-page`, its blocks with `add-block --index`, and `update-block` to hide the
    seeded blocks it doesn't keep, following the portal layout in
@@ -136,9 +138,9 @@ Verify (read-back) → Human review → Handoff
    `update-restrictions` when the plan lists them. A change with no CLI command is
    `needs_human`: say what to do in Publisher Account and record it. Apply one change group
    at a time across Home, News, Rewards, Web Shop, and Community; the Launcher section is the
-   partner's. Delegate the surrounding products rather than duplicating their recipes:
-   `merchant-setup` for merchant/project/API key, `catalog-design` for the catalog and
-   pricing the Web Shop sells, `login-setup` for Login. Checkout is the Web Shop's hosted Pay
+   partner's. `nocode-shop-setup` runs the surrounding products before this skill; don't
+   repeat their recipes: `merchant-setup`, `catalog-design` (it creates the catalog after the
+   yes in step 5) and `login-setup`. Checkout is the Web Shop's hosted Pay
    Station, so there is nothing to integrate. Placeholders require approval and a visible
    label.
 7. **Verify (read-back)** — read back every changed entity (`get-structure`,
@@ -164,16 +166,17 @@ both loaded before issuing changes:
 
 - [references/agentic-onboarding.md](references/agentic-onboarding.md) — the portal
   specification: `GIVEN / WHEN / THEN` acceptance scenarios, the portal's per-state
-  evidence, and its section of the handoff report.
+  evidence, its section of the handoff report, and the common pitfalls and known
+  limitations.
 - [references/portal-api.md](references/portal-api.md) — the CLI commands the agent runs
   for Steps 3–8, the portal layout, the domain vs landing `_id` split, the localization
   payload shape, the steps handed to the partner, and the response → status mapping.
 
 ## Hard stops
 
-The agent runs only the commands listed in
+This skill runs only the commands listed in
 [references/portal-api.md](references/portal-api.md), and `--help` on them or on the CLI itself
-(`xsolla --help`), even when the partner asks for another.
+(`xsolla --help`), even when the partner asks for another. `catalog-design` runs its own.
 Every other `xsolla` command is out of bounds, including `delete-block`, `delete-domain`,
 `change-domain` and `delete-ai-block`; what a run needs beyond the list is `needs_human`.
 
@@ -188,36 +191,9 @@ never passes `--sandbox`, and never targets a partner's live project. It never p
 or suggests `--force`, even if the partner changes the plan: seeded blocks the CLI won't remove
 go to the partner as `needs_human`.
 
-## Common pitfalls
+## Pitfalls and limitations
 
-1. **Duplicate pages and blocks on resume.** Onboarding an existing domain without
-   reading the current structure first creates a second Home or Web Shop. Always
-   discover and compare existing versus desired state before any mutation.
-2. **Reporting the portal as live.** The agent stops at an unpublished draft. Publication
-   and live verification are the human's, and the handoff says so.
-3. **Login sign-in mistaken for Login done.** Sign-in can succeed while account
-   binding fails. Both Login and onboarding remain incomplete until binding is
-   verified.
-4. **Launcher marked complete without a verified download.** A Launcher needs a real
-   Launcher on the project, an uploaded build, a generated installer, and a verified
-   installer download. Refuse publish-anyway when that evidence is missing.
-5. **Access expiry losing progress.** On `401/403` mid-run, preserve the ledger and return
-   `needs_access`, then re-run `xsolla auth login`, re-read state, and resume — do not
-   restart the portal.
-6. **Reporting completion without read-back.** Nothing enters **Completed** while
-   read-back is pending.
-
-## Known limitations
-
-- **PC only.** App Store and Google Play titles return `needs_input` until the mobile
-  path ships.
-- **Steam content needs the partner's yes.** Shop Builder's store-page parser rejects Steam
-  links, so the agent reads Steam's app details itself, only with `steam_assets_approved: yes`.
-- **Community needs the partner's channel.** Its `embed` block shows a social channel the
-  partner supplies; without one the section is `needs_input`, not a guessed layout.
-- **The partner creates the site.** Until a site created through the CLI gets a layout,
-  the portal is built on the partner's template site, and a page the agent adds has no
-  page type and no link in the sidebar menu; the partner adds the link.
-- **Deprecated block endpoints.** `add-block` and `move-block` call Shop Builder
-  endpoints marked deprecated for future removal. They work today; the skill moves
-  with the CLI when those commands switch to the newer routes.
+Read them in [agentic-onboarding.md](references/agentic-onboarding.md#common-pitfalls)
+before the first change: duplicates on resume, a portal reported as live, sign-in taken
+for binding, an unverified Launcher, expired access, completion without read-back; PC only,
+Steam content needs the partner's yes, Community their channel, and they create the site.

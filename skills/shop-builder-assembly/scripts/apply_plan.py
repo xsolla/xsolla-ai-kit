@@ -14,10 +14,17 @@ import time
 import uuid
 from pathlib import Path
 
+# `python3 -I` (isolated mode) does not put the script's own folder on sys.path, so
+# the sibling imports below would fail. Add it explicitly.
+SCRIPTS_DIR = str(Path(__file__).resolve().parent)
+if SCRIPTS_DIR not in sys.path:
+    sys.path.insert(0, SCRIPTS_DIR)
+
 from preflight import LAYOUT_SKIPPED, cli_has_command
 from render_plan import (
     COMMON_LAYOUT,
     CUSTOM_CODE_WARNING,
+    STOPPED_PARTWAY,
     approval_changes,
     build_plan,
     common_layout_id,
@@ -1037,6 +1044,63 @@ def wire_catalog_sections(slug: str, landing_id: str, plan: dict) -> list[dict]:
     return results
 
 
+def website_slugs(value: object) -> set[str]:
+    """Return the slugs list-websites reports, or an empty set for an unknown shape."""
+    payload = data(value)
+    if isinstance(payload, dict):
+        payload = payload.get("items", payload.get("landings", payload))
+    slugs: set[str] = set()
+    for item in payload if isinstance(payload, list) else []:
+        if isinstance(item, dict):
+            for key in ("domain", "slug"):
+                if isinstance(item.get(key), str):
+                    slugs.add(item[key])
+    return slugs
+
+
+def require_created_slug(slug: str, before: set[str]) -> None:
+    """Stop when create-website made the site under another slug.
+
+    Shop Builder gives a new site a generated slug when the requested one is taken
+    elsewhere. Every later command would then target the wrong address.
+    """
+    after = run_json("shopbuilder", "list-websites")
+    if website_exists(after, slug):
+        return
+    new = sorted(website_slugs(after) - before)
+    where = f"as {', '.join(new)}" if new else "under another slug"
+    raise RuntimeError(
+        f"Shop Builder created the site {where}, not {slug}: that slug is taken. "
+        "Nothing else was written. Put the new slug in the brief's site.slug, export "
+        "the site, render the plan, and show it to the developer again: a new address "
+        "needs a new yes"
+    )
+
+
+def stopped_partway_report(progress: dict, error: str) -> dict:
+    """The report of a run that stopped after its writes began.
+
+    It binds the run to the developer's yes, the site and the blocks earlier runs under
+    that yes created, so a rerun can show the remaining plan is still covered.
+    """
+    return {
+        "operation_succeeded": False,
+        "status": STOPPED_PARTWAY,
+        "approved_confirmation_id": progress["approved_confirmation_id"],
+        "slug": progress["slug"],
+        "landing_id": progress["landing_id"],
+        "created_block_ids": sorted(progress["created_block_ids"]),
+        "error": error,
+        "next_action": (
+            "Save this report as partial-report.json, export the site again, and render "
+            "with --structure, --approved-plan and --run-report partial-report.json. "
+            "Apply under the same yes only if the render says it is covered; otherwise "
+            "show the changes and ask again."
+        ),
+        "published": False,
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("brief", type=Path)
@@ -1046,6 +1110,8 @@ def main() -> int:
     parser.add_argument("--backup-dir", type=Path)
     parser.add_argument("--approved-test-projects", type=Path)
     args = parser.parse_args()
+    # Set once the run's first write is done; a later failure then prints a report.
+    progress: dict | None = None
     try:
         brief = load_brief(args.brief)
         errors = validate(brief)
@@ -1060,7 +1126,8 @@ def main() -> int:
         check_cli_context(expected)
 
         slug = brief["site"]["slug"]
-        existed = website_exists(run_json("shopbuilder", "list-websites"), slug)
+        websites = run_json("shopbuilder", "list-websites")
+        existed = website_exists(websites, slug)
         has_create_block = cli_has_command("shopbuilder", "create-block")
         if existed:
             if args.backup_dir is None:
@@ -1087,7 +1154,12 @@ def main() -> int:
             current = structure(slug)
             if structure_hash(current) != structure_hash(saved_structure):
                 raise RuntimeError(
-                    "target structure changed after backup; back up, re-render, and reconfirm"
+                    "target structure changed after backup. Nothing was written. Export "
+                    "the site again and render with --structure, adding --approved-plan "
+                    "and --run-report with the earlier run's report (run1-report.json, or "
+                    "partial-report.json after a run that stopped partway); apply under "
+                    "the same yes only if the render says it is covered, otherwise show "
+                    "the changes and ask again"
                 )
             extra_pages = plan["current_state"]["extra_pages"]
             if extra_pages:
@@ -1098,6 +1170,7 @@ def main() -> int:
                 )
             require_own_header(plan["pages"], current)
         else:
+            slugs_before = website_slugs(websites)
             run_json(
                 "shopbuilder",
                 "create-website",
@@ -1108,7 +1181,14 @@ def main() -> int:
                 "--type",
                 "topup",
             )
+            require_created_slug(slug, slugs_before)
 
+        progress = {
+            "approved_confirmation_id": approved_id,
+            "slug": slug,
+            "landing_id": None,
+            "created_block_ids": set(created),
+        }
         current = structure(slug)
         if current.get("type") is None:
             run_json(
@@ -1122,6 +1202,7 @@ def main() -> int:
         landing_id = current.get("_id")
         if not isinstance(landing_id, str):
             raise RuntimeError("landing has no _id")
+        progress["landing_id"] = landing_id
 
         created_pages = add_missing_pages(slug, plan["pages"])
         locales = ensure_locales(slug, plan["locales"])
@@ -1216,6 +1297,13 @@ def main() -> int:
         return 0
     except (OSError, RuntimeError, ValueError) as exc:
         print(f"Apply failed: {exc}", file=sys.stderr)
+        if progress is not None:
+            print(json.dumps(stopped_partway_report(progress, str(exc)), indent=2))
+            print(
+                "The run stopped after its writes began; the report above lets a rerun "
+                "continue under the same yes.",
+                file=sys.stderr,
+            )
         return 1
 
 
