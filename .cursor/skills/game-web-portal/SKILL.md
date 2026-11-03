@@ -165,7 +165,8 @@ both loaded before issuing changes:
 
 - [references/agentic-onboarding.md](references/agentic-onboarding.md) — the portal
   specification: `GIVEN / WHEN / THEN` acceptance scenarios, the portal's per-state
-  evidence, and its section of the handoff report.
+  evidence, its section of the handoff report, and the common pitfalls and known
+  limitations.
 - [references/portal-api.md](references/portal-api.md) — the CLI commands the agent runs
   for Steps 3–8, the portal layout, the domain vs landing `_id` split, the localization
   payload shape, the steps handed to the partner, and the response → status mapping.
@@ -189,36 +190,9 @@ never passes `--sandbox`, and never targets a partner's live project. It never p
 or suggests `--force`, even if the partner changes the plan: seeded blocks the CLI won't remove
 go to the partner as `needs_human`.
 
-## Common pitfalls
+## Pitfalls and limitations
 
-1. **Duplicate pages and blocks on resume.** Onboarding an existing domain without
-   reading the current structure first creates a second Home or Web Shop. Always
-   discover and compare existing versus desired state before any mutation.
-2. **Reporting the portal as live.** The agent stops at an unpublished draft. Publication
-   and live verification are the human's, and the handoff says so.
-3. **Login sign-in mistaken for Login done.** Sign-in can succeed while account
-   binding fails. Both Login and onboarding remain incomplete until binding is
-   verified.
-4. **Launcher marked complete without a verified download.** A Launcher needs a real
-   Launcher on the project, an uploaded build, a generated installer, and a verified
-   installer download. Refuse publish-anyway when that evidence is missing.
-5. **Access expiry losing progress.** On `401/403` mid-run, preserve the ledger and return
-   `needs_access`, then re-run `xsolla auth login`, re-read state, and resume — do not
-   restart the portal.
-6. **Reporting completion without read-back.** Nothing enters **Completed** while
-   read-back is pending.
-
-## Known limitations
-
-- **PC only.** App Store and Google Play titles return `needs_input` until the mobile
-  path ships.
-- **Steam content needs the partner's yes.** Shop Builder's store-page parser rejects Steam
-  links, so the agent reads Steam's app details itself, only with `steam_assets_approved: yes`.
-- **Community needs the partner's channel.** Its `embed` block shows a social channel the
-  partner supplies; without one the section is `needs_input`, not a guessed layout.
-- **The partner creates the site.** Until a site created through the CLI gets a layout,
-  the portal is built on the partner's template site, and a page the agent adds has no
-  page type and no link in the sidebar menu; the partner adds the link.
-- **Deprecated block endpoints.** `add-block` and `move-block` call Shop Builder
-  endpoints marked deprecated for future removal. They work today; the skill moves
-  with the CLI when those commands switch to the newer routes.
+Read them in [agentic-onboarding.md](references/agentic-onboarding.md#common-pitfalls)
+before the first change: duplicates on resume, a portal reported as live, sign-in taken
+for binding, an unverified Launcher, expired access, completion without read-back; PC only,
+Steam content needs the partner's yes, Community their channel, and they create the site.
