@@ -88,7 +88,7 @@ class SummarizeTest(unittest.TestCase):
     def test_saved_appearance_is_allowlisted_and_normalized(self) -> None:
         saved = structure()
         values = saved["pages"][0]["blocks"][1]["values"]
-        values["version"] = "0.2.4-qp-3256.0"
+        values["version"] = "0.2.5-qp-3256.0"
         internal = values["internalBlockValues"]
         internal["themeId"] = "custom"
         internal["backpackAction"] = "overlay"
@@ -111,10 +111,12 @@ class SummarizeTest(unittest.TestCase):
         [block] = qbs.summarize(saved, LOCALIZATION, QUESTS)
         appearance = block["appearance"]
         self.assertEqual(appearance["module_id"], qbs.BLOCK_ID)
-        self.assertEqual(appearance["version"], "0.2.4-qp-3256.0")
+        self.assertEqual(appearance["version"], "0.2.5-qp-3256.0")
         self.assertEqual(appearance["theme_id"], "custom")
         self.assertEqual(appearance["theme_id_status"], "known")
-        self.assertEqual(appearance["backpack_action"], "overlay")
+        self.assertNotIn("backpack_action", appearance)
+        self.assertNotIn("backpackAction", json.dumps(appearance))
+        self.assertNotIn('"overlay"', json.dumps(appearance))
         self.assertEqual(appearance["presets"]["site-builder"]["buttonStyle"], "theme-default")
         self.assertEqual(appearance["custom"]["palette"], {"accent": "#123456"})
         self.assertEqual(
@@ -138,7 +140,9 @@ class SummarizeTest(unittest.TestCase):
         appearance = block["appearance"]
         self.assertEqual(appearance["theme_id_status"], "unsupported")
         self.assertIsNone(appearance["theme_id"])
-        self.assertEqual(appearance["backpack_action_status"], "unsupported")
+        self.assertNotIn("backpack_action_status", appearance)
+        self.assertNotIn("backpackAction", json.dumps(appearance))
+        self.assertNotIn("unknown", json.dumps(appearance))
         self.assertIn("themeAppearance.custom.palette.accent", appearance["invalid_saved_fields"])
         self.assertNotIn("secret", json.dumps(appearance))
 

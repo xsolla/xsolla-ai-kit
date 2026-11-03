@@ -15,7 +15,7 @@ is that site and the output also carries its full summary (else `site` is null).
 
 Output: one JSON object on stdout. The ids (merchant, project, block, quest) are for a
 block_operations brief only, never for a reply. The summary also includes page module ids
-and an allowlisted, normalized saved appearance/action readback; unknown open-map values
+and an allowlisted, normalized saved appearance readback; unknown open-map values
 are omitted. Exit codes: 0 read ok, 1 a site read failed.
 Python 3.9+, standard library only.
 """
@@ -149,12 +149,6 @@ def _summary_appearance(values: Dict[str, Any], internal: Dict[str, Any]) -> Dic
         else "known" if isinstance(saved_theme, str) and saved_theme in THEME_IDS
         else "unsupported"
     )
-    saved_action = internal.get("backpackAction")
-    action_status = (
-        "missing" if "backpackAction" not in internal
-        else "known" if isinstance(saved_action, str) and saved_action in {"external", "overlay"}
-        else "unsupported"
-    )
     appearance = internal.get("themeAppearance")
     invalid: list[str] = []
     if not isinstance(appearance, dict):
@@ -175,8 +169,6 @@ def _summary_appearance(values: Dict[str, Any], internal: Dict[str, Any]) -> Dic
         "version_status": version_status,
         "theme_id": saved_theme if theme_status == "known" else None,
         "theme_id_status": theme_status,
-        "backpack_action": saved_action if action_status == "known" else None,
-        "backpack_action_status": action_status,
         "presets": {},
         "custom": {},
     }

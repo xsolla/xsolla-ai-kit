@@ -17,7 +17,7 @@ import apply_plan  # noqa: E402
 import render_plan  # noqa: E402
 
 QUESTS_MODULE = "_quest-platform_quests-block"
-QUESTS_VERSION = "0.2.4-qp-3256.0"
+QUESTS_VERSION = "0.2.5-qp-3256.0"
 
 
 def candidate_structure() -> dict:
@@ -85,7 +85,6 @@ class QuestsSettingsIntegrationTests(unittest.TestCase):
                     "block_id": "quests-1",
                     "values": {
                         "themeAppearance.site-builder.cardAlign": "center",
-                        "backpackAction": "overlay",
                     },
                 }
             ]
@@ -96,12 +95,12 @@ class QuestsSettingsIntegrationTests(unittest.TestCase):
         self.assertEqual("block_operations", plan["mode"])
         self.assertEqual("my-test-site", plan["target"]["slug"])
         self.assertEqual(
-            {"quests-1": "0.2.4-qp-3256.0"}, plan["target"]["quests_versions"]
+            {"quests-1": "0.2.5-qp-3256.0"}, plan["target"]["quests_versions"]
         )
         self.assertTrue(
             any(
                 "pre-release build" in warning
-                and "0.2.4-qp-3256.0" in warning
+                and "0.2.5-qp-3256.0" in warning
                 for warning in plan["warnings"]
             ),
             plan["warnings"],
@@ -118,7 +117,6 @@ class QuestsSettingsIntegrationTests(unittest.TestCase):
                     "block_id": "quests-1",
                     "values": {
                         "themeAppearance.site-builder.cardAlign": "center",
-                        "backpackAction": "overlay",
                     },
                 }
             ]
@@ -155,17 +153,19 @@ class QuestsSettingsIntegrationTests(unittest.TestCase):
         self.assertEqual(2, len(writes))  # missing parents are created before leaf patches
         internal = current["pages"][0]["blocks"][0]["values"]["internalBlockValues"]
         self.assertEqual("center", internal["themeAppearance"]["site-builder"]["cardAlign"])
-        self.assertEqual("overlay", internal["backpackAction"])
+        self.assertEqual("external", internal["backpackAction"])
         self.assertEqual("preserve-me", internal["unknownBlockKey"])
         self.assertEqual("preserve-me", internal["themeAppearance"]["custom"]["unknownCustomKey"])
         self.assertEqual({"unknown": True}, internal["themeAppearance"]["future-theme"])
 
     def test_invalid_or_unsupported_settings_make_zero_mutating_calls(self):
         cases = [
+            ("older candidate", "0.2.4-qp-3256.0", {"themeId": "custom"}),
             ("previous candidate", "0.2.3-qp-3256.0", {"themeId": "custom"}),
             ("previous candidate", "0.2.2-qp-3256.0", {"themeId": "custom"}),
             ("unsupported version", "0.2.1-qp-3256.1", {"themeId": "custom"}),
             ("invalid color", QUESTS_VERSION, {"themeAppearance.custom.palette.accent": "red"}),
+            ("obsolete action leaf", QUESTS_VERSION, {"backpackAction": "overlay"}),
         ]
         for label, version, values in cases:
             with self.subTest(label=label):
@@ -174,15 +174,18 @@ class QuestsSettingsIntegrationTests(unittest.TestCase):
                 brief = operations_brief(
                     [{"op": "update", "block_id": "quests-1", "values": values}]
                 )
-                calls: list[list[dict]] = []
-                with self.assertRaises(ValueError):
+                cli = mock.Mock()
+                with (
+                    mock.patch.object(apply_plan, "run_json", cli),
+                    self.assertRaises(ValueError),
+                ):
                     render_plan.build_plan(brief, current)
-                self.assertEqual([], calls)
+                self.assertEqual([], cli.call_args_list)
 
     def test_stale_target_is_rejected_before_mutating_callback(self):
         backup = candidate_structure()
         brief = operations_brief(
-            [{"op": "update", "block_id": "quests-1", "values": {"backpackAction": "overlay"}}]
+            [{"op": "update", "block_id": "quests-1", "values": {"themeAppearance.site-builder.cardAlign": "center"}}]
         )
         plan = render_plan.build_plan(brief, backup)
         live = copy.deepcopy(backup)
@@ -206,7 +209,6 @@ class QuestsSettingsIntegrationTests(unittest.TestCase):
                     "block_id": "quests-1",
                     "values": {
                         "themeAppearance.site-builder.cardAlign": "center",
-                        "backpackAction": "overlay",
                     },
                 }
             ]
@@ -285,7 +287,7 @@ class QuestsSettingsIntegrationTests(unittest.TestCase):
         self.assertEqual(2, len(writes))
         internal = current["pages"][0]["blocks"][0]["values"]["internalBlockValues"]
         self.assertEqual("center", internal["themeAppearance"]["site-builder"]["cardAlign"])
-        self.assertEqual("overlay", internal["backpackAction"])
+        self.assertEqual("external", internal["backpackAction"])
 
     def test_editor_url_rejects_unverified_ids_and_bad_slugs(self):
         for merchant_id, project_id, slug in (
@@ -303,7 +305,7 @@ class QuestsSettingsIntegrationTests(unittest.TestCase):
     def test_missing_or_mismatched_approval_stops_before_preflight_and_cli_reads(self):
         current = candidate_structure()
         brief = operations_brief(
-            [{"op": "update", "block_id": "quests-1", "values": {"backpackAction": "overlay"}}]
+            [{"op": "update", "block_id": "quests-1", "values": {"themeAppearance.site-builder.cardAlign": "center"}}]
         )
         approved = render_plan.build_plan(brief, current)
         cli = mock.Mock()
@@ -358,7 +360,7 @@ class QuestsSettingsIntegrationTests(unittest.TestCase):
     def test_invalid_slug_is_rejected_before_any_cli_read_or_write(self):
         current = candidate_structure()
         brief = operations_brief(
-            [{"op": "update", "block_id": "quests-1", "values": {"backpackAction": "overlay"}}]
+            [{"op": "update", "block_id": "quests-1", "values": {"themeAppearance.site-builder.cardAlign": "center"}}]
         )
         approved = render_plan.build_plan(brief, current)
         brief["site"]["slug"] = "invalid/site"

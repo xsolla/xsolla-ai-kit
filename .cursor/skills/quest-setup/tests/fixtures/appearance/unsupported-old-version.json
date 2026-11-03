@@ -23,5 +23,5 @@
     "module": "_quest-platform_quests-block",
     "values": {"version": "0.1.5", "internalBlockValues": {"themeId": "site-builder", "backpackAction": "external", "questIds": ["quest-a"], "layout": {"showHeading": true}, "overrides": {"quest-a": {"titleRef": "L:title-a"}}}}
   },
-  "expected_readback": {"module_id": "_quest-platform_quests-block", "version": "0.1.5", "version_status": "present", "theme_id": "site-builder", "theme_id_status": "known", "backpack_action": "external", "backpack_action_status": "known", "presets": {"site-builder": {}, "xsolla-pages": {}}, "custom": {}}
+  "expected_readback": {"module_id": "_quest-platform_quests-block", "version": "0.1.5", "version_status": "present", "theme_id": "site-builder", "theme_id_status": "known", "presets": {"site-builder": {}, "xsolla-pages": {}}, "custom": {}}
 }

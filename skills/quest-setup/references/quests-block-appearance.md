@@ -13,7 +13,7 @@ current run, not in extra files or the publisher reply:
 
 | Evidence | Record |
 |---|---|
-| Quests block | Exact module ID, saved block version, selected `themeId`, `backpackAction`, and recognized saved appearance from `appearance` in the summary |
+| Quests block | Exact module ID, saved block version, selected `themeId`, and recognized saved appearance from `appearance` in the summary |
 | Page composition | `page_modules` IDs/order from the summary, including header/footer, FAQ/Games content container, featured artwork and regular-card rail |
 | Computed neighbors | Font family, loaded status, size, weight, line height, color, container width, gutters, section/card padding, gap, radii, button size and alignment |
 | Responsive result | Whole-page alignment, card/rail behavior, clipping or horizontal overflow, and preserved artwork composition at each viewport |
@@ -56,9 +56,10 @@ the page has loaded that font.
 ## Fit the block to the page
 
 Compare the Quests section and its neighbors as one page. Preserve quest order, IDs,
-localized text refs, card overrides, auth, rewards, button action, banner artwork and
-the existing featured/regular card composition. Fix a copy or reward-data mismatch in
-its owning quest flow, never through appearance or a hard-coded card label.
+localized text refs, card overrides, auth, rewards, the existing external Backpack
+navigation, banner artwork and featured/regular card composition. Fix a copy or reward-
+data mismatch in its owning quest flow, never through appearance or a hard-coded card
+label.
 
 - Keep the Pages artwork banner featured first, with its 50/50 artwork/content split
   and 353px desktop composition. Keep the regular-card composition. For no-image cards,
@@ -128,32 +129,24 @@ example:
 
 This is a shape example, not a recommended design. Use only measured and approved
 values. For `add`, ordinary creation remains stable `0.1.5`; select exact candidate
-`0.2.4-qp-3256.0` with the explicit `version` field only when the requested appearance
-needs its capability, and show that version in the plan.
+`0.2.5-qp-3256.0` with the explicit `version` field only when the requested appearance
+needs its capability, and show that version in the plan. The release is verified for CDN
+delivery and block capabilities; ordinary creation stays on stable `0.1.5`.
 
-The exact appearance/action capability is candidate `0.2.4-qp-3256.0` only. Ordinary
-block creation remains pinned to stable `0.1.5`; never change that default. Never infer
-support from version ordering or package metadata. Existing-block updates/resets require
-the exact supported version in saved readback. If the block version or schema is
-unsupported, stop before the plan/write and report a verified-upgrade gate. Preserve a
-before snapshot and, after an approved upgrade, read back quest IDs/order, refs,
-overrides, layout, auth/action and all unrelated saved fields before any appearance edit.
-Do not promise downgrade preservation unless it is verified.
+Candidate `0.2.5-qp-3256.0` is the verified appearance capability pin. Ordinary block
+creation remains pinned to stable `0.1.5`; never change that default. Never infer support
+from version ordering or package metadata. Existing-block updates/resets require the
+exact supported version in saved readback. If the block version or schema is unsupported,
+stop before the plan/write and report a verified-upgrade gate. Preserve a before snapshot
+and, after an approved upgrade, read back quest IDs/order, refs, overrides, layout, auth
+and all unrelated saved fields before any appearance edit. Do not promise downgrade
+preservation unless it is verified.
 
-## Completed-quest action ownership
-
-`backpackAction` selects the button action shown for a completed quest (`external` or
-`overlay`). Appearance fitting preserves its current choice. A Pages recommendation never
-changes `external` to `overlay`; an action change needs its own explicit request and
-confirmed plan.
-
-The official Overlay block independently owns its host, loader and authentication.
-Never offer its setup from the Quests flow, infer that it is installed or ready from
-legacy Quests `backpackOverlay` data, or read, migrate or rewrite that erroneous config.
-Do not add owner, host, loader, auth, bootstrap or lease fields to a Quests operation.
-If the independent owner is unavailable, report that prerequisite without attempting
-auth or security changes. The source guard requires `auth.type` to equal `xsolla-id`;
-an enabled flag alone is insufficient. Do not change authentication.
+The Quests block keeps its existing external Backpack navigation. If Overlay is needed,
+use only the stock Overlay already available through its existing launcher; the Quests
+flow does not configure it. Treat obsolete saved action-looking fields as opaque unknown
+data: never display, interpret, initialize, migrate, write or delete them. Normal quest
+and reward approval gates still apply.
 
 ## Apply and verify
 
@@ -167,14 +160,15 @@ the sandbox command confirmation, when required, is a separate stop described in
 After approval, apply with the saved `approved-plan.json` and its exact
 `confirmation_id`. Do not pass a `run-report` for this single operations run. Reload the
 page and read saved state back. Compare the normalized saved appearance, selected
-`themeId`, preserved `backpackAction`, all quest IDs/order/refs/overrides and unrelated
-fields with the approved plan. Then compare the full page at the inspected viewports and
-make only a bounded correction through a new confirmed plan. Never publish automatically.
+`themeId`, all quest IDs/order/refs/overrides and unrelated fields with the approved
+plan. Opaque legacy fields must remain untouched. Then compare the full page at the
+inspected viewports and make only a bounded correction through a new confirmed plan.
+Never publish automatically.
 
 ## Scenario fixtures
 
 Use the synthetic cases in `tests/fixtures/appearance/` for repeatable agent checks.
 Every case supplies observed page evidence, user intent, saved state before, expected
-recommendation/action, and saved state after. A generated plan alone is not a pass.
+recommendation and saved state after. A generated plan alone is not a pass.
 Record the saved readback after each fixture execution and compare it with the expected
 state. The fixture IDs and module names are synthetic and are not live sites.

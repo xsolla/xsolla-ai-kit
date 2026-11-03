@@ -38,9 +38,13 @@ class AppearanceFixturesTest(unittest.TestCase):
 
                 before = fixture["saved_before"]["values"]["internalBlockValues"]
                 after = fixture["saved_after"]["values"]["internalBlockValues"]
-                for key in ("backpackAction", "questIds", "layout", "overrides", "resources", "translations"):
+                for key in ("questIds", "layout", "overrides", "resources", "translations"):
                     if key in before:
                         self.assertEqual(after.get(key), before[key])
+                if "backpackAction" in before:
+                    self.assertEqual(after.get("backpackAction"), before["backpackAction"])
+                    self.assertNotIn("backpack_action", summary["appearance"])
+                    self.assertNotIn(str(before["backpackAction"]), json.dumps(summary["appearance"]))
                 before_themes = before.get("themeAppearance") or {}
                 after_themes = after.get("themeAppearance") or {}
                 for theme, saved in before_themes.items():
@@ -56,15 +60,19 @@ class AppearanceFixturesTest(unittest.TestCase):
                 fixture = json.loads((FIXTURES / f"{name}.json").read_text(encoding="utf-8"))
                 self.assertEqual(fixture["saved_after"], fixture["saved_before"])
 
-    def test_pages_recommendation_preserves_external_action(self) -> None:
+    def test_pages_recommendation_preserves_opaque_legacy_field(self) -> None:
         fixture = json.loads((FIXTURES / "pages-composition.json").read_text(encoding="utf-8"))
         self.assertEqual(fixture["saved_after"]["values"]["internalBlockValues"]["themeId"], "xsolla-pages")
-        self.assertEqual(fixture["saved_after"]["values"]["internalBlockValues"]["backpackAction"], "external")
-
-    def test_mixed_custom_inherits_unverified_font_and_preserves_overlay_action(self) -> None:
-        fixture = json.loads((FIXTURES / "mixed-custom.json").read_text(encoding="utf-8"))
+        before = fixture["saved_before"]["values"]["internalBlockValues"]
         after = fixture["saved_after"]["values"]["internalBlockValues"]
-        self.assertEqual(after["backpackAction"], "overlay")
+        self.assertEqual(after["backpackAction"], before["backpackAction"])
+
+    def test_mixed_custom_inherits_unverified_font_and_preserves_opaque_legacy_field(self) -> None:
+        fixture = json.loads((FIXTURES / "mixed-custom.json").read_text(encoding="utf-8"))
+        before = fixture["saved_before"]["values"]["internalBlockValues"]
+        after = fixture["saved_after"]["values"]["internalBlockValues"]
+        self.assertEqual(after["backpackAction"], before["backpackAction"])
+        self.assertEqual(before["backpackAction"], "overlay")
         self.assertEqual(after["themeAppearance"]["custom"]["typography"]["headingFont"], "host-heading")
         self.assertNotIn("actionText", after["themeAppearance"]["custom"].get("palette", {}))
 

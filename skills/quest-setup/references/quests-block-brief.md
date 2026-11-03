@@ -3,10 +3,9 @@
 Brief keys, settings and operations for the `block_operations` brief that the
 `shop-builder-assembly` gate validates. The agent never shows these keys to the publisher.
 Appearance recommendations and fitting rules are in
-[quests-block-appearance.md](quests-block-appearance.md). Keep appearance and completed-
-quest action as separate choices; an appearance update preserves `backpackAction`.
-Appearance/action leaves require exact candidate `0.2.4-qp-3256.0` support; ordinary
-Quests creation remains pinned to stable `0.1.5`.
+[quests-block-appearance.md](quests-block-appearance.md). Appearance leaves require
+the exact verified candidate `0.2.5-qp-3256.0`. Ordinary Quests creation remains pinned
+to stable `0.1.5`.
 
 ## Block settings
 
@@ -28,7 +27,6 @@ block's real path and creates a missing parent object (for example `layout`) fir
 | `themeId` | `site-builder`, `xsolla-pages`, `custom` | artifact default | Appearance preset for this Quests block only |
 | `themeAppearance.site-builder.*` / `themeAppearance.xsolla-pages.*` | `cardAlign`, `blockBackground`, `cardBackground`, `buttonStyle` values listed in [appearance](quests-block-appearance.md) | inherited | Bounded appearance overrides for the selected preset |
 | `themeAppearance.custom.*` | Custom V1 fields and bounds in [appearance](quests-block-appearance.md) | omitted values inherit | Measured, block-scoped appearance overrides |
-| `backpackAction` | `external`, `overlay` | `external` | Completed-quest button action only; independent Overlay owner setup is out of scope |
 | `overrides.<questId>.title` | text, at most 120 characters | none | Replaces that card's title |
 | `overrides.<questId>.description` | text, at most 400 characters | none | Replaces that card's description |
 | `overrides.<questId>.imageUrl` | absolute `https` URL | none | Replaces that card's image |
