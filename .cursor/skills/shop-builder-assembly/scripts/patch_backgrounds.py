@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """Apply the background fixes after the visual review, under the plan's yes.
 
-The developer's yes to the plan covers only `values.background` leaves on blocks that
-this assembly created, as its run reports record them. Site and page themes, wording,
-and blocks that existed before the run need a new yes, so this script refuses them. An
-image must be one uploaded to this site, and a gradient must have the shape of one
-already on the site.
+This script handles only `values.background` leaves on blocks this assembly created, as
+its run reports record them, and refuses everything else. What the developer's yes covers
+is listed once, in SKILL.md: theme, font and wording fixes back to the approved values are
+covered too, but they are CLI commands, not this script. An image must be one uploaded to
+this site, and a gradient must have the shape of one already on the site.
 """
 
 from __future__ import annotations
@@ -61,7 +61,7 @@ def load_fixes(path: Path) -> list[dict]:
         if fix["leaf"] not in BACKGROUND_LEAVES:
             raise ValueError(
                 f"fixes[{index}].leaf must be one of: {', '.join(BACKGROUND_LEAVES)}; "
-                "anything else needs a new yes"
+                "this script handles only background leaves"
             )
         if not isinstance(fix["value"], BACKGROUND_LEAVES[fix["leaf"]]) or (
             fix["leaf"] != "enable" and isinstance(fix["value"], bool)

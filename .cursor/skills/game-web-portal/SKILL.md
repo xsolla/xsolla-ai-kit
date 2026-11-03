@@ -8,7 +8,7 @@ description: >-
   my portal": that is nocode-shop-setup. It hands off here when the user wants a game
   home, or the existing site has /news, /rewards, and /store. Use for
   "continue my Game Web Portal", "resume my portal without duplicating pages", "add the
-  Community section to my portal", or wiring an existing catalog and Login into a portal.
+  Community section to my portal", or reporting how a portal's catalog and Login are wired.
   The agent never publishes, never runs the readiness check, and never generates a preview
   key — those are handed to the human in Publisher Account. PC only; App Store and Google
   Play titles return needs_input. For a store without a game home, use nocode-shop-setup.
@@ -118,10 +118,10 @@ Verify (read-back) → Human review → Handoff
    `.gitignore` first if it isn't there: a site export can hold a preview token. A failed
    export stops the run before any write.
 5. **Plan and confirm** — show the ordered change groups (sections, pages, blocks, theme, copy
-   word for word, images by source, catalog links) and the seeded blocks it will hide, which
-   the partner then deletes in the builder, with any pending `catalog-design` proposal in the
-   same message; wait for one explicit yes to both. Earlier permission to "set up my portal"
-   is not confirmation of a plan. Re-confirm if the plan changes.
+   word for word, images by source), the seeded blocks it will hide for the partner to delete,
+   and, as Editor steps for the partner, binding the Web Shop and Rewards to the new catalog
+   and LiveOps. Put any pending `catalog-design` proposal in the same message; wait for one
+   explicit yes to both. "Set up my portal" is not that yes. Re-confirm if the plan changes.
 6. **Draft** — map each section to the template's page by path, then build only the missing
    ones: `add-page`, its blocks with `add-block --index`, and `update-block` to hide the
    seeded blocks it doesn't keep, following the portal layout in

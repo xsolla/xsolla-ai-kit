@@ -1,16 +1,14 @@
 ---
 name: shop-builder-assembly
 description: >-
-  Assemble a complete Xsolla Shop Builder storefront from a structured shop brief,
-  working top-down from theme and pages through navigation, standard blocks,
-  localization, and catalog links. Not the entry point for "build me a shop" — that is
-  nocode-shop-setup, which routes here once the shop is created on Xsolla's side and a
-  validated brief exists (from description-to-shop). Use for AI-built Shop Builder sites, full
-  website or webshop assembly,
-  game-type storefront presets, mobile single-page shops, PC multi-page shops, and
-  live-service stores with bundles or events. Prefer this skill over creating isolated
-  Shop Builder blocks. Do not use it for a custom headless storefront; use shop-setup
-  for that architecture.
+  Assemble an Xsolla Shop Builder storefront from a validated shop brief: pages, site
+  layout, navigation, standard blocks, localization and catalog links, then theme and
+  copy. Reached through nocode-shop-setup once the shop is on Xsolla's side and
+  description-to-shop has written the brief. Not the entry point for "build me a shop",
+  a web shop or a storefront request: open nocode-shop-setup for those. Covers the
+  mobile single-page, PC multi-page and live-service presets. Prefer this skill over
+  creating isolated Shop Builder blocks. Do not use it for a custom headless storefront;
+  use shop-setup for that architecture.
 metadata:
   owner: k.shah
   domain: store
@@ -76,7 +74,8 @@ until [expert-review.md](references/expert-review.md) records approval.
    backgrounds, artwork and where it came from), exact block removals, the template
    sections each new page comes with that are removed (`template_removals`), catalog
    mappings (for an `__all__` section, every enabled item it pulls in, with test or
-   leftover entries flagged so the developer can disable them first), that a preview
+   leftover entries flagged; disabling them goes in the catalog proposal under the same
+   yes), that a preview
    link anyone can open will be created for the visual review after the build, and what
    is still to connect, with a desktop and mobile
    [mockup](references/visual-style.md#mockup-for-the-approval). Call each section by its block name in the
