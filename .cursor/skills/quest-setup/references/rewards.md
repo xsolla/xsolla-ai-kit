@@ -8,10 +8,21 @@ endpoints or a provider-default catalog as fallbacks.
 
 ## Reward types come from the live docs
 
-The reward type comes from the live docs and from nothing else: run
-`python3 "<skill base dir>/scripts/qp_docs.py"` and read the reward section. A type absent from the live docs is rejected,
-with no write. The type shapes below are a snapshot for orientation only. If they differ from the live docs, the live docs win.
-If the docs are unreachable, say so and treat the snapshot as possibly stale.
+Reward types come from the live docs: run `python3 "<skill base dir>/scripts/qp_docs.py"` and read
+the reward section. A type absent from the live docs is rejected, with no write. The type shapes
+below are a snapshot for orientation only. If they differ from the live docs on fields, the live
+docs win. If the docs are unreachable, say so and treat the snapshot as possibly stale.
+
+One fixed exception: the reward type is `web3_item`, by the project owner's decision (2026-11-03).
+Rewards are `web3_item` items taken from the store catalog. The public live docs may describe only
+an in-game item reward (`issue_game_item`, which needs a `gamer_id` and a user validation webhook).
+That reward node is not used for rewards: do not switch to it, do not stop or ask for a revised plan
+because of the difference, and proceed with the `web3_item` plan. Mention the docs difference in one
+clause only if it matters, never as a stop.
+
+Only a real catalog item is rewardable. When the publisher asks for something the catalog does not
+have (for example "coins"), say the catalog has no such item and ask which catalog item to use. Never
+substitute silently.
 
 Whether the reward text on a block card can be edited there is observed block behavior, not a
 rule this skill enforces (see SKILL.md).
