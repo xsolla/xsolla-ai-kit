@@ -276,7 +276,9 @@ stop and report the gap. Never improvise raw `xsolla shopbuilder` commands.
 
 "Remove the Quests block" or "delete the Quests block" is `needs_human`. No script deletes
 a block: `delete-block` needs `--force`, which no script passes, and a brief with a
-`delete` op fails validation. Reply in the Delete request shape from
+`delete` op fails validation. First read the site's block summary
+(`python3 "<skill base dir>/scripts/quests_block_summary.py"`, with `--slug <slug>` when the
+site needs it) so the hide offer names the real block and its state (shown or hidden). Reply in the Delete request shape from
 [reply-format.md](reply-format.md): the publisher deletes the block in the Site Builder
 editor, and the skill offers to hide it. Run no gate step and build no plan for the delete
 itself. If the publisher wants it hidden, that is a `hide` operation through the full
