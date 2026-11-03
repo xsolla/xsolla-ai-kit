@@ -9,7 +9,8 @@ Images: uploads each approved file once (an asset cache keeps the URL across run
 puts its CDN URL in the block slot the plan named.
 
 Copy: writes the approved text in the primary locale through `update-many-localization`,
-never through block patches, and makes the FAQ block's items match the approved list.
+never through block patches, makes the FAQ block's items match the approved list, and
+writes each page's SEO title, description and share image URL.
 
 A page or block that existed before this assembly changes only when the approved plan
 listed it. Never publishes.
@@ -353,6 +354,33 @@ def upload(landing_id: str, path: Path) -> str:
     return url
 
 
+class Uploads:
+    """Each approved file uploaded once for the site: a URL an earlier run cached is
+    reused while it is still in the site's asset list."""
+
+    def __init__(
+        self, landing_id: str, base_dir: Path, site_assets: set[str], cache_path: Path
+    ) -> None:
+        self.landing_id, self.base_dir = landing_id, base_dir
+        self.site_assets, self.cache_path = site_assets, cache_path
+        self.cache: dict[str, str] | None = None
+        self.urls: dict[str, str] = {}
+
+    def url(self, image: dict) -> str:
+        sha = image["sha256"]
+        if sha not in self.urls:
+            if self.cache is None:
+                self.cache = load_cache(self.cache_path, self.landing_id)
+            cached = self.cache.get(sha)
+            if cached in self.site_assets:
+                self.urls[sha] = cached
+            else:
+                self.urls[sha] = upload(self.landing_id, image_path(self.base_dir, image))
+                self.cache[sha] = self.urls[sha]
+                save_cache(self.cache_path, self.landing_id, self.cache)
+        return self.urls[sha]
+
+
 def images_phase(
     slug: str,
     landing_id: str,
@@ -360,8 +388,7 @@ def images_phase(
     approved: dict,
     created: frozenset,
     base_dir: Path,
-    site_assets: set[str],
-    cache_path: Path,
+    uploads: Uploads,
 ) -> tuple[list[dict], list[str]]:
     """Upload the approved images once each and put them on their blocks."""
     images = approved.get("images", [])
@@ -387,8 +414,6 @@ def images_phase(
                         f"{image['file']} in the editor if it should have it."
                     )
 
-    cache = load_cache(cache_path, landing_id)
-    urls: dict[str, str] = {}
     results: list[dict] = []
     changes: dict[str, dict] = {}
     written: list[tuple[str, tuple, str]] = []
@@ -408,22 +433,14 @@ def images_phase(
                 f"{image['file']} wasn't put on the {module} block: {problem}."
             )
             continue
-        sha = image["sha256"]
-        if sha not in urls:
-            cached = cache.get(sha)
-            if cached in site_assets:
-                urls[sha] = cached
-            else:
-                urls[sha] = upload(landing_id, image_path(base_dir, image))
-                cache[sha] = urls[sha]
-                save_cache(cache_path, landing_id, cache)
-        patch = image_patch(block, image["slot"], urls[sha])
-        entry["url"] = urls[sha]
+        url = uploads.url(image)
+        patch = image_patch(block, image["slot"], url)
+        entry["url"] = url
         if patch is not None:
             changes.setdefault(
                 block["_id"], {"type": "block", "id": block["_id"], "patches": []}
             )["patches"].append(patch)
-            written.append((block["_id"], IMAGE_SLOTS[image["slot"]], urls[sha]))
+            written.append((block["_id"], IMAGE_SLOTS[image["slot"]], url))
             entry["status"] = "set"
             background = block["values"].get("background")
             color = background.get("color") if isinstance(background, dict) else None
@@ -504,13 +521,20 @@ def faq_item_ids(landing_id: str, block_id: str, index: int) -> tuple[str, str, 
 
 
 def copy_phase(
-    slug: str, landing_id: str, current: dict, approved: dict, created: frozenset
+    slug: str,
+    landing_id: str,
+    current: dict,
+    approved: dict,
+    created: frozenset,
+    uploads: Uploads,
 ) -> tuple[list[dict], list[str], dict]:
-    """Write the approved text in the primary locale: block text fields, then the FAQ
-    items, adding or removing items to match the approved list."""
+    """Write the approved text in the primary locale: block text fields, the FAQ items
+    (adding or removing items to match the approved list), and each page's SEO title,
+    description and share image URL."""
     copy_plan = approved.get("copy") or {}
     texts, faq = copy_plan.get("texts", []), copy_plan.get("faq")
-    if not texts and not faq:
+    seo = copy_plan.get("seo", [])
+    if not texts and not faq and not seo:
         return [], [], current
     locale = copy_plan["locale"]
     before = localization(slug)
@@ -627,6 +651,33 @@ def copy_phase(
             }
         )
 
+    for item in seo:
+        page = page_for_path(current, item["page"])
+        if page is None or not isinstance(page.get("_id"), str):
+            raise RuntimeError(f"page {item['page']} is missing; finish apply_plan.py first")
+        fields = page.get("seo") if isinstance(page.get("seo"), dict) else {}
+        for field, value in (
+            ("title", item.get("title")),
+            ("description", item.get("description")),
+            ("ogImage", item.get("file")),
+        ):
+            if not value:
+                continue
+            slot = fields.get(field)
+            lid = slot.get("id") if isinstance(slot, dict) else None
+            entry = {"page": item["page"], "field": f"seo.{field}"}
+            if isinstance(lid, str) and lid.startswith("L:"):
+                # The share image is a URL kept in the text store, like the copy.
+                text = uploads.url(item) if field == "ogImage" else value
+                entry["status"] = write(page["_id"], lid, text)
+            else:
+                entry.update(status="skipped", reason=f"the page has no SEO {field} text")
+                needs_human.append(
+                    f"Page {item['page']} has no SEO {field} to write; set it in the "
+                    "editor's page settings."
+                )
+            results.append(entry)
+
     if writes:
         # The text goes in first: a block that points at a missing string breaks the page.
         run_json(
@@ -694,11 +745,13 @@ def main() -> int:
         check_reports(reports, args.run_report, approved, slug)
         base_dir = args.brief.resolve().parent
         copy_plan = approved.get("copy") or {}
+        seo_images = [item for item in copy_plan.get("seo", []) if item.get("file")]
         if not (
             approved.get("brand", {}).get("theme")
             or approved.get("images")
             or copy_plan.get("texts")
             or copy_plan.get("faq")
+            or copy_plan.get("seo")
         ):
             print(
                 json.dumps(
@@ -715,7 +768,7 @@ def main() -> int:
                 )
             )
             return 0
-        check_image_files(base_dir, approved.get("images", []))
+        check_image_files(base_dir, approved.get("images", []) + seo_images)
 
         run_preflight(args.brief, args.approved_test_projects)
         check_cli_context(brief["project"])
@@ -742,18 +795,17 @@ def main() -> int:
             slug, landing_id, current, approved, created_pages
         )
         created = frozenset().union(*(created_block_ids(report) for report in reports))
-        images, image_needs = images_phase(
-            slug,
+        uploads = Uploads(
             landing_id,
-            current,
-            approved,
-            created,
             base_dir,
-            asset_urls(args.backup_dir) if approved.get("images") else set(),
+            asset_urls(args.backup_dir) if approved.get("images") or seo_images else set(),
             args.asset_cache or args.approved_plan.resolve().parent / "asset-cache.json",
         )
+        images, image_needs = images_phase(
+            slug, landing_id, current, approved, created, base_dir, uploads
+        )
         copy_results, copy_needs, current = copy_phase(
-            slug, landing_id, structure(slug), approved, created
+            slug, landing_id, structure(slug), approved, created, uploads
         )
         print(
             json.dumps(

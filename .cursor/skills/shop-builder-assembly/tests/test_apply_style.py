@@ -728,7 +728,57 @@ class CopyBriefTests(unittest.TestCase):
                 self.assertTrue(any(message in error for error in errors), errors)
 
 
+class SeoBriefTests(unittest.TestCase):
+    def brief(self, seo: object) -> dict:
+        brief = brief_with_palette(None)
+        brief["content"] = {"seo": seo}
+        return brief
+
+    def test_plain_text_seo_with_a_local_image_is_valid(self) -> None:
+        seo = [{"page": "/", "title": "Space Raiders Shop", "description": "Gems.",
+                "image": "art/share.png"}]
+        self.assertEqual([], validate_shop_brief.validate(self.brief(seo)))
+
+    def test_bad_seo_is_refused(self) -> None:
+        good = {"page": "/", "title": "Shop"}
+        cases = {
+            "content.seo must be a non-empty list": [],
+            "content.seo[0].title is plain text, not HTML": [{**good, "title": "<b>Shop</b>"}],
+            "content.seo[0].title must be at most 70 characters": [{**good, "title": "x" * 71}],
+            "content.seo[0].description must be at most 200 characters": [
+                {**good, "description": "x" * 201}
+            ],
+            "content.seo[0].image must be a local file; download it first": [
+                {**good, "image": "https://example.com/a.png"}
+            ],
+            "content.seo[1].page / is listed twice": [good, good],
+            "content.seo[0] needs a title, a description or an image": [{"page": "/"}],
+            "content.seo[0].page must be a page path": [{**good, "page": "shop"}],
+        }
+        for message, seo in cases.items():
+            with self.subTest(message):
+                errors = validate_shop_brief.validate(self.brief(seo))
+                self.assertTrue(any(message in error for error in errors), errors)
+
+
 class CopyPlanTests(unittest.TestCase):
+    def test_the_plan_binds_seo_to_planned_pages_and_its_image(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "share.png").write_bytes(b"share-art")
+            brief = brief_with_palette(None)
+            brief["content"] = {
+                "seo": [
+                    {"page": "/", "title": "Shop", "image": "share.png"},
+                    {"page": "/news", "title": "News"},
+                ]
+            }
+            plan = render_plan.build_plan(brief, base_dir=root)
+        seo = plan["copy"]["seo"]
+        self.assertEqual(["/"], [item["page"] for item in seo])
+        self.assertEqual(hashlib.sha256(b"share-art").hexdigest(), seo[0]["sha256"])
+        self.assertIn("SEO for /news has no planned page; it isn't written.", plan["warnings"])
+
     def test_the_plan_places_the_copy_and_the_faq(self) -> None:
         brief = brief_with_palette(None)
         brief["content"] = {
@@ -780,6 +830,11 @@ class ApplyCopyRunTests(unittest.TestCase):
                 {
                     "_id": "page-1",
                     "path": "/",
+                    "seo": {
+                        "title": {"id": "L:st"},
+                        "description": {"id": "L:sd"},
+                        "ogImage": {"id": "L:si"},
+                    },
                     "blocks": [
                         {"_id": "hero", "module": "leadGameSales",
                          "values": {"title": {"id": "L:t1"}, "subtitle": {"id": "L:t2"}}},
@@ -802,6 +857,9 @@ class ApplyCopyRunTests(unittest.TestCase):
                         "L:t1": text("<h1>Demo hero</h1>"),
                         "L:t2": text("<p>Demo subtitle</p>"),
                         "L:t4": text("<h2>FAQ</h2>"),
+                        "L:st": text("Demo store"),
+                        "L:sd": text("Demo description"),
+                        "L:si": text("https://cdn.example/demo-share.png"),
                         **{f"L:q{n}": text(f"<h4>Demo Q{n}</h4>") for n in (1, 2, 3)},
                         **{f"L:a{n}": text(f"<p>Demo A{n}</p>") for n in (1, 2, 3)},
                     }
@@ -810,6 +868,7 @@ class ApplyCopyRunTests(unittest.TestCase):
             "common": {"L:c1": text("<h2>Demo store</h2>")},
         }
         self.calls: list[tuple[str, ...]] = []
+        self.assets: list[str] = []
         self.touch_other_text = False
         self.approve(None)
         self.report = {
@@ -831,6 +890,10 @@ class ApplyCopyRunTests(unittest.TestCase):
         self.calls.append(args)
         if args[1] == "get-localization":
             return {"ok": True, "data": copy.deepcopy(self.text)}
+        if args[1] == "upload-asset":
+            url = f"https://cdn.example/{Path(args[args.index('--file') + 1]).name}"
+            self.assets.append(url)
+            return {"ok": True, "data": {"url": url}}
         payload = json.loads(args[args.index("--data") + 1])
         if args[1] == "update-many-localization":
             for scope, ids in payload["perScopeValues"].items():
@@ -865,6 +928,10 @@ class ApplyCopyRunTests(unittest.TestCase):
 
     def run_style(self) -> tuple[int, dict | None, str]:
         (self.root / "report.json").write_text(json.dumps(self.report), encoding="utf-8")
+        (self.root / "assets.json").write_text(
+            json.dumps({"ok": True, "data": [{"url": url} for url in self.assets]}),
+            encoding="utf-8",
+        )
         argv = [
             "apply_style.py",
             str(self.root / "brief.json"),
@@ -894,6 +961,50 @@ class ApplyCopyRunTests(unittest.TestCase):
             code = apply_style.main()
         report = json.loads(stdout.getvalue()) if stdout.getvalue().strip() else None
         return code, report, stderr.getvalue()
+
+    def with_seo(self, **item: str) -> None:
+        (self.root / "share.png").write_bytes(b"share-art")
+        self.brief["content"]["seo"] = [{"page": "/", **item}]
+        self.approve(None)
+        self.report["approved_confirmation_id"] = self.approved["confirmation_id"]
+
+    def test_writes_the_page_seo_and_its_share_image(self) -> None:
+        self.with_seo(
+            title="Space Raiders Shop",
+            description="Gems and packs for Space Raiders.",
+            image="share.png",
+        )
+        code, report, stderr = self.run_style()
+        self.assertEqual(0, code, stderr)
+        self.assertEqual("Space Raiders Shop", self.shown("page-1", "L:st"))
+        self.assertEqual("Gems and packs for Space Raiders.", self.shown("page-1", "L:sd"))
+        self.assertEqual("https://cdn.example/share.png", self.shown("page-1", "L:si"))
+        self.assertEqual(1, self.names().count("upload-asset"))
+        self.assertEqual(1, self.names().count("update-many-localization"))
+        seo = [entry for entry in report["copy"] if entry.get("field", "").startswith("seo.")]
+        self.assertEqual({"set"}, {entry["status"] for entry in seo})
+
+        self.calls.clear()
+        code, report, stderr = self.run_style()
+        self.assertEqual(0, code, stderr)
+        self.assertEqual([], self.names())
+
+    def test_a_page_without_seo_fields_is_skipped_with_the_reason(self) -> None:
+        del self.site["pages"][0]["seo"]
+        self.with_seo(title="Space Raiders Shop")
+        code, report, stderr = self.run_style()
+        self.assertEqual(0, code, stderr)
+        title = next(entry for entry in report["copy"] if entry.get("field") == "seo.title")
+        self.assertEqual("the page has no SEO title text", title["reason"])
+        self.assertTrue(any("editor's page settings" in item for item in report["needs_human"]))
+
+    def test_a_share_image_changed_after_the_yes_stops_before_any_command(self) -> None:
+        self.with_seo(image="share.png")
+        (self.root / "share.png").write_bytes(b"other-art")
+        code, _, stderr = self.run_style()
+        self.assertEqual(1, code)
+        self.assertIn("share.png changed after the plan was approved", stderr)
+        self.assertEqual([], self.calls)
 
     def shown(self, scope: str, lid: str) -> str:
         texts = self.text["common"] if scope == "common" else self.text["pages"][scope]["texts"]

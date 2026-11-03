@@ -63,7 +63,7 @@ from a normalized JSON shop brief.
 
    `render_plan.py` prints "Covered by the approved plan" or "Needs a new yes" with the
    changes; `apply_plan.py` checks the same and stops before any write.
-   After the last apply run, back up again and set the approved palette, images and copy with
+   After the last apply run, back up again and set the approved palette, images, copy and SEO with
    `scripts/apply_style.py` (same `--approved-plan`, `--run-report` for every run,
    `--backup-dir` and allowlist). Background fixes after the visual review go through
    `scripts/patch_backgrounds.py`, which accepts only background leaves on blocks the run
@@ -115,7 +115,7 @@ catalog. Federated wrappers use their effective `values.blockId` module.
   assembly can't add it.
 - Description callers produce this skill's brief and leave all site writes here. Figma
   integration remains separate.
-- A site made from a Publisher Account template (Single-page shop) keeps its header and
-  footer in the site layout. Assembly builds on it with the single-page preset in one
-  run: the template's hero and daily rewards block stay, demo blocks are exact removals,
-  and the shared header's links are an Editor step. A plan with more pages stops first.
+- A site made from a Publisher Account template keeps its header and footer in the site
+  layout. Assembly builds on it with any preset: the template's hero and daily rewards
+  block stay, demo blocks are exact removals, pages it adds drop their own header and
+  footer, and the shared header's links are an Editor step that names each page.

@@ -78,6 +78,7 @@ project identity to approval evidence; a self-declared brief is not enough.
 | `brand.theme` | Optional site palette that `apply_style.py` sets: any of `bg`, `overlay`, `border`, `primary`, `secondary`, `text` as `#rrggbb`, and `isDark` as `true` or `false`. Without it, the site keeps its theme. |
 | `content` | Optional approved copy, page overrides, FAQ, requirements, event copy, and CTA labels. |
 | `content.copy` | Optional list of `{"module", "field", "html"}` with an optional `"page"`: the approved text for a block's `title`, `subtitle` or `description`, as HTML (`<h1>`, `<h2>`, `<p>`), primary locale. No `<img>` or `<script>`. `apply_style.py` writes it. |
+| `content.seo` | Optional list of `{"page", "title", "description", "image"}`, one per page path: the search title (at most 70 characters) and description (at most 200), as plain text, and a local share image for link previews (`og:image`). `apply_style.py` writes them to the page's `seo` strings and uploads the image. |
 | `content.faq` | Optional list of `{"question", "answer"}`, both HTML; each question is an `<h4>`. It adds the FAQ block to the plan, and `apply_style.py` makes the block's items match it. |
 | `sources` | Provenance such as `publisher_answers`, `description`, `external_store`, or `figma`. |
 

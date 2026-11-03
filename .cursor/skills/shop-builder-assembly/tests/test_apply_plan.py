@@ -2055,13 +2055,79 @@ class PublisherTemplateSiteTests(unittest.TestCase):
         site, _ = publisher_template_site(self.brief)
         one_page = [{"path": "/"}]
         render_plan.require_header_source(one_page, site)
-        with self.assertRaisesRegex(ValueError, "made from a Publisher Account template"):
-            render_plan.require_header_source(one_page + [{"path": "/store"}], site)
+        render_plan.require_header_source(one_page + [{"path": "/store"}], site)
         site["layouts"] = []
         with self.assertRaisesRegex(ValueError, "^Page / has no header block of its own"):
             render_plan.require_header_source(one_page, site)
         own, _ = publisher_template_site(self.brief, own_header=True)
         render_plan.require_header_source(one_page + [{"path": "/store"}], own)
+
+    def multi_page_brief(self, faq: bool = True) -> dict:
+        brief = copy.deepcopy(self.brief)
+        brief["site"]["preset"] = "pc-multi-page"
+        brief["game"]["platforms"] = ["pc"]
+        if faq:
+            brief["content"]["faq"] = [{"question": "<h4>Q</h4>", "answer": "<p>A</p>"}]
+        return brief
+
+    def test_a_page_the_plan_would_add_empty_is_left_out(self) -> None:
+        site, _ = publisher_template_site(self.brief)
+        plan = render_plan.build_plan(self.multi_page_brief(faq=False), site)
+        self.assertEqual(["/", "/store"], [page["path"] for page in plan["pages"]])
+        warnings = plan["warnings"]
+        self.assertTrue(any(w.startswith("Page /about would have no sections") for w in warnings))
+
+    def test_a_multi_page_plan_builds_on_a_template_site(self) -> None:
+        site, _ = publisher_template_site(self.brief)
+        plan = render_plan.build_plan(self.multi_page_brief(), site)
+        pages = {page["path"]: page for page in plan["pages"]}
+        self.assertEqual(["/", "/store", "/about"], list(pages))
+        for path, page in pages.items():
+            with self.subTest(path):
+                self.assertEqual("layout", page["site_header"])
+                self.assertNotIn("header", page["blocks"])
+                self.assertNotIn("footer", page["blocks"])
+        # The pages the plan adds lose the header and footer `add-page` gives them.
+        for path in ("/store", "/about"):
+            self.assertIn("header", pages[path]["template_removals"])
+            self.assertIn("footer", pages[path]["template_removals"])
+        self.assertEqual("lead", pages["/"]["blocks"][0])
+
+    def test_the_rerun_drops_the_header_add_page_gave_a_new_page(self) -> None:
+        brief = self.multi_page_brief()
+        site, _ = publisher_template_site(self.brief)
+        approved = render_plan.build_plan(brief, copy.deepcopy(site))
+        created = []
+        for path in ("/store", "/about"):
+            blocks = [
+                {"_id": f"{path[1:]}-{module}", "module": module, "values": {}}
+                for module in render_plan.NEW_PAGE_TEMPLATE
+            ]
+            created.extend(block["_id"] for block in blocks)
+            site["pages"].append({"_id": f"page{path}", "path": path, "blocks": blocks})
+        plan = render_plan.build_plan(brief, site, frozenset(created))
+        store = next(page for page in plan["pages"] if page["path"] == "/store")
+        self.assertEqual("layout", store["site_header"])
+        removed = {(r["module"], r["reason"]) for r in store["removals"]}
+        self.assertIn(("header", "template block on a page this assembly created"), removed)
+        self.assertIn(("footer", "template block on a page this assembly created"), removed)
+        report = {
+            "approved_confirmation_id": approved["confirmation_id"],
+            "slug": plan["target"]["slug"],
+            "landing_id": plan["current_state"]["landing_id"],
+            "created_blocks": {"/store": created},
+        }
+        self.assertEqual([], render_plan.approval_changes(approved, plan, report))
+
+    def test_navigation_names_the_pages_to_link_in_the_editor(self) -> None:
+        site, _ = publisher_template_site(self.brief)
+        plan = render_plan.build_plan(self.multi_page_brief(), site)
+        with mock.patch.object(
+            apply_plan, "run_json", return_value={"ok": True, "data": copy.deepcopy(site)}
+        ):
+            results = apply_plan.apply_navigation(self.brief["site"]["slug"], "landing-1", plan)
+        self.assertEqual(3, len(results))
+        self.assertIn("link it to /, /store, /about", results[0]["skipped"])
 
     def test_navigation_skips_the_shared_template_header(self) -> None:
         site, _ = publisher_template_site(self.brief)

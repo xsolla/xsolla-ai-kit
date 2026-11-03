@@ -90,7 +90,10 @@ any write. Every script that writes (`apply_plan.py`, `apply_style.py`,
   extra items removed (`enable: false` is ignored there), missing ones added with stable
   IDs. All text goes in one `update-many-localization` call, with each string's current
   `description`, before the FAQ items that point at it are added. It reads every string
-  back and stops if a string outside the plan changed.
+  back and stops if a string outside the plan changed. Each page's `content.seo` goes to
+  the `L:` ids in `page.seo.title`, `page.seo.description` and `page.seo.ogImage`, a
+  sibling of `page.blocks`: plain text, and for `ogImage` the uploaded image's CDN URL,
+  through the same upload cache. A page without those fields goes to `needs_human`.
 
 ## ID dependencies
 
