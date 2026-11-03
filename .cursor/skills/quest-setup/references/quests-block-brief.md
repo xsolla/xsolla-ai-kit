@@ -4,7 +4,7 @@ Brief keys, settings and operations for the `block_operations` brief that the
 `shop-builder-assembly` gate validates. The agent never shows these keys to the publisher.
 Appearance recommendations and fitting rules are in
 [quests-block-appearance.md](quests-block-appearance.md). Appearance leaves require
-the planned candidate `0.2.6-qp-3256.0`. Its artifact is pending release and CDN
+the planned candidate `0.2.7-qp-3256.0`. Its artifact is pending release and CDN
 verification. Do not apply candidate plans until that evidence is recorded. Ordinary
 Quests creation remains pinned to stable `0.1.5`.
 

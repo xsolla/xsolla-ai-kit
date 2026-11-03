@@ -133,11 +133,11 @@ example:
 
 This is a shape example, not a recommended design. Use only measured and approved
 values. For `add`, ordinary creation remains stable `0.1.5`; the planned appearance
-candidate is `0.2.6-qp-3256.0`. Its artifact is pending release and CDN verification.
+candidate is `0.2.7-qp-3256.0`. Its artifact is pending release and CDN verification.
 Do not apply candidate plans until that evidence is recorded. Ordinary creation stays on
 stable `0.1.5`.
 
-Candidate `0.2.6-qp-3256.0` is the planned appearance capability pin, pending artifact
+Candidate `0.2.7-qp-3256.0` is the planned appearance capability pin, pending artifact
 release and CDN verification. Ordinary block creation remains pinned to stable `0.1.5`;
 never change that default. Do not apply candidate plans until release and CDN evidence is
 recorded. Never infer support from version ordering or package metadata. Existing-block
