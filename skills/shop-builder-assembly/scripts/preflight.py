@@ -12,6 +12,12 @@ from pathlib import Path
 
 sys.dont_write_bytecode = True  # keep the installed skill folder clean
 
+# `python3 -I` (isolated mode) does not put the script's own folder on sys.path, so
+# the sibling imports below would fail. Add it explicitly.
+SCRIPTS_DIR = str(Path(__file__).resolve().parent)
+if SCRIPTS_DIR not in sys.path:
+    sys.path.insert(0, SCRIPTS_DIR)
+
 import cli_environment
 from render_plan import common_layout_id
 from validate_shop_brief import load_brief, validate
@@ -270,17 +276,9 @@ def main() -> int:
             for external_id, group_type in requested_groups
             if external_id not in available_group_ids
         )
-        if missing_groups:
-            raise RuntimeError(
-                "catalog groups do not exist in the configured project: "
-                + ", ".join(
-                    f"{group_type}:{external_id}"
-                    for external_id, group_type in missing_groups
-                )
-            )
 
         result = {
-            "ok": True,
+            "ok": not missing_groups,
             # Plan lines the agent shows as they are.
             "plan_notes": cli_environment.plan_notes(cli),
             "context": {
@@ -307,10 +305,28 @@ def main() -> int:
                 "verified_groups": [
                     {"external_id": external_id, "type": group_type}
                     for external_id, group_type in sorted(requested_groups)
-                ]
+                    if (external_id, group_type) not in missing_groups
+                ],
+                "missing_groups": [
+                    {"external_id": external_id, "type": group_type}
+                    for external_id, group_type in missing_groups
+                ],
             },
         }
+        # Print the read-back even when groups are missing: with a catalog proposal
+        # still waiting for the developer's yes, the plan shows this context. The exit
+        # code stays 1, so apply_plan.py refuses to write until every group exists.
         print(json.dumps(result, indent=2))
+        if missing_groups:
+            print(
+                "Preflight failed: catalog groups do not exist in the configured project: "
+                + ", ".join(
+                    f"{group_type}:{external_id}"
+                    for external_id, group_type in missing_groups
+                ),
+                file=sys.stderr,
+            )
+            return 1
         return 0
     except cli_environment.SandboxConfirmationNeeded as exc:
         # Not a failure: nothing was written. The agent asks the user first.

@@ -53,11 +53,12 @@ from a normalized JSON shop brief.
 
    ```bash
    python3 scripts/apply_plan.py brief.json --approved-plan approved-plan.json \
-     --confirmation-id <id> > run1-report.json
+     --confirmation-id <id> --approved-test-projects <allowlist> > run1-report.json
    python3 scripts/render_plan.py brief.json --structure ./backups/my-shop/structure.json \
      --approved-plan approved-plan.json --run-report run1-report.json > run2-plan.json
    python3 scripts/apply_plan.py brief.json --approved-plan approved-plan.json \
-     --run-report run1-report.json --confirmation-id <id> --backup-dir ./backups/my-shop
+     --run-report run1-report.json --confirmation-id <id> --backup-dir ./backups/my-shop \
+     --approved-test-projects <allowlist>
    ```
 
    `render_plan.py` prints "Covered by the approved plan" or "Needs a new yes" with the

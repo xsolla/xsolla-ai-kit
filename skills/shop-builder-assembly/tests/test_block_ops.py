@@ -139,7 +139,7 @@ class BlockOpsTests(unittest.TestCase):
         )
         self.assertTrue(
             any(
-                "pre-release build" in warning
+                "candidate build" in warning
                 and candidate_version in warning
                 for warning in rendered["warnings"]
             ),
@@ -149,7 +149,7 @@ class BlockOpsTests(unittest.TestCase):
             ops_brief([add_op()]), make_structure()
         )
         self.assertFalse(
-            any("pre-release build" in warning for warning in stable_rendered["warnings"]),
+            any("candidate build" in warning for warning in stable_rendered["warnings"]),
             stable_rendered["warnings"],
         )
         for unsupported in (

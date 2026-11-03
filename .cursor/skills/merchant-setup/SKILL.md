@@ -52,10 +52,21 @@ Report only `XSOLLA_MERCHANT_ID: set/missing`,
 If all three are set, continue with the integration without showing any values.
 
 If the file is missing or any variable is absent, continue with the steps below.
-When a value is missing, tell the user to save the required key in the
-project-local `.env`: `XSOLLA_MERCHANT_ID`, `XSOLLA_PROJECT_ID`, or
-`XSOLLA_PROJECT_API_KEY`. Do not ask them to paste the project API key into
-chat.
+For a coded shop, tell the user which required key is missing from the
+project-local `.env`. Do not ask them to paste the project API key into chat.
+
+**Where the key lives:**
+
+- A shop the user codes (`shop-setup`) has a project directory. Write the merchant id, project id, and project API key to `.env` ([Step 5](#step-5-write-credentials-to-env)). That file is for the application.
+- A shop created on Xsolla's side (`nocode-shop-setup`) has no project directory. Do
+  not create `.env`; use the project key held by the signed-in Xsolla CLI instead.
+- When `xsolla auth login` reports that it created a Store API key for the project and
+  saved it to the keychain, CLI commands use that key. Do not ask for a key or copy it
+  into `.env` or chat. Check it with one read-only catalog command for this project. If
+  that read returns 401 after a project switch, run `xsolla auth login` for the intended
+  project and repeat the read once. If it still returns 401, stop and report the secure
+  credential setup blocker; do not create or request a key as a chat fallback. Never ask
+  the user to paste a session token.
 
 ---
 
@@ -87,8 +98,8 @@ https://publisher.xsolla.com/{merchant_id}/projects/{project_id}/...
 ```
 
 Examples:
-- `https://publisher.xsolla.com/887981/settings/api_key` → **merchant_id = 887981**
-- `https://publisher.xsolla.com/887981/projects/308077/edit/api_key` → **merchant_id = 887981**, **project_id = 308077**
+- `https://publisher.xsolla.com/{merchant_id}/settings/api_key` → merchant ID is in the URL
+- `https://publisher.xsolla.com/{merchant_id}/projects/{project_id}/edit/api_key` → both IDs are in the URL
 
 If the user doesn't share a URL, tell them:
 - **Merchant ID**: visible in the URL on any Publisher Account page, or under `Company settings → Company`
@@ -161,24 +172,20 @@ Full go-live checklist (utils probe, flip sandbox flags, deploy, live payment te
 
 ## Step 5: Write Credentials to .env
 
-Once all credentials are confirmed, write them to the project-local `.env`.
-Use the `XSOLLA_MERCHANT_ID`, `XSOLLA_PROJECT_ID`, and
-`XSOLLA_PROJECT_API_KEY` names. Update only those three assignments and retain
-every other line and setting, including keys used by other skills.
+For a coded shop, write confirmed credentials to the project-local `.env` using
+`XSOLLA_MERCHANT_ID`, `XSOLLA_PROJECT_ID`, and `XSOLLA_PROJECT_API_KEY`. For a
+Shop Builder shop without a code repository, do not create `.env`; the signed-in
+Xsolla CLI holds the project key.
 
-If `.env` does not exist, add `.env` to the repository's `.gitignore` before
-saving any credential values, then create the file with only the required
-settings. Treat `.env` as text; never source, execute, or interpolate it.
+Before saving any values, verify `.env` is ignored by Git. Add it to `.gitignore`
+before creating a new file. Create the file with only the required settings and
+set its mode to `600`. For an existing file, update required assignments in place,
+including lines that start with `export NAME=`, without adding duplicates. Preserve
+all unrelated lines and settings.
 
-After writing, confirm only the set/missing state of each required key. Never
-repeat any saved value, even in masked or encoded form.
-
-For an existing `.env`, update each of those three keys in place when already
-present, including a line that starts with `export NAME=`. Do not add a
-second assignment for the same key. Preserve all unrelated content and verify
-that the file is ignored by Git before saving new credential values.
-
----
+Never source, execute, or interpolate `.env`. After writing, confirm only the
+set/missing state of each key. Never print or echo saved values, even masked or
+encoded.
 
 ## Checklist
 
@@ -186,9 +193,8 @@ that the file is ignored by Git before saving new credential values.
 - [ ] Publisher Account created (individual or company)
 - [ ] Merchant ID known
 - [ ] Project ID known
-- [ ] Project-level API key generated and saved securely
-- [ ] Credentials written to `.env`
-- [ ] `.env` added to `.gitignore`
+- [ ] Project-level API key securely available in `.env` for a coded shop or the signed-in CLI for Shop Builder
+- [ ] For a coded shop, `.env` has mode 600 and is ignored by Git
 - [ ] *(Optional)* Merchant-level API key saved — only needed for CLI or cross-project API calls
 
-Once credentials are in `.env`, proceed with the integration.
+Once credentials are available from `.env` or the signed-in CLI, proceed with the integration.

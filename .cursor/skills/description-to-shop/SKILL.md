@@ -1,12 +1,11 @@
 ---
 name: description-to-shop
 description: >-
-  Turn a plain-language game description into the normalized, source-attributed shop
-  brief consumed by shop-builder-assembly. Not the entry point for "build me a shop" —
-  that is nocode-shop-setup, which routes here once the shop is created on Xsolla's side
-  and the only input is prose. Use when a publisher has no design, brief or written specification and
-  asks to build a Shop Builder site, webshop, top-up page, PC portal, or live-service
-  store from a description. This skill owns intake and inference; shop-builder-assembly
+  Turn a plain-language game description or the publisher's store listing into the
+  normalized, source-attributed shop brief consumed by shop-builder-assembly. Reached
+  through nocode-shop-setup once the shop is on Xsolla's side. Not the entry point for
+  "build me a shop", a web shop, a storefront or a game home: open nocode-shop-setup for
+  those. This skill owns intake and inference; shop-builder-assembly
   owns presets, confirmation, backups, CLI writes, verification, and preview. Do not use
   this skill to implement a second assembly workflow.
 metadata:
@@ -52,9 +51,13 @@ When the publisher delegates routine choices ("decide for me"), choose the prese
 layout, visual treatment and draft copy yourself and show them in assembly's plan
 instead of asking.
 
-Ask for missing required facts and unresolved conflicts in one batch. Use read-only discovery for the active
-CLI project and its catalog groups. If the catalog is absent, or a named group does not
-exist, stop and point at the catalog skill rather than creating entities.
+When `nocode-shop-setup` started this run, its one batch already asked the intake: read
+those answers and ask nothing new, except about a conflict. Otherwise, ask for missing
+required facts and unresolved conflicts in one batch. Use read-only discovery for the
+active CLI project and its catalog groups. A catalog that `catalog-design` has proposed
+and that waits for the same yes counts as existing. If the catalog is absent with no such
+proposal, or a named group is in neither, stop and point at the catalog skill. Never
+create entities here.
 
 ## 2. Produce the shared brief
 
@@ -63,12 +66,15 @@ version-1 JSON object:
 
 - `game` — platforms and lifecycle.
 - `site` — proposed slug, locales, and `auto` or an explicit preset.
-- `catalog.groups` — only verified same-project groups; `__all__` for all items of a
-  supported type.
+- `catalog.groups` — same-project groups that exist, or that `catalog-design`'s pending
+  proposal creates under the same yes; `__all__` for all items of a supported type.
+  Assembly's preflight checks every group exists before any site write.
 - `catalog.liveops` — the promo code or coupon promotions, reward chains and offer chains
   found by read-only `xsolla liveops list-promo-codes`, `list-coupons`,
   `list-reward-chain` and `list-offer-chain`. The lists include inactive entries: count
-  only those with `is_enabled: true`.
+  only those with `is_enabled: true`. Also count the ones `catalog-design`'s pending
+  proposal creates and activates under the same yes, so their blocks are in the plan the
+  developer approves.
 - `content` — approved copy and publisher page overrides.
 - `brand` — the listing's app icon as the logo and its art for the hero, once the
   publisher confirmed they may be used, unless they supplied their own.
@@ -90,7 +96,8 @@ localization, catalog, readiness and preview verification, and the never-publish
 safeguard.
 
 Do not request a separate approval here and do not run legacy local assembly scripts.
-The developer approves one plan, in `shop-builder-assembly`.
+The developer approves one plan, in `shop-builder-assembly`, shown in the same message as
+any pending catalog proposal.
 
 ## Failure handling
 

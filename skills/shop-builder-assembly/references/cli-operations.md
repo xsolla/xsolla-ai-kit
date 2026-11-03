@@ -60,6 +60,37 @@ directory has one, else `~/.xsolla.json`, and `config set` writes `./.xsolla.jso
 creating a stub without merchant or project when there is none. So never run
 `xsolla config set` yourself, and never from the working folder.
 
+## Runs under one yes
+
+The developer's one yes can cover more than one `apply_plan.py` run. Each later run is
+covered only when its render says so; `apply_plan.py` checks this again and stops before
+any write. Every script that writes (`apply_plan.py`, `patch_backgrounds.py`) also takes
+`--approved-test-projects <allowlist>`, and refuses to write without it.
+
+- **A new site's two runs.** A new site's generated blocks have no IDs before creation, so
+  it is applied in two runs: the bootstrap, then the rest. Save run 1's report as
+  `run1-report.json`, export again, and render with `--structure`, `--approved-plan
+  approved-plan.json` and `--run-report run1-report.json`. Apply run 2 with
+  `--approved-plan`, `--run-report`, `--backup-dir` and the approved `confirmation_id` only
+  if the render says "Covered by the approved plan": the same pages, sections, catalog,
+  locales, brand and content, and removals only of blocks run 1 created or the approved
+  plan listed.
+- **A run that stops partway.** A run that stops after its writes began, such as on an
+  authentication failure, prints a `stopped-partway` report: save it as
+  `partial-report.json`. Export again, render with `--structure`, `--approved-plan` and
+  `--run-report partial-report.json`, and apply under the same yes when the render says
+  "Covered by the approved plan"; otherwise ask again.
+- **Background fixes after the visual review.** The yes covers `values.background` leaves
+  (color, gradient, image, position, size) on blocks this assembly created, applied with
+  `scripts/patch_backgrounds.py <brief.json> --approved-plan approved-plan.json
+  --run-report <report> --backup-dir <dir> --fixes fixes.json --approved-test-projects
+  <allowlist>` after a fresh export. Pass `--run-report` once for every earlier run
+  (`run1-report.json` and run 2's report for a new site): run 1's report is the one that
+  lists the blocks it created. `fixes.json` is a list of
+  `{"block_id": …, "leaf": …, "value": …}`. It refuses anything else, an image not
+  uploaded to the site, a gradient unlike the ones already on it, and an opaque color
+  over a block that keeps its image.
+
 ## ID dependencies
 
 - Slug/domain identifies landing-level reads and page creation.

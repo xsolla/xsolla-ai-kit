@@ -99,7 +99,7 @@ class QuestsSettingsIntegrationTests(unittest.TestCase):
         )
         self.assertTrue(
             any(
-                "pre-release build" in warning
+                "candidate build" in warning
                 and "0.2.7-qp-3256.0" in warning
                 for warning in plan["warnings"]
             ),
