@@ -77,6 +77,8 @@ project identity to approval evidence; a self-declared brief is not enough.
 | `brand.images` | Optional list of local image files (`.png`, `.jpg`, `.webp`, `.svg` and the other types `upload-asset` takes), each `{"file", "module", "slot"}` with an optional `"page"`. `slot` is `background` or `logo`; `file` is relative to the brief. A hero image (`leadGameSales`) goes on a template page's own hero (`lead`). `apply_style.py` uploads and places them. |
 | `brand.theme` | Optional site palette that `apply_style.py` sets: any of `bg`, `overlay`, `border`, `primary`, `secondary`, `text` as `#rrggbb`, and `isDark` as `true` or `false`. Without it, the site keeps its theme. |
 | `content` | Optional approved copy, page overrides, FAQ, requirements, event copy, and CTA labels. |
+| `content.copy` | Optional list of `{"module", "field", "html"}` with an optional `"page"`: the approved text for a block's `title`, `subtitle` or `description`, as HTML (`<h1>`, `<h2>`, `<p>`), primary locale. No `<img>` or `<script>`. `apply_style.py` writes it. |
+| `content.faq` | Optional list of `{"question", "answer"}`, both HTML; each question is an `<h4>`. It adds the FAQ block to the plan, and `apply_style.py` makes the block's items match it. |
 | `sources` | Provenance such as `publisher_answers`, `description`, `external_store`, or `figma`. |
 
 Never put API keys, session cookies, passwords, or tokens in the brief.

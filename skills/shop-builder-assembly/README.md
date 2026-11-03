@@ -63,7 +63,7 @@ from a normalized JSON shop brief.
 
    `render_plan.py` prints "Covered by the approved plan" or "Needs a new yes" with the
    changes; `apply_plan.py` checks the same and stops before any write.
-   After the last apply run, back up again and set the approved palette and images with
+   After the last apply run, back up again and set the approved palette, images and copy with
    `scripts/apply_style.py` (same `--approved-plan`, `--run-report` for every run,
    `--backup-dir` and allowlist). Background fixes after the visual review go through
    `scripts/patch_backgrounds.py`, which accepts only background leaves on blocks the run
@@ -107,9 +107,8 @@ catalog. Federated wrappers use their effective `values.blockId` module.
 - Apply covers pages, navigation, blocks, locales, and catalog links. Catalog patches
   are targeted, disable unapproved titles, and are re-read. Verification checks target,
   paths, block order, retained/removal IDs, navigation, catalog, locales, and unpublished
-  state, and the theme colors `apply_style.py` sets; it reads its images back itself.
-  Copy awaits stable normalized inputs and contract acceptance; CLI readiness and preview
-  remain tracked gaps.
+  state, and the theme colors `apply_style.py` sets; it reads its images and copy back
+  itself. CLI readiness and preview remain tracked gaps.
 - Presets add the promo codes, reward and offer chain blocks only for features listed in
   `catalog.liveops`, with the blocks' default settings; `catalog-design` sets up the
   features themselves. A daily rewards block isn't on the official block page, so

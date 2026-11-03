@@ -119,10 +119,8 @@ when the preview session expired, is a request, not a new approval.
 ## Assembly order
 
 After confirmation, `apply_plan.py` applies steps 1–5 in this dependency order, and
-`scripts/apply_style.py` steps 6–7 after the last apply run (run 2 for a new site), from
-a fresh backup. Step 8 has no script yet (R1 in the
-[spec](../nocode-shop-setup/references/storefront-by-default.md)): run it by hand with the
-CLI commands in [CLI operations](references/cli-operations.md), as the plan showed.
+`scripts/apply_style.py` steps 6–8 after the last apply run (run 2 for a new site), from
+a fresh backup, as [CLI operations](references/cli-operations.md) describes.
 
 1. **Pages** — create all page paths before linking navigation.
 2. **Site layout** — after page/template creation, add `common-layout` only if the
@@ -141,8 +139,9 @@ CLI commands in [CLI operations](references/cli-operations.md), as the plan show
    game's art ([visual style](references/visual-style.md)). Hand over its `needs_human`.
 7. **Images** — it uploads each `brand.images` file once and puts the CDN URL in the
    block's background or logo. An opaque `background.color` hides the image under it.
-8. **Copy** — write localized HTML through localization commands, never through block
-   value patches. See [visual style](references/visual-style.md).
+8. **Copy** — it writes `content.copy` and the `content.faq` items in the primary locale
+   through `update-many-localization`, never block patches; `shopbuilder-translate` adds
+   other locales. Follow the text rules in [visual style](references/visual-style.md).
 
 Use pre-written scripts for repeated work; never pass `--force` or invent HTTP or
 `curl` workarounds. If an operation requires `--force`, stop and report it.

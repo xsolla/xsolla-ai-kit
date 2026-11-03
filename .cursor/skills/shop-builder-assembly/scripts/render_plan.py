@@ -592,6 +592,48 @@ def file_sha256(path: Path) -> str | None:
         return None
 
 
+def placement(
+    module: str, page_filter: str | None, pages: list[dict], created_block_ids: frozenset
+) -> dict:
+    """The planned pages a module's block is on, and the blocks there that existed before
+    this assembly and stay: the yes covers changing those only because the plan lists them.
+    A hero item goes on a template page's own hero (`lead`) in place of the preset's."""
+    page_modules = {}
+    for page in pages:
+        if page_filter not in (None, page["path"]):
+            continue
+        on_page = module
+        if on_page not in page["blocks"] and on_page in HERO_MODULES:
+            on_page = next((m for m in page["blocks"] if m in HERO_MODULES), on_page)
+        if on_page in page["blocks"]:
+            page_modules[page["path"]] = on_page
+    existing = []
+    for page in pages:
+        if page["path"] not in page_modules:
+            continue
+        removed = {removal["block_id"] for removal in page.get("removals", [])}
+        existing.extend(
+            block["block_id"]
+            for block in page.get("current_blocks", [])
+            if block["module"] == page_modules[page["path"]]
+            and block["block_id"] not in removed
+            and block["block_id"] not in created_block_ids
+        )
+    return {
+        "pages": list(page_modules),
+        "page_modules": page_modules,
+        "existing_block_ids": existing,
+    }
+
+
+def not_placed(label: str, module: str, page: str | None) -> str:
+    return (
+        f"{label} has no {module} block to go on"
+        + (f" on {page}" if page else "")
+        + "; it isn't placed."
+    )
+
+
 def images_plan(
     brief: dict,
     pages: list[dict],
@@ -601,28 +643,14 @@ def images_plan(
     """Where each image in `brand.images` goes, for `apply_style.py`.
 
     ``sha256`` binds the yes to the file's content; it is None without ``base_dir`` or
-    when the file is missing. ``existing_block_ids`` are blocks that were on the site
-    before this assembly and stay: the yes covers giving them the image only because the
-    plan lists them.
+    when the file is missing.
     """
     images, warnings = [], []
     for image in brief.get("brand", {}).get("images", []):
-        page_modules = {}
-        for page in pages:
-            if image.get("page") not in (None, page["path"]):
-                continue
-            module = image["module"]
-            if module not in page["blocks"] and module in HERO_MODULES:
-                # A template page keeps its own hero (`lead`) in place of the preset's.
-                module = next((m for m in page["blocks"] if m in HERO_MODULES), module)
-            if module in page["blocks"]:
-                page_modules[page["path"]] = module
-        targets = [page for page in pages if page["path"] in page_modules]
-        if not targets:
+        where = placement(image["module"], image.get("page"), pages, created_block_ids)
+        if not where["pages"]:
             warnings.append(
-                f"Image {image['file']} has no {image['module']} block to go on"
-                + (f" on {image['page']}" if image.get("page") else "")
-                + "; it isn't placed."
+                not_placed(f"Image {image['file']}", image["module"], image.get("page"))
             )
         sha256 = None
         if base_dir is not None:
@@ -630,28 +658,39 @@ def images_plan(
             sha256 = file_sha256(path if path.is_absolute() else base_dir / path)
             if sha256 is None:
                 warnings.append(f"Image {image['file']} was not found next to the brief.")
-        existing = []
-        for page in targets:
-            removed = {removal["block_id"] for removal in page.get("removals", [])}
-            existing.extend(
-                block["block_id"]
-                for block in page.get("current_blocks", [])
-                if block["module"] == page_modules[page["path"]]
-                and block["block_id"] not in removed
-                and block["block_id"] not in created_block_ids
-            )
         images.append(
             {
                 "file": image["file"],
                 "sha256": sha256,
                 "module": image["module"],
                 "slot": image["slot"],
-                "pages": [page["path"] for page in targets],
-                "page_modules": page_modules,
-                "existing_block_ids": existing,
+                **where,
             }
         )
     return images, warnings
+
+
+def copy_plan(
+    brief: dict, pages: list[dict], created_block_ids: frozenset
+) -> tuple[dict, list[str]]:
+    """The approved text `apply_style.py` writes in the primary locale: block text fields
+    from `content.copy`, and the FAQ items from `content.faq`. Other locales are
+    `shopbuilder-translate`'s."""
+    content = brief.get("content", {})
+    texts, warnings = [], []
+    for item in content.get("copy", []):
+        where = placement(item["module"], item.get("page"), pages, created_block_ids)
+        if not where["pages"]:
+            warnings.append(
+                not_placed(f"The {item['field']} text", item["module"], item.get("page"))
+            )
+        texts.append(
+            {"module": item["module"], "field": item["field"], "html": item["html"], **where}
+        )
+    faq = None
+    if content.get("faq"):
+        faq = {"items": content["faq"], **placement("faq", None, pages, created_block_ids)}
+    return {"locale": brief["site"]["primary_locale"], "texts": texts, "faq": faq}, warnings
 
 
 def build_plan(
@@ -668,6 +707,8 @@ def build_plan(
         pages, omissions, current_structure, created_block_ids
     )
     images, warnings = images_plan(brief, pages, created_block_ids, base_dir)
+    copy_section, copy_warnings = copy_plan(brief, pages, created_block_ids)
+    warnings.extend(copy_warnings)
     brand = brief.get("brand", {})
     if not brand.get("logo") and not any(
         image.get("slot") == "logo" for image in brand.get("images", [])
@@ -696,8 +737,7 @@ def build_plan(
         "requires_confirmation": True,
         "publication": "forbidden",
         # Matches SKILL.md "Assembly order": apply_plan.py runs pages through catalog
-        # links, apply_style.py the theme and images after the last apply run; copy is
-        # hand-run.
+        # links, apply_style.py the theme, images and copy after the last apply run.
         "order": [
             "backup",
             "pages",
@@ -728,6 +768,7 @@ def build_plan(
         "brand": brand,
         "theme": theme_plan(brief, pages, current_structure),
         "images": images,
+        "copy": copy_section,
         "content": brief.get("content", {}),
         "sources": brief["sources"],
         "omissions": omissions,
@@ -743,9 +784,8 @@ def build_plan(
             "catalog_links",
         ],
         # Applied by apply_style.py after the last apply_plan.py run.
-        "style_phases": ["theme", "images"],
+        "style_phases": ["theme", "images", "copy"],
         "unsupported_phases": [
-            "copy",
             "verify",
             "preview",
         ],

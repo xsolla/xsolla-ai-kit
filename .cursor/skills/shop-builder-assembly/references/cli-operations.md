@@ -20,7 +20,7 @@ project overrides after preflight.
 | Blocks | `add-block`, `move-block`, and page-scoped `update-block` removal patches | Landing/page/block IDs | Ordered page block list |
 | Theme | `update-block` with `type:site` and `type:page`, through `apply_style.py` | Landing/page IDs, targeted patches | Site theme `theme.input`; pages on the site theme |
 | Assets | `upload-asset --type image`, through `apply_style.py` | Landing ID, local file | Permanent CDN URL in a block's background or logo |
-| Copy | `add-language`, `update-localization`, `update-many-localization` | Slug, page and `L:` IDs | Localized HTML |
+| Copy | `update-many-localization` through `apply_style.py`; `add-language` in `apply_plan.py` | Slug, page and `L:` IDs | Localized HTML in the primary locale |
 | Catalog | `update-block` on `newStore.components` | Same-project group IDs | Store sections |
 | Verify | `get-structure`, `get-localization`, `verify-website` | Slug | Plan comparison and readiness result |
 | Preview | `enable-preview`, `preview-link` | Slug | Human-reviewable preview only |
@@ -66,7 +66,7 @@ any write. Every script that writes (`apply_plan.py`, `apply_style.py`,
   `{"block_id": …, "leaf": …, "value": …}`. It refuses anything else, an image not
   uploaded to the site, a gradient unlike the ones already on it, and an opaque color
   over a block that keeps its image.
-- **The theme and images, after the last apply run.** Export again, then run
+- **The theme, images and copy, after the last apply run.** Export again, then run
   `scripts/apply_style.py <brief.json> --approved-plan approved-plan.json --run-report
   <report> --backup-dir <dir> --approved-test-projects <allowlist>`, with `--run-report`
   once for every earlier run, as above. It sets the approved `brand.theme` on the site
@@ -84,6 +84,13 @@ any write. Every script that writes (`apply_plan.py`, `apply_style.py`,
   of the planned module's blocks that the runs created, and of existing blocks only when
   the plan listed them (`images[].existing_block_ids`). A block without that slot, a
   federated block, and an opaque background color over the image go to `needs_human`.
+  Then the copy, in the primary locale only: each `content.copy` item goes to the `L:` id
+  in `values.<field>.id` of its module's blocks, under the same rules for existing blocks.
+  The FAQ block's `questionV2` items are made to match `content.faq`: texts written,
+  extra items removed (`enable: false` is ignored there), missing ones added with stable
+  IDs. All text goes in one `update-many-localization` call, with each string's current
+  `description`, before the FAQ items that point at it are added. It reads every string
+  back and stops if a string outside the plan changed.
 
 ## ID dependencies
 

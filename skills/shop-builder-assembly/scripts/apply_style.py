@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Apply the approved theme and images after the last apply_plan.py run, under the same yes.
+"""Apply the approved theme, images and copy after the last apply_plan.py run, under the yes.
 
 Theme: sets the site theme's colors (`theme.input`) to the palette in the approved plan's
 brand, and switches the planned pages to the site theme. Only keys the site theme already
@@ -7,6 +7,9 @@ has are patched, each in the format its current value has.
 
 Images: uploads each approved file once (an asset cache keeps the URL across runs) and
 puts its CDN URL in the block slot the plan named.
+
+Copy: writes the approved text in the primary locale through `update-many-localization`,
+never through block patches, and makes the FAQ block's items match the approved list.
 
 A page or block that existed before this assembly changes only when the approved plan
 listed it. Never publishes.
@@ -18,6 +21,7 @@ import argparse
 import json
 import re
 import sys
+import uuid
 from pathlib import Path
 
 # `python3 -I` (isolated mode) does not put the script's own folder on sys.path, so
@@ -453,6 +457,217 @@ def images_phase(
     return results, needs_human
 
 
+def translation(entry: object, locale: str) -> object:
+    """A string's text in ``locale``; a read may key it by the short code, such as `en`."""
+    translations = entry.get("translations") if isinstance(entry, dict) else None
+    translations = translations if isinstance(translations, dict) else {}
+    return translations.get(locale, translations.get(locale.split("-")[0]))
+
+
+def text_slot(loc: object, page_id: str, lid: str, locale: str) -> tuple[str, str, object]:
+    """Where an `L:` string lives (its page's scope or `common`), its description, and its
+    current text in ``locale``."""
+    loc = loc if isinstance(loc, dict) else {}
+    page = ((loc.get("pages") or {}).get(page_id) or {}).get("texts") or {}
+    for scope, texts in ((page_id, page), ("common", loc.get("common") or {})):
+        entry = texts.get(lid) if isinstance(texts, dict) else None
+        if isinstance(entry, dict):
+            description = entry.get("description")
+            return (
+                scope,
+                description if isinstance(description, str) else "",
+                translation(entry, locale),
+            )
+    return page_id, "", None
+
+
+def flat_texts(loc: object) -> dict[tuple[str, str], object]:
+    """Every string in a `get-localization` result, by (scope, `L:` id)."""
+    loc = loc if isinstance(loc, dict) else {}
+    flat: dict[tuple[str, str], object] = {}
+    for page_id, page in (loc.get("pages") or {}).items():
+        for lid, entry in ((page or {}).get("texts") or {}).items():
+            flat[(page_id, lid)] = entry
+    for lid, entry in (loc.get("common") or {}).items():
+        flat[("common", lid)] = entry
+    return flat
+
+
+def faq_item_ids(landing_id: str, block_id: str, index: int) -> tuple[str, str, str]:
+    """Stable IDs for an FAQ item this script adds, so a rerun finds it again."""
+    component = str(uuid.uuid5(uuid.NAMESPACE_URL, f"{landing_id}:{block_id}:faq:{index}"))
+    return (
+        component,
+        "L:" + str(uuid.uuid5(uuid.NAMESPACE_URL, component + ":question")),
+        "L:" + str(uuid.uuid5(uuid.NAMESPACE_URL, component + ":answer")),
+    )
+
+
+def copy_phase(
+    slug: str, landing_id: str, current: dict, approved: dict, created: frozenset
+) -> tuple[list[dict], list[str], dict]:
+    """Write the approved text in the primary locale: block text fields, then the FAQ
+    items, adding or removing items to match the approved list."""
+    copy_plan = approved.get("copy") or {}
+    texts, faq = copy_plan.get("texts", []), copy_plan.get("faq")
+    if not texts and not faq:
+        return [], [], current
+    locale = copy_plan["locale"]
+    before = localization(slug)
+    writes: dict[str, dict[str, dict]] = {}
+    expected: dict[tuple[str, str], str] = {}
+    structural: dict[str, dict] = {}
+    added: dict[str, list[str]] = {}
+    results: list[dict] = []
+    needs_human: list[str] = []
+
+    def write(page_id: str, lid: str, html_text: str) -> str:
+        scope, description, now = text_slot(before, page_id, lid, locale)
+        expected[(scope, lid)] = html_text
+        if isinstance(now, str) and now.strip() == html_text.strip():
+            return "unchanged"
+        writes.setdefault(scope, {})[lid] = {
+            "description": description,
+            "translation": html_text,
+        }
+        return "set"
+
+    def planned_blocks(item: dict):
+        allowed = set(item.get("existing_block_ids", [])) | created
+        for path in item["pages"]:
+            module = item["page_modules"][path]
+            page = page_for_path(current, path) or {}
+            for block in page.get("blocks", []):
+                if effective_module(block) != module:
+                    continue
+                if block.get("_id") in allowed:
+                    yield page, block
+                else:
+                    needs_human.append(
+                        f"The {module} block on {path} existed before this assembly and the "
+                        "plan didn't list it; its text wasn't changed."
+                    )
+
+    for item in texts:
+        for page, block in planned_blocks(item):
+            field = (block.get("values") or {}).get(item["field"])
+            lid = field.get("id") if isinstance(field, dict) else None
+            entry = {
+                "block_id": block["_id"],
+                "module": effective_module(block),
+                "field": item["field"],
+            }
+            if isinstance(lid, str) and lid.startswith("L:"):
+                entry["status"] = write(page["_id"], lid, item["html"])
+            else:
+                entry.update(status="skipped", reason=f"it has no {item['field']} text")
+                needs_human.append(
+                    f"The {entry['module']} block has no {item['field']} text to write; set "
+                    "it in the editor if it should have one."
+                )
+            results.append(entry)
+
+    for page, block in planned_blocks(faq) if faq else []:
+        components = block.get("components")
+        components = components if isinstance(components, list) else []
+        questions = [
+            index
+            for index, component in enumerate(components)
+            if isinstance(component, dict) and component.get("type") == "questionV2"
+        ]
+        statuses, patches = [], []
+        for index, item in enumerate(faq["items"]):
+            if index < len(questions):
+                component = components[questions[index]]
+                question_id = (component.get("question") or {}).get("id")
+                answer_id = (component.get("answer") or {}).get("id")
+                if not all(
+                    isinstance(lid, str) and lid.startswith("L:")
+                    for lid in (question_id, answer_id)
+                ):
+                    raise RuntimeError(
+                        f"FAQ item {index + 1} of block {block['_id']} has no question or "
+                        "answer text ID; nothing of the copy was written"
+                    )
+            else:
+                component_id, question_id, answer_id = faq_item_ids(
+                    landing_id, block["_id"], index
+                )
+                patches.append(
+                    {
+                        "op": "add",
+                        "path": ["components", len(components) + len(patches)],
+                        "value": {
+                            "_id": component_id,
+                            "type": "questionV2",
+                            "enable": True,
+                            "question": {"id": question_id},
+                            "answer": {"id": answer_id},
+                        },
+                    }
+                )
+                added.setdefault(block["_id"], []).append(component_id)
+            statuses.append(write(page["_id"], question_id, item["question"]))
+            statuses.append(write(page["_id"], answer_id, item["answer"]))
+        extra = questions[len(faq["items"]):]
+        # `enable: false` is ignored for FAQ questions: extra items are removed.
+        patches.extend(
+            {"op": "remove", "path": ["components", index]} for index in reversed(extra)
+        )
+        if patches:
+            structural[block["_id"]] = {"type": "block", "id": block["_id"], "patches": patches}
+        results.append(
+            {
+                "block_id": block["_id"],
+                "module": "faq",
+                "field": "items",
+                "status": "set" if patches or "set" in statuses else "unchanged",
+                "added": len(added.get(block["_id"], [])),
+                "removed": len(extra),
+            }
+        )
+
+    if writes:
+        # The text goes in first: a block that points at a missing string breaks the page.
+        run_json(
+            "shopbuilder",
+            "update-many-localization",
+            "--slug",
+            slug,
+            "--data",
+            json.dumps({"locale": locale, "perScopeValues": writes}, separators=(",", ":")),
+        )
+    if structural:
+        current = write_changes(slug, landing_id, structural, "FAQ")
+    if writes or structural:
+        after = flat_texts(localization(slug))
+        old = flat_texts(before)
+        written = {(scope, lid) for scope, ids in writes.items() for lid in ids}
+        outside = sorted(
+            key[1]
+            for key in set(old) | set(after)
+            if key not in written and old.get(key) != after.get(key)
+        )
+        if outside:
+            raise RuntimeError("text outside the plan changed: " + ", ".join(outside))
+        missing = []
+        for key, html_text in expected.items():
+            now = translation(after.get(key), locale)
+            if not isinstance(now, str) or now.strip() != html_text.strip():
+                missing.append(key[1])
+        saved_ids = {
+            component.get("_id")
+            for page in current.get("pages", [])
+            for block in page.get("blocks", [])
+            for component in (block.get("components") or [])
+            if isinstance(component, dict)
+        }
+        missing += [cid for ids in added.values() for cid in ids if cid not in saved_ids]
+        if missing:
+            raise RuntimeError("the copy did not persist: " + ", ".join(missing))
+    return results, needs_human, current
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("brief", type=Path)
@@ -478,7 +693,13 @@ def main() -> int:
         reports = [load_run_report(path) for path in args.run_report]
         check_reports(reports, args.run_report, approved, slug)
         base_dir = args.brief.resolve().parent
-        if not approved.get("brand", {}).get("theme") and not approved.get("images"):
+        copy_plan = approved.get("copy") or {}
+        if not (
+            approved.get("brand", {}).get("theme")
+            or approved.get("images")
+            or copy_plan.get("texts")
+            or copy_plan.get("faq")
+        ):
             print(
                 json.dumps(
                     {
@@ -487,6 +708,7 @@ def main() -> int:
                         "slug": slug,
                         "theme": "no palette in the approved plan; the site keeps its theme",
                         "images": [],
+                        "copy": [],
                         "published": False,
                     },
                     indent=2,
@@ -519,15 +741,19 @@ def main() -> int:
         theme, theme_needs, current = theme_phase(
             slug, landing_id, current, approved, created_pages
         )
+        created = frozenset().union(*(created_block_ids(report) for report in reports))
         images, image_needs = images_phase(
             slug,
             landing_id,
             current,
             approved,
-            frozenset().union(*(created_block_ids(report) for report in reports)),
+            created,
             base_dir,
             asset_urls(args.backup_dir) if approved.get("images") else set(),
             args.asset_cache or args.approved_plan.resolve().parent / "asset-cache.json",
+        )
+        copy_results, copy_needs, current = copy_phase(
+            slug, landing_id, structure(slug), approved, created
         )
         print(
             json.dumps(
@@ -539,7 +765,8 @@ def main() -> int:
                     "landing_id": landing_id,
                     "theme": theme,
                     "images": images,
-                    "needs_human": theme_needs + image_needs,
+                    "copy": copy_results,
+                    "needs_human": theme_needs + image_needs + copy_needs,
                     "pending_phases": approved.get("unsupported_phases", []),
                     "published": False,
                 },
