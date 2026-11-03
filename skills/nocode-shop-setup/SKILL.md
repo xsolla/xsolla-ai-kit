@@ -148,6 +148,12 @@ the catalog and the storefront skill apply its plan, in that order. The storefro
 still runs its own preflight and backup, and asks again only for what its plan didn't
 show. When the catalog already exists, the plan alone is the message.
 
+Before showing the proposal, check it against the limits in `catalog-design`'s LiveOps
+reference: each offer chain or reward chain step takes one item, and offer chain steps
+only items and bundles. After the yes, if something can't be created exactly as proposed,
+create the rest, then show what differs and ask before substituting anything: an extra
+bundle or a changed step is a change the yes didn't cover.
+
 The batch above asks the storefront intake. With a project directory, record the answers
 in [the onboarding ledger](references/onboarding-contract.md); without one, they stay in
 the conversation. The storefront skills read them and ask only about a conflict. Do not
