@@ -44,7 +44,8 @@ The user acts in steps 1, 2 and 4 only.
 4. **One approval.** The catalog proposal, the site plan, and a desktop and mobile mockup in
    one message. One yes.
 5. **Build.** Catalog, then the site, with a backup before writes.
-6. **Checkout look.** A Pay Station theme in the site's colors (R11, open).
+6. **Checkout look.** A Pay Station theme in the site's colors: a handoff step with the
+   palette until Pay Station has an API for themes (R11, D5).
 7. **Visual loop.** Screenshots of every page at 1440 and 390 px in preview, fixes, and
    another look, until the checklist passes.
 8. **Handoff.** Preview and editor links, final screenshots, readiness by stage, and what is
@@ -64,11 +65,11 @@ waits for a CLI release. **Open** has nothing merged yet.
 | R4 | Visual loop at 1440 and 390 px as the definition of done | Every report says `real_visual_check: yes` for desktop and mobile | shop-builder-assembly | Done. A new site can't open in preview until the CLI ships `create-block`, and the review needs a signed-in browser: without one, the handoff says the site isn't reviewed | [#117](https://github.com/xsolla/xsolla-ai-kit/pull/117) |
 | R5 | Ship the Shop Builder render rules | None of the rules shows up as a fix in a test run's friction log | shop-builder-assembly | Done: the rules and the opaque-color refusal. The copy step follows the text rules: the validator refuses copy that isn't HTML, `<img>` in copy, and an FAQ question that isn't an `<h4>`. Open check: `apply_plan.py` writes header navigation labels as `<span>` HTML, which the render rules call plain text; the earlier verified runs rendered them, so confirm on the next test site before changing it. The plan's step order matches the skill (theme, images and copy last) | [#117](https://github.com/xsolla/xsolla-ai-kit/pull/117), [#118](https://github.com/xsolla/xsolla-ai-kit/pull/118), [#130](https://github.com/xsolla/xsolla-ai-kit/pull/130) |
 | R6 | Support Publisher Account templates and mobile game homes | An App Store link becomes a multi-page hub with LiveOps through the kit; see [R6 in detail](#r6-in-detail) | shop-builder-assembly, game-web-portal, nocode-shop-setup | Done: part (b) works for the single-page preset on a Single-page shop template site, tested on the masked real-export fixture and a scripted run (D3 decided). Part (c) is merged: `game-web-portal` takes App Store and Google Play titles, `scripts/store_url.py` passes only the three exact store hosts, and `nocode-shop-setup` offers a game home to mobile titles. A multi-page plan on a template site builds too, tested on the masked fixture and a scripted run | [#134](https://github.com/xsolla/xsolla-ai-kit/pull/134), [#144](https://github.com/xsolla/xsolla-ai-kit/pull/144), [#145](https://github.com/xsolla/xsolla-ai-kit/pull/145) |
-| R7 | Helpers for CLI gaps instead of a stop | The agent neither stops nor improvises on known gaps | shop-builder-assembly, catalog-design | Decision (D4): conflicts with the kit's "no raw HTTP" rule. Most gaps close with the CLI release | — |
-| R8 | Research, real art and the full feature set by default | No follow-up prompt for art, SEO or features | description-to-shop, catalog-design, shop-builder-assembly | Partial: full shop proposal, store-listing art, an image per product, design defaults, and SEO by default are merged: `description-to-shop` fills each page's search title, description and share image without asking, and `apply_style.py` writes them. The sandbox purchase test is a decision (D6) | [#118](https://github.com/xsolla/xsolla-ai-kit/pull/118), [#143](https://github.com/xsolla/xsolla-ai-kit/pull/143) |
+| R7 | Helpers for CLI gaps instead of a stop | The agent neither stops nor improvises on known gaps | shop-builder-assembly, catalog-design | CLI: decided (D4 a). The kit keeps its "no raw HTTP" rule and stops on a known gap, saying which; the gaps close with the CLI release | — |
+| R8 | Research, real art and the full feature set by default | No follow-up prompt for art, SEO or features | description-to-shop, catalog-design, shop-builder-assembly | Done: full shop proposal, store-listing art, an image per product, design defaults, and SEO by default are merged: `description-to-shop` fills each page's search title, description and share image without asking, and `apply_style.py` writes them. The sandbox purchase test is dropped (D6 a) | [#118](https://github.com/xsolla/xsolla-ai-kit/pull/118), [#143](https://github.com/xsolla/xsolla-ai-kit/pull/143) |
 | R9 | Setup without manual steps | Setup takes one prompt and no manual step besides signing in | nocode-shop-setup, merchant-setup | Partial: the approver is asked first, the CLI is installed when missing (Windows included) and the user signs in in their own terminal, the CLI and kit are refreshed first, the key comes from `auth login` without asking, and no key or Login project is created before the yes. Self-attestation by the project owner stays out of 1.5.0 (D2) | [#117](https://github.com/xsolla/xsolla-ai-kit/pull/117), [#118](https://github.com/xsolla/xsolla-ai-kit/pull/118), [#128](https://github.com/xsolla/xsolla-ai-kit/pull/128), [#130](https://github.com/xsolla/xsolla-ai-kit/pull/130) |
 | R10 | Resumable, rerunnable builds | A build interrupted at any step resumes and finishes without duplicates | shop-builder-assembly | Partial: a stopped run's report keeps the same yes, a taken slug stops the run by name, and a rerun skips pages, navigation, locales and catalog links that already match. `apply_style.py` keeps an asset cache, so a rerun doesn't upload an image twice. Open: resuming catalog creation, which `catalog-design` does without a script. A stopped run resumed under the same yes three times in a scripted run against a stateful stand-in CLI | [#117](https://github.com/xsolla/xsolla-ai-kit/pull/117), [#129](https://github.com/xsolla/xsolla-ai-kit/pull/129), [#138](https://github.com/xsolla/xsolla-ai-kit/pull/138) |
-| R11 | Pay Station theme matches the site | Buy opens Pay Station in the site's look on desktop and mobile | new step after assembly | Decision (D5): browser-only until an API exists | — |
+| R11 | Pay Station theme matches the site | Buy opens Pay Station in the site's look on desktop and mobile | new step after assembly | Done as a handoff step (D5 a): `apply_style.py` hands over the site's palette, mapped to Pay Station's color groups, with the Pay Station customization link. Setting the theme automatically waits for a Pay Station API | this PR |
 
 ### R6 in detail
 
@@ -232,6 +233,8 @@ kit forbids raw HTTP and stops on a missing CLI operation.
   usual preflight and backup, for listed gaps, each removed when the CLI covers it.
 - Recommendation: (a) for every gap the coming CLI release closes; decide (b) only for the
   gaps left after it.
+- **Decided 2026-11-03: (a),** by the Shop Builder skills' code owner (apyanzin-xsolla):
+  the kit keeps its no-raw-HTTP rule and stops on a CLI gap until the CLI release closes it.
 - Effect: (a) keeps some stops until the release; (b) removes them sooner and adds scripts
   to maintain.
 
@@ -239,6 +242,10 @@ kit forbids raw HTTP and stops on a missing CLI operation.
 - Options: (a) the handoff gives the site's colors and fonts, and the developer sets the
   theme; (b) the agent sets it in Publisher Account through the browser.
 - Recommendation: (a) until an API exists.
+- **Decided 2026-11-03: (a),** by the Shop Builder skills' code owner (apyanzin-xsolla).
+  `apply_style.py` hands over the approved palette, mapped to Pay Station's color groups,
+  with the Pay Station customization link. Pay Station's Typography tab sets font sizes
+  only, so no font goes in the step.
 - Effect: (a) adds one documented manual step; (b) depends on browser automation of a page
   that can change.
 
@@ -248,6 +255,8 @@ every write reaches the project.
 - Options: (a) drop it from R8; (b) reword it as a test purchase the developer makes,
   listed in the handoff with steps.
 - Recommendation: (b).
+- **Decided 2026-11-03: (a),** by the Shop Builder skills' code owner (apyanzin-xsolla):
+  the purchase test is dropped from R8, and the handoff doesn't list one.
 - Effect: none on the targets; it removes a requirement the kit can't meet as written.
 
 ## Dependencies outside the kit
