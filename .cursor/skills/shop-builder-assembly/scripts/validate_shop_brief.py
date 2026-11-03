@@ -160,6 +160,56 @@ def faq_errors(faq: object) -> list[str]:
     return errors
 
 
+# Search engines cut longer titles and descriptions short.
+SEO_LIMITS = {"title": 70, "description": 200}
+
+
+def seo_errors(seo: object) -> list[str]:
+    """Check `content.seo`: per page, a plain-text title and description, and a local
+    share image (og:image)."""
+    if not isinstance(seo, list) or not seo:
+        return ["content.seo must be a non-empty list"]
+    errors, pages = [], set()
+    for index, item in enumerate(seo):
+        prefix = f"content.seo[{index}]"
+        if not isinstance(item, dict):
+            errors.append(f"{prefix} must be an object")
+            continue
+        unknown = sorted(set(item) - {"page", "title", "description", "image"})
+        if unknown:
+            errors.append(f"{prefix} has unknown keys: " + ", ".join(unknown))
+        page = item.get("page")
+        if not isinstance(page, str) or not page.startswith("/"):
+            errors.append(f"{prefix}.page must be a page path such as /")
+        elif page in pages:
+            errors.append(f"{prefix}.page {page} is listed twice")
+        else:
+            pages.add(page)
+        if not any(item.get(key) for key in ("title", "description", "image")):
+            errors.append(f"{prefix} needs a title, a description or an image")
+        for key, limit in SEO_LIMITS.items():
+            value = item.get(key)
+            if value is None:
+                continue
+            if not isinstance(value, str) or not value.strip():
+                errors.append(f"{prefix}.{key} must be non-empty text")
+            elif "<" in value or ">" in value:
+                errors.append(f"{prefix}.{key} is plain text, not HTML")
+            elif len(value) > limit:
+                errors.append(f"{prefix}.{key} must be at most {limit} characters")
+        image = item.get("image")
+        if image is not None:
+            if not isinstance(image, str) or not image.strip():
+                errors.append(f"{prefix}.image must be a local file")
+            elif "://" in image:
+                errors.append(f"{prefix}.image must be a local file; download it first")
+            elif Path(image).suffix.lower() not in IMAGE_EXTENSIONS:
+                errors.append(
+                    f"{prefix}.image must be one of: " + ", ".join(sorted(IMAGE_EXTENSIONS))
+                )
+    return errors
+
+
 SECRET_KEY_SUFFIXES = (
     "apikey",
     "password",
@@ -364,6 +414,8 @@ def validate(brief: dict) -> list[str]:
         errors.extend(copy_errors(content["copy"]))
     if "faq" in content:
         errors.extend(faq_errors(content["faq"]))
+    if "seo" in content:
+        errors.extend(seo_errors(content["seo"]))
 
     sources = brief.get("sources")
     if not isinstance(sources, list) or not sources:

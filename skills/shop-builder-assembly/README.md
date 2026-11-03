@@ -63,7 +63,7 @@ from a normalized JSON shop brief.
 
    `render_plan.py` prints "Covered by the approved plan" or "Needs a new yes" with the
    changes; `apply_plan.py` checks the same and stops before any write.
-   After the last apply run, back up again and set the approved palette, images and copy with
+   After the last apply run, back up again and set the approved palette, images, copy and SEO with
    `scripts/apply_style.py` (same `--approved-plan`, `--run-report` for every run,
    `--backup-dir` and allowlist). Background fixes after the visual review go through
    `scripts/patch_backgrounds.py`, which accepts only background leaves on blocks the run

@@ -671,10 +671,11 @@ def images_plan(
 
 
 def copy_plan(
-    brief: dict, pages: list[dict], created_block_ids: frozenset
+    brief: dict, pages: list[dict], created_block_ids: frozenset, base_dir: Path | None
 ) -> tuple[dict, list[str]]:
     """The approved text `apply_style.py` writes in the primary locale: block text fields
-    from `content.copy`, and the FAQ items from `content.faq`. Other locales are
+    from `content.copy`, the FAQ items from `content.faq`, and each page's SEO title,
+    description and share image from `content.seo`. Other locales are
     `shopbuilder-translate`'s."""
     content = brief.get("content", {})
     texts, warnings = [], []
@@ -690,7 +691,31 @@ def copy_plan(
     faq = None
     if content.get("faq"):
         faq = {"items": content["faq"], **placement("faq", None, pages, created_block_ids)}
-    return {"locale": brief["site"]["primary_locale"], "texts": texts, "faq": faq}, warnings
+    planned = {page["path"] for page in pages}
+    seo = []
+    for item in content.get("seo", []):
+        if item["page"] not in planned:
+            warnings.append(f"SEO for {item['page']} has no planned page; it isn't written.")
+            continue
+        entry = {
+            "page": item["page"],
+            "title": item.get("title"),
+            "description": item.get("description"),
+            "file": item.get("image"),
+            "sha256": None,
+        }
+        if entry["file"] and base_dir is not None:
+            path = Path(entry["file"])
+            entry["sha256"] = file_sha256(path if path.is_absolute() else base_dir / path)
+            if entry["sha256"] is None:
+                warnings.append(f"Image {entry['file']} was not found next to the brief.")
+        seo.append(entry)
+    return {
+        "locale": brief["site"]["primary_locale"],
+        "texts": texts,
+        "faq": faq,
+        "seo": seo,
+    }, warnings
 
 
 def build_plan(
@@ -707,7 +732,7 @@ def build_plan(
         pages, omissions, current_structure, created_block_ids
     )
     images, warnings = images_plan(brief, pages, created_block_ids, base_dir)
-    copy_section, copy_warnings = copy_plan(brief, pages, created_block_ids)
+    copy_section, copy_warnings = copy_plan(brief, pages, created_block_ids, base_dir)
     warnings.extend(copy_warnings)
     brand = brief.get("brand", {})
     if not brand.get("logo") and not any(
