@@ -78,9 +78,11 @@ version-1 JSON object:
   proposal creates and activates under the same yes, so their blocks are in the plan the
   developer approves.
 - `content` — approved copy and publisher page overrides.
-- `brand` — the listing's app icon as the logo and its art for the hero, once the
-  publisher confirmed they may be used, unless they supplied their own. Put the palette
-  taken from that art in `brand.theme`, as the assembly skill's visual style describes.
+- `brand` — the listing's art and app icon, once the publisher confirmed they may be
+  used, unless they supplied their own: download them next to the brief and list them in
+  `brand.images` (key art on the `leadGameSales` background, the icon as the `footer`
+  logo). Put the palette taken from that art in `brand.theme`, as the assembly skill's
+  visual style describes.
 - `sources` — add `{"kind":"description", ...}`, and `{"kind":"external_store", ...}` with
   the listing URL when it supplied facts or art. Keep the provenance of any publisher
   answer used to fill a gap. Attribute reused intake to `.xsolla/onboarding.json` and

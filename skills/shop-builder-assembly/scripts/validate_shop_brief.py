@@ -63,6 +63,46 @@ def theme_errors(theme: object) -> list[str]:
     return errors
 
 
+# Where an image goes on a block: the block's background, or its logo.
+IMAGE_SLOTS = {"background": ("values", "background", "img"), "logo": ("values", "logo", "img")}
+# The image types `upload-asset --type image` accepts.
+IMAGE_EXTENSIONS = {
+    ".gif", ".png", ".jpg", ".jpeg", ".webp", ".bmp", ".ico", ".tif", ".tiff", ".svg"
+}
+
+
+def image_errors(images: object) -> list[str]:
+    """Check `brand.images`: local image files, each placed on a block module's slot."""
+    if not isinstance(images, list) or not images:
+        return ["brand.images must be a non-empty list"]
+    errors = []
+    for index, image in enumerate(images):
+        prefix = f"brand.images[{index}]"
+        if not isinstance(image, dict):
+            errors.append(f"{prefix} must be an object")
+            continue
+        unknown = sorted(set(image) - {"file", "module", "slot", "page"})
+        if unknown:
+            errors.append(f"{prefix} has unknown keys: " + ", ".join(unknown))
+        file = image.get("file")
+        if not isinstance(file, str) or not file.strip():
+            errors.append(f"{prefix}.file is required")
+        elif "://" in file:
+            errors.append(f"{prefix}.file must be a local file; download it first")
+        elif Path(file).suffix.lower() not in IMAGE_EXTENSIONS:
+            errors.append(
+                f"{prefix}.file must be one of: " + ", ".join(sorted(IMAGE_EXTENSIONS))
+            )
+        if image.get("module") not in VERIFIED_BLOCK_MODULES:
+            errors.append(f"{prefix}.module must be a verified block module")
+        if image.get("slot") not in IMAGE_SLOTS:
+            errors.append(f"{prefix}.slot must be one of: " + ", ".join(IMAGE_SLOTS))
+        page = image.get("page")
+        if page is not None and (not isinstance(page, str) or not page.startswith("/")):
+            errors.append(f"{prefix}.page must be a page path such as /")
+    return errors
+
+
 SECRET_KEY_SUFFIXES = (
     "apikey",
     "password",
@@ -261,6 +301,8 @@ def validate(brief: dict) -> list[str]:
 
     if isinstance(brand_value, dict) and "theme" in brand_value:
         errors.extend(theme_errors(brand_value["theme"]))
+    if isinstance(brand_value, dict) and "images" in brand_value:
+        errors.extend(image_errors(brand_value["images"]))
 
     sources = brief.get("sources")
     if not isinstance(sources, list) or not sources:

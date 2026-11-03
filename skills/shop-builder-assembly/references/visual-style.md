@@ -19,7 +19,9 @@ colors, placeholder art and hard section edges read as unfinished.
 - Hero default: the key art centered, a blurred and darkened copy of it filling the sides,
   and the copy over it readable at both widths. Between sections, plain two-color fades;
   one font per role (headings, body, buttons).
-- Upload images with `upload-asset` and use the returned CDN URL. Never hotlink a store page.
+- Download the approved art next to the brief and list it in `brand.images`:
+  `apply_style.py` uploads it with `upload-asset` and puts the returned CDN URL on the
+  block. Never hotlink a store page.
 - Products and packs need artwork in one consistent style. It's the catalog items' images,
   which `catalog-design` sets; list the missing ones in the handoff.
 
@@ -79,6 +81,10 @@ below against the result.
   preview keeps the old colors. `apply_style.py` checks whether it changed; when it
   didn't, its report's `needs_human` has the Editor step: put it in the handoff.
 - A page-theme patch detaches that page from the global theme. Say so in the handoff.
+- The theme's colors are `theme.input` (Site Builder migration WS-1176 moved every site
+  and page theme there from `mainColors`). Its fonts are no longer a field the CLI can
+  set: they live in the calculated theme, which a patch doesn't change. Choose them in
+  the editor's Theme panel and list it as a manual step in the handoff.
 - The preview loads only the three theme fonts. Any other font named inline falls back to
   serif: always add a generic fallback, such as `sans-serif`.
 - Built-in fonts: GraphikLC, Montserrat, Oswald, Roboto, Spectral, Pilat, Aktiv. For the
