@@ -183,7 +183,8 @@ class PresetTests(unittest.TestCase):
         order = render_plan.build_plan(self.brief)["order"]
         for scripted in ("pages", "site_layout", "navigation", "blocks", "catalog_links"):
             self.assertLess(order.index(scripted), order.index("theme"))
-            self.assertLess(order.index(scripted), order.index("copy_assets"))
+            self.assertLess(order.index(scripted), order.index("images"))
+            self.assertLess(order.index(scripted), order.index("copy"))
 
     def test_site_layout_follows_page_templates(self) -> None:
         plan = render_plan.build_plan(self.brief)

@@ -640,6 +640,21 @@ class ApplyPlanTests(unittest.TestCase):
                 )
                 sleep.assert_called_once_with(apply_plan.LOGIN_SETTLE_SECONDS)
 
+    def test_a_failed_login_sends_the_user_to_their_own_terminal(self) -> None:
+        for outcome in (
+            mock.Mock(returncode=1, stderr="", stdout=""),
+            subprocess.TimeoutExpired(["xsolla", "auth", "login"], 45),
+        ):
+            with self.subTest(outcome=type(outcome).__name__):
+                with (
+                    mock.patch.object(apply_plan.subprocess, "run", side_effect=[outcome] * 2),
+                    mock.patch.object(apply_plan.time, "sleep"),
+                ):
+                    with self.assertRaisesRegex(
+                        RuntimeError, "run `xsolla auth login` in their own terminal"
+                    ):
+                        apply_plan.refresh_supported_login()
+
     def test_run_json_never_logs_in_twice_in_one_run(self) -> None:
         missing_cookie = mock.Mock(
             returncode=1,

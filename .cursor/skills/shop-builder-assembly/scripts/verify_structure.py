@@ -20,7 +20,14 @@ if SCRIPTS_DIR not in sys.path:
     sys.path.insert(0, SCRIPTS_DIR)
 
 from preflight import LAYOUT_SKIPPED, cli_has_command, site_block_module
-from render_plan import common_layout_id, effective_module, page_path, structure_data
+from apply_style import parse_color, same_color
+from render_plan import (
+    common_layout_id,
+    effective_module,
+    page_path,
+    structure_data,
+    uses_own_theme,
+)
 
 
 def load_object(path: Path, label: str) -> dict:
@@ -38,6 +45,39 @@ def same_identifier(actual: object, expected: object) -> bool:
         if isinstance(expected, (str, int)) and not isinstance(expected, bool):
             return str(actual) == str(expected)
     return False
+
+
+def theme_findings(
+    plan: dict, current: dict, paths: list[str], by_path: dict
+) -> tuple[list[str], list[str]]:
+    """Compare the site theme's colors with the plan's palette. A key the site theme
+    lacks, or holds in a format apply_style.py doesn't write, was skipped: a warning."""
+    palette = (plan.get("theme") or {}).get("site")
+    if not palette:
+        return [], []
+    errors, warnings = [], []
+    inputs = (current.get("theme") or {}).get("input")
+    if not isinstance(inputs, dict):
+        return [], ["the site theme has no input colors, so the palette wasn't applied"]
+    for key, value in palette.items():
+        actual = inputs.get(key)
+        if key not in inputs:
+            warnings.append(f"the site theme has no {key}; it keeps the template's")
+        elif key == "isDark":
+            if actual != value:
+                errors.append(f"theme isDark differs: expected {value}, got {actual}")
+        elif parse_color(actual) is None:
+            warnings.append(
+                f"theme {key} {actual!r} is in a format the palette isn't written in"
+            )
+        elif not same_color(actual, value):
+            errors.append(f"theme {key} differs: expected {value}, got {actual}")
+    own = [path for path in paths if uses_own_theme(by_path.get(path))]
+    if own:
+        warnings.append(
+            "pages on their own theme, which ignore the site colors: " + ", ".join(own)
+        )
+    return errors, warnings
 
 
 def verify(
@@ -194,6 +234,10 @@ def verify(
         page_results.append(
             {"path": path, "ok": page_ok, "blocks": actual_modules}
         )
+
+    theme_errors, theme_warnings = theme_findings(plan, current, desired_paths, by_path)
+    errors.extend(theme_errors)
+    warnings.extend(theme_warnings)
 
     languages = current.get("languages")
     requested_locales = plan.get("locales")
