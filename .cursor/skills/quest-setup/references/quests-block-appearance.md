@@ -14,9 +14,9 @@ current run, not in extra files or the publisher reply:
 | Evidence | Record |
 |---|---|
 | Quests block | Exact module ID, saved block version, selected `themeId`, and recognized saved appearance from `appearance` in the summary |
-| Page composition | `page_modules` IDs/order from the summary, including header/footer, FAQ/Games content container, featured artwork and regular-card rail |
+| Page composition | `page_modules` IDs/order from the summary, including header/footer, the surrounding banner and FAQ/Games content container |
 | Computed neighbors | Font family, loaded status, size, weight, line height, color, container width, gutters, section/card padding, gap, radii, button size and alignment |
-| Responsive result | Whole-page alignment, card/rail behavior, clipping or horizontal overflow, and preserved artwork composition at each viewport |
+| Responsive result | Whole-page alignment, the continuous Quests grid, clipping or horizontal overflow, and image treatment at each viewport |
 | Explicit preference | Theme the publisher asked for in the current conversation. A saved `themeId`, especially `site-builder`, is not proof that the publisher explicitly chose it. |
 
 Use module IDs and the visible composition from this page. A dark palette, a familiar
@@ -56,28 +56,29 @@ the page has loaded that font.
 ## Fit the block to the page
 
 Compare the Quests section and its neighbors as one page. Preserve quest order, IDs,
-localized text refs, card overrides, auth, rewards, the existing external Backpack
-navigation, banner artwork and featured/regular card composition. Fix a copy or reward-
+localized text refs, card overrides, auth, rewards, legacy external Backpack behavior,
+banner artwork and surrounding page composition. Fix a copy or reward-
 data mismatch in its owning quest flow, never through appearance or a hard-coded card
 label.
 
-- Keep the Pages artwork banner featured first, with its 50/50 artwork/content split
-  and 353px desktop composition. Keep the regular-card composition. For no-image cards,
-  retain a compact content/reward/action grouping without a blank half-card.
-- Align a Custom Pages Quests heading, featured card and regular rail to the measured
-  FAQ/Games content container within 8px; use `railInset: 0` only when that measurement
-  supports it. The Pages preset's existing 11% rail inset remains available; omitting
-  `railInset` preserves it. `railInset` applies only to the Pages desktop regular rail.
+- Preserve the existing Pages banner above the surrounding content. Render Pages Quests
+  as a uniform, image-first 16:9 card grid without a featured first card, rail, carousel,
+  pagination or hidden page groups. Keep all selected quests visible up to the saved
+  `maxQuests` cap, in saved order.
+- Use three columns at desktop, two at tablet and one at mobile. Align the Quests heading
+  and grid to the measured FAQ/Games content container within 8px. At each viewport,
+  check that the grid wraps naturally without clipping, horizontal scrolling or reserved
+  blank page height. Cards without an image keep the same media frame with a neutral,
+  accessible placeholder.
 - Keep the original Pages preset's 72px display heading by selecting Pages and omitting
   Custom heading overrides. In Custom, `headingSize` and `headingLineHeight` control the
-  section heading only; card titles inherit the base. A 32px/32px section heading can
-  coexist with the Pages featured title at 32px/32px and regular title at 18px/24px.
+  section heading only; card titles inherit the base.
 - Use the adaptation spec's pinned comparison assets only as references. Where the
   source reference is available, approved component geometry should match within 2px.
   Document a deliberate full-bleed exception instead of forcing it into the container.
-- Check 320px for overflow and 375, 768 and 1440px for whole-page alignment. Recheck
-  both ends of a rail and its focus/scroll controls. Apply only the smallest supported
-  correction, then reload and compare the whole page again.
+- Check 320px for overflow and 375, 768 and 1440px for whole-page alignment and grid
+  wrapping. Apply only the smallest supported correction, then reload and compare the
+  whole page again.
 
 Normal text and interactive text need at least 4.5:1 contrast. Large text, visible
 component boundaries and focus indicators need at least 3:1 against adjacent surfaces.
@@ -120,6 +121,9 @@ sides, record those as 1184px content width and 32px gutter, then use
 border-box width and gutter as separate evidence; a content width is not itself the
 Custom `maxWidth` value.
 
+`railInset` remains a gate-recognized field for saved appearance compatibility. It does
+not apply to the new Pages grid; do not set it or use it to create a rail.
+
 For an approved update, use dotted leaf keys inside the operation's `values`, for
 example:
 
@@ -128,25 +132,29 @@ example:
 ```
 
 This is a shape example, not a recommended design. Use only measured and approved
-values. For `add`, ordinary creation remains stable `0.1.5`; select exact candidate
-`0.2.5-qp-3256.0` with the explicit `version` field only when the requested appearance
-needs its capability, and show that version in the plan. The release is verified for CDN
-delivery and block capabilities; ordinary creation stays on stable `0.1.5`.
+values. For `add`, ordinary creation remains stable `0.1.5`; the planned appearance
+candidate is `0.2.6-qp-3256.0`. Its artifact is pending release and CDN verification.
+Do not apply candidate plans until that evidence is recorded. Ordinary creation stays on
+stable `0.1.5`.
 
-Candidate `0.2.5-qp-3256.0` is the verified appearance capability pin. Ordinary block
-creation remains pinned to stable `0.1.5`; never change that default. Never infer support
-from version ordering or package metadata. Existing-block updates/resets require the
-exact supported version in saved readback. If the block version or schema is unsupported,
-stop before the plan/write and report a verified-upgrade gate. Preserve a before snapshot
+Candidate `0.2.6-qp-3256.0` is the planned appearance capability pin, pending artifact
+release and CDN verification. Ordinary block creation remains pinned to stable `0.1.5`;
+never change that default. Do not apply candidate plans until release and CDN evidence is
+recorded. Never infer support from version ordering or package metadata. Existing-block
+updates/resets require the exact supported version in saved readback. If the block version
+or schema is unsupported, stop before the plan/write and report a verified-upgrade gate.
+Preserve a before snapshot
 and, after an approved upgrade, read back quest IDs/order, refs, overrides, layout, auth
 and all unrelated saved fields before any appearance edit. Do not promise downgrade
 preservation unless it is verified.
 
-The Quests block keeps its existing external Backpack navigation. If Overlay is needed,
-use only the stock Overlay already available through its existing launcher; the Quests
-flow does not configure it. Treat obsolete saved action-looking fields as opaque unknown
-data: never display, interpret, initialize, migrate, write or delete them. Normal quest
-and reward approval gates still apply.
+The requested Backpack button under Web3 rewards must open the installed stock Overlay.
+The current deployed Quests v1 has no supported host API for that action, so this feature
+remains blocked until a supported contract ships. Do not substitute external/new-tab
+navigation, add an app-owned controller, or claim the old external Backpack flow as this
+integration. Treat obsolete saved action-looking fields as opaque unknown data: never
+display, interpret, initialize, migrate, write or delete them. Normal quest and reward
+approval gates still apply.
 
 ## Apply and verify
 

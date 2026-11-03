@@ -25,8 +25,9 @@ QUESTS_ADD_STRATEGY = "federated_patch"
 # Stable package version used by ordinary creation. Candidate versions must be chosen
 # explicitly and have a separate exact-version capability entry below.
 QUESTS_VERSION = "0.1.5"
-QUESTS_CANDIDATE_VERSION = "0.2.5-qp-3256.0"
-# Capabilities are keyed by exact released artifacts, never inferred by semver.
+QUESTS_CANDIDATE_VERSION = "0.2.6-qp-3256.0"
+# Capabilities are keyed by exact artifact pins, never inferred by semver. The planned
+# candidate pin is staged, but release and CDN verification are still pending.
 # The stable creation default deliberately remains QUESTS_VERSION.
 QUESTS_CAPABILITIES = {
     QUESTS_VERSION: {"appearance": False},
@@ -568,7 +569,7 @@ def _check_capability_and_custom_contract(
         version = operation.get("version", QUESTS_VERSION)
         if not isinstance(version, str) or version not in QUESTS_CAPABILITIES:
             errors.append(
-                f"{prefix}.version must use a verified Quests artifact version: "
+                f"{prefix}.version must use a recognized Quests source pin: "
                 + ", ".join(QUESTS_CAPABILITIES)
             )
         internal = None
@@ -596,7 +597,7 @@ def _check_capability_and_custom_contract(
         ):
             errors.append(
                 f"{prefix}.{key}: unsupported Quests version {version or 'unknown'} "
-                f"for {capability}; verified candidate capability is "
+                f"for {capability}; configured candidate source pin is "
                 f"{QUESTS_CANDIDATE_VERSION}"
             )
 

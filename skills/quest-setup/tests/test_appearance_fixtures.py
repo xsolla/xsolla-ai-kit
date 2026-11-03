@@ -63,6 +63,14 @@ class AppearanceFixturesTest(unittest.TestCase):
     def test_pages_recommendation_preserves_opaque_legacy_field(self) -> None:
         fixture = json.loads((FIXTURES / "pages-composition.json").read_text(encoding="utf-8"))
         self.assertEqual(fixture["saved_after"]["values"]["internalBlockValues"]["themeId"], "xsolla-pages")
+        grid = fixture["site_evidence"]["quests_grid"]
+        self.assertEqual(
+            (grid["desktop_columns"], grid["tablet_columns"], grid["mobile_columns"]),
+            (3, 2, 1),
+        )
+        self.assertEqual(grid["image_aspect_ratio"], "16:9")
+        self.assertFalse(grid["pagination"])
+        self.assertTrue(grid["all_selected_visible_up_to_max_quests"])
         before = fixture["saved_before"]["values"]["internalBlockValues"]
         after = fixture["saved_after"]["values"]["internalBlockValues"]
         self.assertEqual(after["backpackAction"], before["backpackAction"])
