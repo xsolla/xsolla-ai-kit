@@ -58,7 +58,7 @@ Find the case, load only its reference, and follow its confirmation and readback
 | C15 | Y | Login event with Xsolla ID: events.md | List quests, report any existing login quest, ask ONE question (new quest or edit it); show the dynamic_event trigger and name, ask yes | Get quest trigger |
 | C16 | N | Quest status: verification.md | n/a | Get quest status (read-only) |
 
-Notes for the cases: a quest is paused, never deleted. Remove means hide, never a delete. C15 uses a `dynamic_event` trigger; an "add" request never modifies an existing quest (check for an existing login quest first, see events.md); the docs name no login event, so do not invent or rename an event name on an active quest, and never send `autoEvents` or `loginEventName`. For a Backpack Overlay action, say it is blocked on upstream v2 and make no write. Theme and custom design: [quests-block-brief.md](references/quests-block-brief.md#block-contract-facts-for-every-write).
+Notes for the cases: during verification runs, cleanup pauses a quest and never deletes it; the Delete flow (Flow step 7) stays available on its own explicit yes. Remove means hide, never a delete. C15 uses a `dynamic_event` trigger; an "add" request never modifies an existing quest (check for an existing login quest first, see events.md); the docs name no login event, so do not invent or rename an event name on an active quest, and never send `autoEvents` or `loginEventName`. For a Backpack Overlay action, say it is blocked on upstream v2 and make no write. Theme and custom design: [quests-block-brief.md](references/quests-block-brief.md#block-contract-facts-for-every-write).
 
 Reward text editability on a block card is observed block behavior, not a rule this skill enforces: report what the block does, and do not promise it.
 
@@ -193,7 +193,7 @@ answers, ask the developer.
    scope before any write, and report only a short project name and status. If Get project
    returns 404, follow [Onboarding](references/auth-credentials.md#onboarding) and stop for the
    publisher's yes: a 404 means the project is not onboarded or this credential has no access
-   to that merchant or project (the same response). Pass `--yes` to `qp_preflight.py onboard` only after the publisher's explicit yes to the exact onboarding proposal in the same conversation.
+   to that merchant or project (the same response). Pass `--yes` to `qp_preflight.py onboard` only after the publisher's explicit yes to the exact onboarding proposal in the same conversation. Onboarding goes only through `scripts/qp_preflight.py`, never through `qp_request.py` directly.
 2. **Resolve and propose.** Resolve the reward ([rewards.md](references/rewards.md)),
    player action, graph, schedule and limits, and build the document per
    [quest-authoring.md](references/quest-authoring.md). Never send `publisher_id` or

@@ -122,7 +122,11 @@ credential lane as `qp_request.py` and never prints the key:
 - `qp_preflight.py check` runs Get project only. 200 means onboarded and nothing is written.
 - On a 404, ask the publisher once, showing the project name: "Get project returned 404. That
   means the project is not onboarded to Quests, or this credential has no access to that
-  merchant or project. Onboard it now?" Never offer onboarding as a fix before that question.
+  merchant or project. Onboard it now? Send me the merchant name and the project name to use." Never offer onboarding as a fix before that question.
+- Onboarding goes only through `qp_preflight.py`, never through `qp_request.py` directly.
+- Onboarding needs two names, `merchant_name` and `project_name`. The agent never invents or
+  guesses them: the question to the publisher asks for both names, and the proposal shows both
+  exactly as they will be sent.
 - `qp_preflight.py onboard --merchant-name N --project-name N` without `--yes` only prints the
   proposal and exits non-zero with no POST. After an explicit yes in the same conversation, rerun
   it with `--yes`: Get project, Onboard project (2xx is success), then Get project again as the
