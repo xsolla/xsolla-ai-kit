@@ -97,8 +97,10 @@ After any completed quest or block change, tell the publisher to publish in Publ
    Never `POST` again for the same proposal:
    [Publication after approval](references/quest-publish.md#publication-after-approval).
 9. **Stop on auth failures.** Never switch credentials, lanes or routes on your own.
-   Report what failed and ask. For a 401 or 404, follow
-   [Reading a 401 or 404](references/auth-credentials.md#reading-a-401-or-404).
+   Report what failed and ask. A 401 follows
+   [Reading a 401 or 404](references/auth-credentials.md#reading-a-401-or-404). A 404 on Get
+   project goes to [Onboarding](references/auth-credentials.md#onboarding) and stops for the
+   publisher's yes; any other 404 stops with that reference's reading.
 10. **Never ask for a SKU or catalog project.** A typed value is not a verified item.
     Resolve named items with the read-only lookup in
     [Named item behavior](references/rewards.md#named-item-behavior). If the lookup is
@@ -183,11 +185,13 @@ answers, ask the developer.
 
 ## Flow
 
-1. **Bring-up.** Run the read-only preflight in
-   [qp-config-routes.md](references/qp-config-routes.md#service-preflight). It is one
-   documented GET and runs silently. Confirm project scope before any write, and report
-   only a short project name and status. If the project GET returns 404 `Project not
-   found`, follow [Onboarding](references/auth-credentials.md#onboarding) and stop.
+1. **Bring-up.** Run `python3 "<skill base dir>/scripts/qp_preflight.py" check`. It is one
+   read-only Get project and runs silently (the same call as
+   [qp-config-routes.md](references/qp-config-routes.md#service-preflight)). Confirm project
+   scope before any write, and report only a short project name and status. If Get project
+   returns 404, follow [Onboarding](references/auth-credentials.md#onboarding) and stop for the
+   publisher's yes: a 404 means the project is not onboarded or this credential has no access
+   to that merchant or project (the same response).
 2. **Resolve and propose.** Resolve the reward ([rewards.md](references/rewards.md)),
    player action, graph, schedule and limits, and build the document per
    [quest-authoring.md](references/quest-authoring.md). Never send `publisher_id` or

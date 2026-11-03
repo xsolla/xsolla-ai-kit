@@ -12,7 +12,7 @@ loads) as `python3 "<skill base dir>/scripts/qp_request.py" ...`:
 | Use | Command |
 |---|---|
 | Merchant and project ids for building paths | `whoami` |
-| Quest Platform read or write | `METHOD /api/v2/...` with optional `--body-file FILE` and `--query k=v` |
+| Quest Platform read or write | `METHOD /api/v2/merchants/{merchant_id}/projects/{project_id}[/quests[/{quest_id}]\|/events\|/onboard]` with optional `--body-file FILE` and `--query k=v` (scope keys are refused in `--query`) |
 | Store admin catalog read (GET only) | `GET /api/v2/project/{project_id}/admin/items/virtual_items --store`, or `.../virtual_items/sku/<sku>` |
 
 Example: `python3 "<skill base dir>/scripts/qp_request.py" GET /api/v2/merchants/<merchant>/projects/<project>/quests --query page=1 --query limit=50`
@@ -112,13 +112,24 @@ The live docs describe Onboard project as
 the publisher key (Basic) or a Publisher Account Bearer token. It returns 404 when the project
 is not found or there is no access, and 401 for a bad key. Get project is
 `GET /api/v2/merchants/{merchant_id}/projects/{project_id}`. A 404 there means the project is
-not onboarded or not accessible. If the docs differ, the live docs win.
+not onboarded or the credential has no access to that merchant or project (the same response).
+If the docs differ, the live docs win.
 
-The onboarding preflight (implemented in `scripts/qp_preflight.py`, sent through the same request lane) runs in this order:
-Get project first. A 200 means onboarded and nothing is written. A 404 is reported as not
-onboarded, and the agent asks the publisher once, showing the project name. Onboard project is
-called only after an explicit yes in the same conversation. Then Get project runs again as the
-readback, and the project is reported as onboarded only when that readback returns 200.
+One rule for a 404 on Get project: go to this section and stop for the publisher's yes. The
+onboarding preflight is `python3 "<skill base dir>/scripts/qp_preflight.py"`, which uses the same
+credential lane as `qp_request.py` and never prints the key:
+
+- `qp_preflight.py check` runs Get project only. 200 means onboarded and nothing is written.
+- On a 404, ask the publisher once, showing the project name: "Get project returned 404. That
+  means the project is not onboarded to Quests, or this credential has no access to that
+  merchant or project. Onboard it now?" Never offer onboarding as a fix before that question.
+- `qp_preflight.py onboard --merchant-name N --project-name N` without `--yes` only prints the
+  proposal and exits non-zero with no POST. After an explicit yes in the same conversation, rerun
+  it with `--yes`: Get project, Onboard project (2xx is success), then Get project again as the
+  readback. Report onboarded only when that readback returns 200; if it does not, say so and stop.
+- Onboard accepts only the body keys `merchant_name` and `project_name`; the request script
+  refuses any other key.
+
 Never send the key in the body or in a reply.
 
 After a timeout or server error, read the project before offering onboarding
