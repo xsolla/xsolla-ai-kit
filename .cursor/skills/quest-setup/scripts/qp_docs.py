@@ -165,7 +165,7 @@ def _read_cache(cache, base):
                 return None
             page_info = os.lstat(os.path.join(cache, name))
             if not stat.S_ISREG(page_info.st_mode):
-                continue
+                return None
             pages.append({"path": path, "file": name})
             mtimes.append(page_info.st_mtime)
         complete = bool(data.get("complete")) and not data.get("skipped")
