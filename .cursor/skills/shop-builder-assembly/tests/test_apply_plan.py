@@ -413,6 +413,39 @@ class ApplyPlanTests(unittest.TestCase):
         self.assertEqual(["header", "footer"], result["blocks"])
         self.assertEqual([], result["hidden_custom_code"])
 
+    def test_reconciliation_keeps_an_unverified_block_already_on_the_page(self) -> None:
+        current = {
+            "pages": [
+                {
+                    "_id": "home",
+                    "path": "/",
+                    "blocks": [
+                        {"_id": "hero", "module": "lead"},
+                        {"_id": "daily", "module": "federated", "values": {"blockId": "sb-daily-reward"}},
+                    ],
+                }
+            ]
+        }
+        plan = {"name": "Home", "path": "/", "blocks": ["lead", "sb-daily-reward"], "removals": []}
+        with (
+            mock.patch.object(apply_plan, "structure", return_value=current),
+            mock.patch.object(apply_plan, "run_json") as run_json,
+        ):
+            result = apply_plan.reconcile_page("shop", "landing", plan)
+        run_json.assert_not_called()
+        self.assertEqual(["lead", "sb-daily-reward"], result["blocks"])
+
+    def test_reconciliation_refuses_to_add_an_unverified_block(self) -> None:
+        current = {"pages": [{"_id": "home", "path": "/", "blocks": [{"_id": "hero", "module": "lead"}]}]}
+        plan = {"name": "Home", "path": "/", "blocks": ["lead", "sb-daily-reward"], "removals": []}
+        with (
+            mock.patch.object(apply_plan, "structure", return_value=current),
+            mock.patch.object(apply_plan, "run_json") as run_json,
+            self.assertRaisesRegex(RuntimeError, "would add unverified block modules: sb-daily-reward"),
+        ):
+            apply_plan.reconcile_page("shop", "landing", plan)
+        run_json.assert_not_called()
+
     def test_reconciliation_batches_confirmed_removals_in_descending_order(self) -> None:
         current = {
             "_id": "landing",
@@ -1957,29 +1990,45 @@ class PublisherTemplateSiteTests(unittest.TestCase):
     def writes(self, cli: FakeShopBuilderCli) -> list[tuple[str, ...]]:
         return [call for call in cli.calls if call[:2] not in READ_COMMANDS]
 
-    def test_render_refuses_a_page_whose_header_is_in_the_common_layout(self) -> None:
+    def test_render_builds_on_a_template_page(self) -> None:
         site, _ = publisher_template_site(self.brief)
         code, stdout, stderr = self.run_render(site)
-        self.assertEqual(1, code)
-        self.assertEqual("", stdout)
-        self.assertEqual(NO_OWN_HEADER + "\n", stderr)
+        self.assertEqual(0, code, stderr)
+        page = json.loads(stdout)["pages"][0]
+        self.assertEqual("layout", page["site_header"])
+        blocks = page["blocks"]
+        # The header and footer stay in the site layout.
+        self.assertNotIn("header", blocks)
+        self.assertNotIn("footer", blocks)
+        # The template's hero stands in for leadGameSales, and is kept.
+        self.assertEqual("lead", blocks[0])
+        self.assertNotIn("leadGameSales", blocks)
+        # The daily rewards block is kept: the kit can't add one back.
+        self.assertEqual("sb-daily-reward", blocks[1])
+        self.assertEqual(1, blocks.count("newStore"))
+        removed = {(r["block_id"], r["module"], r["reason"]) for r in page["removals"]}
+        self.assertIn(("page-block-9", "offerwall-block", "not in confirmed page plan"), removed)
+        self.assertIn(("page-block-11", "lead", "duplicate module"), removed)
+        self.assertIn(("page-block-5", "newStore", "duplicate module"), removed)
+        self.assertIn(("page-block-7", "newStore", "duplicate module"), removed)
+        self.assertNotIn("page-block-1", {r["block_id"] for r in page["removals"]})
 
-    def test_apply_stops_with_no_write_when_the_header_is_in_the_common_layout(self) -> None:
+    def test_apply_builds_on_a_template_site_in_one_run(self) -> None:
         cli = self.fake_cli(own_header=False)
         code, stdout, stderr, reconcile = self.run_apply(cli)
-        self.assertEqual(1, code)
-        self.assertEqual("", stdout)
-        self.assertEqual(f"Apply failed: {NO_OWN_HEADER}\n", stderr)
-        self.assertEqual([], self.writes(cli))
-        slug = self.brief["site"]["slug"]
-        self.assertIn(("shopbuilder", "get-structure", "--slug", slug), cli.calls)
-        reconcile.assert_not_called()
+        self.assertEqual(0, code, stderr)
+        self.assertEqual("implemented-phases-applied", json.loads(stdout)["status"])
+        self.assertEqual(["/"], [call.args[2]["path"] for call in reconcile.call_args_list])
+        # The template already has its common layout: none is created.
+        self.assertNotIn("create-block", [call[1] for call in cli.calls if len(call) > 1])
 
     def test_site_whose_page_has_its_own_header_renders_and_applies(self) -> None:
         site, _ = publisher_template_site(self.brief, own_header=True)
         code, stdout, stderr = self.run_render(site)
         self.assertEqual(0, code, stderr)
-        self.assertEqual("page-1", json.loads(stdout)["pages"][0]["page_id"])
+        page = json.loads(stdout)["pages"][0]
+        self.assertEqual("page-1", page["page_id"])
+        self.assertNotIn("site_header", page)
 
         cli = self.fake_cli(own_header=True)
         code, stdout, stderr, reconcile = self.run_apply(cli)
@@ -1987,14 +2036,34 @@ class PublisherTemplateSiteTests(unittest.TestCase):
         self.assertEqual("implemented-phases-applied", json.loads(stdout)["status"])
         self.assertEqual(["/"], [call.args[2]["path"] for call in reconcile.call_args_list])
 
-    def test_only_pages_already_on_the_site_need_their_own_header(self) -> None:
-        site, _ = publisher_template_site(self.brief, own_header=True)
-        pages = [{"path": "/"}, {"path": "/store"}]
-        render_plan.require_own_header(pages, site)
-        site["pages"][0]["blocks"].pop(0)
+    def test_header_source_rules(self) -> None:
+        site, _ = publisher_template_site(self.brief)
+        one_page = [{"path": "/"}]
+        render_plan.require_header_source(one_page, site)
+        with self.assertRaisesRegex(ValueError, "made from a Publisher Account template"):
+            render_plan.require_header_source(one_page + [{"path": "/store"}], site)
+        site["layouts"] = []
         with self.assertRaisesRegex(ValueError, "^Page / has no header block of its own"):
-            render_plan.require_own_header(pages, site)
+            render_plan.require_header_source(one_page, site)
+        own, _ = publisher_template_site(self.brief, own_header=True)
+        render_plan.require_header_source(one_page + [{"path": "/store"}], own)
 
+    def test_navigation_skips_the_shared_template_header(self) -> None:
+        site, _ = publisher_template_site(self.brief)
+        plan = render_plan.build_plan(self.brief, site)
+        calls = []
+
+        def cli(*args: str) -> object:
+            calls.append(args)
+            if args[:2] == ("shopbuilder", "get-structure"):
+                return {"ok": True, "data": copy.deepcopy(site)}
+            raise AssertionError(f"unexpected CLI call: {args}")
+
+        with mock.patch.object(apply_plan, "run_json", side_effect=cli):
+            results = apply_plan.apply_navigation(self.brief["site"]["slug"], "landing-1", plan)
+        self.assertEqual("site layout", results[0]["header"])
+        self.assertIn("Editor", results[0]["skipped"])
+        self.assertEqual([], [call for call in calls if call[1] != "get-structure"])
 
 WRITE_COMMANDS = {
     "create-website",

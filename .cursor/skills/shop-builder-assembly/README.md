@@ -112,6 +112,7 @@ catalog. Federated wrappers use their effective `values.blockId` module.
   assembly can't add it.
 - Description callers produce this skill's brief and leave all site writes here. Figma
   integration remains separate.
-- Sites created from a Publisher Account template keep the header in the common layout;
-  render and apply stop on them before any write. Report the stop and suggest nothing
-  else: not another site, not manual edits, no other workaround.
+- A site made from a Publisher Account template (Single-page shop) keeps its header and
+  footer in the site layout. Assembly builds on it with the single-page preset in one
+  run: the template's hero and daily rewards block stay, demo blocks are exact removals,
+  and the shared header's links are an Editor step. A plan with more pages stops first.
