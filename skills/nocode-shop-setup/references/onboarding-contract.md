@@ -75,7 +75,7 @@ verified stays out of `completed`. A step that is under way has no `status` key 
 | `plan` | `nocode-shop-setup` | The shop is created on Xsolla's side (the user said so, or no repo with storefront code and the agent said so), and `site_kind` is `shop` or `portal` | The ledger when it exists; otherwise the conversation |
 | `merchant` | `merchant-setup` | Merchant id, project id, and project API key are known — in `.env` for a shop the user codes, held by the signed-in Xsolla CLI (`xsolla auth login`) on the Shop Builder path, or in the chat with neither — and the project answers an authenticated read | The same read |
 | `catalog` | `catalog-design` | Every catalog group the site uses reads back from the project | Read each group |
-| `login` | `login-setup` | `XSOLLA_LOGIN_PROJECT_ID` is set and the Login project reads back | Read the Login project |
+| `login` | `login-setup` | `XSOLLA_LOGIN_PROJECT_ID` is set, or on the Shop Builder path the Login project ID is in the ledger or the conversation, and the Login project reads back | Read the Login project |
 | `storefront` | the storefront skill | Its read-back matches the confirmed plan | The same read-back |
 | `verify` | the storefront skill | The site was exported to a new `.xsolla/backup-<timestamp>/` directory before its first write, and read back after the last write | The export directory and a fresh read-back |
 | `review` | the developer | The developer approved the draft, with every placeholder and gap disclosed | The ledger |

@@ -85,7 +85,7 @@ structure. Collect groups first, items only as their contents.
 | `group_order` | ✅ | ✅ | catalog order | Section order down the page. |
 | `featured_group` | ⬜ | ✅ | first group | Gets the `featured` card layout. |
 | `real_currency` | ⬜ | ✕ | read from catalog | Display only; the catalog owns the value. |
-| `liveops` | ⬜ | ✕ | read from the project | Promo codes, reward chains and offer chains with `is_enabled: true`; each adds its block. |
+| `liveops` | ⬜ | ✕ | read from the project | Promo codes, reward chains and offer chains with `is_enabled: true`, or created and activated by `catalog-design`'s pending proposal under the same yes; each adds its block. |
 
 ### Translating a description into groups
 
@@ -138,7 +138,7 @@ Part of completeness. Absent → hard stop before any write.
 | `merchant_id` | `xsolla config list` |
 | `project_id` | `xsolla config list` — must be non-zero and in the approved test context |
 | `slug` | Proposed from `game_name`, confirmed in the plan |
-| `auth_ok` | `xsolla auth status` — non-expired token |
+| `auth_ok` | `xsolla auth list-account --json` — an active, unexpired Publisher login |
 
 ## Completeness gate
 

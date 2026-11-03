@@ -47,8 +47,11 @@ built.
 2. **The project and sandbox mode.** Take the merchant and project from the Publisher
    Account link in the request, else from `xsolla config list --json`; with neither, ask
    for the project link in the batch. Shop Builder needs CLI sandbox mode off. When the
-   CLI points at another project or has sandbox on, put "switch the CLI to this project,
-   sandbox off" in the batch as the recommended answer. Never switch it without that yes.
+   CLI points at another project or has sandbox on, put the switch in the batch as the
+   recommended answer, naming the commands (`xsolla config set merchant-id <id>`,
+   `xsolla config set project-id <id>`, `xsolla config set sandbox false`) and saying
+   that every later `xsolla` command then reaches the live project, payments and refunds
+   included. Never switch it without that yes.
 3. **The CLI can make a site that opens.** A new store site gets its common layout only
    from a CLI with `xsolla shopbuilder create-block`. Run
    `xsolla shopbuilder create-block --help`. If the usage line doesn't name
@@ -65,10 +68,14 @@ built.
    link to that approval. When both answers arrive, add the entry to that file with
    exactly what the user gave. Never fill in the approver or the reference yourself, and
    never use this chat as the approval reference. Pass the file to the assembly scripts as
-   `--approved-test-projects`; `shopbuilder-translate` reads only the variable.
+   `--approved-test-projects`; `shopbuilder-translate` reads it only from the variable.
 5. **The game.** Read the user's store listing link, if they gave one: name, platforms,
    developer, description, icon and screenshots.
-6. **Browser and design tools in this session.** Find the browser that is signed in to
+6. **The catalog, LiveOps and Login projects.** Read the project's catalog groups,
+   items, bundles and LiveOps with the read-only `xsolla catalog` and `xsolla liveops`
+   list commands, and its Login projects. Draft `catalog-design`'s proposal now, so its
+   questions go in the batch instead of a second round.
+7. **Browser and design tools in this session.** Find the browser that is signed in to
    Publisher Account (a built-in browser, Claude in Chrome, or another extension) and use
    it for every browser step; don't ask which one. Check that the mockup's design tool,
    such as Figma, is available in this session: a setup log from an earlier session is not
@@ -104,11 +111,16 @@ answer, so a reply such as "all recommended" settles it:
 - build without the common layout or wait, only when the CLI lacks `create-block`;
 - the storefront intake the listing didn't answer: game name, platforms, a short
   description, whether the listing is theirs and its art and text may be used, the
-  site's address, and its languages. The storefront skills read these answers and don't
-  ask them again;
-- item delivery: whether a game server should receive paid orders. Recommended: say it
-  means webhook handler code the developer deploys on their own server;
-- what `merchant-setup` and `catalog-design` still need after reading the project.
+  site's address, and its languages (recommended: the primary language only; more go in
+  later with `shopbuilder-translate`, which shows its own preview). The storefront
+  skills read these answers and don't ask them again;
+- `catalog-design`'s questions: the archetype, what to do with test or demo entries
+  already in the project (recommended: disable them under the same yes), and any
+  commercial value it can't infer;
+- item delivery: whether a game server should receive paid orders. Recommended: not now;
+  purchases still work, but items reach the game only once the developer deploys webhook
+  handler code on their own server;
+- what `merchant-setup` still needs after reading the project.
 
 Ask in plain words, with one filled-in example per answer. Never send a template with
 placeholders such as `<name>` or `<link>` for the user to fill in.
@@ -121,14 +133,17 @@ widget: this site renders its own checkout and login.
 1. `merchant-setup` — Publisher Account, project, and API key. When the Xsolla CLI is
    signed in (`xsolla auth login`), it holds the project key: don't ask the user for one,
    in the batch or later. Only without the CLI, follow that skill's rule for a key pasted
-   into chat.
+   into chat. Creating a project key is a write: never before the yes. If the CLI's key
+   fails a read, put creating one in the batch.
 2. `catalog-design` — the items, packs, bundles and LiveOps the site will sell, through
    the CLI's `catalog` and `liveops` commands. Only its catalog steps: the archetype, the
    proposal and pricing. No client catalog, purchase code or checkout: the site has its
    own. If the project already has that catalog, do not rebuild it. Its proposal waits
    for the one yes below.
-3. `login-setup` — only to create or confirm the Login project the site signs players in
-   with. No Login Widget code and no `login-styling`.
+3. `login-setup` — only for the Login project the site signs players in with. Before the
+   yes, only read the existing ones. Creating or linking one is a write: put it in the one
+   approval's proposal, or list it as a Publisher Account step. No Login Widget code and
+   no `login-styling`.
 
 ## What to run
 
@@ -142,8 +157,9 @@ Do not start `game-web-portal` for a store.
 
 ## One approval
 
-Show the catalog proposal and the storefront skill's plan, with its desktop and mobile
-mockup, **in one message** and ask for **one yes**. That yes lets `catalog-design` create
+Show the catalog proposal and the storefront skill's plan in **one message**, with a
+desktop and mobile mockup for a store (a game home shows `game-web-portal`'s plan), and
+ask for **one yes**. That yes lets `catalog-design` create
 the catalog and the storefront skill apply its plan, in that order. The storefront skill
 still runs its own preflight and backup, and asks again only for what its plan didn't
 show. When the catalog already exists, the plan alone is the message.

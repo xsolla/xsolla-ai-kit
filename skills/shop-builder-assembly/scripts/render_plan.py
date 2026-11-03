@@ -547,15 +547,17 @@ def build_plan(
         "preset": preset,
         "requires_confirmation": True,
         "publication": "forbidden",
+        # Matches SKILL.md "Assembly order": apply_plan.py runs pages through catalog
+        # links; theme and copy are hand-run after the last apply run.
         "order": [
             "backup",
-            "theme",
             "pages",
             "site_layout",
             "navigation",
             "blocks",
-            "copy_assets",
             "catalog_links",
+            "theme",
+            "copy_assets",
             "verify",
             "preview",
         ],

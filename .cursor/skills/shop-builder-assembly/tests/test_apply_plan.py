@@ -2543,7 +2543,7 @@ class BackgroundFixTests(unittest.TestCase):
     def test_refuses_anything_but_a_background_leaf(self) -> None:
         code, stderr = self.run_fixes([{"block_id": "new-hero", "leaf": "title", "value": "x"}])
         self.assertEqual(1, code)
-        self.assertIn("anything else needs a new yes", stderr)
+        self.assertIn("this script handles only background leaves", stderr)
         self.assertEqual([], self.calls)
 
     def test_an_image_must_be_uploaded_to_the_site(self) -> None:
