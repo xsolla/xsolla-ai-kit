@@ -710,7 +710,8 @@ def copy_plan(
     brief: dict, pages: list[dict], created_block_ids: frozenset, base_dir: Path | None
 ) -> tuple[dict, list[str]]:
     """The approved text `apply_style.py` writes in the primary locale: block text fields
-    from `content.copy`, the FAQ items from `content.faq`, and each page's SEO title,
+    from `content.copy`, hero button labels from `content.buttons`, the FAQ items from
+    `content.faq`, and each page's SEO title,
     description and share image from `content.seo`. Other locales are
     `shopbuilder-translate`'s."""
     content = brief.get("content", {})
@@ -723,6 +724,21 @@ def copy_plan(
             )
         texts.append(
             {"module": item["module"], "field": item["field"], "html": item["html"], **where}
+        )
+    buttons = []
+    for item in content.get("buttons", []):
+        where = placement(item["module"], item.get("page"), pages, created_block_ids)
+        if not where["pages"]:
+            warnings.append(
+                not_placed(f"Button {item['position']}'s label", item["module"], item.get("page"))
+            )
+        buttons.append(
+            {
+                "module": item["module"],
+                "position": item["position"],
+                "label": item["label"],
+                **where,
+            }
         )
     faq = None
     if content.get("faq"):
@@ -749,6 +765,7 @@ def copy_plan(
     return {
         "locale": brief["site"]["primary_locale"],
         "texts": texts,
+        "buttons": buttons,
         "faq": faq,
         "seo": seo,
     }, warnings

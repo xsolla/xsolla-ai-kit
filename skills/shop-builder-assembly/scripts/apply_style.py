@@ -589,6 +589,25 @@ def text_references(current: dict) -> dict[str, set[str]]:
     return references
 
 
+def button_label_slot(block: dict, position: int) -> tuple[str | None, str | None]:
+    """The `L:` id of a hero button's label, by 1-based position, or why there is none.
+    A `leadGameSales` button holds it in `values.buttons[].button.action.text`."""
+    values = block.get("values")
+    if not isinstance(values, dict) or isinstance(values.get("blockId"), str):
+        return "it is a federated block, whose wrapper isn't patched", None
+    buttons = values.get("buttons")
+    if not isinstance(buttons, list) or len(buttons) < position:
+        return f"it has no button {position}", None
+    action = ((buttons[position - 1] or {}).get("button") or {}).get("action") or {}
+    if action.get("action") == "buy":
+        return "a buy button shows the item's price, not a label", None
+    text = action.get("text")
+    lid = text.get("id") if isinstance(text, dict) else None
+    if not (isinstance(lid, str) and lid.startswith("L:")):
+        return "the button has no label text", None
+    return None, lid
+
+
 def faq_item_ids(landing_id: str, block_id: str, index: int) -> tuple[str, str, str]:
     """Stable IDs for an FAQ item this script adds, so a rerun finds it again."""
     component = str(uuid.uuid5(uuid.NAMESPACE_URL, f"{landing_id}:{block_id}:faq:{index}"))
@@ -612,8 +631,8 @@ def copy_phase(
     description and share image URL."""
     copy_plan = approved.get("copy") or {}
     texts, faq = copy_plan.get("texts", []), copy_plan.get("faq")
-    seo = copy_plan.get("seo", [])
-    if not texts and not faq and not seo:
+    seo, buttons = copy_plan.get("seo", []), copy_plan.get("buttons", [])
+    if not texts and not faq and not seo and not buttons:
         return [], [], current
     locale = copy_plan["locale"]
     before = localization(slug)
@@ -695,6 +714,24 @@ def copy_phase(
                 needs_human.append(
                     f"The {entry['module']} block has no {item['field']} text to write; set "
                     "it in the editor if it should have one."
+                )
+            results.append(entry)
+
+    for item in buttons:
+        for page, block in planned_blocks(item):
+            module = effective_module(block)
+            entry = {"block_id": block["_id"], "module": module, "button": item["position"]}
+            reason, lid = button_label_slot(block, item["position"])
+            if lid is not None:
+                # A button label is plain text: buttons don't render HTML.
+                entry["status"], reason = write(
+                    page["_id"], lid, item["label"], allowed_for(item)
+                )
+            if reason:
+                entry.update(status="skipped", reason=reason)
+                needs_human.append(
+                    f"Button {item['position']} of the {module} block wasn't relabeled "
+                    f"\"{item['label']}\": {reason}. Set it in the editor if it should change."
                 )
             results.append(entry)
 
@@ -911,6 +948,7 @@ def main() -> int:
             or copy_plan.get("texts")
             or copy_plan.get("faq")
             or copy_plan.get("seo")
+            or copy_plan.get("buttons")
         ):
             print(
                 json.dumps(
@@ -938,7 +976,9 @@ def main() -> int:
         current = structure(slug)
         if structure_hash(current) != structure_hash(backup_structure(args.backup_dir)):
             raise RuntimeError("the site changed after the backup; back up again")
-        saved_text = json.loads((args.backup_dir / "localization.json").read_text(encoding="utf-8"))
+        saved_text = json.loads(
+            (args.backup_dir / "localization.json").read_text(encoding="utf-8")
+        )
         if flat_texts(localization(slug)) != flat_texts(data(saved_text)):
             raise RuntimeError(
                 "the site's text changed after the backup, for example in the editor; "

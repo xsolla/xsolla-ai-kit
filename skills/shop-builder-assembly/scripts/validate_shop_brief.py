@@ -114,7 +114,9 @@ UNSAFE_HTML = re.compile(
 )
 
 
-def overlap_errors(items: list, kind: str, slot_key: str) -> list[str]:
+def overlap_errors(
+    items: list, kind: str, slot_key: str, slot_label: str = "{}"
+) -> list[str]:
     """Two entries for the same module and slot whose pages overlap (no page means every
     page) would write over each other on every run."""
     errors, seen = [], []
@@ -126,7 +128,8 @@ def overlap_errors(items: list, kind: str, slot_key: str) -> list[str]:
         for other_index, other_key, other_page in seen:
             if key == other_key and (page is None or other_page is None or page == other_page):
                 errors.append(
-                    f"{kind}[{index}] and {kind}[{other_index}] both set the {key[1]} of "
+                    f"{kind}[{index}] and {kind}[{other_index}] both set the "
+                    f"{slot_label.format(key[1])} of "
                     f"{key[0]} on the same page; keep one, or give each its own page"
                 )
         seen.append((index, key, page))
@@ -186,6 +189,42 @@ def faq_errors(faq: object) -> list[str]:
         if isinstance(item["question"], str) and "<h4" not in item["question"].lower():
             errors.append(f"{prefix}.question must be an <h4>: the FAQ block needs it")
     return errors
+
+
+# Blocks whose buttons hold their labels in `values.buttons[].button.action.text`.
+BUTTON_MODULES = ("leadGameSales",)
+BUTTON_LABEL_LIMIT = 40
+
+
+def button_errors(buttons: object) -> list[str]:
+    """Check `content.buttons`: a plain-text label for a hero button, by its position."""
+    if not isinstance(buttons, list) or not buttons:
+        return ["content.buttons must be a non-empty list"]
+    errors = []
+    for index, item in enumerate(buttons):
+        prefix = f"content.buttons[{index}]"
+        if not isinstance(item, dict):
+            errors.append(f"{prefix} must be an object")
+            continue
+        unknown = sorted(set(item) - {"module", "position", "label", "page"})
+        if unknown:
+            errors.append(f"{prefix} has unknown keys: " + ", ".join(unknown))
+        if item.get("module") not in BUTTON_MODULES:
+            errors.append(f"{prefix}.module must be one of: " + ", ".join(BUTTON_MODULES))
+        position = item.get("position")
+        if isinstance(position, bool) or not isinstance(position, int) or position < 1:
+            errors.append(f"{prefix}.position must be 1 for the first button, 2 for the next")
+        label = item.get("label")
+        if not isinstance(label, str) or not label.strip():
+            errors.append(f"{prefix}.label must be non-empty text")
+        elif "<" in label or ">" in label:
+            errors.append(f"{prefix}.label is plain text, not HTML: buttons don't render tags")
+        elif len(label) > BUTTON_LABEL_LIMIT:
+            errors.append(f"{prefix}.label must be at most {BUTTON_LABEL_LIMIT} characters")
+        page = item.get("page")
+        if page is not None and (not isinstance(page, str) or not page.startswith("/")):
+            errors.append(f"{prefix}.page must be a page path such as /")
+    return errors + overlap_errors(buttons, "content.buttons", "position", "label of button {}")
 
 
 # Search engines cut longer titles and descriptions short.
@@ -444,6 +483,8 @@ def validate(brief: dict) -> list[str]:
         errors.extend(faq_errors(content["faq"]))
     if "seo" in content:
         errors.extend(seo_errors(content["seo"]))
+    if "buttons" in content:
+        errors.extend(button_errors(content["buttons"]))
 
     sources = brief.get("sources")
     if not isinstance(sources, list) or not sources:
