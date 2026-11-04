@@ -854,6 +854,50 @@ class OverlapAndHtmlTests(unittest.TestCase):
         self.assertEqual([], validate_shop_brief.html_errors('<p><a href="https://x">Hi</a></p>', "x"))
 
 
+class ButtonBriefTests(unittest.TestCase):
+    def brief(self, buttons: object) -> dict:
+        brief = brief_with_palette(None)
+        brief["content"] = {"buttons": buttons}
+        return brief
+
+    def test_plain_text_labels_by_position_are_valid(self) -> None:
+        buttons = [
+            {"module": "leadGameSales", "position": 1, "label": "Shop now"},
+            {"module": "leadGameSales", "position": 2, "label": "Watch trailer", "page": "/"},
+        ]
+        self.assertEqual([], validate_shop_brief.validate(self.brief(buttons)))
+
+    def test_bad_labels_are_refused(self) -> None:
+        good = {"module": "leadGameSales", "position": 1, "label": "Shop now"}
+        cases = {
+            "content.buttons must be a non-empty list": [],
+            "content.buttons[0].label is plain text, not HTML": [{**good, "label": "<b>Go</b>"}],
+            "content.buttons[0].label must be at most 40 characters": [
+                {**good, "label": "x" * 41}
+            ],
+            "content.buttons[0].position must be 1 for the first button": [
+                {**good, "position": 0}
+            ],
+            "content.buttons[0].module must be one of: leadGameSales": [
+                {**good, "module": "hero"}
+            ],
+            "both set the label of button 1 of leadGameSales": [good, {**good, "label": "Buy"}],
+        }
+        for message, buttons in cases.items():
+            with self.subTest(message):
+                errors = validate_shop_brief.validate(self.brief(buttons))
+                self.assertTrue(any(message in error for error in errors), errors)
+
+    def test_the_plan_places_the_labels(self) -> None:
+        brief = self.brief([{"module": "leadGameSales", "position": 1, "label": "Shop now"}])
+        plan = render_plan.build_plan(brief)
+        self.assertEqual(
+            {"module": "leadGameSales", "position": 1, "label": "Shop now", "pages": ["/"],
+             "page_modules": {"/": "leadGameSales"}, "existing_block_ids": []},
+            plan["copy"]["buttons"][0],
+        )
+
+
 class CopyPlanTests(unittest.TestCase):
     def test_the_plan_binds_seo_to_planned_pages_and_its_image(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -930,7 +974,15 @@ class ApplyCopyRunTests(unittest.TestCase):
                     },
                     "blocks": [
                         {"_id": "hero", "module": "leadGameSales",
-                         "values": {"title": {"id": "L:t1"}, "subtitle": {"id": "L:t2"}}},
+                         "values": {"title": {"id": "L:t1"}, "subtitle": {"id": "L:t2"},
+                                    "buttons": [
+                                        {"id": "b1", "button": {"action": {
+                                            "__type": "action", "action": "scroll",
+                                            "targetId": "", "text": {"id": "L:b1"}}}},
+                                        {"id": "b2", "button": {"action": {
+                                            "__type": "action", "action": "buy",
+                                            "sku": "gems_100"}}},
+                                    ]}},
                         {"_id": "store", "module": "newStore",
                          "values": {"title": {"id": "L:t3"}}},
                         {"_id": "faq", "module": "faq", "values": {"title": {"id": "L:t4"}},
@@ -950,6 +1002,7 @@ class ApplyCopyRunTests(unittest.TestCase):
                         "L:t1": text("<h1>Demo hero</h1>"),
                         "L:t2": text("<p>Demo subtitle</p>"),
                         "L:t3": text("<h2>Demo store</h2>"),
+                        "L:b1": text("Scroll"),
                         "L:t4": text("<h2>FAQ</h2>"),
                         "L:st": text("Demo store"),
                         "L:sd": text("Demo description"),
@@ -1119,6 +1172,47 @@ class ApplyCopyRunTests(unittest.TestCase):
         self.assertEqual(1, code)
         self.assertIn("share.png changed after the plan was approved", stderr)
         self.assertEqual([], self.calls)
+
+    def with_buttons(self, *buttons: dict) -> None:
+        self.brief["content"]["buttons"] = list(buttons)
+        self.approve(None)
+        self.report["approved_confirmation_id"] = self.approved["confirmation_id"]
+
+    def test_writes_a_hero_button_label_as_plain_text(self) -> None:
+        self.with_buttons({"module": "leadGameSales", "position": 1, "label": "Shop now"})
+        code, report, stderr = self.run_style()
+        self.assertEqual(0, code, stderr)
+        self.assertEqual("Shop now", self.shown("page-1", "L:b1"))
+        entry = next(e for e in report["copy"] if e.get("button") == 1)
+        self.assertEqual("set", entry["status"])
+        self.calls.clear()
+        code, report, stderr = self.run_style()
+        self.assertEqual(0, code, stderr)
+        self.assertEqual([], self.names())
+
+    def test_a_buy_button_and_a_missing_button_are_skipped(self) -> None:
+        self.with_buttons(
+            {"module": "leadGameSales", "position": 2, "label": "Buy"},
+            {"module": "leadGameSales", "position": 3, "label": "More"},
+        )
+        code, report, stderr = self.run_style()
+        self.assertEqual(0, code, stderr)
+        reasons = {e["button"]: e["reason"] for e in report["copy"] if "button" in e}
+        self.assertEqual("a buy button shows the item's price, not a label", reasons[2])
+        self.assertEqual("it has no button 3", reasons[3])
+        self.assertTrue(any("wasn't relabeled" in item for item in report["needs_human"]))
+
+    def test_a_button_label_shared_with_another_block_is_left_alone(self) -> None:
+        # A block that was on the site before this assembly, and isn't in the plan.
+        self.site["pages"][0]["blocks"].append(
+            {"_id": "old-banner", "module": "description", "values": {"title": {"id": "L:b1"}}}
+        )
+        self.with_buttons({"module": "leadGameSales", "position": 1, "label": "Shop now"})
+        code, report, stderr = self.run_style()
+        self.assertEqual(0, code, stderr)
+        self.assertEqual("Scroll", self.shown("page-1", "L:b1"))
+        entry = next(e for e in report["copy"] if e.get("button") == 1)
+        self.assertEqual("its text is shared with old-banner", entry["reason"])
 
     def test_a_site_wide_string_is_left_alone(self) -> None:
         self.site["pages"][0]["blocks"][1]["values"]["title"]["id"] = "L:c1"
