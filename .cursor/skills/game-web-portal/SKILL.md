@@ -1,18 +1,11 @@
 ---
 name: game-web-portal
 description: >-
-  Builds or resumes an unpublished Xsolla Game Web Portal for a PC or mobile game — a home with
-  Home, News, Rewards, Web Shop, Community, and an optional Launcher section around the
-  store — on the site the partner created from the Multi-page web portal template, and
-  returns an evidence-backed handoff. Not the entry point for "build me a shop" or "set up
-  my portal": that is nocode-shop-setup. It hands off here when the user wants a game
-  home, or the existing site has /news, /rewards, and /store. Use for
-  "continue my Game Web Portal", "resume my portal without duplicating pages", "add the
-  Community section to my portal", or reporting how a portal's catalog and Login are wired.
-  The agent never publishes, never runs the readiness check, and never generates a preview
-  key — those are handed to the human in Publisher Account. Steam, App Store and Google Play
-  titles; a Launcher only for PC. For a store without a game home, use nocode-shop-setup.
-  For a shop the user codes and deploys, use shop-setup.
+  Builds or resumes an unpublished Game Web Portal for a PC or mobile game: Home, News,
+  Rewards, Web Shop, Community and an optional Launcher, on a site made from the Multi-
+  page web portal template. Reached through nocode-shop-setup. Use for "continue my Game
+  Web Portal" or "add the Community section". Never publishes; that stays with the
+  human.
 metadata:
   owner: a.pyanzin
   domain: orchestrator
