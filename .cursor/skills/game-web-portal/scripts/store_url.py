@@ -20,8 +20,8 @@ STORES = {
     "apps.apple.com": ("app_store", "mobile"),
     "play.google.com": ("google_play", "mobile"),
 }
-STEAM_PATH = re.compile(r"/app/(\d+)(?:/.*)?")
-APP_STORE_PATH = re.compile(r"/(?:[a-z]{2}/)?app/(?:[^/]+/)?id(\d+)/?")
+STEAM_PATH = re.compile(r"/app/([0-9]+)(?:/.*)?")
+APP_STORE_PATH = re.compile(r"/(?:[a-z]{2}/)?app/(?:[^/]+/)?id([0-9]+)/?")
 PLAY_PATH = "/store/apps/details"
 PLAY_PACKAGE = re.compile(r"[A-Za-z][A-Za-z0-9_]*(?:\.[A-Za-z][A-Za-z0-9_]*)+")
 
@@ -30,7 +30,17 @@ def classify(url: object) -> dict:
     """Return {"store", "platform", "app_id"} or {"needs_input": reason}."""
     if not isinstance(url, str) or not url.strip():
         return {"needs_input": "no store URL"}
-    parts = urlsplit(url.strip())
+    url = url.strip()
+    # Store links are plain ASCII: whitespace, control or look-alike Unicode characters
+    # (a full-width @ or digits) are refused rather than normalized.
+    if not url.isascii() or any(char.isspace() or ord(char) < 32 for char in url):
+        return {"needs_input": "the store URL has characters a store link doesn't"}
+    try:
+        parts = urlsplit(url)
+    except ValueError:
+        return {"needs_input": "the store URL isn't a valid address"}
+    if any(segment in (".", "..") for segment in parts.path.split("/")):
+        return {"needs_input": "the store URL must not contain . or .. path segments"}
     if parts.scheme != "https":
         return {"needs_input": "the store URL must start with https://"}
     if parts.username is not None or parts.password is not None or "@" in parts.netloc:

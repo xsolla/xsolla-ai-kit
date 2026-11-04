@@ -65,6 +65,20 @@ AUTH_FAILURE_MARKERS = (
 # `xsolla auth login` can write token claims into the CLI config, so it is
 # re-checked after the login.
 RUN_AUTH: dict = {"logged_in": False, "context": None}
+# The run's progress once its writes began: pages and blocks it created, recorded as
+# each is created, so a run that stops partway reports them and a rerun under the same
+# yes knows they are this assembly's.
+RUN_PROGRESS: dict = {}
+
+
+def note_created(path: str | None = None, block_ids: object = ()) -> None:
+    if not RUN_PROGRESS:
+        return
+    RUN_PROGRESS["created_block_ids"].update(
+        block_id for block_id in block_ids if isinstance(block_id, str)
+    )
+    if path is not None and path not in RUN_PROGRESS["created_pages"]:
+        RUN_PROGRESS["created_pages"].append(path)
 
 
 # `xsolla auth login` opens a browser and waits for it; run from an agent's shell it
@@ -510,6 +524,14 @@ def reconcile_page(slug: str, landing_id: str, page_plan: dict) -> dict:
                 module,
             )
             existing.append(module)
+            added_page = page_for_path(structure(slug), page_plan["path"]) or {}
+            note_created(
+                block_ids=[
+                    block.get("_id")
+                    for block in added_page.get("blocks", [])
+                    if isinstance(block, dict) and block.get("_id") not in known_block_ids
+                ]
+            )
     hidden_custom_code = (
         hide_added_custom_code(slug, landing_id, page_plan["path"], known_block_ids)
         if "html" in desired
@@ -627,8 +649,13 @@ def add_missing_pages(slug: str, page_plans: list[dict]) -> list[str]:
         )
         created.append(page_plan["path"])
         current = structure(slug)
-        if page_for_path(current, page_plan["path"]) is None:
+        page = page_for_path(current, page_plan["path"])
+        if page is None:
             raise RuntimeError(f"could not resolve created page {page_plan['path']}")
+        note_created(
+            page_plan["path"],
+            [block.get("_id") for block in page.get("blocks", []) if isinstance(block, dict)],
+        )
     return created
 
 
@@ -1107,6 +1134,16 @@ def require_created_slug(slug: str, before: set[str]) -> None:
     )
 
 
+def carried_forward(progress: dict) -> dict:
+    """What every earlier run under this yes and this run created, so the latest report
+    alone tells the next render and apply_style.py which pages and blocks are this
+    assembly's."""
+    return {
+        "created_block_ids": sorted(progress["created_block_ids"]),
+        "all_created_pages": list(progress.get("created_pages", [])),
+    }
+
+
 def stopped_partway_report(progress: dict, error: str) -> dict:
     """The report of a run that stopped after the yes, possibly partway through its writes.
 
@@ -1120,6 +1157,7 @@ def stopped_partway_report(progress: dict, error: str) -> dict:
         "slug": progress["slug"],
         "landing_id": progress["landing_id"],
         "created_block_ids": sorted(progress["created_block_ids"]),
+        "created_pages": list(progress.get("created_pages", [])),
         "error": error,
         "next_action": (
             "Save this report as partial-report.json, export the site again, and render "
@@ -1211,7 +1249,18 @@ def main() -> int:
             "slug": slug,
             "landing_id": None,
             "created_block_ids": set(created),
+            "created_pages": list(
+                dict.fromkeys(
+                    path
+                    for key in ("all_created_pages", "created_pages")
+                    for path in (report or {}).get(key) or []
+                    if isinstance(path, str)
+                )
+            ),
         }
+        RUN_PROGRESS.clear()
+        RUN_PROGRESS.update(progress)
+        progress = RUN_PROGRESS
         current = structure(slug)
         if current.get("type") is None:
             run_json(
@@ -1243,6 +1292,7 @@ def main() -> int:
                         "landing_id": landing_id,
                         "created_pages": created_pages,
                         "created_blocks": page_block_ids(structure(slug), created_pages),
+                        **carried_forward(progress),
                         "layout_id": layout_id,
                         "locales": locales,
                         "next_action": (
@@ -1271,6 +1321,7 @@ def main() -> int:
                         "landing_id": landing_id,
                         "created_pages": created_pages,
                         "created_blocks": page_block_ids(structure(slug), created_pages),
+                        **carried_forward(progress),
                         "layout_id": layout_id,
                         "locales": locales,
                         "next_action": (
@@ -1303,6 +1354,7 @@ def main() -> int:
                     "landing_id": landing_id,
                     "layout_id": layout_id,
                     "site_existed": existed,
+                    **carried_forward(progress),
                     "pages": pages,
                     "navigation": navigation,
                     "catalog_links": catalog_links,
@@ -1311,7 +1363,8 @@ def main() -> int:
                     "pending_phases": plan["style_phases"] + plan["unsupported_phases"],
                     "next_action": (
                         "Back up the site, then run apply_style.py under the same yes for "
-                        "the theme and images."
+                        "the theme, images, copy and SEO, with --run-report for every "
+                        "earlier run's report."
                     ),
                     "warnings": (
                         [CUSTOM_CODE_WARNING]
