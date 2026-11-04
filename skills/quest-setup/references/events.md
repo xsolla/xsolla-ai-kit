@@ -15,7 +15,7 @@ For "add a login event that uses my Xsolla ID", the live docs support this much 
   (other types: `gamer_id`, `guest_id`, `email`).
 - The docs do not name a standard login event and do not describe how a site sends one. Never
   invent an event name. Ask the publisher for the name, or propose one and label it as a proposal.
-- Never use `autoEvents` or `loginEventName` on the block: both are removed in 0.2.8.
+- Never write `autoEvents` or `loginEventName` on the block: the gate cannot write them (they are not in its patchable settings). The block sends events itself once the player is authorized, and a quest trigger must match the event name exactly. Whether the event name must also exist as a `dynamic_event` is unknown.
 
 An "add" request never modifies an existing quest. First list the quests (two calls, see SKILL.md)
 and check whether a quest already uses a login-type trigger. Tell the publisher what exists (quest

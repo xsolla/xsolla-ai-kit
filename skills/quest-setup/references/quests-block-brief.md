@@ -66,8 +66,8 @@ Source: the block contract at commit 0b1586eb59. Version pins live only in
 - `maxQuests` is a whole number from 1-24, and the default is 6.
 - `overrides` image values must be https only. Reward overrides are ignored by the block.
 - The layout flags are `showHeading`, `showDescription`, `showImage`, `cardAlign`, `imageFit`, `buttonStyle`, `blockBackground` and `cardBackground`.
-- Stable 0.1.12 has no theme keys. 0.2.7 adds `themeId`, `themeAppearance`, `autoEvents` and `loginEventName`. In 0.2.8 `autoEvents` and `loginEventName` are removed.
-- `backpackAction` exists only in candidate 0.2.1. A request for a Backpack Overlay action is blocked on upstream v2: decline it and make no write.
+- Stable 0.1.12 has no theme keys. 0.2.7 adds `themeId`, `themeAppearance`, `autoEvents` and `loginEventName`. In 0.2.8 alone `autoEvents` and `loginEventName` are removed; 0.2.9 and 0.2.10 have them again. The skill never writes either, because the gate cannot write them. The block sends events itself once the player is authorized, and a quest trigger must match the event name exactly (whether the name must also exist as a `dynamic_event` is unknown).
+- `backpackAction` exists only in candidate 0.2.1, and the latest release drops it. A request for a Backpack Overlay action is blocked on upstream v2: decline it and make no write.
 - A 403 on creating a custom block means the account lacks permission to create custom blocks. Say that, name Xsolla support as the next step, do not retry, and create no file.
 
 ### Theme selector
