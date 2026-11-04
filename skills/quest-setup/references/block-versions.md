@@ -1,6 +1,6 @@
 # Quests block versions
 
-This is the only file that holds version pins. Verified at 2026-11-03. Sources: the pins
+This is the only file that holds version pins. Verified at 2026-11-03; refreshed 2026-11-04 (see Version facts). Sources: the pins
 in [quests-block-brief.md](quests-block-brief.md) and [quests-block-flow.md](quests-block-flow.md)
 as merged from PR #87, and the block contract read from the block repository at commit
 0b1586eb59 (0.2.7), with 87d7aaf4f7 (0.1.12), 7c251007b6 (0.2.8) and f0ec907f69 (0.2.1
@@ -21,16 +21,32 @@ candidate) for the version differences.
 | 0.1.5 | Plain block creation (the stable pin). No theme keys. |
 | 0.1.12 | Stable line: plain creation and edits. No theme keys: no `themeId`, no `themeAppearance`. Supported for writes that need no theme. |
 | 0.2.7 (candidate `0.2.7-qp-3256.0`) | Adds `themeId`, `themeAppearance`, `autoEvents` and `loginEventName`. Only the pinned candidate `0.2.7-qp-3256.0` is supported for theme writes; plain 0.2.7 is not pinned, so it is not supported for theme writes: ask once or stop. |
-| 0.2.8 | Same as 0.2.7 but `autoEvents` and `loginEventName` are removed. Supported for theme writes. |
-| 0.2.1 candidate | The only version with `backpackAction`. It is not a target for any write. |
+| 0.2.8-qp-3256.0 to 0.2.8-qp-3256.4 (candidates) | Same settings keys as 0.2.7. Changes by candidate: .1 Backpack overlay launcher retry, collapsed bar expands; .2 login event sent from the player route, Pages card typography; .3 automatic player events with periods and reward polling; .4 re-authentication on an expired token. The .0 candidate is a release bump only. A KNOWN version the gate cannot create yet. |
+| 0.2.8-qp-3256.5 (candidate) | Site Builder and Pages grid cards match the Games card; `autoEvents` and `loginEventName` removed. A KNOWN version the gate cannot create yet. |
+| 0.2.8 (stable) | Same as 0.2.8-qp-3256.5: `autoEvents` and `loginEventName` are removed, the block sends fixed built-in events. A KNOWN version the gate cannot create yet. |
+| 0.2.9-qp-3256.0 (candidate), 0.2.9 (stable) | `autoEvents` and `loginEventName` are back; card text band and editor typography fixes. 0.2.9 is the same as its candidate. KNOWN versions the gate cannot create yet. |
+| 0.2.10-qp-3256.0 (candidate) | Card typography reset at any depth. A KNOWN version the gate cannot create yet. |
+| 0.2.10 (stable) | The latest release on 2026-11-03; same as 0.2.10-qp-3256.0. Grid card typography and hover fill, theme CSS variables. A KNOWN version the gate cannot create yet. |
+| 0.2.1 candidate | The only claim for `backpackAction`. It is not a target for any write. |
 
 ## Version facts (snapshot of the block contract)
 
+Refreshed 2026-11-04 from the block repo at release 0.2.10 (b1f12425fb).
+
+- Channels: a candidate is `x.y.z-qp-3256.N`, a stable release is `x.y.z`.
 - Stable 0.1.12 has no theme keys: no `themeId`, no `themeAppearance`.
 - 0.2.7 adds `themeId`, `themeAppearance`, `autoEvents` and `loginEventName`.
-- 0.2.8 removes `autoEvents` and `loginEventName`. Never send either on 0.2.8 or newer.
-- `backpackAction` exists only in candidate 0.2.1. It is not part of any pinned version.
+- The block settings keys, `themeId` and `themeAppearance` are identical between 0.2.7 and 0.2.10, so the theme rules stay valid on those versions.
+- 0.2.8 alone removes `autoEvents` and `loginEventName`. 0.2.9 and 0.2.10 have them again: `autoEvents` rows are `name:period` with period `once`, `day`, `week` or `session`, deduplicated per period, and the legacy `loginEventName` acts as `name:once`.
+- The skill never writes `autoEvents` or `loginEventName`, because the gate cannot write them (they are not in `QUESTS_PATCHABLE_LEAVES`).
+- The block sends events itself once the player is authorized, and a quest trigger must match the event name exactly. Whether the event name must also exist as a `dynamic_event` is UNKNOWN.
+- `backpackAction` exists only in candidate 0.2.1. The latest release (0.2.10) drops it on parse. It is not a target for any write and is not part of any pinned version.
 - The Backpack Overlay action is blocked on upstream v2.
+- UNKNOWN: whether the CDN serves 0.2.9 and 0.2.10 artifacts, and whether the production Quests config accepts `autoEvents` or `loginEventName` on 0.2.9 and later.
+
+## Write pins (what the gate creates)
+
+The shop-builder-assembly gate accepts for a new block exactly `0.1.5` (stable create) and `0.2.7-qp-3256.0` (theme-capable candidate). 0.2.8, 0.2.9, 0.2.10 and 0.2.10-qp-3256.0 are KNOWN versions that the gate cannot create yet. The agent never proposes them as a target. If the publisher asks for the latest, say the gate supports only those two versions until it is updated.
 
 ## Runtime check
 
