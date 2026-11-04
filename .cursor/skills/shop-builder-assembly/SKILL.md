@@ -139,10 +139,10 @@ a fresh backup, as [CLI operations](references/cli-operations.md) describes.
    game's art ([visual style](references/visual-style.md)). Hand over its `needs_human`.
 7. **Images** — it uploads each `brand.images` file once and puts the CDN URL in the
    block's background or logo. An opaque `background.color` hides the image under it.
-8. **Copy** — it writes `content.copy`, the `content.faq` items and each page's
-   `content.seo` (title, description, share image) in the primary locale through
-   `update-many-localization`, never block patches; `shopbuilder-translate` adds other
-   locales. Follow the text rules in [visual style](references/visual-style.md).
+8. **Copy** — it writes `content.copy`, hero button labels (`content.buttons`), the FAQ
+   items and each page's `content.seo` (title, description, share image) in the primary
+   locale through `update-many-localization`, never block patches; `shopbuilder-translate`
+   adds other locales. Follow the text rules in [visual style](references/visual-style.md).
 
 Use pre-written scripts for repeated work; never pass `--force` or invent HTTP or
 `curl` workarounds. If an operation requires `--force`, stop and report it.

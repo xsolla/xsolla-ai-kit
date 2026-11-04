@@ -78,8 +78,9 @@ version-1 JSON object:
   proposal creates and activates under the same yes, so their blocks are in the plan the
   developer approves.
 - `content` — publisher page overrides, and the copy the plan will show word for word:
-  `content.copy` for block titles, subtitles and descriptions, and `content.faq` for the
-  questions and answers, in the primary locale, as the shop brief reference describes.
+  `content.copy` for block titles, subtitles and descriptions, `content.buttons` for the
+  hero's button labels, and `content.faq` for the questions and answers, in the primary
+  locale, as the shop brief reference describes.
   Fill `content.seo` by default, without asking: per page, a search title with the game's
   name, a one-line description from the listing, and the key art as the share image.
 - `brand` — the listing's art and app icon, once the publisher confirmed they may be

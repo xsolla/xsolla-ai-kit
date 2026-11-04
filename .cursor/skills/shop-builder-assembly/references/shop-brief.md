@@ -79,6 +79,7 @@ project identity to approval evidence; a self-declared brief is not enough.
 | `content` | Optional approved copy, page overrides, FAQ, requirements, event copy, and CTA labels. |
 | `content.copy` | Optional list of `{"module", "field", "html"}` with an optional `"page"`: the approved text for a block's `title`, `subtitle` or `description`, as HTML (`<h1>`, `<h2>`, `<p>`), primary locale. No `<img>`, `<script>` or other embedding tags, event handlers or `javascript:` links. Two entries for the same module and field can't share a page. `apply_style.py` writes it. |
 | `content.seo` | Optional list of `{"page", "title", "description", "image"}`, one per page path: the search title (at most 70 characters) and description (at most 200), as plain text, and a local share image for link previews (`og:image`). `apply_style.py` writes them to the page's `seo` strings and uploads the image. |
+| `content.buttons` | Optional list of `{"module", "position", "label"}` with an optional `"page"`: plain-text labels (at most 40 characters) for a `leadGameSales` hero's buttons, 1 for the first. A buy button shows the item's price and keeps no label; a hero of another kind goes to `needs_human`. `apply_style.py` writes them. |
 | `content.faq` | Optional list of `{"question", "answer"}`, both HTML; each question is an `<h4>`. It adds the FAQ block to the plan, and `apply_style.py` makes the block's items match it. |
 | `sources` | Provenance such as `publisher_answers`, `description`, `external_store`, or `figma`. |
 

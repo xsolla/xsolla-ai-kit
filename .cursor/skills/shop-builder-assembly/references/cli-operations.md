@@ -93,6 +93,9 @@ any write. Every script that writes (`apply_plan.py`, `apply_style.py`,
   federated block, and an opaque background color over the image go to `needs_human`.
   Then the copy, in the primary locale only: each `content.copy` item goes to the `L:` id
   in `values.<field>.id` of its module's blocks, under the same rules for existing blocks.
+  Each `content.buttons` label goes, as plain text, to `values.buttons[<position - 1>]
+  .button.action.text.id` of the planned `leadGameSales` blocks; a buy button, a missing
+  position and a federated hero go to `needs_human`.
   The FAQ block's `questionV2` items are made to match `content.faq`: texts written,
   extra items removed (`enable: false` is ignored there), missing ones added with stable
   IDs. All text goes in one `update-many-localization` call, with each string's current
