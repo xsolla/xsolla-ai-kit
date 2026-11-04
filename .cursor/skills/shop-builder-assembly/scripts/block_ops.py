@@ -22,17 +22,27 @@ QUESTS_MODULE = "_quest-platform_quests-block"
 OPS_BLOCK_MODULES = frozenset({QUESTS_MODULE})
 # add-block --block federated, then one update-block retargeting the wrapper.
 QUESTS_ADD_STRATEGY = "federated_patch"
-# Stable package version used by ordinary creation. Candidate versions must be chosen
-# explicitly and have a separate exact-version capability entry below.
-QUESTS_VERSION = "0.1.5"
+# Latest stable release: the version of every NEW Quests block, themed or not. A new
+# release means updating this constant and quest-setup block-versions.md together.
+QUESTS_LATEST_VERSION = "0.2.10"
+# Default version of an add operation without an explicit version.
+QUESTS_VERSION = QUESTS_LATEST_VERSION
+# Candidate of the latest release (accepted, never proposed as a target).
+QUESTS_LATEST_CANDIDATE_VERSION = "0.2.10-qp-3256.0"
+# Legacy accepted pins: blocks already saved on them must still pass exact-version
+# checks. The agent never proposes them as a target for a new block.
+QUESTS_LEGACY_PLAIN_VERSION = "0.1.5"
 QUESTS_CANDIDATE_VERSION = "0.2.7-qp-3256.0"
-# Capabilities are keyed by exact artifact pins, never inferred by semver. This
-# candidate release and its CDN artifact have been verified.
-# The stable creation default deliberately remains QUESTS_VERSION.
+# Capabilities are keyed by exact artifact pins, never inferred by semver. These
+# releases and their CDN artifacts have been verified (served, probed 2026-11-04).
 QUESTS_CAPABILITIES = {
-    QUESTS_VERSION: {"appearance": False},
+    QUESTS_LATEST_VERSION: {"appearance": True},
+    QUESTS_LATEST_CANDIDATE_VERSION: {"appearance": True},
     QUESTS_CANDIDATE_VERSION: {"appearance": True},
+    QUESTS_LEGACY_PLAIN_VERSION: {"appearance": False},
 }
+# Pins that are candidate (prerelease) builds and need review before approval.
+QUESTS_CANDIDATE_VERSIONS = (QUESTS_CANDIDATE_VERSION, QUESTS_LATEST_CANDIDATE_VERSION)
 QUESTS_CDN_ROOT = "https://cdn.xsolla.net/site-builder-modules/"
 # Editor layer label that UI-added federated blocks carry (top-level `devName`).
 QUESTS_DEV_NAME = "Quests"
@@ -597,8 +607,12 @@ def _check_capability_and_custom_contract(
         ):
             errors.append(
                 f"{prefix}.{key}: unsupported Quests version {version or 'unknown'} "
-                f"for {capability}; configured candidate source pin is "
-                f"{QUESTS_CANDIDATE_VERSION}"
+                f"for {capability}; supported source pins are "
+                + ", ".join(
+                    pin
+                    for pin, caps in QUESTS_CAPABILITIES.items()
+                    if caps.get(capability, False)
+                )
             )
 
     custom_keys = [

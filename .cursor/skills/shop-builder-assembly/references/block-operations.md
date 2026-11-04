@@ -67,8 +67,10 @@ The plan runs against the backup structure and rejects these before confirmation
 - Wrapper: `federated`, `values.blockId` `_quest-platform_quests-block`
   (CDN-verified), `useAsNativeBlock: false`. The npm name `@quest-platform/quests-block`
   is stored with `@` and `/` replaced by `_`.
-- Ordinary creation pin: the package version in `scripts/block_ops.py` (`QUESTS_VERSION`),
-  currently stable `0.1.5`.
+- Creation pin: the latest stable package version in `scripts/block_ops.py`
+  (`QUESTS_LATEST_VERSION`, also the default `QUESTS_VERSION`), currently `0.2.10`, for
+  every new block. A new release means updating this constant and quest-setup
+  `block-versions.md` together.
   Add strategy: `federated_patch`. `add-block --block federated` creates an empty wrapper
   at index 0 (omit `--index`), then one `update-block` sets `host`, `blockId`, `version`,
   `useAsNativeBlock` and `internalBlockValues` from the CDN `default-data.json`; the
@@ -104,18 +106,24 @@ The plan runs against the backup structure and rejects these before confirmation
 
 ## Appearance capability
 
-Ordinary `add` keeps using the stable creation pin `0.1.5`. An `add` operation may
-select a different artifact only through its explicit `version` field. The released
-candidate capability is `0.2.7-qp-3256.0`; this is candidate-only support, not a
-stable-version claim. Its release and CDN artifact have been verified. Updates and
-resets that use these fields require the target block's exact `values.version` to match
-that candidate. No other version is accepted by inference.
+An `add` without a `version` uses the latest stable `0.2.10` (`QUESTS_LATEST_VERSION`),
+themed or not. An `add` operation may select a different artifact only through its
+explicit `version` field. The gate accepts four exact pins for `add`: `0.2.10` (latest
+stable, the target for every new block), `0.2.10-qp-3256.0` (candidate of the same
+release), and the legacy pins `0.2.7-qp-3256.0` and `0.1.5` (no appearance), kept so
+blocks already saved on them still pass; the agent never proposes the legacy pins for a
+new block. The three themed pins have the appearance capability; their
+releases and CDN artifacts have been verified (served, probed 2026-11-04). Updates and
+resets that use these fields require the target block's exact `values.version` to be one
+of the three themed pins. No other version is accepted by inference: `0.2.8`, `0.2.9`
+and `0.1.12` are refused. A plan that uses a candidate pin carries a warning to review
+the build before approval.
 
-The verified candidate artifact defaults `themeId` to `site-builder` and uses an
+The verified artifacts default `themeId` to `site-builder` and use an
 optional open `themeAppearance` map. The operation paths below it are leaf patches under
 `values.internalBlockValues`.
 
-On that candidate, the gate accepts the `themeId` values `site-builder`, `xsolla-pages`
+On those pins, the gate accepts the `themeId` values `site-builder`, `xsolla-pages`
 and `custom`, the existing per-preset leaves under
 `themeAppearance.site-builder.*` / `themeAppearance.xsolla-pages.*`, and Custom V1
 leaves under `themeAppearance.custom`. Custom is an open saved map, but the gate allows
@@ -137,8 +145,9 @@ actual loaded-font evidence; otherwise use a host font token or inherit the base
 `actionText` and `accent` are explicit, the pair must reach 4.5:1 contrast. Omitting
 `actionText` leaves the block's safe derived-color behavior in control.
 
-`0.2.7-qp-3256.0` is the exact-version source pin for appearance capability only. Its
-release and CDN artifact have been verified. Older saved action-looking fields are
+`0.2.10`, `0.2.10-qp-3256.0` and `0.2.7-qp-3256.0` are the exact-version source pins for
+appearance capability only; their settings keys, `themeId` and `themeAppearance` are
+identical. Their releases and CDN artifacts have been verified. Older saved action-looking fields are
 opaque legacy data: this gate does not accept
 them as operation leaves or expose/configure their values. Ordinary leaf updates and
 resets leave them untouched.
