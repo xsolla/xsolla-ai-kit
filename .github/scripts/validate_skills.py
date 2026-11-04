@@ -16,6 +16,9 @@ import subprocess
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import skill_table  # noqa: E402  (sibling script; generates the AGENTS.md skill table)
+
 ROOT = Path(__file__).resolve().parents[2]
 SKILLS = ROOT / "skills"
 BASELINE = ROOT / ".github" / "skills-baseline.json"
@@ -192,15 +195,14 @@ def check_json() -> None:
             error(f"{jf.relative_to(ROOT)}: invalid JSON — {exc}")
 
 
-def check_registries(skill_names: list[str]) -> None:
-    """Every skill must appear in both inventories, or agents cannot discover it."""
-    readme = (SKILLS / "README.md").read_text(encoding="utf-8")
-    agents = (ROOT / "AGENTS.md").read_text(encoding="utf-8")
-    for name in skill_names:
-        if f"`{name}`" not in readme:
-            error(f"skills/README.md: no row for skill '{name}'")
-        if f"`{name}`" not in agents:
-            error(f"AGENTS.md: no entry for skill '{name}'")
+def check_skill_table() -> None:
+    """AGENTS.md and copilot-instructions.md carry a skill table generated from the
+    skills' frontmatter, so agents always see every skill with its real description."""
+    for path in skill_table.stale_files():
+        error(
+            f"{path.relative_to(ROOT)}: skill table is out of date. "
+            f"Run `python3 .github/scripts/skill_table.py` and commit the result"
+        )
 
 
 def _is_cache(path: Path) -> bool:
@@ -276,7 +278,7 @@ def main() -> int:
 
     check_links()
     check_json()
-    check_registries(skill_names)
+    check_skill_table()
     check_generated_files(skill_names)
     check_secrets()
 
