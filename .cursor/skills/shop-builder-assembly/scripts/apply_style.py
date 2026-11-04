@@ -212,10 +212,17 @@ def localization(slug: str) -> object:
     return data(run_json("shopbuilder", "get-localization", "--slug", slug))
 
 
-def write_changes(slug: str, landing_id: str, changes: dict, what: str) -> dict:
+def texts_without(loc: object, lids: frozenset) -> dict:
+    return {key: entry for key, entry in flat_texts(loc).items() if key[1] not in lids}
+
+
+def write_changes(
+    slug: str, landing_id: str, changes: dict, what: str, may_drop: frozenset = frozenset()
+) -> dict:
     """Send one `update-block` batch, then return the saved structure. Stops if the
-    site's text changed: a patch that hits a string deletes it."""
-    text_before = localization(slug)
+    site's text changed: a patch that hits a string deletes it. ``may_drop`` are the
+    strings of items the batch removes, which the server may delete with them."""
+    text_before = texts_without(localization(slug), may_drop)
     run_json(
         "shopbuilder",
         "update-block",
@@ -225,7 +232,7 @@ def write_changes(slug: str, landing_id: str, changes: dict, what: str) -> dict:
         json.dumps(changes, separators=(",", ":")),
     )
     saved = structure(slug)
-    if localization(slug) != text_before:
+    if texts_without(localization(slug), may_drop) != text_before:
         raise RuntimeError(
             f"the site's text changed during the {what} patch; stop and compare "
             "get-localization with the backup"
@@ -241,12 +248,19 @@ def theme_phase(
     if not palette:
         return {"status": "kept: no palette in the approved plan"}, [], current
     site_patches, written, skipped = site_theme_changes(current.get("theme"), palette)
+    unchanged = set(palette) - set(written) - {item["key"] for item in skipped}
     listed = set(approved.get("theme", {}).get("pages_to_site_theme", []))
     changes: dict[str, dict] = {}
     if site_patches:
         changes["site"] = {"type": "site", "id": landing_id, "patches": site_patches}
     switched, needs_human = [], []
-    for index, page_plan in enumerate(approved.get("pages", [])):
+    for reason in dict.fromkeys(item["reason"] for item in skipped):
+        keys = ", ".join(item["key"] for item in skipped if item["reason"] == reason)
+        needs_human.append(f"The palette's {keys} wasn't set on the site: {reason}.")
+    # A page on its own theme keeps it unless the site theme now holds the palette:
+    # switching it would show the template's colors, which nobody approved.
+    holds_palette = bool(written) or bool(unchanged - {"isDark"})
+    for index, page_plan in enumerate(approved.get("pages", []) if holds_palette else []):
         page = page_for_path(current, page_plan["path"])
         if page is None or not isinstance(page.get("_id"), str):
             raise RuntimeError(f"page {page_plan['path']} is missing; finish apply_plan.py first")
@@ -263,8 +277,8 @@ def theme_phase(
             needs_human.append(OWN_THEME_IN_EDITOR.format(path=page_plan["path"]))
 
     recalculated = None
+    calculated_before = (current.get("theme") or {}).get("calculatedTheme")
     if changes:
-        calculated_before = (current.get("theme") or {}).get("calculatedTheme")
         current = write_changes(slug, landing_id, changes, "theme")
         saved_inputs = (current.get("theme") or {}).get("input") or {}
         missing = [
@@ -279,16 +293,21 @@ def theme_phase(
         missing += [path for path in switched if uses_own_theme(page_for_path(current, path))]
         if missing:
             raise RuntimeError("the theme change did not persist: " + ", ".join(missing))
-        if site_patches:
-            recalculated = (current.get("theme") or {}).get("calculatedTheme") != calculated_before
-            if not recalculated:
-                colors = ", ".join(
-                    f"{key} {value}" for key, value in palette.items() if key != "isDark"
-                )
-                needs_human.insert(0, RECALCULATE_IN_EDITOR.format(colors=colors))
+    colors = ", ".join(f"{key} {value}" for key, value in palette.items() if key != "isDark")
+    if site_patches:
+        recalculated = (current.get("theme") or {}).get("calculatedTheme") != calculated_before
+        if not recalculated:
+            needs_human.insert(0, RECALCULATE_IN_EDITOR.format(colors=colors))
+    elif holds_palette:
+        # A rerun writes nothing; an earlier run's recalculation step may still be open.
+        needs_human.insert(
+            0,
+            "If the theme wasn't recalculated in the editor since an earlier run set the "
+            "colors: " + RECALCULATE_IN_EDITOR.format(colors=colors),
+        )
     result = {
         "patched": sorted(written),
-        "unchanged": sorted(set(palette) - set(written) - {item["key"] for item in skipped}),
+        "unchanged": sorted(unchanged),
         "skipped": skipped,
         "pages_to_site_theme": switched,
         "recalculated": recalculated,
@@ -543,6 +562,33 @@ def flat_texts(loc: object) -> dict[tuple[str, str], object]:
     return flat
 
 
+def text_references(current: dict) -> dict[str, set[str]]:
+    """Each `L:` id in the structure, and what uses it: block IDs, and `seo:<pageId>`
+    for a page's SEO fields. Component `_id`s are left out: the server regenerates them."""
+    references: dict[str, set[str]] = {}
+
+    def walk(node: object, owner: str) -> None:
+        if isinstance(node, dict):
+            lid = node.get("id")
+            if isinstance(lid, str) and lid.startswith("L:"):
+                references.setdefault(lid, set()).add(owner)
+            for key, value in node.items():
+                if key != "_id":
+                    walk(value, owner)
+        elif isinstance(node, list):
+            for item in node:
+                walk(item, owner)
+
+    for page in current.get("pages") or []:
+        if not isinstance(page, dict):
+            continue
+        walk(page.get("seo"), f"seo:{page.get('_id')}")
+        for block in page.get("blocks") or []:
+            if isinstance(block, dict):
+                walk({key: block.get(key) for key in ("values", "components")}, block.get("_id"))
+    return references
+
+
 def faq_item_ids(landing_id: str, block_id: str, index: int) -> tuple[str, str, str]:
     """Stable IDs for an FAQ item this script adds, so a rerun finds it again."""
     component = str(uuid.uuid5(uuid.NAMESPACE_URL, f"{landing_id}:{block_id}:faq:{index}"))
@@ -571,26 +617,48 @@ def copy_phase(
         return [], [], current
     locale = copy_plan["locale"]
     before = localization(slug)
+    references = text_references(current)
     writes: dict[str, dict[str, dict]] = {}
     expected: dict[tuple[str, str], str] = {}
     structural: dict[str, dict] = {}
-    added: dict[str, list[str]] = {}
+    faq_order: dict[str, list[str]] = {}
+    may_drop: set[str] = set()
     results: list[dict] = []
     needs_human: list[str] = []
 
-    def write(page_id: str, lid: str, html_text: str) -> str:
+    def shared(lid: str, owners: set) -> str | None:
+        """Why the string can't be written: it is used beyond what the plan covers."""
+        others = sorted(str(owner) for owner in references.get(lid, set()) - owners)
+        if others:
+            return "its text is shared with " + ", ".join(others)
+        return None
+
+    def write(page_id: str, lid: str, html_text: str, owners: set) -> tuple[str, str | None]:
         scope, description, now = text_slot(before, page_id, lid, locale)
+        if scope == "common":
+            return "skipped", "its text is in the site-wide strings that other pages share"
+        reason = shared(lid, owners)
+        if reason:
+            return "skipped", reason
+        if (scope, lid) in expected and expected[(scope, lid)].strip() != html_text.strip():
+            raise RuntimeError(
+                f"two approved items write different text to {lid}; fix the brief so one "
+                "item covers that text. Nothing of the copy was written"
+            )
         expected[(scope, lid)] = html_text
         if isinstance(now, str) and now.strip() == html_text.strip():
-            return "unchanged"
+            return "unchanged", None
         writes.setdefault(scope, {})[lid] = {
             "description": description,
             "translation": html_text,
         }
-        return "set"
+        return "set", None
+
+    def allowed_for(item: dict) -> set:
+        return set(item.get("existing_block_ids", [])) | created
 
     def planned_blocks(item: dict):
-        allowed = set(item.get("existing_block_ids", [])) | created
+        allowed = allowed_for(item)
         for path in item["pages"]:
             module = item["page_modules"][path]
             page = page_for_path(current, path) or {}
@@ -615,7 +683,13 @@ def copy_phase(
                 "field": item["field"],
             }
             if isinstance(lid, str) and lid.startswith("L:"):
-                entry["status"] = write(page["_id"], lid, item["html"])
+                entry["status"], reason = write(page["_id"], lid, item["html"], allowed_for(item))
+                if reason:
+                    entry["reason"] = reason
+                    needs_human.append(
+                        f"The {entry['module']} block's {item['field']} wasn't written: "
+                        f"{reason}. Set it in the editor if it should change."
+                    )
             else:
                 entry.update(status="skipped", reason=f"it has no {item['field']} text")
                 needs_human.append(
@@ -632,7 +706,25 @@ def copy_phase(
             for index, component in enumerate(components)
             if isinstance(component, dict) and component.get("type") == "questionV2"
         ]
-        statuses, patches = [], []
+        other_items = [
+            component
+            for component in components
+            if isinstance(component, dict)
+            and component.get("type") != "questionV2"
+            and ("question" in component or "answer" in component)
+        ]
+        if other_items:
+            results.append(
+                {"block_id": block["_id"], "module": "faq", "field": "items",
+                 "status": "skipped", "reason": "it has FAQ items of an older kind"}
+            )
+            needs_human.append(
+                "The FAQ block has items of an older kind; set its questions in the editor."
+            )
+            continue
+        owners = allowed_for(faq)
+        statuses, patches, order = [], [], []
+        added = 0
         for index, item in enumerate(faq["items"]):
             if index < len(questions):
                 component = components[questions[index]]
@@ -650,6 +742,7 @@ def copy_phase(
                 component_id, question_id, answer_id = faq_item_ids(
                     landing_id, block["_id"], index
                 )
+                added += 1
                 patches.append(
                     {
                         "op": "add",
@@ -663,10 +756,22 @@ def copy_phase(
                         },
                     }
                 )
-                added.setdefault(block["_id"], []).append(component_id)
-            statuses.append(write(page["_id"], question_id, item["question"]))
-            statuses.append(write(page["_id"], answer_id, item["answer"]))
+            order.append(question_id)
+            for lid, text in ((question_id, item["question"]), (answer_id, item["answer"])):
+                status, reason = write(page["_id"], lid, text, owners)
+                if reason:
+                    raise RuntimeError(
+                        f"FAQ item {index + 1} of block {block['_id']} can't be written: "
+                        f"{reason}. Nothing of the copy was written"
+                    )
+                statuses.append(status)
         extra = questions[len(faq["items"]):]
+        for index in extra:
+            for key in ("question", "answer"):
+                lid = (components[index].get(key) or {}).get("id")
+                if isinstance(lid, str):
+                    may_drop.add(lid)
+        faq_order[block["_id"]] = order
         # `enable: false` is ignored for FAQ questions: extra items are removed.
         patches.extend(
             {"op": "remove", "path": ["components", index]} for index in reversed(extra)
@@ -679,7 +784,7 @@ def copy_phase(
                 "module": "faq",
                 "field": "items",
                 "status": "set" if patches or "set" in statuses else "unchanged",
-                "added": len(added.get(block["_id"], [])),
+                "added": added,
                 "removed": len(extra),
             }
         )
@@ -699,10 +804,21 @@ def copy_phase(
             slot = fields.get(field)
             lid = slot.get("id") if isinstance(slot, dict) else None
             entry = {"page": item["page"], "field": f"seo.{field}"}
-            if isinstance(lid, str) and lid.startswith("L:"):
+            reason = shared(lid, {f"seo:{page['_id']}"}) if isinstance(lid, str) else None
+            if isinstance(lid, str) and lid.startswith("L:") and not reason:
                 # The share image is a URL kept in the text store, like the copy.
                 text = uploads.url(item) if field == "ogImage" else value
-                entry["status"] = write(page["_id"], lid, text)
+                entry["status"], reason = write(
+                    page["_id"], lid, text, {f"seo:{page['_id']}"}
+                )
+                if reason:
+                    entry["reason"] = reason
+                    needs_human.append(
+                        f"Page {item['page']}'s SEO {field} wasn't written: {reason}."
+                    )
+            elif reason:
+                entry.update(status="skipped", reason=reason)
+                needs_human.append(f"Page {item['page']}'s SEO {field} wasn't written: {reason}.")
             else:
                 entry.update(status="skipped", reason=f"the page has no SEO {field} text")
                 needs_human.append(
@@ -722,7 +838,7 @@ def copy_phase(
             json.dumps({"locale": locale, "perScopeValues": writes}, separators=(",", ":")),
         )
     if structural:
-        current = write_changes(slug, landing_id, structural, "FAQ")
+        current = write_changes(slug, landing_id, structural, "FAQ", frozenset(may_drop))
     if writes or structural:
         after = flat_texts(localization(slug))
         old = flat_texts(before)
@@ -730,7 +846,9 @@ def copy_phase(
         outside = sorted(
             key[1]
             for key in set(old) | set(after)
-            if key not in written and old.get(key) != after.get(key)
+            if key not in written
+            and key[1] not in may_drop
+            and old.get(key) != after.get(key)
         )
         if outside:
             raise RuntimeError("text outside the plan changed: " + ", ".join(outside))
@@ -739,14 +857,22 @@ def copy_phase(
             now = translation(after.get(key), locale)
             if not isinstance(now, str) or now.strip() != html_text.strip():
                 missing.append(key[1])
-        saved_ids = {
-            component.get("_id")
+        # Items are checked by their question text IDs: the server regenerates component
+        # `_id`s on every read. The order also shows the removals took.
+        saved_blocks = {
+            block.get("_id"): block
             for page in current.get("pages", [])
             for block in page.get("blocks", [])
-            for component in (block.get("components") or [])
-            if isinstance(component, dict)
+            if isinstance(block, dict)
         }
-        missing += [cid for ids in added.values() for cid in ids if cid not in saved_ids]
+        for block_id, order in faq_order.items():
+            saved = [
+                (component.get("question") or {}).get("id")
+                for component in (saved_blocks.get(block_id) or {}).get("components") or []
+                if isinstance(component, dict) and component.get("type") == "questionV2"
+            ]
+            if saved != order:
+                missing.append(f"FAQ items of {block_id}")
         if missing:
             raise RuntimeError("the copy did not persist: " + ", ".join(missing))
     return results, needs_human, current
@@ -812,6 +938,12 @@ def main() -> int:
         current = structure(slug)
         if structure_hash(current) != structure_hash(backup_structure(args.backup_dir)):
             raise RuntimeError("the site changed after the backup; back up again")
+        saved_text = json.loads((args.backup_dir / "localization.json").read_text(encoding="utf-8"))
+        if flat_texts(localization(slug)) != flat_texts(data(saved_text)):
+            raise RuntimeError(
+                "the site's text changed after the backup, for example in the editor; "
+                "back up again"
+            )
         landing_id = current.get("_id")
         if not isinstance(landing_id, str) or any(
             report.get("landing_id") != landing_id for report in reports
@@ -821,7 +953,8 @@ def main() -> int:
         created_pages = {
             path
             for report in reports
-            for path in report.get("created_pages", [])
+            for key in ("created_pages", "all_created_pages")
+            for path in report.get(key) or []
             if isinstance(path, str)
         }
         theme, theme_needs, current = theme_phase(

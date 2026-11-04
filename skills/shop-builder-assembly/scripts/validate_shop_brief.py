@@ -100,20 +100,48 @@ def image_errors(images: object) -> list[str]:
         page = image.get("page")
         if page is not None and (not isinstance(page, str) or not page.startswith("/")):
             errors.append(f"{prefix}.page must be a page path such as /")
-    return errors
+    return errors + overlap_errors(images, "brand.images", "slot")
 
 
 # Block text fields the copy step writes: `values.<field>.id` holds the string's `L:` id.
 COPY_FIELDS = ("title", "subtitle", "description")
 
 
+# Copy never carries code: no script or embedding tags, event handlers or script URLs.
+UNSAFE_HTML = re.compile(
+    r"<\s*(script|img|iframe|object|embed|style|link|meta)\b|\son[a-z]+\s*=|javascript\s*:",
+    re.IGNORECASE,
+)
+
+
+def overlap_errors(items: list, kind: str, slot_key: str) -> list[str]:
+    """Two entries for the same module and slot whose pages overlap (no page means every
+    page) would write over each other on every run."""
+    errors, seen = [], []
+    for index, item in enumerate(items):
+        if not isinstance(item, dict):
+            continue
+        key = (item.get("module"), item.get(slot_key))
+        page = item.get("page")
+        for other_index, other_key, other_page in seen:
+            if key == other_key and (page is None or other_page is None or page == other_page):
+                errors.append(
+                    f"{kind}[{index}] and {kind}[{other_index}] both set the {key[1]} of "
+                    f"{key[0]} on the same page; keep one, or give each its own page"
+                )
+        seen.append((index, key, page))
+    return errors
+
+
 def html_errors(value: object, label: str) -> list[str]:
-    """Copy is HTML. A title doesn't render `<img>`, and scripts never go in copy."""
+    """Copy is HTML. A title doesn't render `<img>`, and code never goes in copy."""
     if not isinstance(value, str) or not value.strip():
         return [f"{label} must be non-empty HTML"]
-    lowered = value.lower()
-    if "<script" in lowered or "<img" in lowered:
-        return [f"{label} must not contain <script> or <img>"]
+    if UNSAFE_HTML.search(value):
+        return [
+            f"{label} must not contain <script>, <img>, <iframe>, other embedding tags, "
+            "event handlers or javascript: links"
+        ]
     if "<" not in value:
         return [f"{label} must be HTML, such as <p>…</p>: a bare string renders unstyled"]
     return []
@@ -140,7 +168,7 @@ def copy_errors(copy_value: object) -> list[str]:
         page = item.get("page")
         if page is not None and (not isinstance(page, str) or not page.startswith("/")):
             errors.append(f"{prefix}.page must be a page path such as /")
-    return errors
+    return errors + overlap_errors(copy_value, "content.copy", "field")
 
 
 def faq_errors(faq: object) -> list[str]:

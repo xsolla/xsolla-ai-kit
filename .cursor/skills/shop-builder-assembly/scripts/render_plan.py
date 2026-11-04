@@ -97,8 +97,9 @@ LIVEOPS_BLOCKS = {
     "sb-offer-chain": ("offer_chain", "no offer chain configured in the project"),
 }
 COMMON_LAYOUT = "common-layout"
-# Hero blocks: the presets use `leadGameSales`; template pages carry `lead` or `hero`.
-HERO_MODULES = ("leadGameSales", "lead", "hero")
+# The presets' hero is `leadGameSales`; a template page carries its own hero as `lead`.
+# `hero` is the Call-to-action block, not a stand-in for either.
+TEMPLATE_HERO = {"leadGameSales": "lead"}
 # The blocks `add-page` puts on a new store page with CLI 1.9.4 (test-findings.md).
 NEW_PAGE_TEMPLATE = [
     "header",
@@ -276,14 +277,30 @@ def has_own_header(page: dict, created_block_ids: frozenset = frozenset()) -> bo
     )
 
 
-def is_template_site(current: dict, pages: list[dict]) -> bool:
-    """A site made from a Publisher Account template: it has a site layout, and a planned
-    page on it has no header block at all, because the header and footer sit in that
-    layout. A site this assembly built has headers on every page it added."""
+def shared_site_blocks(current: dict) -> set:
+    """Site-level blocks that are on no page and aren't a layout: on a template site,
+    the shared header and footer. A layout `create-block` added is not one."""
+    page_blocks = {
+        block.get("_id") if isinstance(block, dict) else block
+        for page in current.get("pages") or []
+        if isinstance(page, dict)
+        for block in page.get("blocks") or []
+    }
     layouts = current.get("layouts")
-    if not (isinstance(layouts, list) and layouts):
+    return site_block_ids(current.get("blocks")) - page_blocks - site_block_ids(
+        layouts if isinstance(layouts, list) else []
+    )
+
+
+def is_template_site(current: dict, pages: list[dict]) -> bool:
+    """A site made from a Publisher Account template: it has a site layout and shared
+    site-level blocks next to it, and a planned page on it has no header block at all,
+    because the header and footer sit in that layout. A site this assembly built has
+    only the layout at site level, even when a page lost its header."""
+    layouts = current.get("layouts")
+    if not (isinstance(layouts, list) and layouts) or not shared_site_blocks(current):
         return False
-    by_path = {page_path(page): page for page in current.get("pages", [])}
+    by_path = {page_path(page): page for page in current.get("pages") or []}
     return any(
         not has_own_header(by_path[page["path"]]) for page in pages if page["path"] in by_path
     )
@@ -328,12 +345,17 @@ def adapt_to_template_page(modules: list[str], on_page: set) -> list[str]:
     ]
     if "leadGameSales" in result and "leadGameSales" not in on_page and "lead" in on_page:
         result[result.index("leadGameSales")] = "lead"
-    if "sb-daily-reward" in on_page and "sb-daily-reward" not in result:
-        hero = next(
-            (index for index, module in enumerate(result) if module in ("lead", "leadGameSales")),
-            -1,
-        )
-        result.insert(hero + 1, "sb-daily-reward")
+    # The template's LiveOps blocks stay as configured, like on any page that has them:
+    # the daily rewards block, which the kit can't add back, then the offer chain, reward
+    # system and promo codes blocks, after the hero.
+    hero = next(
+        (index for index, module in enumerate(result) if module in ("lead", "leadGameSales")),
+        -1,
+    )
+    for module in ("sb-daily-reward", "sb-offer-chain", "rewards", "promocodes"):
+        if module in on_page and module not in result:
+            hero += 1
+            result.insert(hero, module)
     return result
 
 
@@ -611,14 +633,14 @@ def placement(
 ) -> dict:
     """The planned pages a module's block is on, and the blocks there that existed before
     this assembly and stay: the yes covers changing those only because the plan lists them.
-    A hero item goes on a template page's own hero (`lead`) in place of the preset's."""
+    A `leadGameSales` item goes on a template page's own hero (`lead`)."""
     page_modules = {}
     for page in pages:
         if page_filter not in (None, page["path"]):
             continue
         on_page = module
-        if on_page not in page["blocks"] and on_page in HERO_MODULES:
-            on_page = next((m for m in page["blocks"] if m in HERO_MODULES), on_page)
+        if on_page not in page["blocks"] and TEMPLATE_HERO.get(on_page) in page["blocks"]:
+            on_page = TEMPLATE_HERO[on_page]
         if on_page in page["blocks"]:
             page_modules[page["path"]] = on_page
     existing = []
@@ -742,7 +764,10 @@ def drop_pages_without_content(
     """
     existing = set()
     if structure is not None:
-        existing = {page_path(page) for page in structure_data(structure).get("pages", [])}
+        current_pages = structure_data(structure).get("pages")
+        if not isinstance(current_pages, list):
+            raise ValueError("structure.pages must be a list")
+        existing = {page_path(page) for page in current_pages}
     kept, warnings = [], []
     for page in pages:
         if (

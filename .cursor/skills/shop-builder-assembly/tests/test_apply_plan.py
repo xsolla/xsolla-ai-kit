@@ -2129,6 +2129,64 @@ class PublisherTemplateSiteTests(unittest.TestCase):
         self.assertEqual(3, len(results))
         self.assertIn("link it to /, /store, /about", results[0]["skipped"])
 
+    def test_a_site_the_kit_built_is_not_a_template_site(self) -> None:
+        # Only a layout at site level, and a page that lost its header: not a template.
+        site, _ = publisher_template_site(self.brief)
+        site["blocks"] = [b for b in site["blocks"] if b not in ("layout-header", "layout-footer")]
+        self.assertFalse(render_plan.is_template_site(site, [{"path": "/"}]))
+        site, _ = publisher_template_site(self.brief)
+        self.assertTrue(render_plan.is_template_site(site, [{"path": "/"}]))
+
+    def test_template_liveops_blocks_stay_on_a_multi_page_home(self) -> None:
+        site, _ = publisher_template_site(self.brief)
+        plan = render_plan.build_plan(self.multi_page_brief(), site)
+        home = plan["pages"][0]
+        self.assertEqual(
+            ["lead", "sb-daily-reward", "sb-offer-chain", "rewards", "promocodes"],
+            home["blocks"][:5],
+        )
+        removed = {removal["module"] for removal in home["removals"]}
+        self.assertFalse(removed & {"sb-offer-chain", "rewards", "promocodes"})
+
+    def test_a_malformed_structure_is_a_clean_error(self) -> None:
+        with self.assertRaisesRegex(ValueError, "structure.pages must be a list"):
+            render_plan.build_plan(self.brief, {"_id": "x", "pages": None})
+
+    def test_a_stopped_page_phase_reports_the_pages_and_blocks_it_made(self) -> None:
+        site, _ = publisher_template_site(self.brief)
+        calls = {"add-page": 0}
+
+        def cli(*args: str) -> object:
+            if args[:2] == ("shopbuilder", "get-structure"):
+                return {"ok": True, "data": copy.deepcopy(site)}
+            if args[:2] == ("shopbuilder", "add-page"):
+                calls["add-page"] += 1
+                if calls["add-page"] == 2:
+                    raise RuntimeError("add-page failed")
+                path = args[args.index("--path") + 1]
+                site["pages"].append({"_id": "page-store", "path": path, "blocks": [
+                    {"_id": f"store-{m}", "module": m} for m in ("header", "footer")]})
+                return {"ok": True, "data": {}}
+            raise AssertionError(args)
+
+        pages = [{"name": "Store", "path": "/store"}, {"name": "About", "path": "/about"}]
+        progress = {"created_block_ids": set(), "created_pages": []}
+        with (
+            mock.patch.object(apply_plan, "run_json", side_effect=cli),
+            mock.patch.dict(apply_plan.RUN_PROGRESS, progress, clear=True),
+        ):
+            with self.assertRaisesRegex(RuntimeError, "add-page failed"):
+                apply_plan.add_missing_pages("template-shop", pages)
+            self.assertEqual(["/store"], apply_plan.RUN_PROGRESS["created_pages"])
+            self.assertEqual(
+                {"store-header", "store-footer"}, apply_plan.RUN_PROGRESS["created_block_ids"]
+            )
+            report = apply_plan.stopped_partway_report(
+                {**apply_plan.RUN_PROGRESS, "approved_confirmation_id": "x",
+                 "slug": "s", "landing_id": "l"}, "add-page failed")
+        self.assertEqual(["/store"], report["created_pages"])
+        self.assertEqual(["store-footer", "store-header"], report["created_block_ids"])
+
     def test_navigation_skips_the_shared_template_header(self) -> None:
         site, _ = publisher_template_site(self.brief)
         plan = render_plan.build_plan(self.brief, site)

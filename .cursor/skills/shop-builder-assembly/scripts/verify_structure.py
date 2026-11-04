@@ -56,7 +56,8 @@ def theme_findings(
     if not palette:
         return [], []
     errors, warnings = [], []
-    inputs = (current.get("theme") or {}).get("input")
+    theme = current.get("theme")
+    inputs = theme.get("input") if isinstance(theme, dict) else None
     if not isinstance(inputs, dict):
         return [], ["the site theme has no input colors, so the palette wasn't applied"]
     for key, value in palette.items():
@@ -64,7 +65,9 @@ def theme_findings(
         if key not in inputs:
             warnings.append(f"the site theme has no {key}; it keeps the template's")
         elif key == "isDark":
-            if actual != value:
+            if not isinstance(actual, bool):
+                warnings.append(f"theme isDark {actual!r} isn't true or false, so it wasn't set")
+            elif actual != value:
                 errors.append(f"theme isDark differs: expected {value}, got {actual}")
         elif parse_color(actual) is None:
             warnings.append(
