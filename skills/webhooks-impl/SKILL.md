@@ -1,16 +1,11 @@
 ---
 name: webhooks-impl
 description: >-
-  Implements and validates the backend that receives Xsolla webhooks for a
-  headless web shop — server-to-server notifications for user_validation,
-  payment / order_paid, refund / order_canceled, and subscription events.
-  Covers SHA-1 signature verification, idempotency, retry/response handling,
-  IP allowlisting, payload shapes per delivery mode, and the common mistakes
-  that break go-live. Use when building, modifying, debugging, or reviewing a
-  webhook handler — including "implement Xsolla webhooks", "verify webhook
-  signature", "handle payment / order_paid / refund webhooks", "grant items
-  after purchase", "webhook returns INVALID_SIGNATURE", "webhook idempotency /
-  retries", or "headless webshop backend".
+  Builds and checks the backend that receives Xsolla webhooks for a headless shop:
+  user_validation, order_paid, refund or order_canceled, and subscription events, with
+  signature check, idempotency, retries and IP allowlist. Use for "implement Xsolla
+  webhooks", "verify webhook signature", "grant items after purchase",
+  "INVALID_SIGNATURE".
 metadata:
   owner: e.chernykh
   domain: webhooks

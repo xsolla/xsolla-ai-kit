@@ -1,15 +1,11 @@
 ---
 name: shop-builder-assembly
 description: >-
-  Assemble an Xsolla Shop Builder storefront from a validated shop brief: pages, site
-  layout, navigation, standard blocks, localization and catalog links, then theme and
-  copy. Reached through nocode-shop-setup once the shop is on Xsolla's side and
-  description-to-shop has written the brief. Not the entry point for "build me a shop",
-  a web shop or a storefront request: open nocode-shop-setup for those. Covers the
-  mobile single-page, PC multi-page and live-service presets. Prefer this skill over
-  creating isolated Shop Builder blocks. Do not use it for a custom headless storefront;
-  use shop-setup for that architecture.
-  Not for XLA Pages on x.la; use `xla-pages`.
+  Assembles a Shop Builder storefront from a validated shop brief: pages, layout,
+  navigation, standard blocks, localization, catalog links, theme and copy, with mobile,
+  PC and live-service presets. Reached through nocode-shop-setup after description-to-
+  shop; not an entry point. Prefer it over adding single blocks. Not for a coded
+  storefront (shop-setup).
 metadata:
   owner: k.shah
   domain: store

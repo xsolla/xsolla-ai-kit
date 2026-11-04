@@ -1,13 +1,10 @@
 ---
 name: production
 description: >-
-  Takes an Xsolla headless shop from sandbox to live production payments —
-  licensing agreement, tax interview, flipping sandbox flags / token mode,
-  deploying a public HTTPS storefront + webhooks, and a developer-run live
-  payment checklist (card, PayPal, wallets, failed payment). Use when going
-  live, leaving sandbox, signing the Xsolla contract, enabling real money,
-  production tokens, "Merchant contract not signed", error 0002-0004 /
-  00020004, or "switch my shop to production".
+  Takes a headless Xsolla shop from sandbox to live: licensing agreement, tax interview,
+  switching off sandbox, deploying the HTTPS storefront and webhooks, and a live-payment
+  checklist. Use for "go live", "leave sandbox", "switch my shop to production",
+  "Merchant contract not signed" or error 0002-0004.
 metadata:
   owner: y.klochikhin
   domain: go-live
