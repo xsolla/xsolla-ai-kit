@@ -49,6 +49,12 @@ class StoreUrlTests(unittest.TestCase):
             "store.steampowered.com/app/570",
             "https://itunes.apple.com/us/app/x/id1",
             "https://www.roblox.com/games/1",
+            "https://apps.apple.com/us/app/x/id\uff11\uff12\uff13",
+            "https://store.steampowered.com/app/\u0665\u0667\u0660/",
+            "https://store.steampowered.com/app/570/../../sub/1",
+            "https://[store.steampowered.com/app/1",
+            "https://evil.com\uff20store.steampowered.com/app/1",
+            "https://store.steam\tpowered.com/app/1",
             "",
         ):
             with self.subTest(url):

@@ -55,7 +55,10 @@ any write. Every script that writes (`apply_plan.py`, `apply_style.py`,
   authentication failure, prints a `stopped-partway` report: save it as
   `partial-report.json`. Export again, render with `--structure`, `--approved-plan` and
   `--run-report partial-report.json`, and apply under the same yes when the render says
-  "Covered by the approved plan"; otherwise ask again.
+  "Covered by the approved plan"; otherwise ask again. Every report carries what all
+  earlier runs under the yes created (`created_block_ids`, `all_created_pages`), and a
+  stopped run records each page and block as it is created, so the latest report is the
+  one to pass.
 - **Background fixes after the visual review.** The yes covers `values.background` leaves
   (color, gradient, image, position, size) on blocks this assembly created, applied with
   `scripts/patch_backgrounds.py <brief.json> --approved-plan approved-plan.json
@@ -74,8 +77,12 @@ any write. Every script that writes (`apply_plan.py`, `apply_style.py`,
   sets `theme.enabled` to `false` on the planned pages that use their own theme: pages the
   runs created, and existing pages only when the approved plan listed them
   (`theme.pages_to_site_theme`). It reads `get-localization` before and after, and stops
-  if the text changed. A rerun writes nothing. When the CLI doesn't recalculate
-  `calculatedTheme`, the report's `needs_human` has the Editor step for the handoff.
+  if the text changed. Before any write it also compares `get-localization` with the
+  backup's, and stops if the text was edited after the export. Pages switch to the site
+  theme only when the site theme holds the palette; a key it can't set goes to
+  `needs_human`. A rerun writes nothing. When the CLI doesn't recalculate
+  `calculatedTheme`, the report's `needs_human` has the Editor step for the handoff, and
+  a rerun repeats it as a reminder.
   Then the images: each `brand.images` file must be the one the plan showed (its
   `sha256`), at most 10 MB. It uploads each file once with `upload-asset --landing-id <id>
   --file <path> --type image` and keeps the returned URL in `asset-cache.json` next to the
@@ -89,8 +96,13 @@ any write. Every script that writes (`apply_plan.py`, `apply_style.py`,
   The FAQ block's `questionV2` items are made to match `content.faq`: texts written,
   extra items removed (`enable: false` is ignored there), missing ones added with stable
   IDs. All text goes in one `update-many-localization` call, with each string's current
-  `description`, before the FAQ items that point at it are added. It reads every string
-  back and stops if a string outside the plan changed. Each page's `content.seo` goes to
+  `description`, before the FAQ items that point at it are added. A string in `common`
+  (shared across the site) or one another block uses that the plan didn't list is not
+  written: it goes to `needs_human`. Two approved items that write different text to one
+  string stop the run before any text is written. It reads every string back, checks the
+  FAQ items by their question text IDs in order (the server regenerates component
+  `_id`s), and stops if a string outside the plan changed; a removed item's strings may
+  go with it. Each page's `content.seo` goes to
   the `L:` ids in `page.seo.title`, `page.seo.description` and `page.seo.ogImage`, a
   sibling of `page.blocks`: plain text, and for `ogImage` the uploaded image's CDN URL,
   through the same upload cache. A page without those fields goes to `needs_human`.
