@@ -89,6 +89,14 @@ Never ask whether the destination is Backpack. The catalog project is the
 project id the Store admin read was scoped to, never a value the
 publisher typed and never a project from another catalog.
 
+## Web3 reward worker support
+
+`web3_item.body.project` selects the catalog only when the deployed reward worker
+supports it. A worker without that support ignores the field and mints against its
+configured default project, so the item can reach the wallet but show without the
+catalog name. When a read-back shows a project different from `body.project`, report a
+delivery mismatch, not a success, and do not send the event again.
+
 ## `web3_item`
 
 An NFT minted from a Store admin catalog item:
