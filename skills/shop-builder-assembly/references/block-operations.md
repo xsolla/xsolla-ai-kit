@@ -68,8 +68,9 @@ The plan runs against the backup structure and rejects these before confirmation
   (CDN-verified), `useAsNativeBlock: false`. The npm name `@quest-platform/quests-block`
   is stored with `@` and `/` replaced by `_`.
 - Creation pin: the latest stable package version in `scripts/block_ops.py`
-  (`QUESTS_LATEST_VERSION`, also the default `QUESTS_VERSION`), currently `0.2.10`, for
-  every new block. A new release means updating this constant and quest-setup
+  (`QUESTS_LATEST_VERSION`), currently `0.2.10`; quest-setup passes it explicitly in
+  every add. The gate default for an add with no version stays `QUESTS_VERSION`
+  (`0.1.5`). A new release means updating the constant and quest-setup
   `block-versions.md` together.
   Add strategy: `federated_patch`. `add-block --block federated` creates an empty wrapper
   at index 0 (omit `--index`), then one `update-block` sets `host`, `blockId`, `version`,
@@ -106,10 +107,10 @@ The plan runs against the backup structure and rejects these before confirmation
 
 ## Appearance capability
 
-An `add` without a `version` uses the latest stable `0.2.10` (`QUESTS_LATEST_VERSION`),
-themed or not. An `add` operation may select a different artifact only through its
-explicit `version` field. The gate accepts four exact pins for `add`: `0.2.10` (latest
-stable, the target for every new block), `0.2.10-qp-3256.0` (candidate of the same
+An `add` without a `version` uses the gate default `0.1.5` (`QUESTS_VERSION`, no
+appearance); a themed add must give its `version` explicitly, and quest-setup always
+does. The gate accepts four exact pins for `add`: `0.2.10` (latest
+stable, `QUESTS_LATEST_VERSION`, the target for every new block), `0.2.10-qp-3256.0` (candidate of the same
 release), and the legacy pins `0.2.7-qp-3256.0` and `0.1.5` (no appearance), kept so
 blocks already saved on them still pass; the agent never proposes the legacy pins for a
 new block. The three themed pins have the appearance capability; their

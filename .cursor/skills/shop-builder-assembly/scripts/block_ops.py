@@ -25,8 +25,9 @@ QUESTS_ADD_STRATEGY = "federated_patch"
 # Latest stable release: the version of every NEW Quests block, themed or not. A new
 # release means updating this constant and quest-setup block-versions.md together.
 QUESTS_LATEST_VERSION = "0.2.10"
-# Default version of an add operation without an explicit version.
-QUESTS_VERSION = QUESTS_LATEST_VERSION
+# Gate default for an add operation without an explicit version (kept at the old
+# stable pin). quest-setup never relies on it: it always passes the latest version.
+QUESTS_VERSION = "0.1.5"
 # Candidate of the latest release (accepted, never proposed as a target).
 QUESTS_LATEST_CANDIDATE_VERSION = "0.2.10-qp-3256.0"
 # Legacy accepted pins: blocks already saved on them must still pass exact-version
@@ -607,12 +608,8 @@ def _check_capability_and_custom_contract(
         ):
             errors.append(
                 f"{prefix}.{key}: unsupported Quests version {version or 'unknown'} "
-                f"for {capability}; supported source pins are "
-                + ", ".join(
-                    pin
-                    for pin, caps in QUESTS_CAPABILITIES.items()
-                    if caps.get(capability, False)
-                )
+                f"for {capability}; configured candidate source pin is "
+                f"{QUESTS_CANDIDATE_VERSION}"
             )
 
     custom_keys = [

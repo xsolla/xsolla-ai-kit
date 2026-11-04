@@ -175,7 +175,9 @@ and the layout defaults in the [settings table](quests-block-brief.md#block-sett
 at most 24 quests. For the end of the home page, set the `add` operation's `index` to
 the position of the page's `footer` block (so the Quests block lands above the footer),
 or to the page's current block count when there is no footer. Read both from the gate's
-backup. Never omit `index`, because an `add` without it puts the block first.
+backup. Never omit `index`, because an `add` without it puts the block first. Always set
+the `add` operation's `version` field to the latest version in
+[block-versions.md](block-versions.md) (`0.2.10`), themed or not.
 
 Do not ask for IDs, hosts or slugs you can read from the CLI. Existing block ids come
 from the block summary or the gate's backup, never from a guess.

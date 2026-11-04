@@ -112,10 +112,15 @@ acknowledgement (see Hard rule 2 in [quests-block-flow.md](quests-block-flow.md)
 | Hide or show a block | `hide`, `show` |
 | Remove or delete a block | none: `needs_human`, offer `hide` (see below) |
 
+Every new block, themed or not, is added with an explicit `version` equal to the latest
+in [block-versions.md](block-versions.md) (`0.2.10`). Never omit it: this skill does not
+rely on the gate's own default.
+
 Create a block with settings and a heading:
 
 ```json
 {"op": "add", "module": "_quest-platform_quests-block", "page": "/", "index": 2,
+ "version": "0.2.10",
  "values": {"questIds": ["<quest-id-1>", "<quest-id-2>"], "maxQuests": 4,
             "layout.cardAlign": "center"},
  "translations": {"en-US": {"heading": "Quests"}}}

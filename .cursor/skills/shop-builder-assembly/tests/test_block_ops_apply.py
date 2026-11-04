@@ -1308,8 +1308,6 @@ class RealRunJsonGuardTests(unittest.TestCase):
             mock.patch.object(
                 apply_plan, "fetch_quests_defaults", return_value=copy.deepcopy(CDN_DEFAULTS)
             ),
-            # Isolate the module-global environment args that other tests may leave set.
-            mock.patch.object(cli_environment, "ENVIRONMENT_ARGS", []),
         ]
         for patcher in patches:
             patcher.start()

@@ -10,7 +10,7 @@ candidate) for the version differences.
 
 | Item | Pin | Use |
 |---|---|---|
-| Quests block, latest stable | `0.2.10` | The version of every NEW block, themed or not (the gate default). Supports `themeId` and `themeAppearance`. A new release means updating this file and the gate constant `QUESTS_LATEST_VERSION` together. |
+| Quests block, latest stable | `0.2.10` | The version of every NEW block, themed or not, always passed explicitly in the add operation's `version` field. Supports `themeId` and `themeAppearance`. A new release means updating this file and the gate constant `QUESTS_LATEST_VERSION` together. |
 | Quests block, latest candidate | `0.2.10-qp-3256.0` | Candidate of the same release as 0.2.10, same settings. Accepted by the gate, never proposed as a target. |
 | Quests block, earlier appearance candidate | `0.2.7-qp-3256.0` | Accepted for blocks already on it. Never a target for a new block. |
 | Quests block, old stable | `0.1.5` | Accepted for blocks already saved on it. No theme keys. Never a target for a new block. |
@@ -49,7 +49,10 @@ Refreshed 2026-11-04 from the block repo at release 0.2.10 (b1f12425fb).
 
 ## Write pins (what the gate creates)
 
-The shop-builder-assembly gate accepts for a new block exactly `0.2.10` (latest stable; the default and the target for every new block, themed or not), `0.2.10-qp-3256.0` (candidate of the same release), `0.2.7-qp-3256.0` and `0.1.5` (legacy pins, accepted for blocks already on them, never proposed for a new block). 0.2.8 and 0.2.9 are KNOWN versions that the gate cannot create. The agent never proposes them as a target. If the publisher asks for one of them, say the gate supports only the four pins above.
+The shop-builder-assembly gate accepts for a new block exactly `0.2.10` (latest stable; the target for every new block, themed or not), `0.2.10-qp-3256.0` (candidate of the same release), `0.2.7-qp-3256.0` and `0.1.5` (legacy pins, accepted for blocks already on them, never proposed for a new block). 0.2.8 and 0.2.9 are KNOWN versions that the gate cannot create. The agent never proposes them as a target. If the publisher asks for one of them, say the gate supports only the four pins above.
+
+The gate's own default for a caller that gives no version is still `0.1.5`. This skill
+never uses that default: every add operation carries the explicit version `0.2.10`.
 
 ## Runtime check
 

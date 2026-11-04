@@ -1659,6 +1659,14 @@ def stopped_partway_report(progress: dict, error: str) -> dict:
 
 
 def main() -> int:
+    try:
+        return _main()
+    finally:
+        # The selected --environment is per run; never leave it set for a later caller.
+        cli_environment.ENVIRONMENT_ARGS.clear()
+
+
+def _main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("brief", type=Path)
     parser.add_argument("--confirmation-id", required=True)
