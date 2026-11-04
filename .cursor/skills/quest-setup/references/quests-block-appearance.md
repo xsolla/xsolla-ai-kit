@@ -135,7 +135,8 @@ example:
 This is a shape example, not a recommended design. Use only measured and approved
 values. Which block versions support appearance, and which version ordinary creation
 uses, is in [block-versions.md](block-versions.md). An `add` may use an appearance-capable
-version only when its version is explicit.
+version only when its version is explicit; a new block, themed or not, uses the latest
+version named in [block-versions.md](block-versions.md), never a candidate or a legacy pin.
 Never infer support from version ordering or package metadata. Existing-block
 updates/resets require the exact supported version in saved readback. If the block version
 or schema is unsupported, stop before the plan/write and say that this toolkit cannot change

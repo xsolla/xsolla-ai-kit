@@ -10,23 +10,25 @@ candidate) for the version differences.
 
 | Item | Pin | Use |
 |---|---|---|
-| Quests block, stable | `0.1.5` | Current stable pin for ordinary block creation, as in the base. Its settings have no theme keys. |
-| Quests block, appearance candidate | `0.2.7-qp-3256.0` | The exact version that supports `themeId` and `themeAppearance`. Use it only when its version is explicit. |
+| Quests block, latest stable | `0.2.10` | The version of every NEW block, themed or not (the gate default). Supports `themeId` and `themeAppearance`. A new release means updating this file and the gate constant `QUESTS_LATEST_VERSION` together. |
+| Quests block, latest candidate | `0.2.10-qp-3256.0` | Candidate of the same release as 0.2.10, same settings. Accepted by the gate, never proposed as a target. |
+| Quests block, earlier appearance candidate | `0.2.7-qp-3256.0` | Accepted for blocks already on it. Never a target for a new block. |
+| Quests block, old stable | `0.1.5` | Accepted for blocks already saved on it. No theme keys. Never a target for a new block. |
 | Shop Builder CLI | `1.9.4` | A minimum: 1.9.4 or newer is supported. PR #87 also mentions `1.4.0`. The agent uses the version the CLI reports. |
 
 ## Known block versions and what they support
 
 | Version | Supports |
 |---|---|
-| 0.1.5 | Plain block creation (the stable pin). No theme keys. |
+| 0.1.5 | Old stable pin, accepted for blocks already on it. No theme keys. |
 | 0.1.12 | Stable line: plain creation and edits. No theme keys: no `themeId`, no `themeAppearance`. Supported for writes that need no theme. |
-| 0.2.7 (candidate `0.2.7-qp-3256.0`) | Adds `themeId`, `themeAppearance`, `autoEvents` and `loginEventName`. Only the pinned candidate `0.2.7-qp-3256.0` is supported for theme writes; plain 0.2.7 is not pinned, so it is not supported for theme writes: ask once or stop. |
+| 0.2.7 (candidate `0.2.7-qp-3256.0`) | Adds `themeId`, `themeAppearance`, `autoEvents` and `loginEventName`. Of this line only the pinned candidate `0.2.7-qp-3256.0` is supported for theme writes; plain 0.2.7 is not pinned, so it is not supported for theme writes: ask once or stop. |
 | 0.2.8-qp-3256.0 to 0.2.8-qp-3256.4 (candidates) | Same settings keys as 0.2.7. Changes by candidate: .1 Backpack overlay launcher retry, collapsed bar expands; .2 login event sent from the player route, Pages card typography; .3 automatic player events with periods and reward polling; .4 re-authentication on an expired token. The .0 candidate is a release bump only. A KNOWN version the gate cannot create yet. |
 | 0.2.8-qp-3256.5 (candidate) | Site Builder and Pages grid cards match the Games card; `autoEvents` and `loginEventName` removed. A KNOWN version the gate cannot create yet. |
 | 0.2.8 (stable) | Same as 0.2.8-qp-3256.5: `autoEvents` and `loginEventName` are removed, the block sends fixed built-in events. A KNOWN version the gate cannot create yet. |
 | 0.2.9-qp-3256.0 (candidate), 0.2.9 (stable) | `autoEvents` and `loginEventName` are back; card text band and editor typography fixes. 0.2.9 is the same as its candidate. KNOWN versions the gate cannot create yet. |
-| 0.2.10-qp-3256.0 (candidate) | Card typography reset at any depth. A KNOWN version the gate cannot create yet. |
-| 0.2.10 (stable) | The latest release on 2026-11-03; same as 0.2.10-qp-3256.0. Grid card typography and hover fill, theme CSS variables. A KNOWN version the gate cannot create yet. |
+| 0.2.10-qp-3256.0 (candidate) | Card typography reset at any depth. Same settings keys as 0.2.7. Supported for theme writes and accepted by the gate for a new block. |
+| 0.2.10 (stable) | The latest release on 2026-11-04; same as 0.2.10-qp-3256.0. Grid card typography and hover fill, theme CSS variables. Same settings keys as 0.2.7. Supported for theme writes; the target for every new block. |
 | 0.2.1 candidate | The only claim for `backpackAction`. It is not a target for any write. |
 
 ## Version facts (snapshot of the block contract)
@@ -42,11 +44,12 @@ Refreshed 2026-11-04 from the block repo at release 0.2.10 (b1f12425fb).
 - The block sends events itself once the player is authorized, and a quest trigger must match the event name exactly. Whether the event name must also exist as a `dynamic_event` is UNKNOWN.
 - `backpackAction` exists only in candidate 0.2.1. The latest release (0.2.10) drops it on parse. It is not a target for any write and is not part of any pinned version.
 - The Backpack Overlay action is blocked on upstream v2.
-- UNKNOWN: whether the CDN serves 0.2.9 and 0.2.10 artifacts, and whether the production Quests config accepts `autoEvents` or `loginEventName` on 0.2.9 and later.
+- CDN: the artifacts (`remoteEntry.js`) for 0.1.5, 0.1.12, 0.2.7-qp-3256.0, 0.2.8, 0.2.9, 0.2.10 and 0.2.10-qp-3256.0 are served (probed 2026-11-04).
+- UNKNOWN: whether the production Quests config accepts `autoEvents` or `loginEventName` on 0.2.9 and later.
 
 ## Write pins (what the gate creates)
 
-The shop-builder-assembly gate accepts for a new block exactly `0.1.5` (stable create) and `0.2.7-qp-3256.0` (theme-capable candidate). 0.2.8, 0.2.9, 0.2.10 and 0.2.10-qp-3256.0 are KNOWN versions that the gate cannot create yet. The agent never proposes them as a target. If the publisher asks for the latest, say the gate supports only those two versions until it is updated.
+The shop-builder-assembly gate accepts for a new block exactly `0.2.10` (latest stable; the default and the target for every new block, themed or not), `0.2.10-qp-3256.0` (candidate of the same release), `0.2.7-qp-3256.0` and `0.1.5` (legacy pins, accepted for blocks already on them, never proposed for a new block). 0.2.8 and 0.2.9 are KNOWN versions that the gate cannot create. The agent never proposes them as a target. If the publisher asks for one of them, say the gate supports only the four pins above.
 
 ## Runtime check
 
@@ -83,7 +86,7 @@ So for a theme or appearance request on a block whose version has no theme keys 
 - says in plain words that this block's version has no theme settings;
 - says this toolkit cannot change the version of an existing block;
 - offers only these, one at a time with one `Next:`: (1) a new Quests block added at the
-  pinned `0.2.7-qp-3256.0`, with the same quests, and the old block hidden, never deleted, as
+  latest version `0.2.10` (the table above), with the same quests, and the old block hidden, never deleted, as
   its own plan with its own yes; or (2) the version change is done by the Site Builder team or
   in the editor, and the theme is applied afterwards once the block reports a theme-capable
   version.
