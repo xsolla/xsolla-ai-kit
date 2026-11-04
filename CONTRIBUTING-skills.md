@@ -19,8 +19,9 @@ This is the Xsolla guide for writing agent skills for `xsolla/xsolla-ai-kit`.
    at that point, so trailing trigger keywords are silently dropped. Key use case first.
 5. **No raw `curl` commands** — describe intent + Xsolla API endpoint, not raw HTTP
 6. **PR must include agent test** — exact prompt you used + one-line result
-7. **Update both registries** — add a row to `skills/README.md` and an entry plus a
-   trigger line to `AGENTS.md`, or agents can't discover the skill
+7. **Regenerate the skill table** — run `python3 .github/scripts/skill_table.py`. It
+   builds the table in `AGENTS.md` from your `name` and `description`, so the
+   description is what agents see; don't edit the table by hand
 8. **Commit the generated files** — `.cursor/skills/**` and `CLAUDE.md` are derived from
    `skills/**` and `AGENTS.md`; CI fails on drift
 9. **Cross-references must be real** — if you write "→ `shop-setup`" for something, check

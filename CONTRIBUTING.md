@@ -12,9 +12,9 @@ python3 .github/scripts/validate_skills.py
 ```
 
 It verifies skill frontmatter, the required sections, relative link targets, JSON
-validity, that every skill appears in both registries (`skills/README.md` and
-`AGENTS.md`), and that the generated files (`.cursor/skills/**`, `CLAUDE.md`) match
-their sources. It also scans for credentials.
+validity, that the skill tables in `AGENTS.md` and `.github/copilot-instructions.md`
+match the skills' frontmatter, and that the generated files (`.cursor/skills/**`,
+`CLAUDE.md`) match their sources. It also scans for credentials.
 
 Pre-existing violations are recorded in [.github/skills-baseline.json](.github/skills-baseline.json)
 so the check can be enforcing without blocking unrelated work. **Don't add to the
@@ -23,11 +23,14 @@ baseline to get a PR green** — fix the finding. Removing entries is always wel
 
 ## Generated files
 
-`.cursor/skills/**` and `CLAUDE.md` are generated from `skills/**` and `AGENTS.md`.
+The skill tables in `AGENTS.md` and `.github/copilot-instructions.md` are generated from
+each skill's `name` and `description`. `.cursor/skills/**` and `CLAUDE.md` are generated
+from `skills/**` and `AGENTS.md`.
 Commit them alongside your change — CI fails on drift. To regenerate locally, mirror
 what [.github/workflows/sync-providers.yml](.github/workflows/sync-providers.yml) does:
 
 ```bash
+python3 .github/scripts/skill_table.py
 rm -rf .cursor/skills && mkdir -p .cursor/skills
 for d in skills/*/; do [ -f "$d/SKILL.md" ] && cp -R "$d" ".cursor/skills/$(basename "$d")"; done
 cp AGENTS.md CLAUDE.md
