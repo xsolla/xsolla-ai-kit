@@ -138,10 +138,13 @@ uses, is in [block-versions.md](block-versions.md). An `add` may use an appearan
 version only when its version is explicit.
 Never infer support from version ordering or package metadata. Existing-block
 updates/resets require the exact supported version in saved readback. If the block version
-or schema is unsupported, stop before the plan/write and report a verified-upgrade gate.
-Preserve a before snapshot and, after an approved upgrade, read back quest IDs/order,
-refs, overrides, layout, auth and all unrelated saved fields before any appearance edit.
-Do not promise downgrade preservation unless it is verified.
+or schema is unsupported, stop before the plan/write and say that this toolkit cannot change
+the version of an existing block; offer only the options in
+[block-versions.md](block-versions.md#theme-request-on-an-older-block).
+Preserve a before snapshot and, after a new block at a supported version is approved and
+added, read back quest IDs/order, refs, overrides, layout, auth and all unrelated saved
+fields before any appearance edit. Do not promise downgrade preservation unless it is
+verified.
 
 The requested Backpack button under Web3 rewards must open the installed stock Overlay.
 The current deployed Quests v1 has no supported host API for that action, so this feature

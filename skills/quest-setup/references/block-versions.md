@@ -46,8 +46,30 @@ tables above.
   capability.
 - An unknown or unreported version: ask the user or stop. Do not guess, and do not infer
   support from version ordering or package metadata.
-- For an unsupported version, say that the block needs a verified upgrade, make no write, and
-  offer the supported path.
-- A theme or appearance request on a block below the appearance candidate: the reply says the
-  block's version cannot take a theme, names the pinned candidate version `0.2.7-qp-3256.0`, and
-  offers the upgrade as a SEPARATE step with its own yes. It does not just refuse.
+- For an unsupported version, say that the block's version cannot take the change, make no
+  write, and offer only a path the gate supports (below).
+
+## Theme request on an older block
+
+What the gate can and cannot do (`skills/shop-builder-assembly/scripts/block_ops.py`):
+
+- An `add` operation can choose the version of the new block: `OPERATIONS["add"]` has
+  `"optional": {"index", "values", "translations", "version"}` (line 174), and the version must
+  be a key of `QUESTS_CAPABILITIES` (lines 568-574).
+- No operation changes the version of an existing block. `update` allows only `values` and
+  `translations` (line 176), `duplicate` takes only `block_id` and `index` (line 179), and
+  `split_key` (lines 211-230) accepts no `version` leaf. Existing-block theme writes need the
+  exact supported version already saved on the block (lines 577-602).
+
+So for a theme or appearance request on a block whose version has no theme keys (for example
+`0.1.5`), the reply:
+
+- says in plain words that this block's version has no theme settings;
+- says this toolkit cannot change the version of an existing block;
+- offers only these, one at a time with one `Next:`: (1) a new Quests block added at the
+  pinned `0.2.7-qp-3256.0`, with the same quests, and the old block hidden, never deleted, as
+  its own plan with its own yes; or (2) the version change is done by the Site Builder team or
+  in the editor, and the theme is applied afterwards once the block reports a theme-capable
+  version.
+
+Never offer to upgrade, migrate or change the version of the existing block.

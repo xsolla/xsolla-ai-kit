@@ -130,7 +130,14 @@ quests on my webshop" after naming the site. This is a read, so it needs no gate
    that is not public); Heading (the text in quotes, or "heading is set" when null);
    Card overrides in a few words ("all 4 cards: title, description, reward", or "none"),
    with no comment on rewards or matching names. Several Quests blocks: one Where and
-   Quests bullet each. No layout, style, JSON, ids, or publishing notes.
+   Quests bullet each. Then one Appearance bullet per block, facts only, exactly as the
+   read returned them in `appearance`: the block version (`version`, or "version not
+   reported" when its status is not present), the theme id (`theme_id`, or "no theme set" /
+   "not reported" per `theme_id_status`) and any custom theme values in `custom` (base
+   theme, palette, typography, geometry), listed as returned. Add nothing the read did not
+   return: no guesses, no inferred history, no judgement of how it looks. When the version
+   has no theme keys, state that as a fact and offer nothing here. No JSON, ids, or
+   publishing notes.
 3. If `quest_names` is `unavailable` and no `card_title` is set, say in the Quests bullet:
    "names show once Quest Platform access is set up." Never say the block cannot be
    confirmed when the read works.

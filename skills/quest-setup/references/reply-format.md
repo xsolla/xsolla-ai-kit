@@ -33,7 +33,7 @@ to copy.
 - Access missing: use the access-missing example below word for word. Don't explain credentials, and don't offer another way to get access.
 - A status or list reply names only quests, values and history that appear in the data just read. Never infer or add history ("never activated", "older copies of X", variant names) the read did not return; if asked about history, say the read does not show it.
 - When the gate reports that the site's layout needs a newer CLI, repeat that warning in one line in each plan that shows it.
-- Theme or appearance change on a block whose reported version is below the pinned theme-capable candidate ([block-versions.md](block-versions.md)): say so, name the pinned candidate version, and offer the upgrade as a separate step with its own yes. Do not just refuse.
+- Theme or appearance change on a block whose reported version is below the pinned theme-capable candidate ([block-versions.md](block-versions.md)): say in plain words that the block's version has no theme settings and that this toolkit cannot change the version of an existing block. Offer only what the gate supports (a new block at the theme-capable version with the old one hidden, as its own plan with its own yes; or the Site Builder team or the editor changes the version, then the theme is applied). Never offer to upgrade the existing block. Details: [block-versions.md](block-versions.md#theme-request-on-an-older-block).
 - "Show my block again" with exactly one hidden Quests block on the chosen site: show the plan for the show operation in the same turn, not only a summary.
 - A limit outside 1 to 24 gets one line that names only the range, 1 to 24. Don't offer to hide the block.
 
@@ -121,6 +121,7 @@ Describe the block:
 - Quests (limit 3): Win 3 matches, Collect 10 crystals, Daily login (not public)
 - Heading: "Quests"
 - Card overrides: none
+- Appearance: block version 0.2.7-qp-3256.0, theme custom (base site-builder, heading size 32, max width 1184)
 
 Next: want to change anything on it?
 ```
