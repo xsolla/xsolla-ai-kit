@@ -13,6 +13,7 @@ Read back the saved quest before using an optional subtype.
 | `dynamic_event` | trigger | `{"event_name": "<non-empty string>"}`, optional `"client_sendable": true` |
 | `custom_attributes_check` | condition | see `conditions.md` |
 | `issue_reward` | action | see `rewards.md` |
+| `issue_catalog_item` | action | `items` (one or more `{sku, quantity}`) and `purpose`, see below and `rewards.md` |
 | `send_xsolla_app_notification` | action | `topic`, `notification_type`, `title`, `message`; optional `data` |
 | `send_http_webhook` | action | `url`, see below |
 | `webshop_personalization` | action | configuration may be accepted without producing a personalization effect |
@@ -84,13 +85,30 @@ production support is confirmed. A CRUD smoke test may use
 `{"items": [{"id": "e2e-noop"}]}` in an inactive quest. Never present a no-op
 as a working personalization effect.
 
+### issue_catalog_item
+
+```json
+{"items": [{"sku": "<catalog SKU>", "quantity": 1}], "purpose": "<developer-supplied reason>"}
+```
+
+- `items` needs at least one entry. `quantity` is 1 to 100 (default 1). Leave out `items[].type`:
+  it defaults to `virtual_item`, and the live run granted virtual_good catalog items that way.
+- Send no merchant or project fields. Publisher routes set them from the path.
+- The grant goes to the player's Backpack by `xsolla_id`. No mint, wallet or gas. Guests cannot
+  receive it.
+- The node sends only SKUs. Backpack takes the name and image from the catalog, and an unknown
+  SKU fails with `not_found`.
+- Use it as described in [Backpack grants](rewards.md#backpack-grants-issue_catalog_item).
+
 ### dynamic_event client_sendable
 
-`client_sendable` is off by default: only the publisher's backend can send the event. Set
-`"client_sendable": true` only when a game client or the Shop Builder Quests block sends the
-event with the player's token (`login_xsolla_id`, `daily_visit`, `weekly_visit`). Without the
-flag the player events route answers 403. Say in the proposal that the browser or game client
-can send this event, and which one. Never set it on an event only the backend sends.
+`client_sendable` is off by default: only the publisher's backend can send the event. The Shop
+Builder Quests block sends `login_xsolla_id` (once), `daily_visit` and `weekly_visit` from the
+browser with the player's token, so a quest triggered by any of them must set
+`"client_sendable": true` on its trigger. The player events route accepts a client event only
+while an active quest of the project allows it: this flag, or an event operand with
+`include_client_events: true`. Otherwise it answers 403. Say in the proposal that the browser or
+game client can send this event, and which one. Never set it on an event only the backend sends.
 
 ## Accepted, but not yet production-confirmed
 

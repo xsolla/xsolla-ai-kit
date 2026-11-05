@@ -173,15 +173,29 @@ A quest appears to anonymous visitors only when it is public: `is_public: true`.
 check. Set `is_public` through the edit flow in [`quest-edit.md`](quest-edit.md#editing)
 (read, change, full `PUT`, before/after diff, one approval, read back).
 
-A `public_view` replaces the default view and takes no arrays, so once it is set the card
-shows no reward. Add one only when the publisher wants custom card text or an image, and say
-that rewards disappear in the proposal ([Card rewards](rewards.md#card-rewards-on-the-quests-block)).
+A `public_view` replaces the default view, and the card reads only from it. Add one only when the
+publisher wants custom card text or an image. Send the full view below every time: without the
+reward references, the card loses its reward row and its See in Backpack button
+([Card rewards](rewards.md#card-rewards-on-the-quests-block)).
+
+```json
+{"name": {"$ref": "quest.name"}, "description": {"$ref": "quest.description"}, "image_url": "https://...", "rewards": {"$ref": "reward.<node id>.items"}, "reward_type": {"$ref": "reward.<node id>.type"}}
+```
+
+- Values are text (at most 500 characters), a number, `true` or `false`, a `{"$ref": ...}` reference,
+  or a group. Arrays and `null` are refused. At most 8 KB, 3 levels deep and 50 values.
+- References: `quest.name`, `quest.description`, `quest.start_date`, `quest.end_date` and
+  `reward.<node id>.<field>`. An `issue_catalog_item` node exposes `items` (quantity, name, image_url)
+  and `type`, which reads `inventory_item`. An `issue_web3_item` node exposes quantity, name,
+  description, image_url and `type`.
+- A reference that no longer resolves, such as a removed reward node, is left out of the card.
 When it is added, `image_url` must be an absolute `https` URL (an `http` URL is refused, see
 [Rules for every operation](quests-block-brief.md#rules-for-every-operation)). Never invent an
 image. If the publisher has none, leave it empty and the card shows its neutral placeholder.
 
-A dynamic_event the Quests block sends (`login_xsolla_id`, `daily_visit`, `weekly_visit`)
-needs `client_sendable: true` on its trigger, see [node-subtypes](node-subtypes.md#dynamic_event).
+A quest triggered by an event the Quests block sends (`login_xsolla_id`, `daily_visit`,
+`weekly_visit`) must set `client_sendable: true` on its trigger, or the block's event is refused
+with 403. See [node-subtypes](node-subtypes.md#dynamic_event-client_sendable).
 
 If the read-back does not show `is_public: true` (and the `public_view` you set, if any), stop and report that.
 

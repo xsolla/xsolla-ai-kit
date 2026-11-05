@@ -7,13 +7,16 @@ No alternate environment, internal key or guessed-route fallback.
 
 For "add a login event that uses my Xsolla ID", the live docs support this much and no more:
 
-- The quest trigger is a `dynamic_event` node whose `event_name` the publisher chooses.
+- The quest trigger is a `dynamic_event` node whose `event_name` matches the name the site sends.
 - A publisher event identifies the player in `user_ids[]` with `identifier_type` `xsolla_id`
   (other types: `gamer_id`, `guest_id`, `email`).
-- The docs name no standard login event and do not describe site emission. Follow
-  [Choosing a trigger](node-subtypes.md#choosing-a-trigger) for actual names and explicitly
-  unverified candidates; never infer a configured login binding from a quest title.
-- Never write `autoEvents` or `loginEventName` on the block: the gate cannot write them (they are not in its patchable settings). The block sends events itself once the player is authorized, and a quest trigger must match the event name exactly. Whether the event name must also exist as a `dynamic_event` is unknown.
+- The Quests block sends `login_xsolla_id` once, from the browser with the player's token (live run,
+  2026-11-05). The public docs do not name it. A quest that reacts to it uses a `dynamic_event`
+  trigger with `event_name` `login_xsolla_id` and `client_sendable: true`
+  ([node-subtypes](node-subtypes.md#dynamic_event-client_sendable)). For any other name, follow
+  [Choosing a trigger](node-subtypes.md#choosing-a-trigger); never infer a configured login binding
+  from a quest title.
+- Never write `autoEvents` or `loginEventName` on the block: the gate cannot write them (they are not in its patchable settings). The block sends events itself once the player is authorized, and a quest trigger must match the event name exactly.
 
 An "add" request never modifies an existing quest. First list the quests (two calls, see SKILL.md)
 and check whether a quest already uses a login-type trigger. Tell the publisher what exists (quest
@@ -82,6 +85,18 @@ Follow [auth errors](auth-credentials.md#errors).
 
 The body key, not an optional HTTP header, identifies the event unless the contract
 explicitly requires a header. Key reuse never authorizes an automatic resend.
+
+## Client events
+
+The Quests block and game clients send events with the player's token, not a publisher key. The body
+has only `idempotency_key`, `name`, `client_timestamp` and `properties`. The token identifies the
+player, so `user_ids`, `quest_id` and `scope` are not sent.
+
+- An event is accepted only while an active quest of the project allows it: a `dynamic_event` trigger
+  with `client_sendable: true`, or an event operand with `include_client_events: true`. Otherwise the
+  answer is 403.
+- 404 means the client endpoint is off in that environment. The endpoint is rate limited.
+- Event-count checks count a client event only where the operand sets `include_client_events`.
 
 ## Before sending
 

@@ -1,10 +1,10 @@
 # Web3 rewards
 
-This skill supports the production Web3 reward path only. A named item always
-uses `web3_item`. The reward is granted or minted as the platform response
-reports, and this skill does not claim delivery to the player's Backpack. Do not offer
-`inventory_item`, Store API grants, direct Backpack grants, ERC-20 claim
-endpoints or a provider-default catalog as fallbacks.
+This skill supports two production catalog reward paths: `web3_item`, the default for a named
+item, and `issue_catalog_item`, a Backpack grant that the publisher chooses for a quest. The
+reward is granted or minted as the platform response reports. For `web3_item`, this skill does not
+claim delivery to the player's Backpack. Do not offer Store API grants, ERC-20 claim endpoints, a
+provider-default catalog or any other reward path as a fallback. When a path fails, stop and ask.
 
 ## Reward types come from the live docs
 
@@ -13,11 +13,13 @@ the reward section. A type absent from the live docs is rejected, with no write.
 below are a snapshot for orientation only. If they differ from the live docs on fields, the live
 docs win. If the docs are unreachable, say so and treat the snapshot as possibly stale.
 
-One fixed exception: the reward type is `web3_item`, by the project owner's decision (2026-11-03).
-Rewards are `web3_item` items taken from the store catalog. The public live docs may describe only
+Named items default to `web3_item`, by the project owner's decision (2026-11-03). Switch to
+`issue_catalog_item` only when the publisher chooses it for the quest, shown in the proposal and
+confirmed with a yes ([Backpack grants](#backpack-grants-issue_catalog_item)). The public live docs
+may describe only
 an in-game item reward (`issue_game_item`, which needs a `gamer_id` and a user validation webhook).
 That reward node is not used for rewards: do not switch to it, do not stop or ask for a revised plan
-because of the difference, and proceed with the `web3_item` plan. Mention the docs difference in one
+because of the difference, and proceed with the planned reward type. Mention the docs difference in one
 clause only if it matters, never as a stop.
 
 Only a real catalog item is rewardable. When the publisher asks for something the catalog does not
@@ -34,14 +36,16 @@ rewards list is refused.
 - **Default view.** Leave `public_view` out when the card must show its reward. Each entry carries
   `type` (`web3_item`), `quantity` (the body quantity, default 1), and the catalog `name`,
   `description` and `image_url` of the SKU. Title and description come from the quest.
-- **Custom view.** A `public_view` replaces the default view, so the card shows no reward. Do not add
-  one only to set an image or title. If the publisher still asks for it, say in the proposal that the
-  card will lose its reward and get an explicit yes.
+- **Custom view.** A `public_view` replaces the default view. Set it only in full, with the reward
+  references from [Quest public view](quests-block-flow.md#quest-public-view), or the card loses its
+  reward row and its See in Backpack button. The proposal names the reward references it carries.
 - **Proposal.** Show the card rewards as `view.rewards` lines: name, SKU, quantity and image URL, for
   example `Handful of BitChips x1 (SKU com.example.sku, image https://...)`.
 - **Read-back.** Read the public list (`GET` on the public quests route, no credential) and confirm the
   quest's `view.rewards` has one entry per reward. A null `name` or `image_url` means the catalog lookup
-  did not enrich the entry: report it, never say the card is fine.
+  did not enrich the entry: report it, never say the card is fine. For a custom view, confirm the
+  public read shows each reward field the view references; a missing field means its reference does
+  not resolve.
 
 ## Adding a reward
 
@@ -87,6 +91,27 @@ project, never a publisher-typed project or one from another catalog.
 
 When a read-back shows a project different from `body.project`, report a delivery
 mismatch, not a success, and do not send the event again.
+
+## Backpack grants (`issue_catalog_item`)
+
+Use this path when the publisher chooses it for a quest, or when Web3 minting is unavailable or
+slow. A Web3 mint can stall: in a live run on production mainnet on 2026-11-05, a claim mint timed
+out at 30 seconds and left the payout "indeterminate" with no retry. A Backpack grant mints nothing
+and needs no wallet.
+
+- **Node.** `issue_catalog_item` is an action node with `items` and `purpose` in `parameters`, with
+  no `type` or `body` wrapper. Parameter rules are in
+  [node-subtypes](node-subtypes.md#issue_catalog_item).
+- **SKUs.** Resolve each item through the [Store admin catalog](#store-admin-catalog), as for Web3,
+  and show its name, SKU and quantity in the proposal. Never guess a SKU. A SKU the publisher types
+  goes through the single-item read.
+- **Exposure.** Show the per-user total (item quantities times the activation limit) and the total
+  quest exposure, using the same method as [Payout exposure](#payout-exposure-in-the-proposal).
+- **Recipient.** Each event needs an `xsolla_id`. The wallet check in [Recipient wallet](#recipient-wallet)
+  does not apply.
+- **Retries.** Never resend an event after an uncertain result, as for Web3.
+- **Card.** The card's reward row comes only from a full `public_view`, see
+  [Quest public view](quests-block-flow.md#quest-public-view).
 
 ## `web3_item`
 
@@ -149,8 +174,8 @@ The [project-mismatch stop](#project-mismatch) applies to tokens too.
 
 ## Recipient
 
-Both Web3 reward types need an `xsolla_id` in the event and a production wallet
-for that user. Follow [Recipient wallet](#recipient-wallet) for the confirmation timing,
+Web3 rewards need an `xsolla_id` in the event and a production wallet for that user. A Backpack
+grant needs only the `xsolla_id`. Follow [Recipient wallet](#recipient-wallet) for the confirmation timing,
 compatible wallet source and blockers.
 
 ## Payout exposure in the proposal

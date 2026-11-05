@@ -108,6 +108,39 @@ class SkillTextTests(IsolatedCase):
                 for pattern in patterns:
                     self.assertRegex(owners[owner], re.compile(pattern, re.I))
 
+    def test_client_events_public_view_and_catalog_rewards(self) -> None:
+        node = flat(ref("node-subtypes.md"))
+        rewards = flat(ref("rewards.md"))
+        block = flat(ref("quests-block-flow.md"))
+        edit = flat(ref("quest-edit.md"))
+        events = flat(ref("events.md"))
+        skill_text = flat(skill())
+        # A: block-sent events need client_sendable on the trigger, and a 403 without it.
+        self.assertIn("login_xsolla_id` (once), `daily_visit` and `weekly_visit`", node)
+        self.assertIn('must set `"client_sendable": true` on its trigger', node)
+        self.assertIn("only while an active quest of the project allows it", node)
+        self.assertIn("only `idempotency_key`, `name`, `client_timestamp` and `properties`", events)
+        self.assertRegex(block, r"must set `client_sendable: true` on its trigger, or the block's event is refused")
+        # B: issue_catalog_item is a supported, explicitly chosen alternative to web3_item.
+        self.assertIn("### issue_catalog_item", node)
+        self.assertIn("Leave out `items[].type`", node)
+        self.assertIn("Backpack grants (`issue_catalog_item`)", rewards)
+        self.assertIn("Web3 rewards need an `xsolla_id`", rewards)
+        self.assertRegex(skill_text, r"`web3_item` by default, or `issue_catalog_item`")
+        self.assertNotIn("Do not offer `inventory_item`", skill_text)
+        self.assertNotIn("direct Backpack grants", rewards)
+        # C: a public_view replaces the default view, so every write sends the full view with reward refs.
+        self.assertIn('"reward_type": {"$ref": "reward.<node id>.type"}', block)
+        self.assertIn("loses its reward row and its See in Backpack button", block)
+        self.assertNotIn("shows no reward", block)
+        self.assertNotIn("shows no reward", rewards)
+        # D: a full PUT keeps public_view.
+        self.assertRegex(edit, r"resend the fresh `GET`'s `public_view` unchanged")
+        for name, text in (("node-subtypes.md", node), ("rewards.md", rewards), ("quests-block-flow.md", block),
+                           ("quest-edit.md", edit), ("events.md", events), ("SKILL.md", skill_text)):
+            with self.subTest(file=name):
+                self.assertNotIn("\u2014", text)
+
     def test_ac_12_snapshots_cannot_claim_unqualified_authority(self) -> None:
         for name in ("node-subtypes.md", "qp-api-contract.md"):
             with self.subTest(file=name):

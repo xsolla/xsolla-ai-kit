@@ -83,8 +83,9 @@ Never print or show a key or token in replies or output. If the contract remains
 [Source of truth](references/qp-api-contract.md#source-of-truth), report unavailable and ask
 rather than inventing a route or endpoint probe.
 
-Rewards are owner-selected `web3_item` items from the real store catalog. A live-doc difference
-(such as an in-game reward node) does not stop or change this choice. Resolve named items,
+Rewards are owner-selected items from the real store catalog: `web3_item` by default, or
+`issue_catalog_item` (a Backpack grant) when the publisher chooses it for a quest. A live-doc
+difference (such as an in-game reward node) does not stop or change this choice. Resolve named items,
 quantity, catalog scope, recipient wallet and payout bounds through
 [rewards.md](references/rewards.md). Never guess an SKU, ask for a catalog project/SKU,
 substitute a reward or treat failed catalog reads as empty. No unique verified item means no write.
@@ -103,7 +104,7 @@ Load only the relevant references and follow their approval and readback. Reads 
 | Create / activate quest | [quest-publish.md](references/quest-publish.md), [quest-authoring.md](references/quest-authoring.md) | One exact proposal yes; inactive POST, fresh read/full activation PUT, final GET |
 | Edit / pause quest | [quest-edit.md](references/quest-edit.md) | Before/after and later yes; full-document PUT preserving all other fields, then GET |
 | Delete quest | [quest-edit.md](references/quest-edit.md#deleting) | Fresh read, named quest only, separate explicit yes, one DELETE per quest; readback |
-| Add / replace reward | [rewards.md](references/rewards.md) | Catalog-verified proposal and yes; add appends preserving graph; read quest rewards |
+| Add / replace reward | [rewards.md](references/rewards.md) | `web3_item` (default) or `issue_catalog_item` as the publisher chooses; catalog-verified proposal and yes; add appends preserving graph; read quest rewards |
 | Send / test event | [events.md](references/events.md), [verification.md](references/verification.md) | Separate exact payload yes, real publisher-supplied player UUID, active quest; acceptance/readback, never resend uncertain outcome |
 | Login event with Xsolla ID | [events.md](references/events.md) | List existing login quests first; one new-or-edit question; approved dynamic_event/name, read trigger |
 | Add Quests block | [quests-block-flow.md](references/quests-block-flow.md), [block-versions.md](references/block-versions.md) | Separate site plan yes; explicit latest stable version; read block and public quests |
@@ -112,6 +113,7 @@ Load only the relevant references and follow their approval and readback. Reads 
 | Move / duplicate / hide / show block | [quests-block-brief.md](references/quests-block-brief.md), [quests-block-flow.md](references/quests-block-flow.md) | Separate exact plan yes; block position/both copies/hidden or shown state |
 | Remove block | [quests-block-flow.md](references/quests-block-flow.md#removing-the-block) | needs_human, no scripted delete; offer hide with its own plan yes |
 | Card reward text / image | [reply-format.md](references/reply-format.md#examples) | No tools, reads or write; exact reward-change reply, then quest-edit only after yes |
+| Quest card title, text or image | [quests-block-flow.md](references/quests-block-flow.md#quest-public-view), [quest-edit.md](references/quest-edit.md#editing) | Full `public_view` with reward references; one exact edit yes; read back `is_public` and the card fields |
 | Headless Web Shop section | [web-shop-module.md](references/web-shop-module.md) | Explicit request only; distinct source-edit authority, never copy catalog project into Quest Platform setting |
 | Other site changes / unsupported actions | [reply-format.md](references/reply-format.md), [quests-block-brief.md](references/quests-block-brief.md) | Decline with no write; Backpack Overlay is blocked on upstream v2 |
 
