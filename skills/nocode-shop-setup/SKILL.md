@@ -73,12 +73,12 @@ built.
    partner's template site; see **Store or game home**.
 4. **The project is a dedicated test project.** Shop Builder writes need the project on
    the local test-project list. The format is in
-   [shop brief](../shop-builder-assembly/references/shop-brief.md); the file lives outside
-   the repository, at `$XSOLLA_APPROVED_TEST_PROJECTS`, by default
-   `~/.config/xsolla/approved-test-projects.json`. If this project isn't listed, ask in
-   the batch whether it is a dedicated test project, not a live game's project. On a yes,
-   add it to that file yourself, with the date and the user's answer in `note`; on a no,
-   stop before any write. Pass the file to the assembly scripts as
+   [shop brief](../shop-builder-assembly/references/shop-brief.md); the file is the one
+   `$XSOLLA_APPROVED_TEST_PROJECTS` names (read the variable first), or
+   `~/.config/xsolla/approved-test-projects.json` when it is unset. If this project isn't
+   listed, ask in the batch whether it is a dedicated test project, not a live game's
+   project. On a yes, add it to that file yourself, with the date and the user's answer in
+   `note`; on a no, stop before any write. Pass the file to the assembly scripts as
    `--approved-test-projects`; `shopbuilder-translate` reads it only from the variable.
 5. **The game.** Read the user's store listing link, if they gave one: name, platforms,
    developer, description, icon and screenshots.
