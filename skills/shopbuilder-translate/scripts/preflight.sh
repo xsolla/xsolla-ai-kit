@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # preflight.sh — verify the environment before any Shop Builder translation. Fails loudly.
 # Catalog and LiveOps text are out of scope. This check is the storefront only.
-# apply.sh checks the local test-project list before the first write.
+# apply.sh checks the CLI's project before the first write.
 # There is no production-project denylist.
 set -euo pipefail
 
@@ -38,15 +38,6 @@ else
 fi
 [ -n "${XSOLLA_PROJECT_ID:-}" ]  && ok "XSOLLA_PROJECT_ID set"  || bad "XSOLLA_PROJECT_ID unset"
 [ -n "${XSOLLA_MERCHANT_ID:-}" ] && ok "XSOLLA_MERCHANT_ID set" || bad "XSOLLA_MERCHANT_ID unset"
-
-echo "== test project =="
-echo "  writes require the project on the local test-project list"
-echo "  apply.sh checks the allowlist, then reads the site, before the first write"
-if [ -n "${XSOLLA_APPROVED_TEST_PROJECTS:-}" ] && [ -f "${XSOLLA_APPROVED_TEST_PROJECTS}" ]; then
-  ok "XSOLLA_APPROVED_TEST_PROJECTS=$XSOLLA_APPROVED_TEST_PROJECTS"
-else
-  warn "XSOLLA_APPROVED_TEST_PROJECTS is unset or not a file — apply.sh --commit will refuse to write"
-fi
 
 echo "== CLI sandbox =="
 # Shop Builder has no sandbox. Same rule as game-web-portal: refuse only when

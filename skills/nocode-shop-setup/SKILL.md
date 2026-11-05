@@ -71,22 +71,13 @@ built.
    it, with more pages when the preset has them, and it opens in the Editor and preview.
    The other answers: build the structure anyway, or wait. A game home is built on the
    partner's template site; see **Store or game home**.
-4. **The project is a dedicated test project.** Shop Builder writes need the project on
-   the local test-project list. The format is in
-   [shop brief](../shop-builder-assembly/references/shop-brief.md); the file is the one
-   `$XSOLLA_APPROVED_TEST_PROJECTS` names (read the variable first), or
-   `~/.config/xsolla/approved-test-projects.json` when it is unset. If this project isn't
-   listed, ask in the batch whether it is a dedicated test project, not a live game's
-   project. On a yes, add it to that file yourself, with the date and the user's answer in
-   `note`; on a no, stop before any write. Pass the file to the assembly scripts as
-   `--approved-test-projects`; `shopbuilder-translate` reads it only from the variable.
-5. **The game.** Read the user's store listing link, if they gave one: name, platforms,
+4. **The game.** Read the user's store listing link, if they gave one: name, platforms,
    developer, description, icon and screenshots.
-6. **The catalog, LiveOps and Login projects.** Read the project's catalog groups,
+5. **The catalog, LiveOps and Login projects.** Read the project's catalog groups,
    items, bundles and LiveOps with the read-only `xsolla catalog` and `xsolla liveops`
    list commands, and its Login projects. Draft `catalog-design`'s proposal now, so its
    questions go in the batch instead of a second round.
-7. **Browser and design tools in this session.** Find the browser that is signed in to
+6. **Browser and design tools in this session.** Find the browser that is signed in to
    Publisher Account (a built-in browser, Claude in Chrome, or another extension) and use
    it for every browser step; don't ask which one. Check that the mockup's design tool,
    such as Figma, is available in this session: a setup log from an earlier session is not
@@ -116,8 +107,6 @@ answer, so a reply such as "all recommended" settles it:
 - which side, only when the rule above says to ask;
 - the project link, or switching the CLI to it with sandbox off, only when check 2 says;
 - store or game home;
-- whether the project is a dedicated test project, only when it isn't listed. This
-  question has **no** recommended answer: only the user can give it;
 - build without the common layout or wait, only when the CLI lacks `create-block`;
 - the storefront intake the listing didn't answer: game name, platforms, a short
   description, whether the listing is theirs and its art and text may be used, the

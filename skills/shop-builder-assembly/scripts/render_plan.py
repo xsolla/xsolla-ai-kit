@@ -836,10 +836,6 @@ def build_plan(
         "target": {
             "merchant_id": brief["project"]["merchant_id"],
             "project_id": brief["project"]["project_id"],
-            "environment": brief["project"]["environment"],
-            "test_project_acknowledged": brief["project"].get(
-                "test_project_acknowledged", False
-            ),
             "site_name": brief["site"]["name"],
             "slug": brief["site"]["slug"],
         },

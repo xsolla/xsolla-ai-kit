@@ -4,7 +4,6 @@ import contextlib
 import io
 import json
 import sys
-import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -14,66 +13,24 @@ sys.path.insert(0, str(ROOT / "scripts"))
 import preflight  # noqa: E402
 
 CONFIG = {"merchant_id": 11, "project_id": 22}
-ENTRY = {"merchant_id": 11, "project_id": 22}
-
-
-TMP = tempfile.TemporaryDirectory()
-
-
-def tearDownModule() -> None:
-    TMP.cleanup()
-
-
-def allowlist(*projects: dict, version: int = 1) -> Path:
-    fh = tempfile.NamedTemporaryFile(
-        "w", suffix=".json", dir=TMP.name, delete=False, encoding="utf-8"
-    )
-    with fh:
-        json.dump({"version": version, "projects": list(projects)}, fh)
-    return Path(fh.name)
 
 
 class CheckProjectTest(unittest.TestCase):
-    def test_listed_project_passes(self):
-        entry = preflight.check_project(11, 22, allowlist(ENTRY), config=CONFIG)
-        self.assertEqual(entry, ENTRY)
-
-    def test_unlisted_project_stops(self):
-        other = {**ENTRY, "project_id": 99}
-        with self.assertRaisesRegex(RuntimeError, "not on the test-project list"):
-            preflight.check_project(11, 22, allowlist(other), config=CONFIG)
+    def test_matching_project_passes(self):
+        self.assertIsNone(preflight.check_project(11, 22, config=CONFIG))
 
     def test_cli_sandbox_mode_stops(self):
         with self.assertRaisesRegex(RuntimeError, "sandbox mode is on"):
-            preflight.check_project(11, 22, allowlist(ENTRY), config={**CONFIG, "sandbox": True})
+            preflight.check_project(11, 22, config={**CONFIG, "sandbox": True})
 
     def test_cli_sandbox_off_or_missing_passes(self):
         for config in (CONFIG, {**CONFIG, "sandbox": False}):
             with self.subTest(config=config):
-                entry = preflight.check_project(11, 22, allowlist(ENTRY), config=config)
-                self.assertEqual(entry, ENTRY)
+                self.assertIsNone(preflight.check_project(11, 22, config=config))
 
     def test_cli_pointing_at_another_project_stops(self):
         with self.assertRaisesRegex(RuntimeError, "does not match the target"):
-            preflight.check_project(11, 22, allowlist(ENTRY),
-                                    config={**CONFIG, "project_id": 99})
-
-    def test_unreadable_allowlist_stops(self):
-        with self.assertRaisesRegex(RuntimeError, "cannot read the test-project list"):
-            preflight.check_project(11, 22, Path("/nonexistent/allowlist.json"), config=CONFIG)
-
-    def test_ids_alone_are_enough(self):
-        entry = {**ENTRY, "note": "dedicated test project, confirmed in chat"}
-        self.assertEqual(
-            preflight.check_project(11, 22, allowlist(entry), config=CONFIG), entry
-        )
-
-    def test_malformed_allowlist_stops(self):
-        with self.assertRaisesRegex(RuntimeError, "version 1"):
-            preflight.check_project(11, 22, allowlist(ENTRY, version=2), config=CONFIG)
-        with self.assertRaisesRegex(RuntimeError, "integer IDs"):
-            preflight.check_project(11, 22, allowlist({**ENTRY, "project_id": "22"}),
-                                    config=CONFIG)
+            preflight.check_project(11, 22, config={**CONFIG, "project_id": 99})
 
 
 class CliConfigTest(unittest.TestCase):
@@ -116,19 +73,22 @@ class MainTest(unittest.TestCase):
             code = preflight.main(["--merchant-id", "11", "--project-id", "22", *argv])
         return code, stdout.getvalue(), stderr.getvalue()
 
-    def test_allowlist_is_required(self):
+    def test_ids_are_required(self):
         with self.assertRaises(SystemExit), contextlib.redirect_stderr(io.StringIO()):
-            self.run_main()
+            preflight.main([])
 
     def test_refusal_exits_one_on_stderr(self):
-        code, stdout, stderr = self.run_main("--approved-test-projects", str(allowlist()))
-        self.assertEqual((code, stdout), (1, ""))
-        self.assertIn("not on the test-project list", stderr)
+        stdout, stderr = io.StringIO(), io.StringIO()
+        with mock.patch.object(preflight, "cli_config", return_value={**CONFIG, "project_id": 99}), \
+                contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+            code = preflight.main(["--merchant-id", "11", "--project-id", "22"])
+        self.assertEqual((code, stdout.getvalue()), (1, ""))
+        self.assertIn("does not match the target", stderr.getvalue())
 
-    def test_pass_prints_the_list_entry(self):
-        code, stdout, _ = self.run_main("--approved-test-projects", str(allowlist(ENTRY)))
+    def test_pass_prints_the_project(self):
+        code, stdout, _ = self.run_main()
         self.assertEqual(code, 0)
-        self.assertEqual(json.loads(stdout)["test_project"], ENTRY)
+        self.assertEqual(json.loads(stdout), {"ok": True, "merchant_id": 11, "project_id": 22})
 
 
 if __name__ == "__main__":

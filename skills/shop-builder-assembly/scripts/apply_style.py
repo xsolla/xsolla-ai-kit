@@ -926,7 +926,6 @@ def main() -> int:
         type=Path,
         help="uploads earlier runs made; default: asset-cache.json next to the approved plan",
     )
-    parser.add_argument("--approved-test-projects", type=Path)
     args = parser.parse_args()
     try:
         brief = load_brief(args.brief)
@@ -967,7 +966,7 @@ def main() -> int:
             return 0
         check_image_files(base_dir, approved.get("images", []) + seo_images)
 
-        run_preflight(args.brief, args.approved_test_projects)
+        run_preflight(args.brief)
         check_cli_context(brief["project"])
         if not verified_backup(args.backup_dir, brief["project"], slug):
             raise RuntimeError(

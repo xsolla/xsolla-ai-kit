@@ -1,14 +1,13 @@
 # CLI assembly operations
 
 This is the dependency map for `xsolla` 1.9.4 or newer. Run every command against the
-already verified dedicated-test-project context; do not add per-command
+already verified project context; do not add per-command
 project overrides after preflight.
 
 | Phase | Command | Consumes | Produces / unlocks |
 |---|---|---|---|
 | Discover | `xsolla config list --json` | Local profile | Merchant and project match; sandbox mode is off |
 | Discover | `xsolla auth list-account --json` | Credential store | Active Publisher login state |
-| Safety | `preflight.py --approved-test-projects <file>` | Local test-project list | Exact test-project identity is on the list |
 | Safety | `shopbuilder create-block --help`, only when the site has no common layout | Installed CLI | The usage line names `create-block`; otherwise the layout step is skipped |
 | Discover | `xsolla shopbuilder list-websites --json` | Project context | Slug, landing ID, type |
 | Backup | `get-landing`, `get-structure`, `get-localization`, `list-assets`, `list-versions` | Existing slug | Restorable configuration evidence |
@@ -39,9 +38,7 @@ No script passes `--force`; an operation that requires it stops for review.
 
 The developer's one yes can cover more than one `apply_plan.py` run. Each later run is
 covered only when its render says so; `apply_plan.py` checks this again and stops before
-any write. Every script that writes (`apply_plan.py`, `apply_style.py`,
-`patch_backgrounds.py`) also takes
-`--approved-test-projects <test-projects.json>`, and refuses to write without it.
+any write.
 
 - **A new site's two runs.** A new site's generated blocks have no IDs before creation, so
   it is applied in two runs: the bootstrap, then the rest. Save run 1's report as
@@ -62,8 +59,8 @@ any write. Every script that writes (`apply_plan.py`, `apply_style.py`,
 - **Background fixes after the visual review.** The yes covers `values.background` leaves
   (color, gradient, image, position, size) on blocks this assembly created, applied with
   `scripts/patch_backgrounds.py <brief.json> --approved-plan approved-plan.json
-  --run-report <report> --backup-dir <dir> --fixes fixes.json --approved-test-projects
-  <test-projects.json>` after a fresh export. Pass `--run-report` once for every earlier run
+  --run-report <report> --backup-dir <dir> --fixes fixes.json` after a
+  fresh export. Pass `--run-report` once for every earlier run
   (`run1-report.json` and run 2's report for a new site): run 1's report is the one that
   lists the blocks it created. `fixes.json` is a list of
   `{"block_id": …, "leaf": …, "value": …}`. It refuses anything else, an image not
@@ -71,7 +68,7 @@ any write. Every script that writes (`apply_plan.py`, `apply_style.py`,
   over a block that keeps its image.
 - **The theme, images and copy, after the last apply run.** Export again, then run
   `scripts/apply_style.py <brief.json> --approved-plan approved-plan.json --run-report
-  <report> --backup-dir <dir> --approved-test-projects <test-projects.json>`, with `--run-report`
+  <report> --backup-dir <dir>`, with `--run-report`
   once for every earlier run, as above. It sets the approved `brand.theme` on the site
   theme's `theme.input`, only keys the site already has, each in its current format, and
   sets `theme.enabled` to `false` on the planned pages that use their own theme: pages the

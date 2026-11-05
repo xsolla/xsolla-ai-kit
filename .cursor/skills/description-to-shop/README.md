@@ -7,7 +7,6 @@ Turns a plain-language game description into a validated Shop Builder assembly b
 
 - `shop-builder-assembly` installed from Xsolla AI Kit
 - Xsolla CLI authenticated with `xsolla auth login`
-- A dedicated test project on the local test-project list
 - An existing same-project catalog for store sections
 
 ## Happy path

@@ -25,7 +25,7 @@ case "$GROUP $CMD" in
       printf '{"ok":true,"data":{"merchant_id":%s,"project_id":%s}}' "$m" "$p" ;;
   "shopbuilder list-websites")
       # Real command takes --merchant-id and --project-id. Do not pass --all:
-      # that would list sites outside the allowlisted project.
+      # that would list sites outside the configured project.
       for a in "$@"; do
         case "$a" in --all) echo "list-websites must not be called with --all" >&2; exit 1 ;; esac
       done

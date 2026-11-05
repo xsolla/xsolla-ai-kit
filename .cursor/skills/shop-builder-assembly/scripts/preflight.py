@@ -137,50 +137,9 @@ def group_external_ids(value: object) -> set[str]:
     }
 
 
-def listed_test_project(path: Path | None, expected: dict) -> dict:
-    """Return the project's entry in the local list of dedicated test projects."""
-    if expected["environment"] != "test":
-        raise RuntimeError("Shop Builder assembly requires a dedicated test project")
-    if path is None:
-        raise RuntimeError(
-            "--approved-test-projects is required: the local test-project list"
-        )
-    try:
-        value = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
-        raise RuntimeError(f"cannot read the test-project list: {exc}") from exc
-    if not isinstance(value, dict) or value.get("version") != 1:
-        raise RuntimeError("the test-project list must be a version 1 object")
-    projects = value.get("projects")
-    if not isinstance(projects, list):
-        raise RuntimeError("the test-project list must contain a projects list")
-
-    target = (expected["merchant_id"], expected["project_id"])
-    for index, project in enumerate(projects):
-        if not isinstance(project, dict):
-            raise RuntimeError(f"test-project list entry {index} must be an object")
-        merchant_id = project.get("merchant_id")
-        project_id = project.get("project_id")
-        if (
-            isinstance(merchant_id, bool)
-            or not isinstance(merchant_id, int)
-            or isinstance(project_id, bool)
-            or not isinstance(project_id, int)
-        ):
-            raise RuntimeError(
-                f"test-project list entry {index} must contain integer IDs"
-            )
-        if (merchant_id, project_id) == target:
-            return project
-    raise RuntimeError(
-        "configured merchant_id/project_id is not on the test-project list"
-    )
-
-
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("brief", type=Path)
-    parser.add_argument("--approved-test-projects", type=Path)
     args = parser.parse_args()
 
     if shutil.which("xsolla") is None:
@@ -196,7 +155,6 @@ def main() -> int:
         if not isinstance(config, dict):
             raise RuntimeError("xsolla config list returned an unexpected shape")
         expected = brief["project"]
-        listed_test_project(args.approved_test_projects, expected)
         if config.get("sandbox") is True:
             raise RuntimeError("CLI sandbox must be disabled for Shop Builder")
         if config.get("merchant_id") != expected["merchant_id"]:
@@ -253,12 +211,7 @@ def main() -> int:
             "context": {
                 "merchant_id": expected["merchant_id"],
                 "project_id": expected["project_id"],
-                "environment": expected["environment"],
                 "sandbox": False,
-                "test_project_acknowledged": expected.get(
-                    "test_project_acknowledged", False
-                ),
-                "test_project_listed": True,
             },
             "auth": {"publisher_account_active": True},
             "target": {

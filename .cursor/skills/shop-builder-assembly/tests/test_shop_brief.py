@@ -144,23 +144,11 @@ class ShopBriefTests(unittest.TestCase):
         brief["game"]["platforms"] = ["pc"]
         self.assertEqual("pc-multi-page", render_plan.choose_preset(brief))
 
-    def test_non_test_environment_is_rejected(self) -> None:
+    def test_project_needs_only_its_ids(self) -> None:
         brief = copy.deepcopy(self.brief)
-        for environment in ("sandbox", "production"):
-            with self.subTest(environment=environment):
-                brief["project"]["environment"] = environment
-                self.assertIn(
-                    "project.environment must be test", validator.validate(brief)
-                )
-
-    def test_dedicated_test_project_requires_acknowledgement(self) -> None:
-        brief = copy.deepcopy(self.brief)
-        brief["project"]["test_project_acknowledged"] = False
-        self.assertIn(
-            "project.test_project_acknowledged must be true for a dedicated test project",
-            validator.validate(brief),
-        )
-        brief["project"]["test_project_acknowledged"] = True
+        brief["project"] = {"merchant_id": 12345, "project_id": 67890}
+        self.assertEqual([], validator.validate(brief))
+        brief["project"].update(environment="test", test_project_acknowledged=True)
         self.assertEqual([], validator.validate(brief))
 
     def test_credentials_are_rejected(self) -> None:
@@ -191,7 +179,6 @@ class ShopBriefTests(unittest.TestCase):
         cases = [
             ("platforms", ["mobile", []], "game.platforms must use:"),
             ("lifecycle", [], "game.lifecycle must use:"),
-            ("environment", [], "project.environment must be test"),
             ("preset", [], "site.preset must use:"),
             ("locales", 7, "site.locales must be a non-empty list"),
             ("group type", [], "catalog.groups[0].type must use:"),
@@ -205,8 +192,6 @@ class ShopBriefTests(unittest.TestCase):
                     brief["game"]["platforms"] = value
                 elif name == "lifecycle":
                     brief["game"]["lifecycle"] = value
-                elif name == "environment":
-                    brief["project"]["environment"] = value
                 elif name == "preset":
                     brief["site"]["preset"] = value
                 elif name == "locales":
@@ -291,37 +276,6 @@ class ShopBriefTests(unittest.TestCase):
             ),
         )
 
-    def test_test_project_must_be_on_the_local_list(self) -> None:
-        expected = {
-            "merchant_id": 100,
-            "project_id": 200,
-            "environment": "test",
-        }
-        with self.assertRaisesRegex(RuntimeError, "approved-test-projects"):
-            preflight.listed_test_project(None, expected)
-        with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "approved-test-projects.json"
-            path.write_text(
-                json.dumps(
-                    {
-                        "version": 1,
-                        "projects": [
-                            {"merchant_id": 100, "project_id": 200}
-                        ],
-                    }
-                ),
-                encoding="utf-8",
-            )
-            self.assertEqual(
-                {"merchant_id": 100, "project_id": 200},
-                preflight.listed_test_project(path, expected),
-            )
-
-    def test_sandbox_project_cannot_skip_allowlist(self) -> None:
-        expected = {"merchant_id": 100, "project_id": 200, "environment": "sandbox"}
-        with self.assertRaisesRegex(RuntimeError, "dedicated test project"):
-            preflight.listed_test_project(None, expected)
-
     def test_read_scripts_refuse_force_before_running_cli(self) -> None:
         for module in (preflight, backup_shop):
             with self.subTest(module=module.__name__):
@@ -336,11 +290,6 @@ class ShopBriefTests(unittest.TestCase):
         with (
             mock.patch.object(sys, "argv", ["preflight.py", str(brief)]),
             mock.patch.object(preflight.shutil, "which", return_value="xsolla"),
-            mock.patch.object(
-                preflight,
-                "listed_test_project",
-                return_value={"merchant_id": 12345, "project_id": 67890},
-            ),
             mock.patch.object(
                 preflight,
                 "run_json",
@@ -365,11 +314,6 @@ class ShopBriefTests(unittest.TestCase):
             mock.patch.object(sys, "argv", ["preflight.py", str(brief)]),
             mock.patch.object(preflight.shutil, "which", return_value="xsolla"),
             mock.patch.object(
-                preflight,
-                "listed_test_project",
-                return_value={"merchant_id": 12345, "project_id": 67890},
-            ),
-            mock.patch.object(
                 preflight, "run_json", side_effect=[config, accounts, {}, {}]
             ) as run_json,
             mock.patch.object(preflight, "cli_has_command", return_value=True),
@@ -378,28 +322,6 @@ class ShopBriefTests(unittest.TestCase):
             self.assertEqual(0, preflight.main())
         self.assertFalse(json.loads(stdout.getvalue())["context"]["sandbox"])
         self.assertEqual(4, run_json.call_count)
-
-    def test_test_project_rejects_different_allowlisted_identity(self) -> None:
-        expected = {
-            "merchant_id": 100,
-            "project_id": 200,
-            "environment": "test",
-        }
-        with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "approved-test-projects.json"
-            path.write_text(
-                json.dumps(
-                    {
-                        "version": 1,
-                        "projects": [
-                            {"merchant_id": 100, "project_id": 201}
-                        ],
-                    }
-                ),
-                encoding="utf-8",
-            )
-            with self.assertRaisesRegex(RuntimeError, "not on the test-project list"):
-                preflight.listed_test_project(path, expected)
 
     def test_backup_resolves_wrapped_landing_id(self) -> None:
         self.assertEqual(

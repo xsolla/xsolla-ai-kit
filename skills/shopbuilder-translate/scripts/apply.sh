@@ -5,7 +5,7 @@
 # Default is a DRY RUN: builds and saves every payload, sends nothing.
 #   --commit              enable the target language, then write page copy. Does not change
 #                         the language the shop opens in.
-#                         Before the first write, checks the local test-project list,
+#                         Before the first write, checks the CLI's project,
 #                         lists that project's websites, and blocks unless the slug is in
 #                         that list. Then it exports the live site read-only and blocks if
 #                         that text changed since extract. Only then does it run add-language
@@ -183,13 +183,9 @@ def block(msg):
     print(f"BLOCKED — {msg} Nothing was written.")
     sys.exit(1)
 
-def allowlist_allows():
-    """Same gate as game-web-portal preflight: version-1 list, integer ids, and the
-    CLI's configured project must match. Not a production denylist."""
-    allow = os.environ.get('XSOLLA_APPROVED_TEST_PROJECTS', '').strip()
-    if not allow or not os.path.isfile(allow):
-        block("set XSOLLA_APPROVED_TEST_PROJECTS to the test-project list JSON "
-              "before any write. A production denylist is not a substitute.")
+def project_matches():
+    """Same gate as game-web-portal preflight: integer ids, and the CLI's configured
+    project must match them."""
     if not M or not P:
         block("XSOLLA_MERCHANT_ID and XSOLLA_PROJECT_ID are required before a write.")
     try:
@@ -198,30 +194,12 @@ def allowlist_allows():
         block("XSOLLA_MERCHANT_ID and XSOLLA_PROJECT_ID must be integers.")
     if merchant <= 0 or project <= 0:
         block("XSOLLA_MERCHANT_ID and XSOLLA_PROJECT_ID must be positive integers.")
-    try:
-        doc = json.load(open(allow))
-    except (OSError, json.JSONDecodeError):
-        block(f"{allow} is not a version-1 test-project list.")
-    if not isinstance(doc, dict) or doc.get('version') != 1 or not isinstance(doc.get('projects'), list):
-        block(f"{allow} is not a version-1 test-project list.")
-    matched = None
-    for index, row in enumerate(doc['projects']):
-        if not isinstance(row, dict):
-            block(f"test-project list entry {index} must be an object.")
-        ids = (row.get('merchant_id'), row.get('project_id'))
-        if any(isinstance(i, bool) or not isinstance(i, int) for i in ids):
-            block(f"test-project list entry {index} must contain integer IDs.")
-        if ids == (merchant, project):
-            matched = row
-            break
-    if matched is None:
-        block(f"merchant {merchant} project {project} is not on the test-project list.")
     r = subprocess.run([XS, 'config', 'list', '--json'], capture_output=True, text=True,
                        encoding='utf-8')
     try:
         config = json.loads(r.stdout)
     except json.JSONDecodeError:
-        block("no Xsolla CLI project context: run `xsolla config init` for the test project.")
+        block("no Xsolla CLI project context: run `xsolla config init` for the project.")
     if isinstance(config, dict) and config.get('ok') is False:
         block(f"xsolla config list failed: {config.get('error', config)}.")
     if isinstance(config, dict) and config.get('ok') is True and 'data' in config:
@@ -230,10 +208,9 @@ def allowlist_allows():
         block("xsolla config list returned an unexpected shape.")
     if config.get('merchant_id') != merchant or config.get('project_id') != project:
         block("the CLI's configured merchant/project does not match the target.")
-    return matched
 
 def domain_on_project():
-    """The allowlisted project's own website list. get-structure is not proof that
+    """The configured project's own website list. get-structure is not proof that
     a domain belongs to these ids. Do not pass --all."""
     r = subprocess.run(
         [XS, 'shopbuilder', 'list-websites',
@@ -241,7 +218,7 @@ def domain_on_project():
         capture_output=True, text=True, encoding='utf-8')
     if r.returncode != 0:
         detail = (r.stderr or r.stdout or 'list-websites failed').strip()
-        block(f"could not list websites for the allowlisted project: {detail}")
+        block(f"could not list websites for the configured project: {detail}")
     try:
         payload = json.loads(r.stdout)
     except json.JSONDecodeError:
@@ -271,7 +248,7 @@ def domain_on_project():
                 break
     if DOMAIN not in slugs:
         shown = ', '.join(slugs) or 'none'
-        block(f"domain {DOMAIN!r} is not a website of the allowlisted project "
+        block(f"domain {DOMAIN!r} is not a website of the configured project "
               f"(list-websites returned: {shown}).")
 
 def live_drift(base_path, live_path):
@@ -290,11 +267,11 @@ def live_drift(base_path, live_path):
     return changed
 
 def backup_before_write():
-    """Allowlist, then a read-only export, before the first write. Not a production denylist.
+    """The project check, then a read-only export, before the first write.
     Returns the exported structure."""
     if not COMMIT:
         return None
-    allowlist_allows()
+    project_matches()
     domain_on_project()
     script = os.path.join(os.environ['SCRIPTDIR'], 'export-backup.sh')
     if not os.path.isfile(script):
@@ -302,12 +279,12 @@ def backup_before_write():
         sys.exit(1)
     out = os.path.abspath(os.path.join('l10n', 'pre-write', time.strftime('%Y%m%d-%H%M%S')))
     os.makedirs(os.path.dirname(out), exist_ok=True)
-    print("\n== read-only export before write (test-project list checked) ==")
+    print("\n== read-only export before write ==")
     r = subprocess.run(['bash', script, DOMAIN, out])
     if r.returncode != 0:
         print("BLOCKED — the read-only export failed. Nothing was written.")
         sys.exit(r.returncode or 1)
-    # list-websites already proved this slug is on the allowlisted project.
+    # list-websites already proved this slug is on the configured project.
     # The export must still be that same site.
     try:
         structure = unwrap(os.path.join(out, 'structure.json'))
@@ -315,7 +292,7 @@ def backup_before_write():
         block("the pre-write structure.json could not be read.")
     got = structure.get('domain') if isinstance(structure, dict) else None
     if got != DOMAIN:
-        block(f"domain {DOMAIN!r} does not belong to the allowlisted project "
+        block(f"domain {DOMAIN!r} does not belong to the configured project "
               f"(get-structure returned domain {got!r}).")
     base_loc = os.path.join(os.path.normpath(BASE), 'localization.json') if BASE else ''
     changed = live_drift(base_loc, os.path.join(out, 'localization.json'))

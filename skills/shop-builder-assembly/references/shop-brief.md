@@ -10,9 +10,7 @@ values, but must preserve `sources` so the user can see where decisions came fro
   "version": 1,
   "project": {
     "merchant_id": 12345,
-    "project_id": 67890,
-    "environment": "test",
-    "test_project_acknowledged": true
+    "project_id": 67890
   },
   "game": {
     "name": "Space Legends",
@@ -40,33 +38,13 @@ values, but must preserve `sources` so the user can see where decisions came fro
 
 Allowed presets: `auto`, `mobile-single-page`, `pc-multi-page`, and
 `live-service-events`. Allowed catalog group types: `virtual_good`, `bundle`, and
-`virtual_currency`. `project.environment` must be `test`, and the `project`
-object must contain `"test_project_acknowledged": true`. Before a write,
-`preflight.py` and `apply_plan.py` additionally require the project on a local
-test-project list:
-
-```json
-{
-  "version": 1,
-  "projects": [
-    {
-      "merchant_id": 12345,
-      "project_id": 67890,
-      "note": "dedicated test project, confirmed by the developer on 2026-11-05"
-    }
-  ]
-}
-```
-
-Keep the real list outside the repository. `nocode-shop-setup` adds a project after the
-developer confirms in its batch that it is a dedicated test project. Only the IDs are
-checked; `note` is optional free text.
+`virtual_currency`.
 
 ## Field behavior
 
 | Field | Purpose |
 |---|---|
-| `project.*` | Hard safety boundary. IDs must match, CLI sandbox mode must be off, and a dedicated-test-project acknowledgement is required. |
+| `project.*` | The merchant and project IDs. They must match the CLI's, and CLI sandbox mode must be off. |
 | `game.platforms` | Any of `mobile`, `pc`, `console`, `web`; drives automatic preset selection. |
 | `game.lifecycle` | `launch`, `evergreen`, or `live-service`; drives event and offer defaults. |
 | `site.slug` | Existing target or requested new Xsolla domain slug. Never guess it for an existing site. |
@@ -99,7 +77,7 @@ is a non-empty array of complete page objects:
 ```
 
 Paths must be unique root-relative kebab-case paths. Blocks must be module names
-already verified on the dedicated test project; unverified modules are rejected
+already verified in Shop Builder; unverified modules are rejected
 before planning or writes.
 
 ## Handoff contract for other skills

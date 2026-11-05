@@ -17,7 +17,7 @@ metadata:
 # Shop Builder Assembly
 
 Build an unpublished Publisher Account **Shop Builder site**, not a custom frontend,
-in a dedicated non-partner test project through `xsolla shopbuilder`.
+in the developer's project through `xsolla shopbuilder`.
 
 A Game Web Portal is built by `game-web-portal`, not here. If the user asked for a
 game home, or the existing site has `/news`, `/rewards`, and `/store`, hand off to
@@ -47,12 +47,8 @@ until [expert-review.md](references/expert-review.md) records approval.
 
 ## Non-negotiable safety gate
 
-1. Run `scripts/preflight.py <brief.json> --approved-test-projects <test-projects.json>`.
-   The test-project list is at `$XSOLLA_APPROVED_TEST_PROJECTS`, by default
-   `~/.config/xsolla/approved-test-projects.json`; `nocode-shop-setup` asks in its first
-   batch whether the project is a dedicated test project and adds it, not at this step.
-   Read back the matched merchant ID, project ID, safety environment, active Publisher
-   login, target site, and catalog groups.
+1. Run `scripts/preflight.py <brief.json>`. Read back the matched merchant ID, project
+   ID, active Publisher login, target site, and catalog groups.
    When `catalog-design`'s proposal is still waiting for the same yes, preflight's only
    allowed failure is the groups that proposal creates: render and show the plan with
    it. After the yes and the catalog's creation, run preflight again; it must pass in
@@ -88,12 +84,9 @@ until [expert-review.md](references/expert-review.md) records approval.
    `nocode-shop-setup` shows it in one message with a pending catalog proposal, that yes
    covers creating the catalog too. Earlier permission to "build a shop" is not that
    yes. Apply with `--approved-plan approved-plan.json --confirmation-id <its
-   confirmation_id> --approved-test-projects <test-projects.json>`; the script refuses an
-   edited plan file, and every script that writes needs the test-project list flag.
+   confirmation_id>`; the script refuses an edited plan file.
 
-The brief must target an acknowledged dedicated test project that is on the local
-test-project list with its exact IDs. Never use sandbox
-as a Shop Builder target or use a partner project. Never publish, attach a production
+Never use sandbox as a Shop Builder target. Never publish, attach a production
 domain, enable live payments, or apply a saved version. A human publishes in Publisher Account.
 
 **More than one run under the yes.** A new site is applied in two runs, a run that stops
@@ -184,8 +177,7 @@ If the CLI lacks an operation, stop it, record the gap, and file a CLI/API ticke
 ## Stop conditions
 
 Stop before writes when project identity is ambiguous, backup fails, confirmation is
-missing, the target is not an acknowledged dedicated test project,
-catalog/project IDs do not match, or the plan requires an unverified block module.
+missing, catalog/project IDs do not match, or the plan requires an unverified block module.
 Preserve completed safe work and explain the smallest action needed to continue.
 
 ## Known limitations
