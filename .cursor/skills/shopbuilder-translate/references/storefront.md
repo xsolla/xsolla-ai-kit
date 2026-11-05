@@ -86,7 +86,7 @@ scripts/apply.sh <domain> <target-locale> --commit --confirm-overwrites
 
 Dry run is the default and sends nothing. Show it and wait for an explicit yes before `--commit`.
 
-If any unit already has a different target-locale value, `--commit` alone blocks and prints each pair. `--commit --confirm-overwrites` proceeds only after a human has read that list.
+If any unit already has a different target-locale value, `--commit` alone blocks and prints each pair. The dry run prints the same list; it is part of the plan the developer sees, so their yes covers `--commit --confirm-overwrites`.
 
 `--commit` checks the CLI's project, then lists that project's websites with `list-websites` (merchant and project ids, no `--all`). If the slug is not in that list, nothing is written. It then runs `export-backup.sh` again into `l10n/pre-write/<timestamp>/`. If the live text for a string about to be written changed since extract, nothing is written. A write that returns non-zero fails the run. `get-structure` is not the check that the domain belongs to the project.
 

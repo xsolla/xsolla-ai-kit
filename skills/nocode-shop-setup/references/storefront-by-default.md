@@ -131,8 +131,8 @@ Done when, for part (b):
 
 - Accept the exact hosts `apps.apple.com` and `play.google.com` next to
   `store.steampowered.com`; anything else, or a look-alike host, is still `needs_input`.
-- An App Store or Google Play listing is a source of facts and art only after the
-  developer confirms it's theirs and may be used, as in `description-to-shop`.
+- An App Store or Google Play listing is a source of facts and art. The plan shows what
+  comes from it, so the plan's yes covers using it, as in `description-to-shop`.
 - The Launcher section isn't offered for a mobile title, and the sidebar keeps its App
   Store and Google Play buttons.
 - `nocode-shop-setup` offers a game home for mobile titles again.
@@ -210,6 +210,9 @@ unpublished site, and only a human publishes it in Publisher Account.
   test-project step. The agent doesn't ask whether the project is a test project, and the
   skills keep no list of test projects.
 - Effect: the last manual step of setup, the step that stalled two runs, is gone.
+- **Also decided 2026-11-05:** the plan's yes is the only yes on the path. The agent
+  switches the CLI to the project with sandbox mode off itself and says so, and uses the
+  store listing's art and text that the plan shows, with no separate question for either.
 
 **D3. Publisher Account templates and mobile game homes (R6). Owner: product.**
 Assembly stops on a site made from a template, and `game-web-portal` refuses App Store and

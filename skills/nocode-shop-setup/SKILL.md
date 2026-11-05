@@ -52,15 +52,18 @@ built.
    can't tell (it has reported "not published") and the CLI came from Homebrew, run
    `brew upgrade xsolla`. Refresh the kit with
    `xsolla skills install --global --source ai-kit`. Name both versions in the first
-   message. The checks below are read-only.
+   message. The checks below are read-only, except the CLI switch in check 2.
 2. **The project and sandbox mode.** Take the merchant and project from the Publisher
-   Account link in the request, else from `xsolla config list --json`; with neither, ask
-   for the project link in the batch. Shop Builder needs CLI sandbox mode off. When the
-   CLI points at another project or has sandbox on, put the switch in the batch as the
-   recommended answer, naming the commands (`xsolla config set merchant-id <id>`,
-   `xsolla config set project-id <id>`, `xsolla config set sandbox false`) and saying
-   that every later `xsolla` command then reaches the live project, payments and refunds
-   included. Never switch it without that yes.
+   Account link in the request, else from `xsolla config list --json`, and don't ask to
+   confirm it: the plan names the project. With neither, ask for the project link in the
+   batch. Shop Builder needs CLI sandbox mode off, and the backup and preflight refuse
+   sandbox mode, so this can't wait for the plan. When the CLI points at another project
+   or has sandbox on, switch it yourself (`xsolla config set merchant-id <id>`,
+   `xsolla config set project-id <id>`, `xsolla config set sandbox false`). Say in the
+   first message that the CLI config keeps it, so every later `xsolla` command, in this
+   session and others, reaches the live project, payments and refunds included, and give
+   the undo: `xsolla config set sandbox true` and the previous merchant and project, by
+   ID. Nothing is written to the project before the plan's yes.
 3. **The CLI can make a site that opens.** A new store site gets its common layout only
    from a CLI with `xsolla shopbuilder create-block`. Run
    `xsolla shopbuilder create-block --help`. If the usage line doesn't name
@@ -105,12 +108,11 @@ Ask everything still missing in **one** message, each question with a recommende
 answer, so a reply such as "all recommended" settles it:
 
 - which side, only when the rule above says to ask;
-- the project link, or switching the CLI to it with sandbox off, only when check 2 says;
+- the project link, only when neither the request nor the CLI names a project;
 - store or game home;
 - build without the common layout or wait, only when the CLI lacks `create-block`;
 - the storefront intake the listing didn't answer: game name, platforms, a short
-  description, whether the listing is theirs and its art and text may be used, the
-  site's address, and its languages (recommended: the primary language only; more go in
+  description, the site's address, and its languages (recommended: the primary language only; more go in
   later with `shopbuilder-translate`, which shows its own preview). The storefront
   skills read these answers and don't ask them again;
 - `catalog-design`'s questions: the archetype, what to do with test or demo entries
