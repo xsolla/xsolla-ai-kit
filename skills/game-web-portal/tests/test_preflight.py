@@ -14,8 +14,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 import preflight  # noqa: E402
 
 CONFIG = {"merchant_id": 11, "project_id": 22}
-APPROVAL = {"merchant_id": 11, "project_id": 22, "approved_by": "Product owner",
-            "approval_reference": "approval thread"}
+ENTRY = {"merchant_id": 11, "project_id": 22}
 
 
 TMP = tempfile.TemporaryDirectory()
@@ -36,45 +35,44 @@ def allowlist(*projects: dict, version: int = 1) -> Path:
 
 class CheckProjectTest(unittest.TestCase):
     def test_listed_project_passes(self):
-        approval = preflight.check_project(11, 22, allowlist(APPROVAL), config=CONFIG)
-        self.assertEqual(approval["approved_by"], "Product owner")
+        entry = preflight.check_project(11, 22, allowlist(ENTRY), config=CONFIG)
+        self.assertEqual(entry, ENTRY)
 
     def test_unlisted_project_stops(self):
-        other = {**APPROVAL, "project_id": 99}
-        with self.assertRaisesRegex(RuntimeError, "not in the approved test-project allowlist"):
+        other = {**ENTRY, "project_id": 99}
+        with self.assertRaisesRegex(RuntimeError, "not on the test-project list"):
             preflight.check_project(11, 22, allowlist(other), config=CONFIG)
 
     def test_cli_sandbox_mode_stops(self):
         with self.assertRaisesRegex(RuntimeError, "sandbox mode is on"):
-            preflight.check_project(11, 22, allowlist(APPROVAL), config={**CONFIG, "sandbox": True})
+            preflight.check_project(11, 22, allowlist(ENTRY), config={**CONFIG, "sandbox": True})
 
     def test_cli_sandbox_off_or_missing_passes(self):
         for config in (CONFIG, {**CONFIG, "sandbox": False}):
             with self.subTest(config=config):
-                approval = preflight.check_project(11, 22, allowlist(APPROVAL), config=config)
-                self.assertEqual(approval["approved_by"], "Product owner")
+                entry = preflight.check_project(11, 22, allowlist(ENTRY), config=config)
+                self.assertEqual(entry, ENTRY)
 
     def test_cli_pointing_at_another_project_stops(self):
         with self.assertRaisesRegex(RuntimeError, "does not match the target"):
-            preflight.check_project(11, 22, allowlist(APPROVAL),
+            preflight.check_project(11, 22, allowlist(ENTRY),
                                     config={**CONFIG, "project_id": 99})
 
     def test_unreadable_allowlist_stops(self):
-        with self.assertRaisesRegex(RuntimeError, "cannot read approved test projects"):
+        with self.assertRaisesRegex(RuntimeError, "cannot read the test-project list"):
             preflight.check_project(11, 22, Path("/nonexistent/allowlist.json"), config=CONFIG)
 
-    def test_approval_fields_are_required(self):
-        for field in ("approved_by", "approval_reference"):
-            with self.subTest(field=field):
-                with self.assertRaisesRegex(RuntimeError, field):
-                    preflight.check_project(11, 22, allowlist({**APPROVAL, field: " "}),
-                                            config=CONFIG)
+    def test_ids_alone_are_enough(self):
+        entry = {**ENTRY, "note": "dedicated test project, confirmed in chat"}
+        self.assertEqual(
+            preflight.check_project(11, 22, allowlist(entry), config=CONFIG), entry
+        )
 
     def test_malformed_allowlist_stops(self):
         with self.assertRaisesRegex(RuntimeError, "version 1"):
-            preflight.check_project(11, 22, allowlist(APPROVAL, version=2), config=CONFIG)
+            preflight.check_project(11, 22, allowlist(ENTRY, version=2), config=CONFIG)
         with self.assertRaisesRegex(RuntimeError, "integer IDs"):
-            preflight.check_project(11, 22, allowlist({**APPROVAL, "project_id": "22"}),
+            preflight.check_project(11, 22, allowlist({**ENTRY, "project_id": "22"}),
                                     config=CONFIG)
 
 
@@ -125,12 +123,12 @@ class MainTest(unittest.TestCase):
     def test_refusal_exits_one_on_stderr(self):
         code, stdout, stderr = self.run_main("--approved-test-projects", str(allowlist()))
         self.assertEqual((code, stdout), (1, ""))
-        self.assertIn("not in the approved test-project allowlist", stderr)
+        self.assertIn("not on the test-project list", stderr)
 
-    def test_pass_prints_the_approval(self):
-        code, stdout, _ = self.run_main("--approved-test-projects", str(allowlist(APPROVAL)))
+    def test_pass_prints_the_list_entry(self):
+        code, stdout, _ = self.run_main("--approved-test-projects", str(allowlist(ENTRY)))
         self.assertEqual(code, 0)
-        self.assertEqual(json.loads(stdout)["approval"]["approval_reference"], "approval thread")
+        self.assertEqual(json.loads(stdout)["test_project"], ENTRY)
 
 
 if __name__ == "__main__":

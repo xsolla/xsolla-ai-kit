@@ -2,8 +2,8 @@
 # export-backup.sh <domain> <output-dir>
 #
 # Read-only export of the two files extract.sh reads: structure.json and
-# localization.json. Does not change the site. The approved-test-project
-# allowlist is checked by apply.sh before a write, not here.
+# localization.json. Does not change the site. The test-project list is
+# checked by apply.sh before a write, not here.
 set -euo pipefail
 
 DOMAIN="${1:?usage: export-backup.sh <domain> <output-dir>}"

@@ -1727,8 +1727,8 @@ class CommonLayoutPreflightTests(unittest.TestCase):
             mock.patch.object(preflight.shutil, "which", return_value="xsolla"),
             mock.patch.object(
                 preflight,
-                "approved_test_project",
-                return_value={"approval_reference": "test approval"},
+                "listed_test_project",
+                return_value={"merchant_id": 12345, "project_id": 67890},
             ),
             mock.patch.object(preflight, "run_json", side_effect=cli),
             mock.patch.object(
@@ -1766,8 +1766,8 @@ class CommonLayoutPreflightTests(unittest.TestCase):
                 mock.patch.object(preflight.shutil, "which", return_value="xsolla"),
                 mock.patch.object(
                     preflight,
-                    "approved_test_project",
-                    return_value={"approval_reference": "test approval"},
+                    "listed_test_project",
+                    return_value={"merchant_id": 12345, "project_id": 67890},
                 ),
                 mock.patch.object(preflight, "run_json", side_effect=FakePreflightCli()),
                 mock.patch.object(preflight, "cli_has_command", return_value=True),

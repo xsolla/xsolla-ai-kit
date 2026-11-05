@@ -291,14 +291,14 @@ class ShopBriefTests(unittest.TestCase):
             ),
         )
 
-    def test_test_project_requires_separate_allowlist_record(self) -> None:
+    def test_test_project_must_be_on_the_local_list(self) -> None:
         expected = {
             "merchant_id": 100,
             "project_id": 200,
             "environment": "test",
         }
         with self.assertRaisesRegex(RuntimeError, "approved-test-projects"):
-            preflight.approved_test_project(None, expected)
+            preflight.listed_test_project(None, expected)
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "approved-test-projects.json"
             path.write_text(
@@ -306,28 +306,21 @@ class ShopBriefTests(unittest.TestCase):
                     {
                         "version": 1,
                         "projects": [
-                            {
-                                "merchant_id": 100,
-                                "project_id": 200,
-                                "approved_by": "test mentor",
-                                "approval_reference": "test approval",
-                            }
+                            {"merchant_id": 100, "project_id": 200}
                         ],
                     }
                 ),
                 encoding="utf-8",
             )
             self.assertEqual(
-                "test approval",
-                preflight.approved_test_project(path, expected)[
-                    "approval_reference"
-                ],
+                {"merchant_id": 100, "project_id": 200},
+                preflight.listed_test_project(path, expected),
             )
 
     def test_sandbox_project_cannot_skip_allowlist(self) -> None:
         expected = {"merchant_id": 100, "project_id": 200, "environment": "sandbox"}
         with self.assertRaisesRegex(RuntimeError, "dedicated test project"):
-            preflight.approved_test_project(None, expected)
+            preflight.listed_test_project(None, expected)
 
     def test_read_scripts_refuse_force_before_running_cli(self) -> None:
         for module in (preflight, backup_shop):
@@ -345,8 +338,8 @@ class ShopBriefTests(unittest.TestCase):
             mock.patch.object(preflight.shutil, "which", return_value="xsolla"),
             mock.patch.object(
                 preflight,
-                "approved_test_project",
-                return_value={"approval_reference": "test approval"},
+                "listed_test_project",
+                return_value={"merchant_id": 12345, "project_id": 67890},
             ),
             mock.patch.object(
                 preflight,
@@ -373,8 +366,8 @@ class ShopBriefTests(unittest.TestCase):
             mock.patch.object(preflight.shutil, "which", return_value="xsolla"),
             mock.patch.object(
                 preflight,
-                "approved_test_project",
-                return_value={"approval_reference": "test approval"},
+                "listed_test_project",
+                return_value={"merchant_id": 12345, "project_id": 67890},
             ),
             mock.patch.object(
                 preflight, "run_json", side_effect=[config, accounts, {}, {}]
@@ -399,19 +392,14 @@ class ShopBriefTests(unittest.TestCase):
                     {
                         "version": 1,
                         "projects": [
-                            {
-                                "merchant_id": 100,
-                                "project_id": 201,
-                                "approved_by": "test mentor",
-                                "approval_reference": "test approval",
-                            }
+                            {"merchant_id": 100, "project_id": 201}
                         ],
                     }
                 ),
                 encoding="utf-8",
             )
-            with self.assertRaisesRegex(RuntimeError, "not in the approved"):
-                preflight.approved_test_project(path, expected)
+            with self.assertRaisesRegex(RuntimeError, "not on the test-project list"):
+                preflight.listed_test_project(path, expected)
 
     def test_backup_resolves_wrapped_landing_id(self) -> None:
         self.assertEqual(

@@ -68,7 +68,7 @@ chk "no call carries --sandbox at all"       "! grep -rq -- '--sandbox' $PD/"
 chk "asset URL never written"                "! grep -rq 'og-image' $PD/"
 chk "no catalog payload"                     "! ls $PD/catalog.* >/dev/null 2>&1"
 
-echo "== apply: a missing allowlist blocks the write =="
+echo "== apply: a missing test-project list blocks the write =="
 cp "$HERE/fixtures/translated.de-DE.json" l10n/work/de-DE/translated.json
 export XSOLLA_CLI="$HERE/fixtures/fake-xsolla.sh"
 export FAKE_STORE="$HERE/fixtures/baseline"
@@ -76,24 +76,24 @@ set +e
 env -u XSOLLA_APPROVED_TEST_PROJECTS XSOLLA_MERCHANT_ID=1 XSOLLA_PROJECT_ID=2 \
   bash "$HERE/apply.sh" voidwall-45e0 de-DE --commit > noallow.out 2>&1; nrc=$?
 set -e
-chk "commit without the allowlist is BLOCKED" "[ $nrc -ne 0 ]"
-chk "missing allowlist does not claim success" "! grep -q 'Copy was written' noallow.out"
+chk "commit without the test-project list is BLOCKED" "[ $nrc -ne 0 ]"
+chk "missing test-project list does not claim success" "! grep -q 'Copy was written' noallow.out"
 export XSOLLA_APPROVED_TEST_PROJECTS="$HERE/fixtures/approved-test-projects.json"
 
-echo "== apply: the domain and the CLI project must match the allowlist =="
+echo "== apply: the domain and the CLI project must match the test-project list =="
 set +e
 FAKE_CONFIG_PROJECT=99 XSOLLA_MERCHANT_ID=1 XSOLLA_PROJECT_ID=2 \
   bash "$HERE/apply.sh" voidwall-45e0 de-DE --commit > cfg.out 2>&1; crc=$?
 set -e
 chk "CLI pointed at another project is BLOCKED" "[ $crc -ne 0 ]"
 chk "CLI mismatch names the configured project" "grep -q 'configured merchant/project' cfg.out"
-jq 'del(.projects[0].approved_by)' "$HERE/fixtures/approved-test-projects.json" > "$TMP/no-approval.json"
+jq '.projects[0].project_id = 9' "$HERE/fixtures/approved-test-projects.json" > "$TMP/other-project.json"
 set +e
-XSOLLA_APPROVED_TEST_PROJECTS="$TMP/no-approval.json" XSOLLA_MERCHANT_ID=1 XSOLLA_PROJECT_ID=2 \
-  bash "$HERE/apply.sh" voidwall-45e0 de-DE --commit > approval.out 2>&1; arc=$?
+XSOLLA_APPROVED_TEST_PROJECTS="$TMP/other-project.json" XSOLLA_MERCHANT_ID=1 XSOLLA_PROJECT_ID=2 \
+  bash "$HERE/apply.sh" voidwall-45e0 de-DE --commit > unlisted.out 2>&1; urc=$?
 set -e
-chk "allowlist entry without approved_by is BLOCKED" "[ $arc -ne 0 ]"
-chk "missing approval field is named" "grep -q 'approved_by' approval.out"
+chk "a project not on the test-project list is BLOCKED" "[ $urc -ne 0 ]"
+chk "the block names the test-project list" "grep -q 'not on the test-project list' unlisted.out"
 set +e
 XSOLLA_MERCHANT_ID=1 XSOLLA_PROJECT_ID=2 \
   bash "$HERE/apply.sh" other-shop de-DE --commit > domain.out 2>&1; domrc=$?

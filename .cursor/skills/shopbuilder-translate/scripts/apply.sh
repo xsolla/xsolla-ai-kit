@@ -5,7 +5,7 @@
 # Default is a DRY RUN: builds and saves every payload, sends nothing.
 #   --commit              enable the target language, then write page copy. Does not change
 #                         the language the shop opens in.
-#                         Before the first write, checks the approved-test-project allowlist,
+#                         Before the first write, checks the local test-project list,
 #                         lists that project's websites, and blocks unless the slug is in
 #                         that list. Then it exports the live site read-only and blocks if
 #                         that text changed since extract. Only then does it run add-language
@@ -184,13 +184,12 @@ def block(msg):
     sys.exit(1)
 
 def allowlist_allows():
-    """Same gate as game-web-portal preflight: version-1 list, integer ids,
-    approved_by and approval_reference, and the CLI's configured project must match.
-    Not a production denylist."""
+    """Same gate as game-web-portal preflight: version-1 list, integer ids, and the
+    CLI's configured project must match. Not a production denylist."""
     allow = os.environ.get('XSOLLA_APPROVED_TEST_PROJECTS', '').strip()
     if not allow or not os.path.isfile(allow):
-        block("set XSOLLA_APPROVED_TEST_PROJECTS to the approved-test-project "
-              "allowlist JSON before any write. A production denylist is not a substitute.")
+        block("set XSOLLA_APPROVED_TEST_PROJECTS to the test-project list JSON "
+              "before any write. A production denylist is not a substitute.")
     if not M or not P:
         block("XSOLLA_MERCHANT_ID and XSOLLA_PROJECT_ID are required before a write.")
     try:
@@ -202,24 +201,21 @@ def allowlist_allows():
     try:
         doc = json.load(open(allow))
     except (OSError, json.JSONDecodeError):
-        block(f"{allow} is not a version-1 allowlist.")
+        block(f"{allow} is not a version-1 test-project list.")
     if not isinstance(doc, dict) or doc.get('version') != 1 or not isinstance(doc.get('projects'), list):
-        block(f"{allow} is not a version-1 allowlist.")
+        block(f"{allow} is not a version-1 test-project list.")
     matched = None
     for index, row in enumerate(doc['projects']):
         if not isinstance(row, dict):
-            block(f"approved test projects[{index}] must be an object.")
+            block(f"test-project list entry {index} must be an object.")
         ids = (row.get('merchant_id'), row.get('project_id'))
         if any(isinstance(i, bool) or not isinstance(i, int) for i in ids):
-            block(f"approved test projects[{index}] must contain integer IDs.")
-        for field in ('approved_by', 'approval_reference'):
-            if not isinstance(row.get(field), str) or not row[field].strip():
-                block(f"approved test projects[{index}].{field} is required.")
+            block(f"test-project list entry {index} must contain integer IDs.")
         if ids == (merchant, project):
             matched = row
             break
     if matched is None:
-        block(f"merchant {merchant} project {project} is not on the approved-test-project allowlist.")
+        block(f"merchant {merchant} project {project} is not on the test-project list.")
     r = subprocess.run([XS, 'config', 'list', '--json'], capture_output=True, text=True,
                        encoding='utf-8')
     try:
@@ -306,7 +302,7 @@ def backup_before_write():
         sys.exit(1)
     out = os.path.abspath(os.path.join('l10n', 'pre-write', time.strftime('%Y%m%d-%H%M%S')))
     os.makedirs(os.path.dirname(out), exist_ok=True)
-    print("\n== read-only export before write (approved-test-project allowlist) ==")
+    print("\n== read-only export before write (test-project list checked) ==")
     r = subprocess.run(['bash', script, DOMAIN, out])
     if r.returncode != 0:
         print("BLOCKED — the read-only export failed. Nothing was written.")

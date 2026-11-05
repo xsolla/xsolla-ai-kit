@@ -37,7 +37,7 @@ The user acts in steps 1, 2 and 4 only.
 1. **Setup, once.** One prompt installs the CLI and the kit and signs in with the merchant and
    project from the project link.
 2. **Build prompt.** A game link, plus a reference for the look if the user has one.
-3. **Checks and research.** Latest CLI and kit, CLI capabilities, test-project approval,
+3. **Checks and research.** Latest CLI and kit, CLI capabilities, the test-project check,
    platform, signed-in browser and design tools; then the game's currency, packs, items and
    art, each with its source. Anything still missing is asked once, as one batch with
    recommended answers.
@@ -67,7 +67,7 @@ waits for a CLI release. **Open** has nothing merged yet.
 | R6 | Support Publisher Account templates and mobile game homes | An App Store link becomes a multi-page hub with LiveOps through the kit; see [R6 in detail](#r6-in-detail) | shop-builder-assembly, game-web-portal, nocode-shop-setup | Done: part (b) works for the single-page preset on a Single-page shop template site, tested on the masked real-export fixture and a scripted run (D3 decided). Part (c) is merged: `game-web-portal` takes App Store and Google Play titles, `scripts/store_url.py` passes only the three exact store hosts, and `nocode-shop-setup` offers a game home to mobile titles. A multi-page plan on a template site builds too, tested on the masked fixture and a scripted run | [#134](https://github.com/xsolla/xsolla-ai-kit/pull/134), [#144](https://github.com/xsolla/xsolla-ai-kit/pull/144), [#145](https://github.com/xsolla/xsolla-ai-kit/pull/145) |
 | R7 | Helpers for CLI gaps instead of a stop | The agent neither stops nor improvises on known gaps | shop-builder-assembly, catalog-design | CLI: decided (D4 a). The kit keeps its "no raw HTTP" rule and stops on a known gap, saying which; the gaps close with the CLI release | — |
 | R8 | Research, real art and the full feature set by default | No follow-up prompt for art, SEO or features | description-to-shop, catalog-design, shop-builder-assembly | Done: full shop proposal, store-listing art, an image per product, design defaults, and SEO by default are merged: `description-to-shop` fills each page's search title, description and share image without asking, and `apply_style.py` writes them. The sandbox purchase test is dropped (D6 a) | [#118](https://github.com/xsolla/xsolla-ai-kit/pull/118), [#143](https://github.com/xsolla/xsolla-ai-kit/pull/143) |
-| R9 | Setup without manual steps | Setup takes one prompt and no manual step besides signing in | nocode-shop-setup, merchant-setup | Partial: the approver is asked first, the CLI is installed when missing (Windows included) and the user signs in in their own terminal, the CLI and kit are refreshed first, the key comes from `auth login` without asking, and no key or Login project is created before the yes. Self-attestation by the project owner stays out of 1.5.0 (D2) | [#117](https://github.com/xsolla/xsolla-ai-kit/pull/117), [#118](https://github.com/xsolla/xsolla-ai-kit/pull/118), [#128](https://github.com/xsolla/xsolla-ai-kit/pull/128), [#130](https://github.com/xsolla/xsolla-ai-kit/pull/130) |
+| R9 | Setup without manual steps | Setup takes one prompt and no manual step besides signing in | nocode-shop-setup, merchant-setup | Partial: the test-project question is asked first, the CLI is installed when missing (Windows included) and the user signs in in their own terminal, the CLI and kit are refreshed first, the key comes from `auth login` without asking, and no key or Login project is created before the yes. The developer confirms the test project with a yes in the batch (D2) | [#117](https://github.com/xsolla/xsolla-ai-kit/pull/117), [#118](https://github.com/xsolla/xsolla-ai-kit/pull/118), [#128](https://github.com/xsolla/xsolla-ai-kit/pull/128), [#130](https://github.com/xsolla/xsolla-ai-kit/pull/130) |
 | R10 | Resumable, rerunnable builds | A build interrupted at any step resumes and finishes without duplicates | shop-builder-assembly | Partial: a stopped run's report keeps the same yes, a taken slug stops the run by name, and a rerun skips pages, navigation, locales and catalog links that already match. `apply_style.py` keeps an asset cache, so a rerun doesn't upload an image twice. Open: resuming catalog creation, which `catalog-design` does without a script. A stopped run resumed under the same yes three times in a scripted run against a stateful stand-in CLI | [#117](https://github.com/xsolla/xsolla-ai-kit/pull/117), [#129](https://github.com/xsolla/xsolla-ai-kit/pull/129), [#138](https://github.com/xsolla/xsolla-ai-kit/pull/138) |
 | R11 | Pay Station theme matches the site | Buy opens Pay Station in the site's look on desktop and mobile | new step after assembly | Done as a handoff step (D5 a): `apply_style.py` hands over the site's palette, mapped to Pay Station's color groups, with the Pay Station customization link. Setting the theme automatically waits for a Pay Station API | [#148](https://github.com/xsolla/xsolla-ai-kit/pull/148) |
 
@@ -156,7 +156,7 @@ ships, which is a separate decision.
 
 | Item | Status | Where |
 |---|---|---|
-| Ask for the test-project approver first, not at the last step | Done | [#117](https://github.com/xsolla/xsolla-ai-kit/pull/117) |
+| Ask about the test project first, not at the last step | Done | [#117](https://github.com/xsolla/xsolla-ai-kit/pull/117) |
 | Don't offer a game home for App Store or Google Play titles | Superseded by R6 part (c): a mobile title gets a game home, without a launcher | [#117](https://github.com/xsolla/xsolla-ai-kit/pull/117) |
 | Don't ask "where should the shop live" with no repo | Done | [#117](https://github.com/xsolla/xsolla-ai-kit/pull/117) |
 | Say in the first message that the CLI can't make a site that opens | Done | [#117](https://github.com/xsolla/xsolla-ai-kit/pull/117) |
@@ -183,7 +183,7 @@ a stand-in `xsolla` CLI that logs every call and keeps state, on 2026-11-03:
 
 - **First message**, five scenarios (mobile and PC, with and without a storefront repo,
   and "I'll write the code"): the right skill each time, one batch with recommended
-  answers, the approver asked with no default, and no write.
+  answers, the test-project question asked with no default, and no write.
 - **Full flow**, the build prompt and then one "yes": the catalog and LiveOps were created
   and read back first, both apply runs went through under the same yes,
   `verify_structure.py` matched the plan, and nothing was written before the yes.
@@ -204,14 +204,15 @@ fixes back to those values. Anything the plan didn't show still needs a new yes.
   for release 1.5.0.
 - Effect: (b) brings back a question for every theme, font or wording fix after the review.
 
-**D2. Who approves the test project (R9). Owner: safety.** Today the allowlist needs an
-approver (a mentor or tech lead) and a link to that approval.
-- Options: (a) keep it; (b) the project owner confirms in chat, recorded with the date and
-  their words; (c) the owner confirms only for a project the CLI marks as a test project.
-- Recommendation: (c) once the CLI can mark test projects; (a) until then.
-- **Decided 2026-11-03: (a) for 1.5.0,** by the Shop Builder skills' code owner
-  (apyanzin-xsolla): the approver and link stay. (c) waits for the CLI.
-- Effect: (b) or (c) removes the last manual step of setup, the step that stalled two runs.
+**D2. How the test project is confirmed (R9). Owner: safety.** Shop Builder writes only
+to a project on the local test-project list.
+- Options: (a) a separate sign-off recorded in the list; (b) the developer confirms in
+  chat, recorded with the date and their words; (c) the developer confirms only for a
+  project the CLI marks as a test project.
+- **Decided 2026-11-05: (b),** by the Shop Builder skills' code owner (apyanzin-xsolla).
+  The agent asks once, in the batch, whether the project is a dedicated test project, and
+  on a yes adds it to the list itself. (c) can replace it once the CLI marks test projects.
+- Effect: the last manual step of setup, the step that stalled two runs, is gone.
 
 **D3. Publisher Account templates and mobile game homes (R6). Owner: product.**
 Assembly stops on a site made from a template, and `game-web-portal` refuses App Store and

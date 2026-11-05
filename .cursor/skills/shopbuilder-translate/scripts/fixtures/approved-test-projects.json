@@ -3,9 +3,7 @@
   "projects": [
     {
       "merchant_id": 1,
-      "project_id": 2,
-      "approved_by": "smoke-test",
-      "approval_reference": "offline"
+      "project_id": 2
     }
   ]
 }

@@ -18,7 +18,7 @@ Not for creating the store (`shop-builder-assembly`) or for prices. Catalog and 
 - The store renders. An empty page translates demo data.
 - Shop Builder auth is `xsolla auth login` (OAuth2 + PKCE) only. On "audience required", retry `--audience https://api.xsolla.com`. Do not pass a session token by hand.
 - `XSOLLA_MERCHANT_ID`, `XSOLLA_PROJECT_ID`.
-- `XSOLLA_APPROVED_TEST_PROJECTS` is the approved-test-project allowlist. Writes use environment `test`.
+- `XSOLLA_APPROVED_TEST_PROJECTS` is the local test-project list. Writes use environment `test`.
 - Use the returned domain. `create-website --slug voidwall` yields `voidwall-45e0`. Localization commands take that domain as `--slug`. `--landing-id` is the landing's Mongo `_id` from `get-structure`. A slug there 500s.
 - `scripts/preflight.sh` checks `shopbuilder get-localization`, `update-many-localization`, and `get-block`.
 - No sandbox. The scripts never pass `--sandbox`.
@@ -39,7 +39,7 @@ Fails if the CLI is the wrong binary, a subcommand is missing, or the session is
 scripts/export-backup.sh <domain> l10n/backup/<timestamp>
 ```
 
-This reads the live site with `get-structure` and `get-localization` and writes those two files. It does not change the site. Re-run it every time. A Publisher Account edit since the last export makes the diff a lie. The approved-test-project allowlist is checked before a write, not before this read. Do not keep a production-project denylist.
+This reads the live site with `get-structure` and `get-localization` and writes those two files. It does not change the site. Re-run it every time. A Publisher Account edit since the last export makes the diff a lie. The test-project list is checked before a write, not before this read. Do not keep a production-project denylist.
 
 ### 3. Extract
 
@@ -89,7 +89,7 @@ Dry run is the default and sends nothing. Show it and wait for an explicit yes b
 
 If any unit already has a different target-locale value, `--commit` alone blocks and prints each pair. `--commit --confirm-overwrites` proceeds only after a human has read that list.
 
-`--commit` checks the approved-test-project allowlist, then lists that project's websites with `list-websites` (merchant and project ids, no `--all`). If the slug is not in that list, nothing is written. It then runs `export-backup.sh` again into `l10n/pre-write/<timestamp>/`. If the live text for a string about to be written changed since extract, nothing is written. A write that returns non-zero fails the run. `get-structure` is not the check that the domain belongs to the project.
+`--commit` checks the test-project list, then lists that project's websites with `list-websites` (merchant and project ids, no `--all`). If the slug is not in that list, nothing is written. It then runs `export-backup.sh` again into `l10n/pre-write/<timestamp>/`. If the live text for a string about to be written changed since extract, nothing is written. A write that returns non-zero fails the run. `get-structure` is not the check that the domain belongs to the project.
 
 Only after those checks does `--commit` enable the language with `add-language`, then write the copy. `add-language` appends. It does not change the language the shop opens in. If the pre-write export already lists the locale, `add-language` is skipped. If it still returns 400 and the message "language is taken", that is success too. Any other failure stops the run before any copy is written. If the copy write fails after this run enabled the language, the run prints the `delete-language` command for that language. Show it to the user. This skill does not run it.
 
@@ -128,7 +128,7 @@ scripts/verify.sh <domain> <target-locale> --json
 
 ## No sandbox
 
-`--sandbox` does not change the URL. Shop Builder `get-structure --sandbox` warns `shopbuilder has no Xsolla sandbox` and still requests the live site. The scripts never pass `--sandbox`. `preflight.sh` reads `xsolla config list` and stops when `sandbox` is true. A missing key counts as off. The allowlist is the control: environment `test`, and the project must be on the approved-test-project list.
+`--sandbox` does not change the URL. Shop Builder `get-structure --sandbox` warns `shopbuilder has no Xsolla sandbox` and still requests the live site. The scripts never pass `--sandbox`. `preflight.sh` reads `xsolla config list` and stops when `sandbox` is true. A missing key counts as off. The test-project list is the control: environment `test`, and the project must be on that list.
 
 ## One writer
 
@@ -155,7 +155,7 @@ Do not edit the landing in Publisher Account while this skill runs. Concurrent w
 | `preflight.sh` | CLI, Shop Builder subcommands, auth, merchant and project |
 | `export-backup.sh <domain> <dir>` | Read-only `get-structure` and `get-localization` |
 | `extract.sh <src> <tgt> [backup]` | `translatable.json`. No domain argument |
-| `apply.sh <domain> <tgt> [--commit] [--report] [--confirm-overwrites]` | Page copy only. Dry run default. `--commit` checks the allowlist, exports, enables the language unless the export already lists it, then writes. It does not change the opening language |
+| `apply.sh <domain> <tgt> [--commit] [--report] [--confirm-overwrites]` | Page copy only. Dry run default. `--commit` checks the test-project list, exports, enables the language unless the export already lists it, then writes. It does not change the opening language |
 | `verify.sh <domain> <tgt> [--json]` | Live read-back |
 | `ingest-user-translations.sh <locale> <file>` | Publisher JSON or TXT into `translated.json`. Keeps targets already filled. No store write |
 

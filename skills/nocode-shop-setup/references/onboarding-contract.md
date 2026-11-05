@@ -185,7 +185,7 @@ A match that is ambiguous is `needs_input`, never a guess.
 - save or apply a site version;
 - delete a block, or hide a block other than a recorded seeded block that rule 5 allows;
 - write to the project before the developer explicitly confirmed the plan for that write;
-- target a project that is not on the approved test-project allowlist.
+- target a project that is not on the local test-project list.
 
 `shop-builder-assembly` has its own safety gate in its `SKILL.md`. After its plan's yes, it
 runs the readiness check and enables the preview for the visual review.

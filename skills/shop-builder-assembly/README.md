@@ -11,8 +11,7 @@ from a normalized JSON shop brief.
 - `xsolla auth login` completed for a Publisher account
 - An acknowledged dedicated test project with CLI sandbox mode disabled
 - Existing catalog group IDs for any `newStore` sections
-- A separate local approval allowlist containing the
-  exact merchant/project identity and the mentor or lead's approval reference
+- The project on the local test-project list, with its exact merchant and project IDs
 
 ## Happy path
 
@@ -87,8 +86,8 @@ catalog. Federated wrappers use their effective `values.blockId` module.
 - Record formal inventory and preset approval in `references/expert-review.md` during
   PR review; implementation testing may start earlier.
 - Test project IDs are intentionally not stored in committed examples.
-- A `test` brief is insufficient on its own: preflight and apply also require a
-  separate, uncommitted allowlist record for the exact merchant/project IDs.
+- A `test` brief is insufficient on its own: preflight and apply also require the
+  exact merchant/project IDs on the local, uncommitted test-project list.
 - Sandbox briefs are rejected, and the scripts never pass `--force` to the CLI.
 - The CLI does not currently expose an authoritative list of standard block modules.
 - Multi-command Shop Builder authentication, readiness verification, and CLI preview

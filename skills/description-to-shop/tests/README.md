@@ -12,7 +12,7 @@ leakage, and no file writes. They do not prove the agent asks the right question
 
 ## Claude behavior check
 
-Use a dedicated approved test project with an existing catalog. In a separate working
+Use a dedicated test project with an existing catalog. In a separate working
 directory, record confirmed onboarding intake in `.xsolla/onboarding.json`, including
 game name, platforms, approved description, domain, primary locale and locales. Load the
 plugin from the branch under test, not an older installed copy.
@@ -34,6 +34,6 @@ in the brief without rewriting the ledger. A malformed ledger or route mismatch 
 An absent ledger should preserve conversation answers and ask only for genuine gaps.
 
 For the full acceptance run, continue with the verified catalog and normal assembly safety
-gates on the approved test project. Record required questions across planning and shop
+gates on the dedicated test project. Record required questions across planning and shop
 intake: every provided answer should be requested only once. Plan approval is not a
 duplicate intake question. Do not publish or bypass assembly safeguards.

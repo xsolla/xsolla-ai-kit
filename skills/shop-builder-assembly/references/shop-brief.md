@@ -42,7 +42,8 @@ Allowed presets: `auto`, `mobile-single-page`, `pc-multi-page`, and
 `live-service-events`. Allowed catalog group types: `virtual_good`, `bundle`, and
 `virtual_currency`. `project.environment` must be `test`, and the `project`
 object must contain `"test_project_acknowledged": true`. Before a write,
-`preflight.py` and `apply_plan.py` additionally require a separate local allowlist:
+`preflight.py` and `apply_plan.py` additionally require the project on a local
+test-project list:
 
 ```json
 {
@@ -51,15 +52,15 @@ object must contain `"test_project_acknowledged": true`. Before a write,
     {
       "merchant_id": 12345,
       "project_id": 67890,
-      "approved_by": "mentor or tech lead",
-      "approval_reference": "link or durable reference to the approval"
+      "note": "dedicated test project, confirmed by the developer on 2026-11-05"
     }
   ]
 }
 ```
 
-Keep the real allowlist outside the repository. This second artifact binds the exact
-project identity to approval evidence; a self-declared brief is not enough.
+Keep the real list outside the repository. `nocode-shop-setup` adds a project after the
+developer confirms in its batch that it is a dedicated test project. Only the IDs are
+checked; `note` is optional free text.
 
 ## Field behavior
 
