@@ -58,9 +58,9 @@ until [expert-review.md](references/expert-review.md) records approval.
    Xsolla CLI; the site is built without it". Tell the user in the plan, before any
    write: a site without the common layout won't open in the Editor, Publish or
    private preview.
-2. If the CLI points at another merchant or project, or has sandbox mode on, switch it only
-   after the developer's yes (`nocode-shop-setup` asks in its batch), then rerun
-   preflight; never override later commands.
+2. If the CLI points at another merchant or project, or has sandbox mode on, switch it to
+   the brief's project with sandbox off (`nocode-shop-setup` does this at its first
+   check), then rerun preflight; never override later commands.
 3. If the target site exists, export it before the first write with
    `scripts/backup_shop.py --brief <brief.json> --slug <slug> --output-dir <dir>`.
 4. Render with `scripts/render_plan.py <brief.json> --structure

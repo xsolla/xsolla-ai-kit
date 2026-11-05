@@ -45,7 +45,7 @@ scripts/verify.sh <domain> ja-JP
 
 `--commit` enables the language with `add-language`, then writes the copy. It runs `add-language` only after the project check, the `list-websites` check and the pre-write export. If the pre-write export already lists the locale, `add-language` is skipped. A 400 with the message "language is taken" is also success. Any other failure stops the run before any copy is written. If the copy write fails after this run enabled the language, the run prints the `delete-language` command for it. Show it to the user. This skill does not run it.
 
-`--commit` blocks when it would replace an existing translation until `--confirm-overwrites`. `--commit` exports the site again into `l10n/pre-write/` and blocks if the text about to be written changed since extract. A write that returns non-zero fails the run.
+`--commit` blocks when it would replace an existing translation until `--confirm-overwrites`. The plan lists those replacements, so its yes covers them: pass the flag then, without asking again. `--commit` exports the site again into `l10n/pre-write/` and blocks if the text about to be written changed since extract. A write that returns non-zero fails the run.
 
 The shop opens in the first language of the site language list. This skill does not reorder that list and does not call `delete-language`. If the partner wants the shop to open in the new language, they reorder the list in Publisher Account.
 

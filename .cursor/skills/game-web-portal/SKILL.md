@@ -37,9 +37,9 @@ Entry conditions:
 - The title ships on PC, the App Store or Google Play. A store URL is optional.
 - Check a supplied store URL with `scripts/store_url.py`: only the exact Steam, App Store and
   Google Play hosts pass; anything else, or a look-alike, returns `needs_input`.
-- A store page is a source of art and facts only with `store_assets_approved: yes`
-  ([store content](references/portal-api.md#store-content)). Otherwise use only `game_name`
-  and partner-approved metadata, copy, and assets. Never invent missing content.
+- The partner's store page is a source of art and facts
+  ([store content](references/portal-api.md#store-content)); the plan shows what comes from
+  it, and its yes covers using it. Never invent missing content.
 - A merchant/project pair is confirmed. Shop Builder has no sandbox: every write reaches
   the project itself, on the unpublished site.
 - The partner has created the site in Publisher Account from the **Multi-page web portal**
@@ -57,8 +57,8 @@ Entry conditions:
   Never pass a session or token by hand, and never ask the partner to copy one out of
   the browser. Treat `401/403` as `needs_access`, never as a capability block.
 - Shop Builder enabled for the target project.
-- Approved content and brand assets: the partner's own, or approved Steam content. Never
-  invent content or use anything the partner hasn't approved.
+- Content and brand assets: the partner's own, or from their store page. Never invent
+  content; the plan shows where each piece comes from.
 - Required input, collected in a single question rather than one at a time. Read what is
   already known instead of asking again: intake from the ledger or the conversation, the
   merchant and project from `xsolla config list --json`:
@@ -71,7 +71,7 @@ game_name:
 primary_locale:
 ```
 
-Optional: `store_url` with `store_assets_approved` (yes or no), approved
+Optional: `store_url`; the partner's own
 description, logo, hero, screenshots, colors and fonts; an existing Store catalog;
 additional locales; analytics IDs; for a PC title, an existing Launcher and build.
 
@@ -95,13 +95,13 @@ Verify (read-back) → Human review → Handoff
    haven't (Storefronts → Websites → Multi-page web portal → Manual), and
    [what the run can change](references/portal-api.md#what-the-run-can-change) and what stays
    an Editor step for them. It asks only the required input `nocode-shop-setup`'s batch
-   didn't; with a store URL, whether the page is theirs and its art and text may be used.
+   didn't.
    Resolve every ambiguity by asking; never choose an ambiguous match.
 2. **Preflight** — confirm the platform, domain, and locale, then run
    [`scripts/preflight.py`](scripts/preflight.py) with `--merchant-id` and `--project-id`.
    It checks that the CLI points at that merchant and project with its sandbox mode off.
-   If it fails, stop before any write. If `store_url` is supplied, check it with `scripts/store_url.py`,
-   and with `store_assets_approved: yes` read the listing as store content says.
+   If it fails, stop before any write. If `store_url` is supplied, check it with `scripts/store_url.py`
+   and read the listing as store content says.
 3. **Discover** — find the partner's site at `domain` and read its structure
    (`xsolla shopbuilder list-websites`, `get-landing`, `get-structure`). Capture the landing
    `_id`, page IDs, and block IDs before any mutation — block and theme calls are keyed by
@@ -138,7 +138,7 @@ Verify (read-back) → Human review → Handoff
    partner's, PC only. `nocode-shop-setup` runs the surrounding products before this skill;
    don't repeat their recipes: `merchant-setup`, `catalog-design` (it creates the catalog
    after the yes in step 5) and `login-setup`. Checkout is the Web Shop's hosted Pay Station,
-   so there is nothing to integrate. Placeholders require approval and a visible label.
+   so there is nothing to integrate. The plan lists each placeholder; it carries a visible label.
 7. **Verify (read-back)** — read back every changed entity (`get-structure`,
    `get-localization`, page and block reads) and compare it with the confirmed plan.
    A mutation response is not evidence, and a read-back isn't what renders: look at each
@@ -191,5 +191,5 @@ go to the partner as `needs_human`.
 
 Read them in [agentic-onboarding.md](references/agentic-onboarding.md#common-pitfalls)
 before the first change: duplicates on resume, a portal reported as live, sign-in taken
-for binding, an unverified Launcher, expired access, completion without read-back; store
-content needs the partner's yes, Community their channel, and they create the site.
+for binding, an unverified Launcher, expired access, completion without read-back; Community
+needs the partner's channel, and they create the site.

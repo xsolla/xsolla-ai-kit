@@ -8,10 +8,9 @@
    and approved metadata/assets are supplied, THEN continue without reading a store page.
    GIVEN a store URL, `scripts/store_url.py` passes only the exact hosts
    `store.steampowered.com`, `apps.apple.com` and `play.google.com`; unknown, invalid,
-   look-alike or spoofed URLs return `needs_input`. GIVEN a store URL and
-   `store_assets_approved: yes`, THEN the plan uses the listing's art and facts, with the
-   copy shown word for word; GIVEN `no` or no answer, THEN nothing from the page is used and
-   the intake says the draft keeps the template's art. GIVEN a mobile title, THEN no
+   look-alike or spoofed URLs return `needs_input`. GIVEN a store URL that passes,
+   THEN the plan uses the listing's art and facts, with the source shown and the copy word
+   for word, and asks nothing else about them. GIVEN a mobile title, THEN no
    Launcher section is offered, and the sidebar keeps its App Store and Google Play buttons.
 2. **The partner's site:** WHEN onboarding starts, THEN the first message, before any
    question, says to create the site from the template if it doesn't exist yet, and what the
@@ -109,9 +108,8 @@ Never recreate discovered existing entities.
 ## Known limitations
 
 - **The Launcher is PC only.** A mobile title's portal has no Launcher section.
-- **Store content needs the partner's yes.** Shop Builder's store-page parser rejects Steam
-  links, so the agent reads the store's own data itself, only with
-  `store_assets_approved: yes`.
+- **Store content comes from the store's own data.** Shop Builder's store-page parser rejects
+  Steam links, so the agent reads the store's data itself and shows it in the plan.
 - **Community needs the partner's channel.** Its `embed` block shows a social channel the
   partner supplies; without one the section is `needs_input`, not a guessed layout.
 - **The partner creates the site.** Until a site created through the CLI gets a layout,

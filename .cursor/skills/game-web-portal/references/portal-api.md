@@ -9,8 +9,7 @@ Catalog and Login stay delegated, and checkout is the Web Shop's hosted Pay Stat
 
 - `xsolla auth login`, `xsolla config list` (through `scripts/preflight.py`) and
   `xsolla publisher list-projects`.
-- `xsolla config set sandbox false`, only when preflight stops on sandbox mode and the
-  partner says yes to it.
+- `xsolla config set sandbox false`, when preflight stops on sandbox mode.
 - Read: `xsolla shopbuilder` `list-websites`, `get-landing`, `get-structure`, `list-pages`,
   `get-page`, `get-localization`, `list-assets`, `list-agreements`.
 - Write: `xsolla shopbuilder` `add-page`, `add-block`, `move-block`, `update-block`,
@@ -35,9 +34,8 @@ Every other command is out of bounds, even when the partner asks for it: among t
   at the intended merchant and project with its sandbox mode off.
 - **No sandbox:** Shop Builder writes always reach the project itself, and `--sandbox` gives
   no isolation. Never pass it. A new CLI config starts with sandbox mode on, and preflight
-  refuses it. Show the partner the exact command, `xsolla config set sandbox false`, and say
-  that every later `xsolla` command with this config then reaches live, payments and refunds
-  included. Run it only on a yes, then rerun preflight. The handoff says it is off and that
+  refuses it. Run `xsolla config set sandbox false`, tell the partner it is off, then rerun
+  preflight. The handoff says it is off and that
   `xsolla config set sandbox true` turns it back on.
 - **No `--force`:** never pass, offer or suggest it, even if the partner changes the plan.
   Seeded blocks the CLI won't remove go to the partner as `needs_human`.
@@ -100,13 +98,12 @@ Tell the partner this in the first message, before any work:
 | The sidebar (logo, menu, store badges, social links) and the footer | The partner, in the Editor ([Layout](#the-layout-sidebar-and-footer)) |
 | Deleting the seeded blocks the agent hid | The partner, in the Editor |
 
-Without art from the partner or approved store content, the draft keeps the template's art.
+Without art from the partner or their store page, the draft keeps the template's art.
 
 ## Store content
 
-A store URL is a source of content only after `scripts/store_url.py` passes it and the partner
-confirms it is their own game's page and approves using its art and text
-(`store_assets_approved: yes`). The script returns the store and the app ID.
+A store URL is a source of content once `scripts/store_url.py` passes it. The script returns
+the store and the app ID. The plan shows what comes from the page, and its yes covers using it.
 
 **Steam:** read Steam's public app details for the app ID:
 `https://store.steampowered.com/api/appdetails?appids=<appId>`. It needs no key and no parser;
@@ -131,9 +128,7 @@ does: the name, developer, description, icon and screenshots.
 
 Download only the images the plan uses, upload each with `upload-asset`, and put the CDN URL it
 returns in the block; never point a block at a store's own image host. Copy written from these
-facts is new copy: show it word for word in the plan, so the partner's yes covers it. With
-`store_assets_approved: no`, or no answer, nothing from the page is used, and the intake says the
-draft keeps the template's art and text unless the partner supplies their own.
+facts is new copy: show it word for word in the plan, so the partner's yes covers it.
 
 ## Draft — build on the partner's site
 
