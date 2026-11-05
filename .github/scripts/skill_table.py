@@ -26,12 +26,33 @@ END = "<!-- skill-table:end -->"
 TARGETS = [ROOT / "AGENTS.md", ROOT / ".github" / "copilot-instructions.md"]
 
 
+def _unquote(value: str) -> str:
+    """Decode a YAML quoted scalar; leave a plain scalar exactly as written."""
+    if len(value) >= 2 and value[0] == value[-1] == "'":
+        return value[1:-1].replace("''", "'")
+    if len(value) >= 2 and value[0] == value[-1] == '"':
+        out, i, body = [], 0, value[1:-1]
+        while i < len(body):
+            ch = body[i]
+            if ch == "\\" and i + 1 < len(body):
+                nxt = body[i + 1]
+                out.append({"n": "\n", "t": "\t", '"': '"', "\\": "\\", "/": "/"}.get(nxt, nxt))
+                i += 2
+                continue
+            out.append(ch)
+            i += 1
+        return "".join(out)
+    return value
+
+
 def read_frontmatter(skill_md: Path) -> dict[str, str]:
     """Return the top-level scalar keys of a SKILL.md frontmatter block.
 
-    Folded (`>-`, `>`) and literal (`|`) scalars are joined into one line. Nested
-    mappings such as `metadata:` are skipped. Standard library only, like the
-    validator, so CI needs no install step.
+    Handles the scalar styles skills use: plain (one or more lines), single- and
+    double-quoted, and folded (`>`, `>-`) or literal (`|`, `|-`) blocks, including
+    blank lines inside a block. Every scalar comes back as one line of text, which
+    is what the skill table shows. Nested mappings such as `metadata:` are skipped.
+    Standard library only, like the validator, so CI needs no install step.
     """
     text = skill_md.read_text(encoding="utf-8")
     if not text.startswith("---\n"):
@@ -42,24 +63,35 @@ def read_frontmatter(skill_md: Path) -> dict[str, str]:
 
     data: dict[str, str] = {}
     key: str | None = None
-    folded = False
-    for raw in text[4:end].split("\n"):
-        if raw.startswith((" ", "\t")):
-            if key and folded:
-                data[key] = (data[key] + " " + raw.strip()).strip()
+    parts: list[str] = []
+    block = False  # folded or literal block scalar
+
+    def flush() -> None:
+        if key is not None:
+            raw = " ".join(p for p in parts if p)
+            data[key] = raw if block else _unquote(raw)
+
+    for line in text[4:end].split("\n"):
+        indented = line.startswith((" ", "\t"))
+        if key is not None and (indented or not line.strip()):
+            parts.append(line.strip())  # continuation, or a blank line inside the scalar
             continue
-        if ":" not in raw or raw.lstrip().startswith("#"):
-            key, folded = None, False
+        if not line.strip() or line.lstrip().startswith("#") or indented:
             continue
-        k, _, v = raw.partition(":")
-        key, v = k.strip(), v.strip()
-        if v in {">", ">-", "|", "|-"}:
-            data[key], folded = "", True
-        elif v == "":
-            key, folded = None, False  # nested mapping such as metadata:
+        flush()
+        k, sep, v = line.partition(":")
+        if not sep:
+            key, parts, block = None, [], False
+            continue
+        v = v.strip()
+        if v == "":
+            key, parts, block = None, [], False  # nested mapping such as metadata:
+        elif v[0] in ">|" and v.rstrip("+-0123456789") in {">", "|"}:
+            key, parts, block = k.strip(), [], True
         else:
-            data[key], folded = v.strip("\"'"), False
-    return data
+            key, parts, block = k.strip(), [v], False
+    flush()
+    return {k: " ".join(v.split()) for k, v in data.items()}
 
 
 def skills() -> list[tuple[str, str]]:
