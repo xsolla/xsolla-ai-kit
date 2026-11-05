@@ -100,7 +100,7 @@ before handing off.
 ## 3. Delegate assembly
 
 Invoke `shop-builder-assembly` with the validated brief. It exclusively owns preset
-selection and block defaults, the confirmation-bound plan, project allowlisting and
+selection and block defaults, the confirmation-bound plan, project and
 login preflight, backup-before-write, every `xsolla shopbuilder` write, structural,
 localization, catalog, readiness and preview verification, and the never-publish
 safeguard.

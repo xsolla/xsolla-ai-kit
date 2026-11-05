@@ -1,13 +1,13 @@
 # Exported block contracts
 
-These are sanitized structural observations from approved test-project
+These are sanitized structural observations from dedicated test-project
 exports: a UI-created `store` landing on September 10, 2026 and an unpublished,
 UI-created multi-page `topup` portal on September 11, 2026. No IDs, localized copy,
 account data, or asset URLs are retained. Regenerate a machine-readable summary with:
 
 ```bash
 python3 scripts/extract_block_contracts.py <ui-export.json> \
-  --source-label "approved test project; UI-created export; YYYY-MM-DD" \
+  --source-label "dedicated test project; UI-created export; YYYY-MM-DD" \
   --output references/exported-block-contracts-<landing-type>.json
 ```
 

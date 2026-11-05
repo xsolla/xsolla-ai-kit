@@ -40,9 +40,8 @@ Entry conditions:
 - A store page is a source of art and facts only with `store_assets_approved: yes`
   ([store content](references/portal-api.md#store-content)). Otherwise use only `game_name`
   and partner-approved metadata, copy, and assets. Never invent missing content.
-- A merchant/project pair is confirmed and the target is a dedicated test project on the
-  approved test-project allowlist — never a partner's live project. Shop Builder has no
-  sandbox: every write reaches the project itself.
+- A merchant/project pair is confirmed. Shop Builder has no sandbox: every write reaches
+  the project itself, on the unpublished site.
 - The partner has created the site in Publisher Account from the **Multi-page web portal**
   template (Storefronts → Websites → Multi-page web portal → Manual). The agent never
   creates a site: one created through the CLI has no layout, so the Editor, publication
@@ -99,11 +98,9 @@ Verify (read-back) → Human review → Handoff
    didn't; with a store URL, whether the page is theirs and its art and text may be used.
    Resolve every ambiguity by asking; never choose an ambiguous match.
 2. **Preflight** — confirm the platform, domain, and locale, then run
-   [`scripts/preflight.py`](scripts/preflight.py) with `--merchant-id`, `--project-id` and
-   `--approved-test-projects <file>`. It checks that the CLI points at that merchant and
-   project with its sandbox mode off, and that the project is listed in the approved
-   test-project allowlist (the same file format as `shop-builder-assembly`). If it fails,
-   stop before any write. If `store_url` is supplied, check it with `scripts/store_url.py`,
+   [`scripts/preflight.py`](scripts/preflight.py) with `--merchant-id` and `--project-id`.
+   It checks that the CLI points at that merchant and project with its sandbox mode off.
+   If it fails, stop before any write. If `store_url` is supplied, check it with `scripts/store_url.py`,
    and with `store_assets_approved: yes` read the listing as store content says.
 3. **Discover** — find the partner's site at `domain` and read its structure
    (`xsolla shopbuilder list-websites`, `get-landing`, `get-structure`). Capture the landing
