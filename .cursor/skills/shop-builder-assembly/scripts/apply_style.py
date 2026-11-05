@@ -9,7 +9,8 @@ Images: uploads each approved file once (an asset cache keeps the URL across run
 puts its CDN URL in the block slot the plan named.
 
 Copy: writes the approved text in the primary locale through `update-many-localization`,
-never through block patches, and makes the FAQ block's items match the approved list.
+never through block patches, makes the FAQ block's items match the approved list, and
+writes each page's SEO title, description and share image URL.
 
 A page or block that existed before this assembly changes only when the approved plan
 listed it. Never publishes.
@@ -62,6 +63,21 @@ RECALCULATE_IN_EDITOR = (
     "in the Theme panel by one step and back, click Save as global theme, then turn Use "
     "global theme back on. With Use global theme off, Save as global theme saves that "
     "page's own copy over the site theme, so check the colors in the panel first: {colors}"
+)
+PAY_STATION_THEME = (
+    "Give checkout the site's look: in Publisher Account, open Payments > Payment interface "
+    "> Pay Station customization (https://publisher.xsolla.com/{merchant_id}/projects/"
+    "{project_id}/payments/theme) and click Create new theme. On the Colors tab, use the "
+    "site's palette: {colors}. Check the desktop and mobile previews, then click Publish. "
+    "Set as default applies the theme to every project in this Publisher Account, so turn "
+    "it on only if that is intended. No API or CLI command sets this theme yet."
+)
+# Pay Station's color groups, and the palette keys that fill them.
+PAY_STATION_COLORS = (
+    ("surfaces", ("bg", "overlay")),
+    ("texts", ("text",)),
+    ("controls", ("primary", "secondary")),
+    ("borders", ("border",)),
 )
 OWN_THEME_IN_EDITOR = (
     "Page {path} existed before this assembly and uses its own theme, so it ignores the "
@@ -165,6 +181,24 @@ def site_theme_changes(site_theme: object, palette: dict) -> tuple[list[dict], d
     return patches, written, skipped
 
 
+def pay_station_step(palette: object, project: dict) -> str | None:
+    """The handoff step for a Pay Station theme in the site's colors (decision D5)."""
+    if not isinstance(palette, dict):
+        return None
+    groups = []
+    for group, keys in PAY_STATION_COLORS:
+        colors = [palette[key] for key in keys if isinstance(palette.get(key), str)]
+        if colors:
+            groups.append(f"{group} {' and '.join(colors)}")
+    if not groups:
+        return None
+    return PAY_STATION_THEME.format(
+        merchant_id=project["merchant_id"],
+        project_id=project["project_id"],
+        colors="; ".join(groups),
+    )
+
+
 def check_reports(reports: list[dict], paths: list[Path], approved: dict, slug: str) -> None:
     for path, report in zip(paths, reports):
         if (
@@ -178,10 +212,17 @@ def localization(slug: str) -> object:
     return data(run_json("shopbuilder", "get-localization", "--slug", slug))
 
 
-def write_changes(slug: str, landing_id: str, changes: dict, what: str) -> dict:
+def texts_without(loc: object, lids: frozenset) -> dict:
+    return {key: entry for key, entry in flat_texts(loc).items() if key[1] not in lids}
+
+
+def write_changes(
+    slug: str, landing_id: str, changes: dict, what: str, may_drop: frozenset = frozenset()
+) -> dict:
     """Send one `update-block` batch, then return the saved structure. Stops if the
-    site's text changed: a patch that hits a string deletes it."""
-    text_before = localization(slug)
+    site's text changed: a patch that hits a string deletes it. ``may_drop`` are the
+    strings of items the batch removes, which the server may delete with them."""
+    text_before = texts_without(localization(slug), may_drop)
     run_json(
         "shopbuilder",
         "update-block",
@@ -191,7 +232,7 @@ def write_changes(slug: str, landing_id: str, changes: dict, what: str) -> dict:
         json.dumps(changes, separators=(",", ":")),
     )
     saved = structure(slug)
-    if localization(slug) != text_before:
+    if texts_without(localization(slug), may_drop) != text_before:
         raise RuntimeError(
             f"the site's text changed during the {what} patch; stop and compare "
             "get-localization with the backup"
@@ -207,12 +248,19 @@ def theme_phase(
     if not palette:
         return {"status": "kept: no palette in the approved plan"}, [], current
     site_patches, written, skipped = site_theme_changes(current.get("theme"), palette)
+    unchanged = set(palette) - set(written) - {item["key"] for item in skipped}
     listed = set(approved.get("theme", {}).get("pages_to_site_theme", []))
     changes: dict[str, dict] = {}
     if site_patches:
         changes["site"] = {"type": "site", "id": landing_id, "patches": site_patches}
     switched, needs_human = [], []
-    for index, page_plan in enumerate(approved.get("pages", [])):
+    for reason in dict.fromkeys(item["reason"] for item in skipped):
+        keys = ", ".join(item["key"] for item in skipped if item["reason"] == reason)
+        needs_human.append(f"The palette's {keys} wasn't set on the site: {reason}.")
+    # A page on its own theme keeps it unless the site theme now holds the palette:
+    # switching it would show the template's colors, which nobody approved.
+    holds_palette = bool(written) or bool(unchanged - {"isDark"})
+    for index, page_plan in enumerate(approved.get("pages", []) if holds_palette else []):
         page = page_for_path(current, page_plan["path"])
         if page is None or not isinstance(page.get("_id"), str):
             raise RuntimeError(f"page {page_plan['path']} is missing; finish apply_plan.py first")
@@ -229,8 +277,8 @@ def theme_phase(
             needs_human.append(OWN_THEME_IN_EDITOR.format(path=page_plan["path"]))
 
     recalculated = None
+    calculated_before = (current.get("theme") or {}).get("calculatedTheme")
     if changes:
-        calculated_before = (current.get("theme") or {}).get("calculatedTheme")
         current = write_changes(slug, landing_id, changes, "theme")
         saved_inputs = (current.get("theme") or {}).get("input") or {}
         missing = [
@@ -245,16 +293,21 @@ def theme_phase(
         missing += [path for path in switched if uses_own_theme(page_for_path(current, path))]
         if missing:
             raise RuntimeError("the theme change did not persist: " + ", ".join(missing))
-        if site_patches:
-            recalculated = (current.get("theme") or {}).get("calculatedTheme") != calculated_before
-            if not recalculated:
-                colors = ", ".join(
-                    f"{key} {value}" for key, value in palette.items() if key != "isDark"
-                )
-                needs_human.insert(0, RECALCULATE_IN_EDITOR.format(colors=colors))
+    colors = ", ".join(f"{key} {value}" for key, value in palette.items() if key != "isDark")
+    if site_patches:
+        recalculated = (current.get("theme") or {}).get("calculatedTheme") != calculated_before
+        if not recalculated:
+            needs_human.insert(0, RECALCULATE_IN_EDITOR.format(colors=colors))
+    elif holds_palette:
+        # A rerun writes nothing; an earlier run's recalculation step may still be open.
+        needs_human.insert(
+            0,
+            "If the theme wasn't recalculated in the editor since an earlier run set the "
+            "colors: " + RECALCULATE_IN_EDITOR.format(colors=colors),
+        )
     result = {
         "patched": sorted(written),
-        "unchanged": sorted(set(palette) - set(written) - {item["key"] for item in skipped}),
+        "unchanged": sorted(unchanged),
         "skipped": skipped,
         "pages_to_site_theme": switched,
         "recalculated": recalculated,
@@ -353,6 +406,33 @@ def upload(landing_id: str, path: Path) -> str:
     return url
 
 
+class Uploads:
+    """Each approved file uploaded once for the site: a URL an earlier run cached is
+    reused while it is still in the site's asset list."""
+
+    def __init__(
+        self, landing_id: str, base_dir: Path, site_assets: set[str], cache_path: Path
+    ) -> None:
+        self.landing_id, self.base_dir = landing_id, base_dir
+        self.site_assets, self.cache_path = site_assets, cache_path
+        self.cache: dict[str, str] | None = None
+        self.urls: dict[str, str] = {}
+
+    def url(self, image: dict) -> str:
+        sha = image["sha256"]
+        if sha not in self.urls:
+            if self.cache is None:
+                self.cache = load_cache(self.cache_path, self.landing_id)
+            cached = self.cache.get(sha)
+            if cached in self.site_assets:
+                self.urls[sha] = cached
+            else:
+                self.urls[sha] = upload(self.landing_id, image_path(self.base_dir, image))
+                self.cache[sha] = self.urls[sha]
+                save_cache(self.cache_path, self.landing_id, self.cache)
+        return self.urls[sha]
+
+
 def images_phase(
     slug: str,
     landing_id: str,
@@ -360,8 +440,7 @@ def images_phase(
     approved: dict,
     created: frozenset,
     base_dir: Path,
-    site_assets: set[str],
-    cache_path: Path,
+    uploads: Uploads,
 ) -> tuple[list[dict], list[str]]:
     """Upload the approved images once each and put them on their blocks."""
     images = approved.get("images", [])
@@ -387,8 +466,6 @@ def images_phase(
                         f"{image['file']} in the editor if it should have it."
                     )
 
-    cache = load_cache(cache_path, landing_id)
-    urls: dict[str, str] = {}
     results: list[dict] = []
     changes: dict[str, dict] = {}
     written: list[tuple[str, tuple, str]] = []
@@ -408,22 +485,14 @@ def images_phase(
                 f"{image['file']} wasn't put on the {module} block: {problem}."
             )
             continue
-        sha = image["sha256"]
-        if sha not in urls:
-            cached = cache.get(sha)
-            if cached in site_assets:
-                urls[sha] = cached
-            else:
-                urls[sha] = upload(landing_id, image_path(base_dir, image))
-                cache[sha] = urls[sha]
-                save_cache(cache_path, landing_id, cache)
-        patch = image_patch(block, image["slot"], urls[sha])
-        entry["url"] = urls[sha]
+        url = uploads.url(image)
+        patch = image_patch(block, image["slot"], url)
+        entry["url"] = url
         if patch is not None:
             changes.setdefault(
                 block["_id"], {"type": "block", "id": block["_id"], "patches": []}
             )["patches"].append(patch)
-            written.append((block["_id"], IMAGE_SLOTS[image["slot"]], urls[sha]))
+            written.append((block["_id"], IMAGE_SLOTS[image["slot"]], url))
             entry["status"] = "set"
             background = block["values"].get("background")
             color = background.get("color") if isinstance(background, dict) else None
@@ -493,6 +562,52 @@ def flat_texts(loc: object) -> dict[tuple[str, str], object]:
     return flat
 
 
+def text_references(current: dict) -> dict[str, set[str]]:
+    """Each `L:` id in the structure, and what uses it: block IDs, and `seo:<pageId>`
+    for a page's SEO fields. Component `_id`s are left out: the server regenerates them."""
+    references: dict[str, set[str]] = {}
+
+    def walk(node: object, owner: str) -> None:
+        if isinstance(node, dict):
+            lid = node.get("id")
+            if isinstance(lid, str) and lid.startswith("L:"):
+                references.setdefault(lid, set()).add(owner)
+            for key, value in node.items():
+                if key != "_id":
+                    walk(value, owner)
+        elif isinstance(node, list):
+            for item in node:
+                walk(item, owner)
+
+    for page in current.get("pages") or []:
+        if not isinstance(page, dict):
+            continue
+        walk(page.get("seo"), f"seo:{page.get('_id')}")
+        for block in page.get("blocks") or []:
+            if isinstance(block, dict):
+                walk({key: block.get(key) for key in ("values", "components")}, block.get("_id"))
+    return references
+
+
+def button_label_slot(block: dict, position: int) -> tuple[str | None, str | None]:
+    """The `L:` id of a hero button's label, by 1-based position, or why there is none.
+    A `leadGameSales` button holds it in `values.buttons[].button.action.text`."""
+    values = block.get("values")
+    if not isinstance(values, dict) or isinstance(values.get("blockId"), str):
+        return "it is a federated block, whose wrapper isn't patched", None
+    buttons = values.get("buttons")
+    if not isinstance(buttons, list) or len(buttons) < position:
+        return f"it has no button {position}", None
+    action = ((buttons[position - 1] or {}).get("button") or {}).get("action") or {}
+    if action.get("action") == "buy":
+        return "a buy button shows the item's price, not a label", None
+    text = action.get("text")
+    lid = text.get("id") if isinstance(text, dict) else None
+    if not (isinstance(lid, str) and lid.startswith("L:")):
+        return "the button has no label text", None
+    return None, lid
+
+
 def faq_item_ids(landing_id: str, block_id: str, index: int) -> tuple[str, str, str]:
     """Stable IDs for an FAQ item this script adds, so a rerun finds it again."""
     component = str(uuid.uuid5(uuid.NAMESPACE_URL, f"{landing_id}:{block_id}:faq:{index}"))
@@ -504,36 +619,65 @@ def faq_item_ids(landing_id: str, block_id: str, index: int) -> tuple[str, str, 
 
 
 def copy_phase(
-    slug: str, landing_id: str, current: dict, approved: dict, created: frozenset
+    slug: str,
+    landing_id: str,
+    current: dict,
+    approved: dict,
+    created: frozenset,
+    uploads: Uploads,
 ) -> tuple[list[dict], list[str], dict]:
-    """Write the approved text in the primary locale: block text fields, then the FAQ
-    items, adding or removing items to match the approved list."""
+    """Write the approved text in the primary locale: block text fields, the FAQ items
+    (adding or removing items to match the approved list), and each page's SEO title,
+    description and share image URL."""
     copy_plan = approved.get("copy") or {}
     texts, faq = copy_plan.get("texts", []), copy_plan.get("faq")
-    if not texts and not faq:
+    seo, buttons = copy_plan.get("seo", []), copy_plan.get("buttons", [])
+    if not texts and not faq and not seo and not buttons:
         return [], [], current
     locale = copy_plan["locale"]
     before = localization(slug)
+    references = text_references(current)
     writes: dict[str, dict[str, dict]] = {}
     expected: dict[tuple[str, str], str] = {}
     structural: dict[str, dict] = {}
-    added: dict[str, list[str]] = {}
+    faq_order: dict[str, list[str]] = {}
+    may_drop: set[str] = set()
     results: list[dict] = []
     needs_human: list[str] = []
 
-    def write(page_id: str, lid: str, html_text: str) -> str:
+    def shared(lid: str, owners: set) -> str | None:
+        """Why the string can't be written: it is used beyond what the plan covers."""
+        others = sorted(str(owner) for owner in references.get(lid, set()) - owners)
+        if others:
+            return "its text is shared with " + ", ".join(others)
+        return None
+
+    def write(page_id: str, lid: str, html_text: str, owners: set) -> tuple[str, str | None]:
         scope, description, now = text_slot(before, page_id, lid, locale)
+        if scope == "common":
+            return "skipped", "its text is in the site-wide strings that other pages share"
+        reason = shared(lid, owners)
+        if reason:
+            return "skipped", reason
+        if (scope, lid) in expected and expected[(scope, lid)].strip() != html_text.strip():
+            raise RuntimeError(
+                f"two approved items write different text to {lid}; fix the brief so one "
+                "item covers that text. Nothing of the copy was written"
+            )
         expected[(scope, lid)] = html_text
         if isinstance(now, str) and now.strip() == html_text.strip():
-            return "unchanged"
+            return "unchanged", None
         writes.setdefault(scope, {})[lid] = {
             "description": description,
             "translation": html_text,
         }
-        return "set"
+        return "set", None
+
+    def allowed_for(item: dict) -> set:
+        return set(item.get("existing_block_ids", [])) | created
 
     def planned_blocks(item: dict):
-        allowed = set(item.get("existing_block_ids", [])) | created
+        allowed = allowed_for(item)
         for path in item["pages"]:
             module = item["page_modules"][path]
             page = page_for_path(current, path) or {}
@@ -558,12 +702,36 @@ def copy_phase(
                 "field": item["field"],
             }
             if isinstance(lid, str) and lid.startswith("L:"):
-                entry["status"] = write(page["_id"], lid, item["html"])
+                entry["status"], reason = write(page["_id"], lid, item["html"], allowed_for(item))
+                if reason:
+                    entry["reason"] = reason
+                    needs_human.append(
+                        f"The {entry['module']} block's {item['field']} wasn't written: "
+                        f"{reason}. Set it in the editor if it should change."
+                    )
             else:
                 entry.update(status="skipped", reason=f"it has no {item['field']} text")
                 needs_human.append(
                     f"The {entry['module']} block has no {item['field']} text to write; set "
                     "it in the editor if it should have one."
+                )
+            results.append(entry)
+
+    for item in buttons:
+        for page, block in planned_blocks(item):
+            module = effective_module(block)
+            entry = {"block_id": block["_id"], "module": module, "button": item["position"]}
+            reason, lid = button_label_slot(block, item["position"])
+            if lid is not None:
+                # A button label is plain text: buttons don't render HTML.
+                entry["status"], reason = write(
+                    page["_id"], lid, item["label"], allowed_for(item)
+                )
+            if reason:
+                entry.update(status="skipped", reason=reason)
+                needs_human.append(
+                    f"Button {item['position']} of the {module} block wasn't relabeled "
+                    f"\"{item['label']}\": {reason}. Set it in the editor if it should change."
                 )
             results.append(entry)
 
@@ -575,7 +743,25 @@ def copy_phase(
             for index, component in enumerate(components)
             if isinstance(component, dict) and component.get("type") == "questionV2"
         ]
-        statuses, patches = [], []
+        other_items = [
+            component
+            for component in components
+            if isinstance(component, dict)
+            and component.get("type") != "questionV2"
+            and ("question" in component or "answer" in component)
+        ]
+        if other_items:
+            results.append(
+                {"block_id": block["_id"], "module": "faq", "field": "items",
+                 "status": "skipped", "reason": "it has FAQ items of an older kind"}
+            )
+            needs_human.append(
+                "The FAQ block has items of an older kind; set its questions in the editor."
+            )
+            continue
+        owners = allowed_for(faq)
+        statuses, patches, order = [], [], []
+        added = 0
         for index, item in enumerate(faq["items"]):
             if index < len(questions):
                 component = components[questions[index]]
@@ -593,6 +779,7 @@ def copy_phase(
                 component_id, question_id, answer_id = faq_item_ids(
                     landing_id, block["_id"], index
                 )
+                added += 1
                 patches.append(
                     {
                         "op": "add",
@@ -606,10 +793,22 @@ def copy_phase(
                         },
                     }
                 )
-                added.setdefault(block["_id"], []).append(component_id)
-            statuses.append(write(page["_id"], question_id, item["question"]))
-            statuses.append(write(page["_id"], answer_id, item["answer"]))
+            order.append(question_id)
+            for lid, text in ((question_id, item["question"]), (answer_id, item["answer"])):
+                status, reason = write(page["_id"], lid, text, owners)
+                if reason:
+                    raise RuntimeError(
+                        f"FAQ item {index + 1} of block {block['_id']} can't be written: "
+                        f"{reason}. Nothing of the copy was written"
+                    )
+                statuses.append(status)
         extra = questions[len(faq["items"]):]
+        for index in extra:
+            for key in ("question", "answer"):
+                lid = (components[index].get(key) or {}).get("id")
+                if isinstance(lid, str):
+                    may_drop.add(lid)
+        faq_order[block["_id"]] = order
         # `enable: false` is ignored for FAQ questions: extra items are removed.
         patches.extend(
             {"op": "remove", "path": ["components", index]} for index in reversed(extra)
@@ -622,10 +821,48 @@ def copy_phase(
                 "module": "faq",
                 "field": "items",
                 "status": "set" if patches or "set" in statuses else "unchanged",
-                "added": len(added.get(block["_id"], [])),
+                "added": added,
                 "removed": len(extra),
             }
         )
+
+    for item in seo:
+        page = page_for_path(current, item["page"])
+        if page is None or not isinstance(page.get("_id"), str):
+            raise RuntimeError(f"page {item['page']} is missing; finish apply_plan.py first")
+        fields = page.get("seo") if isinstance(page.get("seo"), dict) else {}
+        for field, value in (
+            ("title", item.get("title")),
+            ("description", item.get("description")),
+            ("ogImage", item.get("file")),
+        ):
+            if not value:
+                continue
+            slot = fields.get(field)
+            lid = slot.get("id") if isinstance(slot, dict) else None
+            entry = {"page": item["page"], "field": f"seo.{field}"}
+            reason = shared(lid, {f"seo:{page['_id']}"}) if isinstance(lid, str) else None
+            if isinstance(lid, str) and lid.startswith("L:") and not reason:
+                # The share image is a URL kept in the text store, like the copy.
+                text = uploads.url(item) if field == "ogImage" else value
+                entry["status"], reason = write(
+                    page["_id"], lid, text, {f"seo:{page['_id']}"}
+                )
+                if reason:
+                    entry["reason"] = reason
+                    needs_human.append(
+                        f"Page {item['page']}'s SEO {field} wasn't written: {reason}."
+                    )
+            elif reason:
+                entry.update(status="skipped", reason=reason)
+                needs_human.append(f"Page {item['page']}'s SEO {field} wasn't written: {reason}.")
+            else:
+                entry.update(status="skipped", reason=f"the page has no SEO {field} text")
+                needs_human.append(
+                    f"Page {item['page']} has no SEO {field} to write; set it in the "
+                    "editor's page settings."
+                )
+            results.append(entry)
 
     if writes:
         # The text goes in first: a block that points at a missing string breaks the page.
@@ -638,7 +875,7 @@ def copy_phase(
             json.dumps({"locale": locale, "perScopeValues": writes}, separators=(",", ":")),
         )
     if structural:
-        current = write_changes(slug, landing_id, structural, "FAQ")
+        current = write_changes(slug, landing_id, structural, "FAQ", frozenset(may_drop))
     if writes or structural:
         after = flat_texts(localization(slug))
         old = flat_texts(before)
@@ -646,7 +883,9 @@ def copy_phase(
         outside = sorted(
             key[1]
             for key in set(old) | set(after)
-            if key not in written and old.get(key) != after.get(key)
+            if key not in written
+            and key[1] not in may_drop
+            and old.get(key) != after.get(key)
         )
         if outside:
             raise RuntimeError("text outside the plan changed: " + ", ".join(outside))
@@ -655,14 +894,22 @@ def copy_phase(
             now = translation(after.get(key), locale)
             if not isinstance(now, str) or now.strip() != html_text.strip():
                 missing.append(key[1])
-        saved_ids = {
-            component.get("_id")
+        # Items are checked by their question text IDs: the server regenerates component
+        # `_id`s on every read. The order also shows the removals took.
+        saved_blocks = {
+            block.get("_id"): block
             for page in current.get("pages", [])
             for block in page.get("blocks", [])
-            for component in (block.get("components") or [])
-            if isinstance(component, dict)
+            if isinstance(block, dict)
         }
-        missing += [cid for ids in added.values() for cid in ids if cid not in saved_ids]
+        for block_id, order in faq_order.items():
+            saved = [
+                (component.get("question") or {}).get("id")
+                for component in (saved_blocks.get(block_id) or {}).get("components") or []
+                if isinstance(component, dict) and component.get("type") == "questionV2"
+            ]
+            if saved != order:
+                missing.append(f"FAQ items of {block_id}")
         if missing:
             raise RuntimeError("the copy did not persist: " + ", ".join(missing))
     return results, needs_human, current
@@ -679,7 +926,6 @@ def main() -> int:
         type=Path,
         help="uploads earlier runs made; default: asset-cache.json next to the approved plan",
     )
-    parser.add_argument("--approved-test-projects", type=Path)
     args = parser.parse_args()
     try:
         brief = load_brief(args.brief)
@@ -694,11 +940,14 @@ def main() -> int:
         check_reports(reports, args.run_report, approved, slug)
         base_dir = args.brief.resolve().parent
         copy_plan = approved.get("copy") or {}
+        seo_images = [item for item in copy_plan.get("seo", []) if item.get("file")]
         if not (
             approved.get("brand", {}).get("theme")
             or approved.get("images")
             or copy_plan.get("texts")
             or copy_plan.get("faq")
+            or copy_plan.get("seo")
+            or copy_plan.get("buttons")
         ):
             print(
                 json.dumps(
@@ -715,9 +964,9 @@ def main() -> int:
                 )
             )
             return 0
-        check_image_files(base_dir, approved.get("images", []))
+        check_image_files(base_dir, approved.get("images", []) + seo_images)
 
-        run_preflight(args.brief, args.approved_test_projects)
+        run_preflight(args.brief)
         check_cli_context(brief["project"])
         if not verified_backup(args.backup_dir, brief["project"], slug):
             raise RuntimeError(
@@ -726,6 +975,14 @@ def main() -> int:
         current = structure(slug)
         if structure_hash(current) != structure_hash(backup_structure(args.backup_dir)):
             raise RuntimeError("the site changed after the backup; back up again")
+        saved_text = json.loads(
+            (args.backup_dir / "localization.json").read_text(encoding="utf-8")
+        )
+        if flat_texts(localization(slug)) != flat_texts(data(saved_text)):
+            raise RuntimeError(
+                "the site's text changed after the backup, for example in the editor; "
+                "back up again"
+            )
         landing_id = current.get("_id")
         if not isinstance(landing_id, str) or any(
             report.get("landing_id") != landing_id for report in reports
@@ -735,25 +992,25 @@ def main() -> int:
         created_pages = {
             path
             for report in reports
-            for path in report.get("created_pages", [])
+            for key in ("created_pages", "all_created_pages")
+            for path in report.get(key) or []
             if isinstance(path, str)
         }
         theme, theme_needs, current = theme_phase(
             slug, landing_id, current, approved, created_pages
         )
         created = frozenset().union(*(created_block_ids(report) for report in reports))
-        images, image_needs = images_phase(
-            slug,
+        uploads = Uploads(
             landing_id,
-            current,
-            approved,
-            created,
             base_dir,
-            asset_urls(args.backup_dir) if approved.get("images") else set(),
+            asset_urls(args.backup_dir) if approved.get("images") or seo_images else set(),
             args.asset_cache or args.approved_plan.resolve().parent / "asset-cache.json",
         )
+        images, image_needs = images_phase(
+            slug, landing_id, current, approved, created, base_dir, uploads
+        )
         copy_results, copy_needs, current = copy_phase(
-            slug, landing_id, structure(slug), approved, created
+            slug, landing_id, structure(slug), approved, created, uploads
         )
         print(
             json.dumps(
@@ -766,7 +1023,18 @@ def main() -> int:
                     "theme": theme,
                     "images": images,
                     "copy": copy_results,
-                    "needs_human": theme_needs + image_needs + copy_needs,
+                    "needs_human": theme_needs
+                    + image_needs
+                    + copy_needs
+                    + [
+                        step
+                        for step in [
+                            pay_station_step(
+                                approved.get("brand", {}).get("theme"), brief["project"]
+                            )
+                        ]
+                        if step
+                    ],
                     "pending_phases": approved.get("unsupported_phases", []),
                     "published": False,
                 },

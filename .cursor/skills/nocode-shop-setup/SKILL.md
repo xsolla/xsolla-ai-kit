@@ -68,26 +68,16 @@ built.
    the Editor, Publish or private preview until a newer CLI ships. Put the choice in the
    batch. Recommended: the developer creates the site in Publisher Account (Storefronts →
    Websites, from the Single-page shop template) and gives its address; assembly builds on
-   it with the single-page preset, and it opens in the Editor and preview. The other
-   answers: build the structure anyway, or wait. A game home is built on the partner's
-   template site; see **Store or game home**.
-4. **The project is an approved test project.** Shop Builder writes need the project on
-   the approved test-project allowlist, with its approver and approval reference. The
-   format is in [shop brief](../shop-builder-assembly/references/shop-brief.md); the
-   file lives outside the repository, at `$XSOLLA_APPROVED_TEST_PROJECTS`, by default
-   `~/.config/xsolla/approved-test-projects.json`. If this project isn't listed, ask in
-   the batch who approved it as a dedicated test project (a mentor or tech lead) and a
-   link to that approval. When both answers arrive, add the entry to that file with
-   exactly what the user gave. Never fill in the approver or the reference yourself, and
-   never use this chat as the approval reference. Pass the file to the assembly scripts as
-   `--approved-test-projects`; `shopbuilder-translate` reads it only from the variable.
-5. **The game.** Read the user's store listing link, if they gave one: name, platforms,
+   it, with more pages when the preset has them, and it opens in the Editor and preview.
+   The other answers: build the structure anyway, or wait. A game home is built on the
+   partner's template site; see **Store or game home**.
+4. **The game.** Read the user's store listing link, if they gave one: name, platforms,
    developer, description, icon and screenshots.
-6. **The catalog, LiveOps and Login projects.** Read the project's catalog groups,
+5. **The catalog, LiveOps and Login projects.** Read the project's catalog groups,
    items, bundles and LiveOps with the read-only `xsolla catalog` and `xsolla liveops`
    list commands, and its Login projects. Draft `catalog-design`'s proposal now, so its
    questions go in the batch instead of a second round.
-7. **Browser and design tools in this session.** Find the browser that is signed in to
+6. **Browser and design tools in this session.** Find the browser that is signed in to
    Publisher Account (a built-in browser, Claude in Chrome, or another extension) and use
    it for every browser step; don't ask which one. Check that the mockup's design tool,
    such as Figma, is available in this session: a setup log from an earlier session is not
@@ -96,10 +86,9 @@ built.
 
 ## Store or game home
 
-- A **game home** is a Game Web Portal: a PC game home around the store, with news,
-  rewards, community, and an optional launcher. It is **PC only**. When the game ships
-  only on the App Store or Google Play, don't offer it: build a store and say why in one
-  line.
+- A **game home** is a Game Web Portal: a home around the store, with news, rewards and
+  community, for a game on PC, the App Store or Google Play. Only a PC game gets the
+  optional launcher section.
 - An existing site with pages `/news`, `/rewards`, and `/store` is a game home. The
   partner created it from the Multi-page web portal template. A site without those
   pages is a store.
@@ -117,9 +106,7 @@ answer, so a reply such as "all recommended" settles it:
 
 - which side, only when the rule above says to ask;
 - the project link, or switching the CLI to it with sandbox off, only when check 2 says;
-- store or game home, only for a PC game;
-- the test-project approver and approval link, only when the project isn't listed. This
-  question has **no** recommended answer: only the user can give it;
+- store or game home;
 - build without the common layout or wait, only when the CLI lacks `create-block`;
 - the storefront intake the listing didn't answer: game name, platforms, a short
   description, whether the listing is theirs and its art and text may be used, the

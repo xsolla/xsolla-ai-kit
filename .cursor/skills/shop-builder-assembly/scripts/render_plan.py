@@ -101,8 +101,9 @@ LIVEOPS_BLOCKS = {
     "sb-offer-chain": ("offer_chain", "no offer chain configured in the project"),
 }
 COMMON_LAYOUT = "common-layout"
-# Hero blocks: the presets use `leadGameSales`; template pages carry `lead` or `hero`.
-HERO_MODULES = ("leadGameSales", "lead", "hero")
+# The presets' hero is `leadGameSales`; a template page carries its own hero as `lead`.
+# `hero` is the Call-to-action block, not a stand-in for either.
+TEMPLATE_HERO = {"leadGameSales": "lead"}
 # The blocks `add-page` puts on a new store page with CLI 1.9.4 (test-findings.md).
 NEW_PAGE_TEMPLATE = [
     "header",
@@ -134,12 +135,6 @@ APPROVAL_SCOPE = (
 NO_OWN_HEADER = (
     "Page {path} has no header block of its own, and the site has no common layout "
     "that could hold one. Nothing was written."
-)
-TEMPLATE_MULTI_PAGE = (
-    "This site was made from a Publisher Account template, so its header sits in the "
-    "site layout. Assembly builds on such a site with a one-page plan for now (preset "
-    "mobile-single-page): a page it adds would get a header of its own next to the "
-    "shared one. Nothing was written."
 )
 
 
@@ -274,11 +269,44 @@ def common_layout_id(
     return None
 
 
-def has_own_header(page: dict) -> bool:
+def has_own_header(page: dict, created_block_ids: frozenset = frozenset()) -> bool:
+    """Whether the page has a header block of its own. A header this assembly created,
+    with a page it added, doesn't count: on a template site that page uses the shared one."""
     blocks = page.get("blocks")
     return any(
-        isinstance(block, dict) and effective_module(block) == "header"
+        isinstance(block, dict)
+        and effective_module(block) == "header"
+        and block.get("_id") not in created_block_ids
         for block in (blocks if isinstance(blocks, list) else [])
+    )
+
+
+def shared_site_blocks(current: dict) -> set:
+    """Site-level blocks that are on no page and aren't a layout: on a template site,
+    the shared header and footer. A layout `create-block` added is not one."""
+    page_blocks = {
+        block.get("_id") if isinstance(block, dict) else block
+        for page in current.get("pages") or []
+        if isinstance(page, dict)
+        for block in page.get("blocks") or []
+    }
+    layouts = current.get("layouts")
+    return site_block_ids(current.get("blocks")) - page_blocks - site_block_ids(
+        layouts if isinstance(layouts, list) else []
+    )
+
+
+def is_template_site(current: dict, pages: list[dict]) -> bool:
+    """A site made from a Publisher Account template: it has a site layout and shared
+    site-level blocks next to it, and a planned page on it has no header block at all,
+    because the header and footer sit in that layout. A site this assembly built has
+    only the layout at site level, even when a page lost its header."""
+    layouts = current.get("layouts")
+    if not (isinstance(layouts, list) and layouts) or not shared_site_blocks(current):
+        return False
+    by_path = {page_path(page): page for page in current.get("pages") or []}
+    return any(
+        not has_own_header(by_path[page["path"]]) for page in pages if page["path"] in by_path
     )
 
 
@@ -286,10 +314,10 @@ def require_header_source(pages: list[dict], structure: object) -> None:
     """Stop when a planned page already on the site has no header it can use.
 
     A site created from a Publisher Account template keeps its header and footer as
-    site-level blocks next to the common layout, and its pages have none of their own.
-    Assembly builds on such a site with a one-page plan: a page it adds gets a header
-    of its own, which would sit next to the shared one. A page with no header and a
-    site with no layout is broken, and stops too. Pages the plan creates pass.
+    site-level blocks next to the common layout, and its pages have none of their own;
+    pages the plan adds there drop the header and footer `add-page` gives them. A page
+    with no header on a site with no layout is broken, and stops. Pages the plan creates
+    pass.
     """
 
     current = structure_data(structure)
@@ -299,16 +327,12 @@ def require_header_source(pages: list[dict], structure: object) -> None:
     layouts = current.get("layouts")
     has_layout = isinstance(layouts, list) and bool(layouts)
     by_path = {page_path(page): page for page in current_pages}
-    template_pages = []
     for page_plan in pages:
         current_page = by_path.get(page_plan["path"])
         if current_page is None or has_own_header(current_page):
             continue
         if not has_layout:
             raise ValueError(NO_OWN_HEADER.format(path=page_plan["path"]))
-        template_pages.append(page_plan["path"])
-    if template_pages and len(pages) > 1:
-        raise ValueError(TEMPLATE_MULTI_PAGE)
 
 
 def adapt_to_template_page(modules: list[str], on_page: set) -> list[str]:
@@ -325,12 +349,17 @@ def adapt_to_template_page(modules: list[str], on_page: set) -> list[str]:
     ]
     if "leadGameSales" in result and "leadGameSales" not in on_page and "lead" in on_page:
         result[result.index("leadGameSales")] = "lead"
-    if "sb-daily-reward" in on_page and "sb-daily-reward" not in result:
-        hero = next(
-            (index for index, module in enumerate(result) if module in ("lead", "leadGameSales")),
-            -1,
-        )
-        result.insert(hero + 1, "sb-daily-reward")
+    # The template's LiveOps blocks stay as configured, like on any page that has them:
+    # the daily rewards block, which the kit can't add back, then the offer chain, reward
+    # system and promo codes blocks, after the hero.
+    hero = next(
+        (index for index, module in enumerate(result) if module in ("lead", "leadGameSales")),
+        -1,
+    )
+    for module in ("sb-daily-reward", "sb-offer-chain", "rewards", "promocodes"):
+        if module in on_page and module not in result:
+            hero += 1
+            result.insert(hero, module)
     return result
 
 
@@ -494,6 +523,7 @@ def bind_current_state(
                 }
             )
 
+    template_site = is_template_site(current, pages)
     for page_plan in pages:
         page_plan["page_id"] = None
         page_plan["current_blocks"] = []
@@ -502,6 +532,12 @@ def bind_current_state(
         page_plan["template_removals"] = []
         current_page = by_path.get(page_plan["path"])
         if current_page is None:
+            if template_site:
+                # The page `add-page` makes comes with its own header and footer; on a
+                # template site they would sit next to the shared ones, so they go.
+                page_plan["site_header"] = "layout"
+                for key in ("blocks", "requested_blocks"):
+                    page_plan[key] = adapt_to_template_page(page_plan[key], set())
             page_plan["template_removals"] = template_removals(page_plan)
             continue
         page_plan["page_id"] = current_page.get("_id")
@@ -512,14 +548,14 @@ def bind_current_state(
             raise ValueError(
                 "current pages[].blocks must contain full block objects from get-structure"
             )
-        layouts = current.get("layouts")
-        if (
-            isinstance(layouts, list)
-            and layouts
-            and not has_own_header(current_page)
-        ):
+        if template_site and not has_own_header(current_page, created_block_ids):
             page_plan["site_header"] = "layout"
-            on_page = {effective_module(block) for block in blocks}
+            # Blocks this assembly created are template blocks, not the template's own.
+            on_page = {
+                effective_module(block)
+                for block in blocks
+                if block.get("_id") not in created_block_ids
+            }
             for key in ("blocks", "requested_blocks"):
                 page_plan[key] = adapt_to_template_page(page_plan[key], on_page)
         omitted_on_page = {
@@ -621,14 +657,14 @@ def placement(
 ) -> dict:
     """The planned pages a module's block is on, and the blocks there that existed before
     this assembly and stay: the yes covers changing those only because the plan lists them.
-    A hero item goes on a template page's own hero (`lead`) in place of the preset's."""
+    A `leadGameSales` item goes on a template page's own hero (`lead`)."""
     page_modules = {}
     for page in pages:
         if page_filter not in (None, page["path"]):
             continue
         on_page = module
-        if on_page not in page["blocks"] and on_page in HERO_MODULES:
-            on_page = next((m for m in page["blocks"] if m in HERO_MODULES), on_page)
+        if on_page not in page["blocks"] and TEMPLATE_HERO.get(on_page) in page["blocks"]:
+            on_page = TEMPLATE_HERO[on_page]
         if on_page in page["blocks"]:
             page_modules[page["path"]] = on_page
     existing = []
@@ -695,10 +731,12 @@ def images_plan(
 
 
 def copy_plan(
-    brief: dict, pages: list[dict], created_block_ids: frozenset
+    brief: dict, pages: list[dict], created_block_ids: frozenset, base_dir: Path | None
 ) -> tuple[dict, list[str]]:
     """The approved text `apply_style.py` writes in the primary locale: block text fields
-    from `content.copy`, and the FAQ items from `content.faq`. Other locales are
+    from `content.copy`, hero button labels from `content.buttons`, the FAQ items from
+    `content.faq`, and each page's SEO title,
+    description and share image from `content.seo`. Other locales are
     `shopbuilder-translate`'s."""
     content = brief.get("content", {})
     texts, warnings = [], []
@@ -711,10 +749,80 @@ def copy_plan(
         texts.append(
             {"module": item["module"], "field": item["field"], "html": item["html"], **where}
         )
+    buttons = []
+    for item in content.get("buttons", []):
+        where = placement(item["module"], item.get("page"), pages, created_block_ids)
+        if not where["pages"]:
+            warnings.append(
+                not_placed(f"Button {item['position']}'s label", item["module"], item.get("page"))
+            )
+        buttons.append(
+            {
+                "module": item["module"],
+                "position": item["position"],
+                "label": item["label"],
+                **where,
+            }
+        )
     faq = None
     if content.get("faq"):
         faq = {"items": content["faq"], **placement("faq", None, pages, created_block_ids)}
-    return {"locale": brief["site"]["primary_locale"], "texts": texts, "faq": faq}, warnings
+    planned = {page["path"] for page in pages}
+    seo = []
+    for item in content.get("seo", []):
+        if item["page"] not in planned:
+            warnings.append(f"SEO for {item['page']} has no planned page; it isn't written.")
+            continue
+        entry = {
+            "page": item["page"],
+            "title": item.get("title"),
+            "description": item.get("description"),
+            "file": item.get("image"),
+            "sha256": None,
+        }
+        if entry["file"] and base_dir is not None:
+            path = Path(entry["file"])
+            entry["sha256"] = file_sha256(path if path.is_absolute() else base_dir / path)
+            if entry["sha256"] is None:
+                warnings.append(f"Image {entry['file']} was not found next to the brief.")
+        seo.append(entry)
+    return {
+        "locale": brief["site"]["primary_locale"],
+        "texts": texts,
+        "buttons": buttons,
+        "faq": faq,
+        "seo": seo,
+    }, warnings
+
+
+def drop_pages_without_content(
+    pages: list[dict], structure: object | None
+) -> tuple[list[dict], list[str]]:
+    """Leave out a page the plan would add with nothing on it but a header and footer.
+
+    Its sections were omitted for missing content, so it would be an empty page. A page
+    already on the site, and the home page, stay.
+    """
+    existing = set()
+    if structure is not None:
+        current_pages = structure_data(structure).get("pages")
+        if not isinstance(current_pages, list):
+            raise ValueError("structure.pages must be a list")
+        existing = {page_path(page) for page in current_pages}
+    kept, warnings = [], []
+    for page in pages:
+        if (
+            page["path"] != "/"
+            and page["path"] not in existing
+            and not set(page["blocks"]) - {"header", "footer"}
+        ):
+            warnings.append(
+                f"Page {page['path']} would have no sections: the content they need isn't "
+                "in the brief (see omissions). It isn't created."
+            )
+            continue
+        kept.append(page)
+    return kept, warnings
 
 
 def build_plan(
@@ -729,11 +837,13 @@ def build_plan(
     preset = choose_preset(brief)
     catalog_groups = catalog_sections(brief, preset)
     pages, omissions = omit_unwritable_blocks(selected_pages(brief, preset), brief)
+    pages, empty_warnings = drop_pages_without_content(pages, current_structure)
     current_state = bind_current_state(
         pages, omissions, current_structure, created_block_ids
     )
     images, warnings = images_plan(brief, pages, created_block_ids, base_dir)
-    copy_section, copy_warnings = copy_plan(brief, pages, created_block_ids)
+    warnings[:0] = empty_warnings
+    copy_section, copy_warnings = copy_plan(brief, pages, created_block_ids, base_dir)
     warnings.extend(copy_warnings)
     brand = brief.get("brand", {})
     if not brand.get("logo") and not any(
@@ -753,10 +863,6 @@ def build_plan(
         "target": {
             "merchant_id": brief["project"]["merchant_id"],
             "project_id": brief["project"]["project_id"],
-            "environment": brief["project"]["environment"],
-            "test_project_acknowledged": brief["project"].get(
-                "test_project_acknowledged", False
-            ),
             "site_name": brief["site"]["name"],
             "slug": brief["site"]["slug"],
         },

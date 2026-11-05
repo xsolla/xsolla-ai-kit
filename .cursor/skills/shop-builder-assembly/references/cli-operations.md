@@ -1,14 +1,13 @@
 # CLI assembly operations
 
 This is the dependency map for `xsolla` 1.9.4 or newer. Run every command against the
-already verified dedicated-test-project context; do not add per-command
+already verified project context; do not add per-command
 project overrides after preflight.
 
 | Phase | Command | Consumes | Produces / unlocks |
 |---|---|---|---|
 | Discover | `xsolla config list --json` | Local profile | Merchant and project match; sandbox mode is off |
 | Discover | `xsolla auth list-account --json` | Credential store | Active Publisher login state |
-| Safety | `preflight.py --approved-test-projects <file>` | Separate local approval record | Exact test-project identity is allowlisted |
 | Safety | `shopbuilder create-block --help`, only when the site has no common layout | Installed CLI | The usage line names `create-block`; otherwise the layout step is skipped |
 | Discover | `xsolla shopbuilder list-websites --json` | Project context | Slug, landing ID, type |
 | Backup | `get-landing`, `get-structure`, `get-localization`, `list-assets`, `list-versions` | Existing slug | Restorable configuration evidence |
@@ -39,9 +38,7 @@ No script passes `--force`; an operation that requires it stops for review.
 
 The developer's one yes can cover more than one `apply_plan.py` run. Each later run is
 covered only when its render says so; `apply_plan.py` checks this again and stops before
-any write. Every script that writes (`apply_plan.py`, `apply_style.py`,
-`patch_backgrounds.py`) also takes
-`--approved-test-projects <allowlist>`, and refuses to write without it.
+any write.
 
 - **A new site's two runs.** A new site's generated blocks have no IDs before creation, so
   it is applied in two runs: the bootstrap, then the rest. Save run 1's report as
@@ -55,12 +52,15 @@ any write. Every script that writes (`apply_plan.py`, `apply_style.py`,
   authentication failure, prints a `stopped-partway` report: save it as
   `partial-report.json`. Export again, render with `--structure`, `--approved-plan` and
   `--run-report partial-report.json`, and apply under the same yes when the render says
-  "Covered by the approved plan"; otherwise ask again.
+  "Covered by the approved plan"; otherwise ask again. Every report carries what all
+  earlier runs under the yes created (`created_block_ids`, `all_created_pages`), and a
+  stopped run records each page and block as it is created, so the latest report is the
+  one to pass.
 - **Background fixes after the visual review.** The yes covers `values.background` leaves
   (color, gradient, image, position, size) on blocks this assembly created, applied with
   `scripts/patch_backgrounds.py <brief.json> --approved-plan approved-plan.json
-  --run-report <report> --backup-dir <dir> --fixes fixes.json --approved-test-projects
-  <allowlist>` after a fresh export. Pass `--run-report` once for every earlier run
+  --run-report <report> --backup-dir <dir> --fixes fixes.json` after a
+  fresh export. Pass `--run-report` once for every earlier run
   (`run1-report.json` and run 2's report for a new site): run 1's report is the one that
   lists the blocks it created. `fixes.json` is a list of
   `{"block_id": …, "leaf": …, "value": …}`. It refuses anything else, an image not
@@ -68,14 +68,18 @@ any write. Every script that writes (`apply_plan.py`, `apply_style.py`,
   over a block that keeps its image.
 - **The theme, images and copy, after the last apply run.** Export again, then run
   `scripts/apply_style.py <brief.json> --approved-plan approved-plan.json --run-report
-  <report> --backup-dir <dir> --approved-test-projects <allowlist>`, with `--run-report`
+  <report> --backup-dir <dir>`, with `--run-report`
   once for every earlier run, as above. It sets the approved `brand.theme` on the site
   theme's `theme.input`, only keys the site already has, each in its current format, and
   sets `theme.enabled` to `false` on the planned pages that use their own theme: pages the
   runs created, and existing pages only when the approved plan listed them
   (`theme.pages_to_site_theme`). It reads `get-localization` before and after, and stops
-  if the text changed. A rerun writes nothing. When the CLI doesn't recalculate
-  `calculatedTheme`, the report's `needs_human` has the Editor step for the handoff.
+  if the text changed. Before any write it also compares `get-localization` with the
+  backup's, and stops if the text was edited after the export. Pages switch to the site
+  theme only when the site theme holds the palette; a key it can't set goes to
+  `needs_human`. A rerun writes nothing. When the CLI doesn't recalculate
+  `calculatedTheme`, the report's `needs_human` has the Editor step for the handoff, and
+  a rerun repeats it as a reminder.
   Then the images: each `brand.images` file must be the one the plan showed (its
   `sha256`), at most 10 MB. It uploads each file once with `upload-asset --landing-id <id>
   --file <path> --type image` and keeps the returned URL in `asset-cache.json` next to the
@@ -86,11 +90,25 @@ any write. Every script that writes (`apply_plan.py`, `apply_style.py`,
   federated block, and an opaque background color over the image go to `needs_human`.
   Then the copy, in the primary locale only: each `content.copy` item goes to the `L:` id
   in `values.<field>.id` of its module's blocks, under the same rules for existing blocks.
+  Each `content.buttons` label goes, as plain text, to `values.buttons[<position - 1>]
+  .button.action.text.id` of the planned `leadGameSales` blocks; a buy button, a missing
+  position and a federated hero go to `needs_human`.
   The FAQ block's `questionV2` items are made to match `content.faq`: texts written,
   extra items removed (`enable: false` is ignored there), missing ones added with stable
   IDs. All text goes in one `update-many-localization` call, with each string's current
-  `description`, before the FAQ items that point at it are added. It reads every string
-  back and stops if a string outside the plan changed.
+  `description`, before the FAQ items that point at it are added. A string in `common`
+  (shared across the site) or one another block uses that the plan didn't list is not
+  written: it goes to `needs_human`. Two approved items that write different text to one
+  string stop the run before any text is written. It reads every string back, checks the
+  FAQ items by their question text IDs in order (the server regenerates component
+  `_id`s), and stops if a string outside the plan changed; a removed item's strings may
+  go with it. Each page's `content.seo` goes to
+  the `L:` ids in `page.seo.title`, `page.seo.description` and `page.seo.ogImage`, a
+  sibling of `page.blocks`: plain text, and for `ogImage` the uploaded image's CDN URL,
+  through the same upload cache. A page without those fields goes to `needs_human`.
+  With a palette, the report's `needs_human` ends with the Pay Station theme step (decision
+  D5): the palette by Pay Station's color groups (surfaces, texts, controls, borders) and
+  the Pay Station customization link. No API or CLI command sets that theme yet.
 
 ## ID dependencies
 

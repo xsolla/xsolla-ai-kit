@@ -100,20 +100,51 @@ def image_errors(images: object) -> list[str]:
         page = image.get("page")
         if page is not None and (not isinstance(page, str) or not page.startswith("/")):
             errors.append(f"{prefix}.page must be a page path such as /")
-    return errors
+    return errors + overlap_errors(images, "brand.images", "slot")
 
 
 # Block text fields the copy step writes: `values.<field>.id` holds the string's `L:` id.
 COPY_FIELDS = ("title", "subtitle", "description")
 
 
+# Copy never carries code: no script or embedding tags, event handlers or script URLs.
+UNSAFE_HTML = re.compile(
+    r"<\s*(script|img|iframe|object|embed|style|link|meta)\b|\son[a-z]+\s*=|javascript\s*:",
+    re.IGNORECASE,
+)
+
+
+def overlap_errors(
+    items: list, kind: str, slot_key: str, slot_label: str = "{}"
+) -> list[str]:
+    """Two entries for the same module and slot whose pages overlap (no page means every
+    page) would write over each other on every run."""
+    errors, seen = [], []
+    for index, item in enumerate(items):
+        if not isinstance(item, dict):
+            continue
+        key = (item.get("module"), item.get(slot_key))
+        page = item.get("page")
+        for other_index, other_key, other_page in seen:
+            if key == other_key and (page is None or other_page is None or page == other_page):
+                errors.append(
+                    f"{kind}[{index}] and {kind}[{other_index}] both set the "
+                    f"{slot_label.format(key[1])} of "
+                    f"{key[0]} on the same page; keep one, or give each its own page"
+                )
+        seen.append((index, key, page))
+    return errors
+
+
 def html_errors(value: object, label: str) -> list[str]:
-    """Copy is HTML. A title doesn't render `<img>`, and scripts never go in copy."""
+    """Copy is HTML. A title doesn't render `<img>`, and code never goes in copy."""
     if not isinstance(value, str) or not value.strip():
         return [f"{label} must be non-empty HTML"]
-    lowered = value.lower()
-    if "<script" in lowered or "<img" in lowered:
-        return [f"{label} must not contain <script> or <img>"]
+    if UNSAFE_HTML.search(value):
+        return [
+            f"{label} must not contain <script>, <img>, <iframe>, other embedding tags, "
+            "event handlers or javascript: links"
+        ]
     if "<" not in value:
         return [f"{label} must be HTML, such as <p>…</p>: a bare string renders unstyled"]
     return []
@@ -140,7 +171,7 @@ def copy_errors(copy_value: object) -> list[str]:
         page = item.get("page")
         if page is not None and (not isinstance(page, str) or not page.startswith("/")):
             errors.append(f"{prefix}.page must be a page path such as /")
-    return errors
+    return errors + overlap_errors(copy_value, "content.copy", "field")
 
 
 def faq_errors(faq: object) -> list[str]:
@@ -157,6 +188,92 @@ def faq_errors(faq: object) -> list[str]:
         errors.extend(html_errors(item["answer"], f"{prefix}.answer"))
         if isinstance(item["question"], str) and "<h4" not in item["question"].lower():
             errors.append(f"{prefix}.question must be an <h4>: the FAQ block needs it")
+    return errors
+
+
+# Blocks whose buttons hold their labels in `values.buttons[].button.action.text`.
+BUTTON_MODULES = ("leadGameSales",)
+BUTTON_LABEL_LIMIT = 40
+
+
+def button_errors(buttons: object) -> list[str]:
+    """Check `content.buttons`: a plain-text label for a hero button, by its position."""
+    if not isinstance(buttons, list) or not buttons:
+        return ["content.buttons must be a non-empty list"]
+    errors = []
+    for index, item in enumerate(buttons):
+        prefix = f"content.buttons[{index}]"
+        if not isinstance(item, dict):
+            errors.append(f"{prefix} must be an object")
+            continue
+        unknown = sorted(set(item) - {"module", "position", "label", "page"})
+        if unknown:
+            errors.append(f"{prefix} has unknown keys: " + ", ".join(unknown))
+        if item.get("module") not in BUTTON_MODULES:
+            errors.append(f"{prefix}.module must be one of: " + ", ".join(BUTTON_MODULES))
+        position = item.get("position")
+        if isinstance(position, bool) or not isinstance(position, int) or position < 1:
+            errors.append(f"{prefix}.position must be 1 for the first button, 2 for the next")
+        label = item.get("label")
+        if not isinstance(label, str) or not label.strip():
+            errors.append(f"{prefix}.label must be non-empty text")
+        elif "<" in label or ">" in label:
+            errors.append(f"{prefix}.label is plain text, not HTML: buttons don't render tags")
+        elif len(label) > BUTTON_LABEL_LIMIT:
+            errors.append(f"{prefix}.label must be at most {BUTTON_LABEL_LIMIT} characters")
+        page = item.get("page")
+        if page is not None and (not isinstance(page, str) or not page.startswith("/")):
+            errors.append(f"{prefix}.page must be a page path such as /")
+    return errors + overlap_errors(buttons, "content.buttons", "position", "label of button {}")
+
+
+# Search engines cut longer titles and descriptions short.
+SEO_LIMITS = {"title": 70, "description": 200}
+
+
+def seo_errors(seo: object) -> list[str]:
+    """Check `content.seo`: per page, a plain-text title and description, and a local
+    share image (og:image)."""
+    if not isinstance(seo, list) or not seo:
+        return ["content.seo must be a non-empty list"]
+    errors, pages = [], set()
+    for index, item in enumerate(seo):
+        prefix = f"content.seo[{index}]"
+        if not isinstance(item, dict):
+            errors.append(f"{prefix} must be an object")
+            continue
+        unknown = sorted(set(item) - {"page", "title", "description", "image"})
+        if unknown:
+            errors.append(f"{prefix} has unknown keys: " + ", ".join(unknown))
+        page = item.get("page")
+        if not isinstance(page, str) or not page.startswith("/"):
+            errors.append(f"{prefix}.page must be a page path such as /")
+        elif page in pages:
+            errors.append(f"{prefix}.page {page} is listed twice")
+        else:
+            pages.add(page)
+        if not any(item.get(key) for key in ("title", "description", "image")):
+            errors.append(f"{prefix} needs a title, a description or an image")
+        for key, limit in SEO_LIMITS.items():
+            value = item.get(key)
+            if value is None:
+                continue
+            if not isinstance(value, str) or not value.strip():
+                errors.append(f"{prefix}.{key} must be non-empty text")
+            elif "<" in value or ">" in value:
+                errors.append(f"{prefix}.{key} is plain text, not HTML")
+            elif len(value) > limit:
+                errors.append(f"{prefix}.{key} must be at most {limit} characters")
+        image = item.get("image")
+        if image is not None:
+            if not isinstance(image, str) or not image.strip():
+                errors.append(f"{prefix}.image must be a local file")
+            elif "://" in image:
+                errors.append(f"{prefix}.image must be a local file; download it first")
+            elif Path(image).suffix.lower() not in IMAGE_EXTENSIONS:
+                errors.append(
+                    f"{prefix}.image must be one of: " + ", ".join(sorted(IMAGE_EXTENSIONS))
+                )
     return errors
 
 
@@ -231,13 +348,6 @@ def validate(brief: dict) -> list[str]:
         value = project.get(field)
         if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
             errors.append(f"project.{field} must be a positive integer")
-    environment = project.get("environment")
-    if environment != "test":
-        errors.append("project.environment must be test")
-    if environment == "test" and project.get("test_project_acknowledged") is not True:
-        errors.append(
-            "project.test_project_acknowledged must be true for a dedicated test project"
-        )
 
     if not isinstance(game.get("name"), str) or not game["name"].strip():
         errors.append("game.name is required")
@@ -364,6 +474,10 @@ def validate(brief: dict) -> list[str]:
         errors.extend(copy_errors(content["copy"]))
     if "faq" in content:
         errors.extend(faq_errors(content["faq"]))
+    if "seo" in content:
+        errors.extend(seo_errors(content["seo"]))
+    if "buttons" in content:
+        errors.extend(button_errors(content["buttons"]))
 
     sources = brief.get("sources")
     if not isinstance(sources, list) or not sources:

@@ -185,7 +185,6 @@ def main() -> int:
     parser.add_argument("--run-report", type=Path, action="append", required=True)
     parser.add_argument("--backup-dir", type=Path, required=True)
     parser.add_argument("--fixes", type=Path, required=True)
-    parser.add_argument("--approved-test-projects", type=Path)
     args = parser.parse_args()
     try:
         brief = load_brief(args.brief)
@@ -204,7 +203,7 @@ def main() -> int:
             ):
                 raise RuntimeError(f"{path} is not a run under the approved plan")
         fixes = load_fixes(args.fixes)
-        run_preflight(args.brief, args.approved_test_projects)
+        run_preflight(args.brief)
         check_cli_context(brief["project"])
 
         if not verified_backup(args.backup_dir, brief["project"], slug):

@@ -9,6 +9,7 @@ import json
 import sys
 import tempfile
 import unittest
+import uuid
 from pathlib import Path
 from unittest import mock
 
@@ -203,6 +204,7 @@ class ApplyStyleRunTests(unittest.TestCase):
         self.text = {"pages": {"page-1": {"texts": {"L:1": {"en-US": "<p>Hi</p>"}}}}}
         self.calls: list[tuple[str, ...]] = []
         self.recalculates = False
+        self.backup_text: dict | None = None
         self.touches_text = False
 
     def approve(self, structure: dict | None) -> None:
@@ -236,6 +238,9 @@ class ApplyStyleRunTests(unittest.TestCase):
 
     def run_style(self, backup: dict | None = None) -> tuple[int, dict | None, str]:
         (self.root / "run2-report.json").write_text(json.dumps(self.report), encoding="utf-8")
+        (self.root / "localization.json").write_text(
+            json.dumps({"ok": True, "data": self.backup_text or self.text}), encoding="utf-8"
+        )
         argv = [
             "apply_style.py",
             str(self.root / "brief.json"),
@@ -299,7 +304,27 @@ class ApplyStyleRunTests(unittest.TestCase):
         code, report, stderr = self.run_style()
         self.assertEqual(0, code, stderr)
         self.assertTrue(report["theme"]["recalculated"])
-        self.assertEqual([], report["needs_human"])
+        self.assertEqual(1, len(report["needs_human"]))
+        self.assertIn("Pay Station customization", report["needs_human"][0])
+
+    def test_the_handoff_gives_the_palette_for_the_pay_station_theme(self) -> None:
+        code, report, stderr = self.run_style()
+        self.assertEqual(0, code, stderr)
+        step = report["needs_human"][-1]
+        project = self.brief["project"]
+        self.assertIn(
+            f"https://publisher.xsolla.com/{project['merchant_id']}/projects/"
+            f"{project['project_id']}/payments/theme",
+            step,
+        )
+        self.assertIn("surfaces #0b0f1a and #151b2b; texts #ffffff; controls #ffb400", step)
+        self.assertIn("every project in this Publisher Account", step)
+
+    def test_no_palette_no_pay_station_step(self) -> None:
+        self.assertIsNone(apply_style.pay_station_step(None, {"merchant_id": 1, "project_id": 2}))
+        self.assertIsNone(
+            apply_style.pay_station_step({"isDark": True}, {"merchant_id": 1, "project_id": 2})
+        )
 
     def test_a_rerun_writes_nothing(self) -> None:
         self.assertEqual(0, self.run_style()[0])
@@ -325,6 +350,28 @@ class ApplyStyleRunTests(unittest.TestCase):
         code, report, stderr = self.run_style()
         self.assertEqual(0, code, stderr)
         self.assertFalse(self.site["pages"][0]["theme"]["enabled"])
+
+    def test_stops_when_the_text_changed_after_the_backup(self) -> None:
+        self.backup_text = copy.deepcopy(self.text)
+        self.text["pages"]["page-1"]["texts"]["L:1"]["en-US"] = "<p>Edited in the editor</p>"
+        code, _, stderr = self.run_style()
+        self.assertEqual(1, code)
+        self.assertIn("the site's text changed after the backup", stderr)
+        self.assertEqual([], self.updates())
+
+    def test_pages_keep_their_own_theme_when_the_palette_wasnt_set(self) -> None:
+        self.site["theme"] = {"mainColors": {"accentColor": "rgba(1,2,3,1)"}}
+        code, report, stderr = self.run_style()
+        self.assertEqual(0, code, stderr)
+        self.assertTrue(self.site["pages"][0]["theme"]["enabled"])
+        self.assertEqual([], self.updates())
+        self.assertTrue(any("older mainColors shape" in item for item in report["needs_human"]))
+
+    def test_a_rerun_keeps_the_recalculation_reminder(self) -> None:
+        self.assertEqual(0, self.run_style()[0])
+        code, report, stderr = self.run_style()
+        self.assertEqual(0, code, stderr)
+        self.assertTrue(report["needs_human"][0].startswith("If the theme wasn't recalculated"))
 
     def test_stops_when_the_site_text_changes(self) -> None:
         self.touches_text = True
@@ -461,11 +508,23 @@ class ImagesPlanTests(unittest.TestCase):
         )
         self.assertEqual([], plan["images"][0]["existing_block_ids"])
 
+    def test_the_call_to_action_block_is_not_a_hero_alias(self) -> None:
+        brief = brief_with_palette(None)
+        brief["content"] = {
+            "copy": [{"module": "hero", "field": "title", "html": "<h2>Pre-register</h2>"}]
+        }
+        plan = render_plan.build_plan(brief)
+        self.assertEqual([], plan["copy"]["texts"][0]["pages"])
+        self.assertIn(
+            "The title text has no hero block to go on; it isn't placed.", plan["warnings"]
+        )
+
     def test_a_hero_image_goes_on_a_template_page_hero(self) -> None:
         structure = {
             "_id": "landing-1",
             "layouts": ["layout-1"],
-            "blocks": [{"_id": "layout-1"}],
+            # The template's shared header sits at site level, next to the layout.
+            "blocks": [{"_id": "layout-1"}, {"_id": "layout-header"}],
             "pages": [
                 {
                     "_id": "p1",
@@ -560,6 +619,9 @@ class ApplyImagesRunTests(unittest.TestCase):
         (self.root / "assets.json").write_text(
             json.dumps({"ok": True, "data": [{"url": url} for url in self.assets]}),
             encoding="utf-8",
+        )
+        (self.root / "localization.json").write_text(
+            json.dumps({"ok": True, "data": {}}), encoding="utf-8"
         )
         argv = [
             "apply_style.py",
@@ -709,7 +771,7 @@ class CopyBriefTests(unittest.TestCase):
             "content.copy must be a non-empty list": self.brief([]),
             "content.copy[0].field must be one of": self.brief([{**good, "field": "legal"}]),
             "content.copy[0].html must be HTML": self.brief([{**good, "html": "Hi"}]),
-            "must not contain <script> or <img>": self.brief(
+            "must not contain <script>, <img>": self.brief(
                 [{**good, "html": "<h1><img src=x></h1>"}]
             ),
             "content.copy[0].module must be a verified block module": self.brief(
@@ -728,7 +790,132 @@ class CopyBriefTests(unittest.TestCase):
                 self.assertTrue(any(message in error for error in errors), errors)
 
 
+class SeoBriefTests(unittest.TestCase):
+    def brief(self, seo: object) -> dict:
+        brief = brief_with_palette(None)
+        brief["content"] = {"seo": seo}
+        return brief
+
+    def test_plain_text_seo_with_a_local_image_is_valid(self) -> None:
+        seo = [{"page": "/", "title": "Space Raiders Shop", "description": "Gems.",
+                "image": "art/share.png"}]
+        self.assertEqual([], validate_shop_brief.validate(self.brief(seo)))
+
+    def test_bad_seo_is_refused(self) -> None:
+        good = {"page": "/", "title": "Shop"}
+        cases = {
+            "content.seo must be a non-empty list": [],
+            "content.seo[0].title is plain text, not HTML": [{**good, "title": "<b>Shop</b>"}],
+            "content.seo[0].title must be at most 70 characters": [{**good, "title": "x" * 71}],
+            "content.seo[0].description must be at most 200 characters": [
+                {**good, "description": "x" * 201}
+            ],
+            "content.seo[0].image must be a local file; download it first": [
+                {**good, "image": "https://example.com/a.png"}
+            ],
+            "content.seo[1].page / is listed twice": [good, good],
+            "content.seo[0] needs a title, a description or an image": [{"page": "/"}],
+            "content.seo[0].page must be a page path": [{**good, "page": "shop"}],
+        }
+        for message, seo in cases.items():
+            with self.subTest(message):
+                errors = validate_shop_brief.validate(self.brief(seo))
+                self.assertTrue(any(message in error for error in errors), errors)
+
+
+class OverlapAndHtmlTests(unittest.TestCase):
+    def test_overlapping_entries_are_refused(self) -> None:
+        brief = brief_with_palette(None)
+        title = {"module": "leadGameSales", "field": "title", "html": "<h1>A</h1>"}
+        brief["content"] = {"copy": [title, {**title, "html": "<h1>B</h1>", "page": "/"}]}
+        hero = {"file": "a.png", "module": "leadGameSales", "slot": "background"}
+        brief["brand"] = {"images": [hero, {**hero, "file": "b.png"}]}
+        errors = validate_shop_brief.validate(brief)
+        self.assertTrue(any(e.startswith("content.copy[1] and content.copy[0]") for e in errors))
+        self.assertTrue(any(e.startswith("brand.images[1] and brand.images[0]") for e in errors))
+
+    def test_entries_on_different_pages_are_fine(self) -> None:
+        brief = brief_with_palette(None)
+        title = {"module": "leadGameSales", "field": "title", "html": "<h1>A</h1>"}
+        brief["content"] = {
+            "copy": [{**title, "page": "/"}, {**title, "html": "<h1>B</h1>", "page": "/events"}]
+        }
+        self.assertEqual([], validate_shop_brief.validate(brief))
+
+    def test_code_in_copy_is_refused(self) -> None:
+        for html_text in (
+            '<p><iframe src="x"></iframe></p>',
+            '<p onclick="steal()">Hi</p>',
+            '<a href="javascript:alert(1)">Go</a>',
+            "<style>p{}</style><p>Hi</p>",
+        ):
+            with self.subTest(html_text):
+                self.assertTrue(validate_shop_brief.html_errors(html_text, "x"))
+        self.assertEqual([], validate_shop_brief.html_errors('<p><a href="https://x">Hi</a></p>', "x"))
+
+
+class ButtonBriefTests(unittest.TestCase):
+    def brief(self, buttons: object) -> dict:
+        brief = brief_with_palette(None)
+        brief["content"] = {"buttons": buttons}
+        return brief
+
+    def test_plain_text_labels_by_position_are_valid(self) -> None:
+        buttons = [
+            {"module": "leadGameSales", "position": 1, "label": "Shop now"},
+            {"module": "leadGameSales", "position": 2, "label": "Watch trailer", "page": "/"},
+        ]
+        self.assertEqual([], validate_shop_brief.validate(self.brief(buttons)))
+
+    def test_bad_labels_are_refused(self) -> None:
+        good = {"module": "leadGameSales", "position": 1, "label": "Shop now"}
+        cases = {
+            "content.buttons must be a non-empty list": [],
+            "content.buttons[0].label is plain text, not HTML": [{**good, "label": "<b>Go</b>"}],
+            "content.buttons[0].label must be at most 40 characters": [
+                {**good, "label": "x" * 41}
+            ],
+            "content.buttons[0].position must be 1 for the first button": [
+                {**good, "position": 0}
+            ],
+            "content.buttons[0].module must be one of: leadGameSales": [
+                {**good, "module": "hero"}
+            ],
+            "both set the label of button 1 of leadGameSales": [good, {**good, "label": "Buy"}],
+        }
+        for message, buttons in cases.items():
+            with self.subTest(message):
+                errors = validate_shop_brief.validate(self.brief(buttons))
+                self.assertTrue(any(message in error for error in errors), errors)
+
+    def test_the_plan_places_the_labels(self) -> None:
+        brief = self.brief([{"module": "leadGameSales", "position": 1, "label": "Shop now"}])
+        plan = render_plan.build_plan(brief)
+        self.assertEqual(
+            {"module": "leadGameSales", "position": 1, "label": "Shop now", "pages": ["/"],
+             "page_modules": {"/": "leadGameSales"}, "existing_block_ids": []},
+            plan["copy"]["buttons"][0],
+        )
+
+
 class CopyPlanTests(unittest.TestCase):
+    def test_the_plan_binds_seo_to_planned_pages_and_its_image(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "share.png").write_bytes(b"share-art")
+            brief = brief_with_palette(None)
+            brief["content"] = {
+                "seo": [
+                    {"page": "/", "title": "Shop", "image": "share.png"},
+                    {"page": "/news", "title": "News"},
+                ]
+            }
+            plan = render_plan.build_plan(brief, base_dir=root)
+        seo = plan["copy"]["seo"]
+        self.assertEqual(["/"], [item["page"] for item in seo])
+        self.assertEqual(hashlib.sha256(b"share-art").hexdigest(), seo[0]["sha256"])
+        self.assertIn("SEO for /news has no planned page; it isn't written.", plan["warnings"])
+
     def test_the_plan_places_the_copy_and_the_faq(self) -> None:
         brief = brief_with_palette(None)
         brief["content"] = {
@@ -780,11 +967,24 @@ class ApplyCopyRunTests(unittest.TestCase):
                 {
                     "_id": "page-1",
                     "path": "/",
+                    "seo": {
+                        "title": {"id": "L:st"},
+                        "description": {"id": "L:sd"},
+                        "ogImage": {"id": "L:si"},
+                    },
                     "blocks": [
                         {"_id": "hero", "module": "leadGameSales",
-                         "values": {"title": {"id": "L:t1"}, "subtitle": {"id": "L:t2"}}},
+                         "values": {"title": {"id": "L:t1"}, "subtitle": {"id": "L:t2"},
+                                    "buttons": [
+                                        {"id": "b1", "button": {"action": {
+                                            "__type": "action", "action": "scroll",
+                                            "targetId": "", "text": {"id": "L:b1"}}}},
+                                        {"id": "b2", "button": {"action": {
+                                            "__type": "action", "action": "buy",
+                                            "sku": "gems_100"}}},
+                                    ]}},
                         {"_id": "store", "module": "newStore",
-                         "values": {"title": {"id": "L:c1"}}},
+                         "values": {"title": {"id": "L:t3"}}},
                         {"_id": "faq", "module": "faq", "values": {"title": {"id": "L:t4"}},
                          "components": [question(1), question(2), question(3)]},
                     ],
@@ -801,7 +1001,12 @@ class ApplyCopyRunTests(unittest.TestCase):
                     "texts": {
                         "L:t1": text("<h1>Demo hero</h1>"),
                         "L:t2": text("<p>Demo subtitle</p>"),
+                        "L:t3": text("<h2>Demo store</h2>"),
+                        "L:b1": text("Scroll"),
                         "L:t4": text("<h2>FAQ</h2>"),
+                        "L:st": text("Demo store"),
+                        "L:sd": text("Demo description"),
+                        "L:si": text("https://cdn.example/demo-share.png"),
                         **{f"L:q{n}": text(f"<h4>Demo Q{n}</h4>") for n in (1, 2, 3)},
                         **{f"L:a{n}": text(f"<p>Demo A{n}</p>") for n in (1, 2, 3)},
                     }
@@ -810,7 +1015,11 @@ class ApplyCopyRunTests(unittest.TestCase):
             "common": {"L:c1": text("<h2>Demo store</h2>")},
         }
         self.calls: list[tuple[str, ...]] = []
+        self.assets: list[str] = []
         self.touch_other_text = False
+        self.regenerate_ids = False
+        self.ignore_removals = False
+        self.drop_removed_strings = False
         self.approve(None)
         self.report = {
             "operation_succeeded": True,
@@ -831,6 +1040,10 @@ class ApplyCopyRunTests(unittest.TestCase):
         self.calls.append(args)
         if args[1] == "get-localization":
             return {"ok": True, "data": copy.deepcopy(self.text)}
+        if args[1] == "upload-asset":
+            url = f"https://cdn.example/{Path(args[args.index('--file') + 1]).name}"
+            self.assets.append(url)
+            return {"ok": True, "data": {"url": url}}
         payload = json.loads(args[args.index("--data") + 1])
         if args[1] == "update-many-localization":
             for scope, ids in payload["perScopeValues"].items():
@@ -855,8 +1068,14 @@ class ApplyCopyRunTests(unittest.TestCase):
                 for key in patch["path"][:-1]:
                     node = node[key]
                 last = patch["path"][-1]
+                if patch["op"] == "remove" and self.ignore_removals:
+                    continue
                 if patch["op"] == "remove":
-                    node.pop(last)
+                    removed = node.pop(last)
+                    if self.drop_removed_strings:
+                        texts = self.text["pages"]["page-1"]["texts"]
+                        for key in ("question", "answer"):
+                            texts.pop(removed[key]["id"], None)
                 elif patch["op"] == "add" and isinstance(node, list):
                     node.insert(last, patch["value"])
                 else:
@@ -865,6 +1084,13 @@ class ApplyCopyRunTests(unittest.TestCase):
 
     def run_style(self) -> tuple[int, dict | None, str]:
         (self.root / "report.json").write_text(json.dumps(self.report), encoding="utf-8")
+        (self.root / "assets.json").write_text(
+            json.dumps({"ok": True, "data": [{"url": url} for url in self.assets]}),
+            encoding="utf-8",
+        )
+        (self.root / "localization.json").write_text(
+            json.dumps({"ok": True, "data": self.text}), encoding="utf-8"
+        )
         argv = [
             "apply_style.py",
             str(self.root / "brief.json"),
@@ -884,9 +1110,7 @@ class ApplyCopyRunTests(unittest.TestCase):
             mock.patch.object(
                 apply_style, "backup_structure", return_value=copy.deepcopy(self.site)
             ),
-            mock.patch.object(
-                apply_style, "structure", side_effect=lambda slug: copy.deepcopy(self.site)
-            ),
+            mock.patch.object(apply_style, "structure", side_effect=self.read_structure),
             mock.patch.object(apply_style, "run_json", side_effect=self.cli),
             contextlib.redirect_stdout(stdout),
             contextlib.redirect_stderr(stderr),
@@ -894,6 +1118,155 @@ class ApplyCopyRunTests(unittest.TestCase):
             code = apply_style.main()
         report = json.loads(stdout.getvalue()) if stdout.getvalue().strip() else None
         return code, report, stderr.getvalue()
+
+    def read_structure(self, slug: str) -> dict:
+        site = copy.deepcopy(self.site)
+        if self.regenerate_ids:
+            # Like the real server: component `_id`s differ on every read.
+            for page in site["pages"]:
+                for block in page["blocks"]:
+                    for component in block.get("components") or []:
+                        component["_id"] = uuid.uuid4().hex
+        return site
+
+    def with_seo(self, **item: str) -> None:
+        (self.root / "share.png").write_bytes(b"share-art")
+        self.brief["content"]["seo"] = [{"page": "/", **item}]
+        self.approve(None)
+        self.report["approved_confirmation_id"] = self.approved["confirmation_id"]
+
+    def test_writes_the_page_seo_and_its_share_image(self) -> None:
+        self.with_seo(
+            title="Space Raiders Shop",
+            description="Gems and packs for Space Raiders.",
+            image="share.png",
+        )
+        code, report, stderr = self.run_style()
+        self.assertEqual(0, code, stderr)
+        self.assertEqual("Space Raiders Shop", self.shown("page-1", "L:st"))
+        self.assertEqual("Gems and packs for Space Raiders.", self.shown("page-1", "L:sd"))
+        self.assertEqual("https://cdn.example/share.png", self.shown("page-1", "L:si"))
+        self.assertEqual(1, self.names().count("upload-asset"))
+        self.assertEqual(1, self.names().count("update-many-localization"))
+        seo = [entry for entry in report["copy"] if entry.get("field", "").startswith("seo.")]
+        self.assertEqual({"set"}, {entry["status"] for entry in seo})
+
+        self.calls.clear()
+        code, report, stderr = self.run_style()
+        self.assertEqual(0, code, stderr)
+        self.assertEqual([], self.names())
+
+    def test_a_page_without_seo_fields_is_skipped_with_the_reason(self) -> None:
+        del self.site["pages"][0]["seo"]
+        self.with_seo(title="Space Raiders Shop")
+        code, report, stderr = self.run_style()
+        self.assertEqual(0, code, stderr)
+        title = next(entry for entry in report["copy"] if entry.get("field") == "seo.title")
+        self.assertEqual("the page has no SEO title text", title["reason"])
+        self.assertTrue(any("editor's page settings" in item for item in report["needs_human"]))
+
+    def test_a_share_image_changed_after_the_yes_stops_before_any_command(self) -> None:
+        self.with_seo(image="share.png")
+        (self.root / "share.png").write_bytes(b"other-art")
+        code, _, stderr = self.run_style()
+        self.assertEqual(1, code)
+        self.assertIn("share.png changed after the plan was approved", stderr)
+        self.assertEqual([], self.calls)
+
+    def with_buttons(self, *buttons: dict) -> None:
+        self.brief["content"]["buttons"] = list(buttons)
+        self.approve(None)
+        self.report["approved_confirmation_id"] = self.approved["confirmation_id"]
+
+    def test_writes_a_hero_button_label_as_plain_text(self) -> None:
+        self.with_buttons({"module": "leadGameSales", "position": 1, "label": "Shop now"})
+        code, report, stderr = self.run_style()
+        self.assertEqual(0, code, stderr)
+        self.assertEqual("Shop now", self.shown("page-1", "L:b1"))
+        entry = next(e for e in report["copy"] if e.get("button") == 1)
+        self.assertEqual("set", entry["status"])
+        self.calls.clear()
+        code, report, stderr = self.run_style()
+        self.assertEqual(0, code, stderr)
+        self.assertEqual([], self.names())
+
+    def test_a_buy_button_and_a_missing_button_are_skipped(self) -> None:
+        self.with_buttons(
+            {"module": "leadGameSales", "position": 2, "label": "Buy"},
+            {"module": "leadGameSales", "position": 3, "label": "More"},
+        )
+        code, report, stderr = self.run_style()
+        self.assertEqual(0, code, stderr)
+        reasons = {e["button"]: e["reason"] for e in report["copy"] if "button" in e}
+        self.assertEqual("a buy button shows the item's price, not a label", reasons[2])
+        self.assertEqual("it has no button 3", reasons[3])
+        self.assertTrue(any("wasn't relabeled" in item for item in report["needs_human"]))
+
+    def test_a_button_label_shared_with_another_block_is_left_alone(self) -> None:
+        # A block that was on the site before this assembly, and isn't in the plan.
+        self.site["pages"][0]["blocks"].append(
+            {"_id": "old-banner", "module": "description", "values": {"title": {"id": "L:b1"}}}
+        )
+        self.with_buttons({"module": "leadGameSales", "position": 1, "label": "Shop now"})
+        code, report, stderr = self.run_style()
+        self.assertEqual(0, code, stderr)
+        self.assertEqual("Scroll", self.shown("page-1", "L:b1"))
+        entry = next(e for e in report["copy"] if e.get("button") == 1)
+        self.assertEqual("its text is shared with old-banner", entry["reason"])
+
+    def test_a_site_wide_string_is_left_alone(self) -> None:
+        self.site["pages"][0]["blocks"][1]["values"]["title"]["id"] = "L:c1"
+        code, report, stderr = self.run_style()
+        self.assertEqual(0, code, stderr)
+        self.assertEqual("<h2>Demo store</h2>", self.shown("common", "L:c1"))
+        store = next(entry for entry in report["copy"] if entry.get("block_id") == "store")
+        self.assertEqual("skipped", store["status"])
+        self.assertIn("site-wide strings", store["reason"])
+
+    def test_text_shared_with_an_unlisted_block_is_left_alone(self) -> None:
+        self.site["pages"].append(
+            {"_id": "page-2", "path": "/other", "blocks": [
+                {"_id": "old-store", "module": "newStore",
+                 "values": {"title": {"id": "L:t3"}}}]}
+        )
+        self.text["pages"]["page-2"] = {"texts": {}}
+        code, report, stderr = self.run_style()
+        self.assertEqual(0, code, stderr)
+        self.assertEqual("<h2>Demo store</h2>", self.shown("page-1", "L:t3"))
+        store = next(entry for entry in report["copy"] if entry.get("block_id") == "store")
+        self.assertEqual("its text is shared with old-store", store["reason"])
+
+    def test_two_items_for_the_same_text_stop_before_any_text(self) -> None:
+        self.brief["content"]["copy"].append(
+            {"module": "leadGameSales", "field": "title", "html": "<h1>Other</h1>", "page": "/"}
+        )
+        self.approve(None)
+        self.report["approved_confirmation_id"] = self.approved["confirmation_id"]
+        with mock.patch.object(apply_style, "validate", return_value=[]):
+            code, _, stderr = self.run_style()
+        self.assertEqual(1, code)
+        self.assertIn("two approved items write different text to L:t1", stderr)
+        self.assertNotIn("update-many-localization", self.names())
+
+    def test_faq_items_are_checked_by_text_ids_not_component_ids(self) -> None:
+        self.regenerate_ids = True
+        self.brief["content"]["faq"] = FAQ + [{"question": "<h4>Q3</h4>", "answer": "<p>A3</p>"},
+                                              {"question": "<h4>Q4</h4>", "answer": "<p>A4</p>"}]
+        self.approve(None)
+        self.report["approved_confirmation_id"] = self.approved["confirmation_id"]
+        code, report, stderr = self.run_style()
+        self.assertEqual(0, code, stderr)
+
+    def test_a_removal_the_server_ignores_is_caught(self) -> None:
+        self.ignore_removals = True
+        code, _, stderr = self.run_style()
+        self.assertEqual(1, code)
+        self.assertIn("the copy did not persist: FAQ items of faq", stderr)
+
+    def test_strings_of_removed_items_may_go_with_them(self) -> None:
+        self.drop_removed_strings = True
+        code, report, stderr = self.run_style()
+        self.assertEqual(0, code, stderr)
 
     def shown(self, scope: str, lid: str) -> str:
         texts = self.text["common"] if scope == "common" else self.text["pages"][scope]["texts"]
@@ -910,7 +1283,8 @@ class ApplyCopyRunTests(unittest.TestCase):
         self.assertEqual(0, code, stderr)
         self.assertEqual("<h1>Hold the line</h1>", self.shown("page-1", "L:t1"))
         self.assertEqual("<p>Now on web</p>", self.shown("page-1", "L:t2"))
-        self.assertEqual("<h2>Shop</h2>", self.shown("common", "L:c1"))
+        self.assertEqual("<h2>Shop</h2>", self.shown("page-1", "L:t3"))
+        self.assertEqual("<h2>Demo store</h2>", self.shown("common", "L:c1"))
         self.assertEqual("blocks.demo", self.text["pages"]["page-1"]["texts"]["L:t1"]["description"])
         self.assertEqual("<h4>Where are my items?</h4>", self.shown("page-1", "L:q2"))
         self.assertEqual(["q1", "q2"], [c["_id"] for c in self.faq_block()["components"]])

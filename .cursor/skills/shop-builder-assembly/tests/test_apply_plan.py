@@ -296,11 +296,7 @@ class ApplyPlanTests(unittest.TestCase):
                 apply_plan.ensure_common_layout("shop")
 
     def test_verified_backup_requires_identity_and_matching_checksums(self) -> None:
-        expected = {
-            "merchant_id": 100,
-            "project_id": 200,
-            "environment": "test",
-        }
+        expected = {"merchant_id": 100, "project_id": 200}
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             for name in apply_plan.BACKUP_FILE_NAMES:
@@ -322,7 +318,7 @@ class ApplyPlanTests(unittest.TestCase):
             self.assertFalse(apply_plan.verified_backup(root, expected, "test-shop"))
 
     def test_verified_backup_rejects_partial_digest_manifest(self) -> None:
-        expected = {"merchant_id": 100, "project_id": 200, "environment": "test"}
+        expected = {"merchant_id": 100, "project_id": 200}
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             for name in ("structure.json", "landing.json"):
@@ -543,7 +539,7 @@ class ApplyPlanTests(unittest.TestCase):
         )
         with mock.patch.object(apply_plan.subprocess, "run", return_value=failed):
             with self.assertRaisesRegex(RuntimeError, "wrong project"):
-                apply_plan.run_preflight(Path("brief.json"), None)
+                apply_plan.run_preflight(Path("brief.json"))
 
     def test_run_json_refuses_force_before_login_or_write(self) -> None:
         with mock.patch.object(apply_plan.subprocess, "run") as run:
@@ -1278,7 +1274,7 @@ class FakeShopBuilderCli:
                 "data": {
                     "merchant_id": self.project["merchant_id"],
                     "project_id": self.project["project_id"],
-                    "sandbox": self.project["environment"] == "sandbox",
+                    "sandbox": False,
                 },
             }
         command = args[1]
@@ -1473,7 +1469,7 @@ class ObjectPagePathTests(unittest.TestCase):
             {
                 "merchant_id": project["merchant_id"],
                 "project_id": project["project_id"],
-                "sandbox": project["environment"] == "sandbox",
+                "sandbox": False,
             },
             self.recorded_context,
         )
@@ -1742,11 +1738,6 @@ class CommonLayoutPreflightTests(unittest.TestCase):
         with (
             mock.patch.object(sys, "argv", ["preflight.py", str(EXAMPLE_BRIEF)]),
             mock.patch.object(preflight.shutil, "which", return_value="xsolla"),
-            mock.patch.object(
-                preflight,
-                "approved_test_project",
-                return_value={"approval_reference": "test approval"},
-            ),
             mock.patch.object(preflight, "run_json", side_effect=cli),
             mock.patch.object(
                 preflight, "cli_has_command", return_value=has_create_block
@@ -1781,11 +1772,6 @@ class CommonLayoutPreflightTests(unittest.TestCase):
             with (
                 mock.patch.object(sys, "argv", ["preflight.py", str(path)]),
                 mock.patch.object(preflight.shutil, "which", return_value="xsolla"),
-                mock.patch.object(
-                    preflight,
-                    "approved_test_project",
-                    return_value={"approval_reference": "test approval"},
-                ),
                 mock.patch.object(preflight, "run_json", side_effect=FakePreflightCli()),
                 mock.patch.object(preflight, "cli_has_command", return_value=True),
                 contextlib.redirect_stdout(stdout),
@@ -2095,13 +2081,137 @@ class PublisherTemplateSiteTests(unittest.TestCase):
         site, _ = publisher_template_site(self.brief)
         one_page = [{"path": "/"}]
         render_plan.require_header_source(one_page, site)
-        with self.assertRaisesRegex(ValueError, "made from a Publisher Account template"):
-            render_plan.require_header_source(one_page + [{"path": "/store"}], site)
+        render_plan.require_header_source(one_page + [{"path": "/store"}], site)
         site["layouts"] = []
         with self.assertRaisesRegex(ValueError, "^Page / has no header block of its own"):
             render_plan.require_header_source(one_page, site)
         own, _ = publisher_template_site(self.brief, own_header=True)
         render_plan.require_header_source(one_page + [{"path": "/store"}], own)
+
+    def multi_page_brief(self, faq: bool = True) -> dict:
+        brief = copy.deepcopy(self.brief)
+        brief["site"]["preset"] = "pc-multi-page"
+        brief["game"]["platforms"] = ["pc"]
+        if faq:
+            brief["content"]["faq"] = [{"question": "<h4>Q</h4>", "answer": "<p>A</p>"}]
+        return brief
+
+    def test_a_page_the_plan_would_add_empty_is_left_out(self) -> None:
+        site, _ = publisher_template_site(self.brief)
+        plan = render_plan.build_plan(self.multi_page_brief(faq=False), site)
+        self.assertEqual(["/", "/store"], [page["path"] for page in plan["pages"]])
+        warnings = plan["warnings"]
+        self.assertTrue(any(w.startswith("Page /about would have no sections") for w in warnings))
+
+    def test_a_multi_page_plan_builds_on_a_template_site(self) -> None:
+        site, _ = publisher_template_site(self.brief)
+        plan = render_plan.build_plan(self.multi_page_brief(), site)
+        pages = {page["path"]: page for page in plan["pages"]}
+        self.assertEqual(["/", "/store", "/about"], list(pages))
+        for path, page in pages.items():
+            with self.subTest(path):
+                self.assertEqual("layout", page["site_header"])
+                self.assertNotIn("header", page["blocks"])
+                self.assertNotIn("footer", page["blocks"])
+        # The pages the plan adds lose the header and footer `add-page` gives them.
+        for path in ("/store", "/about"):
+            self.assertIn("header", pages[path]["template_removals"])
+            self.assertIn("footer", pages[path]["template_removals"])
+        self.assertEqual("lead", pages["/"]["blocks"][0])
+
+    def test_the_rerun_drops_the_header_add_page_gave_a_new_page(self) -> None:
+        brief = self.multi_page_brief()
+        site, _ = publisher_template_site(self.brief)
+        approved = render_plan.build_plan(brief, copy.deepcopy(site))
+        created = []
+        for path in ("/store", "/about"):
+            blocks = [
+                {"_id": f"{path[1:]}-{module}", "module": module, "values": {}}
+                for module in render_plan.NEW_PAGE_TEMPLATE
+            ]
+            created.extend(block["_id"] for block in blocks)
+            site["pages"].append({"_id": f"page{path}", "path": path, "blocks": blocks})
+        plan = render_plan.build_plan(brief, site, frozenset(created))
+        store = next(page for page in plan["pages"] if page["path"] == "/store")
+        self.assertEqual("layout", store["site_header"])
+        removed = {(r["module"], r["reason"]) for r in store["removals"]}
+        self.assertIn(("header", "template block on a page this assembly created"), removed)
+        self.assertIn(("footer", "template block on a page this assembly created"), removed)
+        report = {
+            "approved_confirmation_id": approved["confirmation_id"],
+            "slug": plan["target"]["slug"],
+            "landing_id": plan["current_state"]["landing_id"],
+            "created_blocks": {"/store": created},
+        }
+        self.assertEqual([], render_plan.approval_changes(approved, plan, report))
+
+    def test_navigation_names_the_pages_to_link_in_the_editor(self) -> None:
+        site, _ = publisher_template_site(self.brief)
+        plan = render_plan.build_plan(self.multi_page_brief(), site)
+        with mock.patch.object(
+            apply_plan, "run_json", return_value={"ok": True, "data": copy.deepcopy(site)}
+        ):
+            results = apply_plan.apply_navigation(self.brief["site"]["slug"], "landing-1", plan)
+        self.assertEqual(3, len(results))
+        self.assertIn("link it to /, /store, /about", results[0]["skipped"])
+
+    def test_a_site_the_kit_built_is_not_a_template_site(self) -> None:
+        # Only a layout at site level, and a page that lost its header: not a template.
+        site, _ = publisher_template_site(self.brief)
+        site["blocks"] = [b for b in site["blocks"] if b not in ("layout-header", "layout-footer")]
+        self.assertFalse(render_plan.is_template_site(site, [{"path": "/"}]))
+        site, _ = publisher_template_site(self.brief)
+        self.assertTrue(render_plan.is_template_site(site, [{"path": "/"}]))
+
+    def test_template_liveops_blocks_stay_on_a_multi_page_home(self) -> None:
+        site, _ = publisher_template_site(self.brief)
+        plan = render_plan.build_plan(self.multi_page_brief(), site)
+        home = plan["pages"][0]
+        self.assertEqual(
+            ["lead", "sb-daily-reward", "sb-offer-chain", "rewards", "promocodes"],
+            home["blocks"][:5],
+        )
+        removed = {removal["module"] for removal in home["removals"]}
+        self.assertFalse(removed & {"sb-offer-chain", "rewards", "promocodes"})
+
+    def test_a_malformed_structure_is_a_clean_error(self) -> None:
+        with self.assertRaisesRegex(ValueError, "structure.pages must be a list"):
+            render_plan.build_plan(self.brief, {"_id": "x", "pages": None})
+
+    def test_a_stopped_page_phase_reports_the_pages_and_blocks_it_made(self) -> None:
+        site, _ = publisher_template_site(self.brief)
+        calls = {"add-page": 0}
+
+        def cli(*args: str) -> object:
+            if args[:2] == ("shopbuilder", "get-structure"):
+                return {"ok": True, "data": copy.deepcopy(site)}
+            if args[:2] == ("shopbuilder", "add-page"):
+                calls["add-page"] += 1
+                if calls["add-page"] == 2:
+                    raise RuntimeError("add-page failed")
+                path = args[args.index("--path") + 1]
+                site["pages"].append({"_id": "page-store", "path": path, "blocks": [
+                    {"_id": f"store-{m}", "module": m} for m in ("header", "footer")]})
+                return {"ok": True, "data": {}}
+            raise AssertionError(args)
+
+        pages = [{"name": "Store", "path": "/store"}, {"name": "About", "path": "/about"}]
+        progress = {"created_block_ids": set(), "created_pages": []}
+        with (
+            mock.patch.object(apply_plan, "run_json", side_effect=cli),
+            mock.patch.dict(apply_plan.RUN_PROGRESS, progress, clear=True),
+        ):
+            with self.assertRaisesRegex(RuntimeError, "add-page failed"):
+                apply_plan.add_missing_pages("template-shop", pages)
+            self.assertEqual(["/store"], apply_plan.RUN_PROGRESS["created_pages"])
+            self.assertEqual(
+                {"store-header", "store-footer"}, apply_plan.RUN_PROGRESS["created_block_ids"]
+            )
+            report = apply_plan.stopped_partway_report(
+                {**apply_plan.RUN_PROGRESS, "approved_confirmation_id": "x",
+                 "slug": "s", "landing_id": "l"}, "add-page failed")
+        self.assertEqual(["/store"], report["created_pages"])
+        self.assertEqual(["store-footer", "store-header"], report["created_block_ids"])
 
     def test_navigation_skips_the_shared_template_header(self) -> None:
         site, _ = publisher_template_site(self.brief)
