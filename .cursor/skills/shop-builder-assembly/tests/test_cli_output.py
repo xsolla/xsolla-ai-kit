@@ -139,7 +139,7 @@ class CliOutputShapeTests(unittest.TestCase):
         apply_plan = SCRIPTS["apply_plan"]
         succeeded = mock.Mock(returncode=0, stdout="{}", stderr="")
         with mock.patch.object(apply_plan.subprocess, "run", return_value=succeeded) as run:
-            apply_plan.run_preflight(Path("brief.json"), None)
+            apply_plan.run_preflight(Path("brief.json"))
         self.assertEqual([sys.executable, "-X", "utf8"], run.call_args.args[0][:3])
         self.assertEqual("utf-8", run.call_args.kwargs["encoding"])
         self.assertNotIn("errors", run.call_args.kwargs)
@@ -149,7 +149,7 @@ class CliOutputShapeTests(unittest.TestCase):
         failed = mock.Mock(returncode=1, stdout=None, stderr=None)
         with mock.patch.object(apply_plan.subprocess, "run", return_value=failed):
             with self.assertRaisesRegex(RuntimeError, "preflight failed"):
-                apply_plan.run_preflight(Path("brief.json"), None)
+                apply_plan.run_preflight(Path("brief.json"))
 
 
 if __name__ == "__main__":

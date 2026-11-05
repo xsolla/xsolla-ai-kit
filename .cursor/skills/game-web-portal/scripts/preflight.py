@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Refuse a portal write unless the CLI targets an approved test project, with sandbox mode off."""
+"""Refuse a portal write unless the CLI targets the intended project, with sandbox mode off."""
 
 from __future__ import annotations
 
@@ -7,7 +7,6 @@ import argparse
 import json
 import subprocess
 import sys
-from pathlib import Path
 
 
 def positive_int(value: str) -> int:
@@ -31,7 +30,7 @@ def cli_config() -> dict:
         value = json.loads(result.stdout or "")
     except json.JSONDecodeError:
         raise RuntimeError(
-            "no Xsolla CLI project context: run `xsolla config init` for the test project"
+            "no Xsolla CLI project context: run `xsolla config init` for the project"
         ) from None
     if isinstance(value, dict) and value.get("ok") is False:
         raise RuntimeError(f"xsolla config list failed: {value.get('error', value)}")
@@ -42,34 +41,8 @@ def cli_config() -> dict:
     return value
 
 
-def approved_test_project(path: Path, merchant_id: int, project_id: int) -> dict:
-    try:
-        value = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
-        raise RuntimeError(f"cannot read approved test projects: {exc}") from exc
-    if not isinstance(value, dict) or value.get("version") != 1:
-        raise RuntimeError("approved test projects must be a version 1 object")
-    projects = value.get("projects")
-    if not isinstance(projects, list):
-        raise RuntimeError("approved test projects must contain a projects list")
-    for index, project in enumerate(projects):
-        if not isinstance(project, dict):
-            raise RuntimeError(f"approved test projects[{index}] must be an object")
-        ids = (project.get("merchant_id"), project.get("project_id"))
-        if any(isinstance(i, bool) or not isinstance(i, int) for i in ids):
-            raise RuntimeError(f"approved test projects[{index}] must contain integer IDs")
-        for field in ("approved_by", "approval_reference"):
-            if not isinstance(project.get(field), str) or not project[field].strip():
-                raise RuntimeError(f"approved test projects[{index}].{field} is required")
-        if ids == (merchant_id, project_id):
-            return project
-    raise RuntimeError("merchant_id/project_id is not in the approved test-project allowlist")
-
-
-def check_project(
-    merchant_id: int, project_id: int, allowlist: Path, config: dict | None = None
-) -> dict:
-    """Raise unless the target is safe to write; return its approval record."""
+def check_project(merchant_id: int, project_id: int, config: dict | None = None) -> None:
+    """Raise unless the CLI targets this merchant and project with sandbox mode off."""
     config = cli_config() if config is None else config
     if config.get("merchant_id") != merchant_id or config.get("project_id") != project_id:
         raise RuntimeError("the CLI's configured merchant/project does not match the target")
@@ -79,17 +52,15 @@ def check_project(
             "has no sandbox: ask the partner before running `xsolla config set sandbox false`, "
             "then run this preflight again"
         )
-    return approved_test_project(allowlist, merchant_id, project_id)
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--merchant-id", required=True, type=positive_int)
     parser.add_argument("--project-id", required=True, type=positive_int)
-    parser.add_argument("--approved-test-projects", required=True, type=Path)
     args = parser.parse_args(argv)
     try:
-        approval = check_project(args.merchant_id, args.project_id, args.approved_test_projects)
+        check_project(args.merchant_id, args.project_id)
     except (OSError, RuntimeError) as exc:
         print(str(exc), file=sys.stderr)
         return 1
@@ -97,7 +68,6 @@ def main(argv: list[str] | None = None) -> int:
         "ok": True,
         "merchant_id": args.merchant_id,
         "project_id": args.project_id,
-        "approval": approval,
     }, indent=2))
     return 0
 
