@@ -148,8 +148,8 @@ if overwrites:
     if len(overwrites) > 20:
         print(f"    … and {len(overwrites) - 20} more")
     if COMMIT and not CONFIRM_OVERWRITES:
-        print("\n  BLOCKED — re-run with --confirm-overwrites once a human has reviewed the "
-              "list above.\n"
+        print("\n  BLOCKED — re-run with --confirm-overwrites once the developer has seen the "
+              "list above in the plan and said yes.\n"
               "  This is not optional: a template-derived landing ships pre-translated, and "
               "the existing value may be a stale mistranslation OR the last thing a human set on "
               "purpose. Either way it must be a deliberate choice to replace it, not a side "
