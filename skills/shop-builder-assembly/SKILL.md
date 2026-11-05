@@ -29,6 +29,12 @@ Normalize publisher answers, existing stores, descriptions, and designs into the
 [shop brief](references/shop-brief.md). Writes require that brief; callers own source
 extraction.
 
+For Quests block operations on an existing Shop Builder site, including settings and
+appearance changes, use a `block_operations` brief and follow
+[block operations](references/block-operations.md). This path plans and applies only
+confirmed block operations; it does not reconcile pages, navigation, site or page themes,
+or catalog sections.
+
 If `preset` is `auto`, choose in this order:
 
 1. Live-service game with active events or rotating offers → `live-service-events`.
@@ -64,7 +70,8 @@ until [expert-review.md](references/expert-review.md) records approval.
    private preview.
 2. If the CLI points at another merchant or project, or has sandbox mode on, switch it only
    after the developer's yes (`nocode-shop-setup` asks in its batch), then rerun
-   preflight; never override later commands.
+   preflight; if preflight asks to switch sandbox mode off, pass `--confirm-sandbox-off`.
+   Never override later commands.
 3. If the target site exists, export it before the first write with
    `scripts/backup_shop.py --brief <brief.json> --slug <slug> --output-dir <dir>`.
 4. Render with `scripts/render_plan.py <brief.json> --structure
@@ -81,8 +88,9 @@ until [expert-review.md](references/expert-review.md) records approval.
    [mockup](references/visual-style.md#mockup-for-the-approval). Call each section by its
    block name in the [block catalog](references/block-catalog.md), such as Offer chain or
    Reward system, never by a module ID such as `sb-offer-chain`. Don't show the developer
-   module IDs or the `confirmation_id`, not even labelled as audit details. Preserve
-   configured blocks lacking replacement data. Omit `--structure` only for a new slug's
+   module IDs or the `confirmation_id` on standalone build plans, even as audit details.
+   The `block_operations` mode instead follows its local [operation-plan confirmation](references/block-operations.md#operation-plan-confirmation)
+   exception. Preserve configured blocks lacking replacement data. Omit `--structure` only for a new slug's
    bootstrap-only plan; it still shows every page and section to be built.
 5. Ask for one explicit yes to that plan before the first remote write. When
    `nocode-shop-setup` shows it in one message with a pending catalog proposal, that yes
@@ -177,6 +185,8 @@ If the CLI lacks an operation, stop it, record the gap, and file a CLI/API ticke
   screenshots in the handoff. If the preview doesn't open, say the review wasn't done
   and why; never call the site reviewed without them.
 - Report skips, interventions, and gaps; state that the site is **not published**.
+- If preflight recorded a sandbox switch, run `scripts/restore_sandbox.py` when the run
+  ends or stops, including when the plan was not confirmed.
 - If the plan adds the Custom code (`html`) block, tell the user it is added empty and
   hidden: they paste their code and make the block visible in the Site Builder editor.
   Never write HTML, CSS, or JavaScript into it.
@@ -197,3 +207,6 @@ Preserve completed safe work and explain the smallest action needed to continue.
 - When the requested slug is taken elsewhere in Shop Builder, `create-website` creates
   the site under another slug; `apply_plan.py` stops and names it. The new address needs
   a new yes, so propose a distinctive slug in the plan, not a generic `<game>-shop`.
+  render and apply stop on them before any write for full site assembly. Quests block
+  operations do not touch the header or navigation and can proceed. Report the stop for
+  full assembly; do not suggest another site, manual edits, or another workaround.

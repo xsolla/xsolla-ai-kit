@@ -68,6 +68,7 @@ contracts before presets may use them.
 | Offerwall | `offerwall-block` via `federated` | Not listed on the authoritative Blocks page; exported contract observed. |
 | Daily rewards | `sb-daily-reward` via `federated` | Not listed on the authoritative Blocks page; exported contract observed. |
 | Single Offer Block | `single-offer-block` | Not listed on the authoritative Blocks page. |
+| Quests | `_quest-platform_quests-block` via `federated` | Not on the Blocks page; operations-only contract exported (`questIds`, `maxQuests`, `overrides`, `layout`, `editorPreview`, `translations`), not used by any preset. |
 
 The current exports explain the older CLI names: the multi-page `topup` template uses
 `lead`, and externally delivered blocks use `federated` with their effective module in

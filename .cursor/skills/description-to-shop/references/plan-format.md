@@ -12,8 +12,7 @@ validates.
   "project": {
     "merchant_id": 12345,
     "project_id": 67890,
-    "environment": "test",
-    "test_project_acknowledged": true
+    "environment": "test"
   },
   "game": { "name": "Tidepool", "platforms": ["mobile"], "lifecycle": "launch" },
   "site": {
