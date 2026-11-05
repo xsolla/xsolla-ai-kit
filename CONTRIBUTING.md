@@ -62,14 +62,16 @@ provenance is higher here than in a typical docs repo.
 ## Review and ownership
 
 Each team reviews its own skills; [.github/CODEOWNERS](.github/CODEOWNERS) says which team
-owns which skill directory. A change to a skill needs approval from that skill's owner,
-not from a central reviewer. The AI Kit maintainers (Javad Manashti, Yaroslav Klochikhin)
+owns which skill directory. The domain owner reviews changes to their skills. The AI Kit
+maintainers are listed after them only as a fallback, for when the domain owner wrote
+the PR and can't approve it themselves. The AI Kit maintainers (Javad Manashti, Yaroslav Klochikhin)
 own the platform: CI, the validator, generated files, `AGENTS.md` and these guides.
 
 **Adding a skill:** add a CODEOWNERS line for your team in the same PR, for both
 `/skills/<name>/` and its `/.cursor/skills/<name>/` mirror. Every handle must be a GitHub
-user or team with write access, or GitHub silently ignores it. Check with
-`gh api repos/xsolla/xsolla-ai-kit/codeowners/errors`.
+user or team with write access, or GitHub silently ignores it. Push your branch, then
+check it (without `ref`, the check reads `main`, not your change):
+`gh api "repos/xsolla/xsolla-ai-kit/codeowners/errors?ref=<your-branch>"`.
 
 **Branch protection on `main`:** one approving review, and "Require review from Code
 Owners", so a change to a team's skill cannot merge without that team's approval.
