@@ -102,6 +102,14 @@ built.
 
 Do not write the answer to `.env`.
 
+## A Figma design
+
+When the request links a Figma file, the design is the site: build every page and
+section of it with custom blocks right away, not a preset or a standard-block layout, and
+don't ask whether to use it. Only the store sections (catalog, cart, checkout) and
+sign-in stay standard blocks, in the design's colors and fonts. The CLI check, reading the
+design, the plan and the build are in [Figma to custom blocks](references/figma-custom-blocks.md).
+
 ## One batch of questions
 
 Ask everything still missing in **one** message, each question with a recommended

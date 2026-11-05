@@ -173,7 +173,9 @@ If the CLI lacks an operation, stop it, record the gap, and file a CLI/API ticke
 - Report skips, interventions, and gaps; state that the site is **not published**.
 - If the plan adds the Custom code (`html`) block, tell the user it is added empty and
   hidden: they paste their code and make the block visible in the Site Builder editor.
-  Never write HTML, CSS, or JavaScript into it.
+  Never write HTML, CSS, or JavaScript into it. Custom blocks from a Figma design are
+  different: `nocode-shop-setup` creates them after the last apply run, as its
+  [Figma reference](../nocode-shop-setup/references/figma-custom-blocks.md) describes.
 
 ## Stop conditions
 
