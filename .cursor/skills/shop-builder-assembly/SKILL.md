@@ -3,9 +3,9 @@ name: shop-builder-assembly
 description: >-
   Assembles a Shop Builder storefront from a validated shop brief: pages, layout,
   navigation, standard blocks, localization, catalog links, theme and copy, with mobile,
-  PC and live-service presets. Reached through nocode-shop-setup after description-to-
-  shop; not an entry point. Prefer it over adding single blocks. Not for a coded
-  storefront (shop-setup).
+  PC and live-service presets. Reached through nocode-shop-setup after
+  description-to-shop; not an entry point. Prefer it over adding single blocks. Not for
+  a coded storefront (shop-setup).
 metadata:
   owner: k.shah
   domain: store

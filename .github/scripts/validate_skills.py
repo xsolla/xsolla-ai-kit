@@ -133,7 +133,9 @@ def check_skill(skill_dir: Path) -> None:
     if fm.get("name") != name:
         error(f"{rel}: frontmatter name '{fm.get('name')}' does not match directory '{name}'")
 
-    description = fm.get("description")
+    # Measure the description the way agents read it: the YAML value, with a
+    # folded line break turned into a space.
+    description = skill_table.read_frontmatter(skill_md).get("description")
     if not isinstance(description, str) or not description.strip():
         error(f"{rel}: frontmatter is missing a non-empty 'description'")
     elif len(description) > DESCRIPTION_LIMIT:
@@ -143,6 +145,14 @@ def check_skill(skill_dir: Path) -> None:
             f"skill's description; put the key trigger phrase first and trim the rest "
             f"(detail belongs in the SKILL.md body)."
         )
+    if isinstance(description, str):
+        # In a folded (>-) description a line break becomes a space, so a name
+        # wrapped after its hyphen reads as "nocode- shop-setup" and no longer matches.
+        for split in re.findall(r"\w+- \w+", description):
+            error(
+                f"{rel}: description contains '{split}': a hyphenated word was wrapped "
+                f"across lines and now has a space in it. Keep it on one line"
+            )
 
     if not re.fullmatch(r"[a-z0-9]+(-[a-z0-9]+)*", name):
         error(f"{rel}: directory name '{name}' must be lowercase kebab-case")
