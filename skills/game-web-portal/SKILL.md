@@ -40,8 +40,9 @@ Entry conditions:
 - The partner's store page is a source of art and facts
   ([store content](references/portal-api.md#store-content)); the plan shows what comes from
   it, and its yes covers using it. Never invent missing content.
-- A merchant/project pair is confirmed. Shop Builder has no sandbox: every write reaches
-  the project itself, on the unpublished site.
+- The merchant and project are known, from the request's link or the CLI, and the plan
+  names them. Shop Builder has no sandbox: every write reaches the project itself, on the
+  unpublished site.
 - The partner has created the site in Publisher Account from the **Multi-page web portal**
   template (Storefronts → Websites → Multi-page web portal → Manual). The agent never
   creates a site: one created through the CLI has no layout, so the Editor, publication

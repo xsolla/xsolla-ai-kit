@@ -65,7 +65,8 @@ until [expert-review.md](references/expert-review.md) records approval.
    `scripts/backup_shop.py --brief <brief.json> --slug <slug> --output-dir <dir>`.
 4. Render with `scripts/render_plan.py <brief.json> --structure
    <backup-dir>/structure.json`, save the output as `approved-plan.json`, and show one
-   plan in plain language: each page and its sections in order, the products and offers in
+   plan in plain language: the project by name and IDs (the name from `xsolla publisher
+   list-projects`), each page and its sections in order, the products and offers in
    each, the visual direction (palette, backgrounds, artwork and where it came from), each
    page's search title, description and share image, exact block removals, the template
    sections each new page comes with that are removed (`template_removals`), catalog

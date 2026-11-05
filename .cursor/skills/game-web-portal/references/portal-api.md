@@ -34,9 +34,10 @@ Every other command is out of bounds, even when the partner asks for it: among t
   at the intended merchant and project with its sandbox mode off.
 - **No sandbox:** Shop Builder writes always reach the project itself, and `--sandbox` gives
   no isolation. Never pass it. A new CLI config starts with sandbox mode on, and preflight
-  refuses it. Run `xsolla config set sandbox false`, tell the partner it is off, then rerun
-  preflight. The handoff says it is off and that
-  `xsolla config set sandbox true` turns it back on.
+  refuses it. Run `xsolla config set sandbox false`, then rerun preflight. Tell the partner
+  in the same message that the CLI config keeps it, so every later `xsolla` command reaches
+  live, payments and refunds included, and that `xsolla config set sandbox true` turns it
+  back on. The handoff says it again.
 - **No `--force`:** never pass, offer or suggest it, even if the partner changes the plan.
   Seeded blocks the CLI won't remove go to the partner as `needs_human`.
 
@@ -278,7 +279,7 @@ Patch only keys that exist, in the format their current value has:
 | List assets | `list-assets --landing-id <landingId>` |
 | Upload an asset | `upload-asset` |
 
-Upload only partner-approved assets, including approved [Steam content](#steam-content). The
+Upload only the assets the plan shows, including [store content](#store-content). The
 Editor's media picker caches the asset list: a CLI upload shows up there after an Editor reload.
 
 ## Draft — copy and localization

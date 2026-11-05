@@ -52,14 +52,18 @@ built.
    can't tell (it has reported "not published") and the CLI came from Homebrew, run
    `brew upgrade xsolla`. Refresh the kit with
    `xsolla skills install --global --source ai-kit`. Name both versions in the first
-   message. The checks below are read-only.
+   message. The checks below are read-only, except the CLI switch in check 2.
 2. **The project and sandbox mode.** Take the merchant and project from the Publisher
    Account link in the request, else from `xsolla config list --json`, and don't ask to
    confirm it: the plan names the project. With neither, ask for the project link in the
-   batch. Shop Builder needs CLI sandbox mode off. When the CLI points at another project
+   batch. Shop Builder needs CLI sandbox mode off, and the backup and preflight refuse
+   sandbox mode, so this can't wait for the plan. When the CLI points at another project
    or has sandbox on, switch it yourself (`xsolla config set merchant-id <id>`,
-   `xsolla config set project-id <id>`, `xsolla config set sandbox false`) and say so in
-   the first message. Nothing is written to the project before the plan's yes.
+   `xsolla config set project-id <id>`, `xsolla config set sandbox false`). Say in the
+   first message that the CLI config keeps it, so every later `xsolla` command, in this
+   session and others, reaches the live project, payments and refunds included, and give
+   the undo: `xsolla config set sandbox true` and the previous merchant and project, by
+   ID. Nothing is written to the project before the plan's yes.
 3. **The CLI can make a site that opens.** A new store site gets its common layout only
    from a CLI with `xsolla shopbuilder create-block`. Run
    `xsolla shopbuilder create-block --help`. If the usage line doesn't name
