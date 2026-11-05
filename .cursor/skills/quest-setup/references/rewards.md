@@ -35,10 +35,13 @@ rewards list is refused.
 
 - **Default view.** Leave `public_view` out when the card must show its reward. Each entry carries
   `type` (`web3_item`), `quantity` (the body quantity, default 1), and the catalog `name`,
-  `description` and `image_url` of the SKU. Title and description come from the quest.
-- **Custom view.** A `public_view` replaces the default view. Set it only in full, with the reward
-  references from [Quest public view](quests-block-flow.md#quest-public-view), or the card loses its
-  reward row and its See in Backpack button. The proposal names the reward references it carries.
+  `description` and `image_url` of the SKU. Title and description come from the quest. For an
+  `issue_catalog_item` quest the entries carry the catalog name, `image_url` and type `inventory_item`,
+  so leave `public_view` out.
+- **Custom view.** A `public_view` replaces the default view. For a Web3 quest, set it only in full, with
+  the reward references from [Quest public view](quests-block-flow.md#quest-public-view), or the card
+  loses its reward row and its See in Backpack button. Never set it on an `issue_catalog_item` quest: its
+  items render as quantity only, so the card loses the name and image.
 - **Proposal.** Show the card rewards as `view.rewards` lines: name, SKU, quantity and image URL, for
   example `Handful of BitChips x1 (SKU com.example.sku, image https://...)`.
 - **Read-back.** Read the public list (`GET` on the public quests route, no credential) and confirm the
@@ -110,8 +113,11 @@ and needs no wallet.
 - **Recipient.** Each event needs an `xsolla_id`. The wallet check in [Recipient wallet](#recipient-wallet)
   does not apply.
 - **Retries.** Never resend an event after an uncertain result, as for Web3.
-- **Card.** The card's reward row comes only from a full `public_view`, see
-  [Quest public view](quests-block-flow.md#quest-public-view).
+- **Card.** Set no `public_view`. The default view gives the card the reward name, image and type, which
+  is its reward row and its See in Backpack button. The card image fallback (the first reward's image) is
+  confirmed only from Quests block 0.2.14, and this skill pins 0.2.10. So a catalog quest has no card image
+  of its own unless the publisher gives one. An image needs a `public_view`, which drops the catalog name
+  and image: say so in the proposal and ask first.
 
 ## `web3_item`
 

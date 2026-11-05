@@ -129,9 +129,13 @@ class SkillTextTests(IsolatedCase):
         self.assertRegex(skill_text, r"`web3_item` by default, or `issue_catalog_item`")
         self.assertNotIn("Do not offer `inventory_item`", skill_text)
         self.assertNotIn("direct Backpack grants", rewards)
-        # C: a public_view replaces the default view, so every write sends the full view with reward refs.
+        # C: a Web3 public_view sends the full view; catalog-item quests take no public_view.
         self.assertIn('"reward_type": {"$ref": "reward.<node id>.type"}', block)
         self.assertIn("loses its reward row and its See in Backpack button", block)
+        self.assertIn("Never set a `public_view` on an", block)
+        self.assertNotIn("Send the full view below every time", block)
+        self.assertNotIn("never the reward image", block)
+        self.assertIn("Set no `public_view`", rewards)
         self.assertNotIn("shows no reward", block)
         self.assertNotIn("shows no reward", rewards)
         # D: a full PUT keeps public_view.

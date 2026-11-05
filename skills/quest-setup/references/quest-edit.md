@@ -23,7 +23,7 @@ before/after diff of the changed fields before sending.
 Keep `public_view` the same way: resend the fresh `GET`'s `public_view` unchanged unless the edit
 changes it. Leaving it out keeps the stored one, but a body rebuilt from scratch can drop it, and
 `{}` clears it. If the edit adds, replaces or removes a reward node, update the
-`reward.<node id>.*` references in the same diff, because a reference to a missing node is left
+`reward.<node id>.*` references in the same diff when the quest has a `public_view`, because a reference to a missing node is left
 out of the card.
 
 Use [SKILL body-file rules](../SKILL.md#access-and-authority), with no loop retry.

@@ -113,7 +113,7 @@ Load only the relevant references and follow their approval and readback. Reads 
 | Move / duplicate / hide / show block | [quests-block-brief.md](references/quests-block-brief.md), [quests-block-flow.md](references/quests-block-flow.md) | Separate exact plan yes; block position/both copies/hidden or shown state |
 | Remove block | [quests-block-flow.md](references/quests-block-flow.md#removing-the-block) | needs_human, no scripted delete; offer hide with its own plan yes |
 | Card reward text / image | [reply-format.md](references/reply-format.md#examples) | No tools, reads or write; exact reward-change reply, then quest-edit only after yes |
-| Quest card title, text or image | [quests-block-flow.md](references/quests-block-flow.md#quest-public-view), [quest-edit.md](references/quest-edit.md#editing) | Full `public_view` with reward references; one exact edit yes; read back `is_public` and the card fields |
+| Quest card title, text or image | [quests-block-flow.md](references/quests-block-flow.md#quest-public-view), [quest-edit.md](references/quest-edit.md#editing) | Full `public_view` with reward references for Web3 quests (catalog-item quests take none); one exact edit yes; read back `is_public` and the card fields |
 | Headless Web Shop section | [web-shop-module.md](references/web-shop-module.md) | Explicit request only; distinct source-edit authority, never copy catalog project into Quest Platform setting |
 | Other site changes / unsupported actions | [reply-format.md](references/reply-format.md), [quests-block-brief.md](references/quests-block-brief.md) | Decline with no write; Backpack Overlay is blocked on upstream v2 |
 

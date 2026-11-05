@@ -138,8 +138,9 @@ yourself:
   If the list read succeeds and the project has no quests, use the No quests offer in
   the Flow (step 1). If a wanted quest is missing, use the Missing quest offer there.
 - **Card content.** State only applicable defaults whenever stopping/asking about it:
-  title = quest name; explanation = quest description; image = quest image when present,
-  never the reward image; reward text/image = quest reward (read-only on the block).
+  title = quest name; explanation = quest description; image = quest image when present
+  (the first reward's image is a fallback only from Quests block 0.2.14, not yet pinned, see
+  [block-versions](block-versions.md)); reward text/image = quest reward (read-only on the block).
   Never require an explanation or ask for defaulted text. At most one optional question
   about a different title/image. Reward changes use the quest edit flow.
 
@@ -174,9 +175,11 @@ check. Set `is_public` through the edit flow in [`quest-edit.md`](quest-edit.md#
 (read, change, full `PUT`, before/after diff, one approval, read back).
 
 A `public_view` replaces the default view, and the card reads only from it. Add one only when the
-publisher wants custom card text or an image. Send the full view below every time: without the
-reward references, the card loses its reward row and its See in Backpack button
-([Card rewards](rewards.md#card-rewards-on-the-quests-block)).
+publisher wants custom card text or an image. For a Web3 quest, send the full view below every time:
+without the reward references, the card loses its reward row and its See in Backpack button
+([Card rewards](rewards.md#card-rewards-on-the-quests-block)). Never set a `public_view` on an
+`issue_catalog_item` quest: its items render as quantity only, so the card loses the reward name and
+image that the default view gives.
 
 ```json
 {"name": {"$ref": "quest.name"}, "description": {"$ref": "quest.description"}, "image_url": "https://...", "rewards": {"$ref": "reward.<node id>.items"}, "reward_type": {"$ref": "reward.<node id>.type"}}
@@ -185,9 +188,10 @@ reward references, the card loses its reward row and its See in Backpack button
 - Values are text (at most 500 characters), a number, `true` or `false`, a `{"$ref": ...}` reference,
   or a group. Arrays and `null` are refused. At most 8 KB, 3 levels deep and 50 values.
 - References: `quest.name`, `quest.description`, `quest.start_date`, `quest.end_date` and
-  `reward.<node id>.<field>`. An `issue_catalog_item` node exposes `items` (quantity, name, image_url)
-  and `type`, which reads `inventory_item`. An `issue_web3_item` node exposes quantity, name,
-  description, image_url and `type`.
+  `reward.<node id>.<field>`. An `issue_web3_item` node exposes quantity, name, description, image_url
+  and `type`. The public-quests guide lists no `items` field for a Web3 node, so check the `rewards`
+  reference in the template on the read-back. An `issue_catalog_item` node exposes only `quantity`
+  through `items` in a public_view, so it takes no full view.
 - A reference that no longer resolves, such as a removed reward node, is left out of the card.
 When it is added, `image_url` must be an absolute `https` URL (an `http` URL is refused, see
 [Rules for every operation](quests-block-brief.md#rules-for-every-operation)). Never invent an
