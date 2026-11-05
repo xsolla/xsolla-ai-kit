@@ -2,10 +2,10 @@
 name: game-web-portal
 description: >-
   Builds or resumes an unpublished Game Web Portal for a PC or mobile game: Home, News,
-  Rewards, Web Shop, Community and an optional Launcher, on a site made from the Multi-
-  page web portal template. Reached through nocode-shop-setup. Use for "continue my Game
-  Web Portal" or "add the Community section". Never publishes; that stays with the
-  human.
+  Rewards, Web Shop, Community and an optional Launcher, on a site made from the
+  Multi-page web portal template. Reached through nocode-shop-setup. Use for "continue
+  my Game Web Portal" or "add the Community section". Never publishes; that stays with
+  the human.
 metadata:
   owner: a.pyanzin
   domain: orchestrator

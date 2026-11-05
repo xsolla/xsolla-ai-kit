@@ -1,11 +1,11 @@
 ---
 name: nocode-shop-setup
 description: >-
-  Builds a shop on Xsolla's side with Shop Builder: no code, servers or deploys. Use for
-  "build me a shop" or "create a web shop for my game" (often with a store link) unless
-  the user will code it, and for "I don't want to write code". Also first-run setup:
-  installs the Xsolla CLI and signs the user in. If the user will write and deploy code,
-  open shop-setup.
+  Builds a shop, web shop or storefront on Xsolla's side with Shop Builder: no code,
+  servers or deploys. Use for "build me a shop" or "create a web shop for my game"
+  unless the user will code it, and for "I don't want to write code". No local repo or
+  no coding means this path. Also installs the Xsolla CLI and signs the user in. If the
+  user will write and deploy code, open shop-setup.
 metadata:
   owner: a.pyanzin
   domain: store

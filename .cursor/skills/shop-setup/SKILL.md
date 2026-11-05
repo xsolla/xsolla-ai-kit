@@ -4,8 +4,8 @@ description: >-
   A headless shop with code, not Shop Builder: the user or agent writes, deploys and
   reviews it, or Xsolla is embedded in a store the user already has. Use for "build a
   shop I will code" or "embed Xsolla in my store". A local repo with storefront code
-  makes this the likely path. If the user will not write and deploy code, open nocode-
-  shop-setup.
+  makes this the likely path. If the user will not write and deploy code, open
+  nocode-shop-setup.
 metadata:
   owner: y-klochikhin
   domain: orchestrator
