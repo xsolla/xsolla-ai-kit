@@ -10,7 +10,7 @@ Read back the saved quest before using an optional subtype.
 | `subtype` | Used with `type` | `parameters` |
 |---|---|---|
 | `date_and_time` | trigger | accepted only when the production contract confirms scheduling |
-| `dynamic_event` | trigger | `{"event_name": "<non-empty string>"}` |
+| `dynamic_event` | trigger | `{"event_name": "<non-empty string>"}`, optional `"client_sendable": true` |
 | `custom_attributes_check` | condition | see `conditions.md` |
 | `issue_reward` | action | see `rewards.md` |
 | `send_xsolla_app_notification` | action | `topic`, `notification_type`, `title`, `message`; optional `data` |
@@ -83,6 +83,14 @@ Use this only when the developer chooses it as a labelled no-op or when live
 production support is confirmed. A CRUD smoke test may use
 `{"items": [{"id": "e2e-noop"}]}` in an inactive quest. Never present a no-op
 as a working personalization effect.
+
+### dynamic_event client_sendable
+
+`client_sendable` is off by default: only the publisher's backend can send the event. Set
+`"client_sendable": true` only when a game client or the Shop Builder Quests block sends the
+event with the player's token (`login_xsolla_id`, `daily_visit`, `weekly_visit`). Without the
+flag the player events route answers 403. Say in the proposal that the browser or game client
+can send this event, and which one. Never set it on an event only the backend sends.
 
 ## Accepted, but not yet production-confirmed
 

@@ -170,11 +170,18 @@ Cards read their content from each quest's public view:
 A quest appears to anonymous visitors only when it is public: `is_public: true`.
 `public_view` is optional. When it is empty, the card uses the quest's default view
 (quest name, description and rewards), so never add a `public_view` only to pass this
-check. Set `is_public`, and `public_view` when the publisher wants custom card content, through the edit flow in
-[`quest-edit.md`](quest-edit.md#editing) (read, change, full `PUT`, before/after
-diff, one approval, read back). Fill `public_view` with `name`, `description` and
-`image_url` (an absolute `https` URL; an `http` URL is refused, see [Rules for every operation](quests-block-brief.md#rules-for-every-operation)). Never invent an image. If the publisher has
-none, leave it empty and the card shows its neutral placeholder.
+check. Set `is_public` through the edit flow in [`quest-edit.md`](quest-edit.md#editing)
+(read, change, full `PUT`, before/after diff, one approval, read back).
+
+A `public_view` replaces the default view and takes no arrays, so once it is set the card
+shows no reward. Add one only when the publisher wants custom card text or an image, and say
+that rewards disappear in the proposal ([Card rewards](rewards.md#card-rewards-on-the-quests-block)).
+When it is added, `image_url` must be an absolute `https` URL (an `http` URL is refused, see
+[Rules for every operation](quests-block-brief.md#rules-for-every-operation)). Never invent an
+image. If the publisher has none, leave it empty and the card shows its neutral placeholder.
+
+A dynamic_event the Quests block sends (`login_xsolla_id`, `daily_visit`, `weekly_visit`)
+needs `client_sendable: true` on its trigger, see [node-subtypes](node-subtypes.md#dynamic_event).
 
 If the read-back does not show `is_public: true` (and the `public_view` you set, if any), stop and report that.
 

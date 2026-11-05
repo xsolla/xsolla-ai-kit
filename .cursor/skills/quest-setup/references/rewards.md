@@ -24,6 +24,25 @@ Only a real catalog item is rewardable. When the publisher asks for something th
 have (for example "coins"), say the catalog has no such item and ask which catalog item to use. Never
 substitute silently.
 
+## Card rewards on the Quests block
+
+The Quests block card shows a reward only from `view.rewards` on the public quest. The server builds
+that array itself, one entry per reward node, and only when the quest has no `public_view` (or it is
+`{}`). The skill never writes `view.rewards` directly: `public_view` takes no arrays, so a literal
+rewards list is refused.
+
+- **Default view.** Leave `public_view` out when the card must show its reward. Each entry carries
+  `type` (`web3_item`), `quantity` (the body quantity, default 1), and the catalog `name`,
+  `description` and `image_url` of the SKU. Title and description come from the quest.
+- **Custom view.** A `public_view` replaces the default view, so the card shows no reward. Do not add
+  one only to set an image or title. If the publisher still asks for it, say in the proposal that the
+  card will lose its reward and get an explicit yes.
+- **Proposal.** Show the card rewards as `view.rewards` lines: name, SKU, quantity and image URL, for
+  example `Handful of BitChips x1 (SKU com.example.sku, image https://...)`.
+- **Read-back.** Read the public list (`GET` on the public quests route, no credential) and confirm the
+  quest's `view.rewards` has one entry per reward. A null `name` or `image_url` means the catalog lookup
+  did not enrich the entry: report it, never say the card is fine.
+
 ## Adding a reward
 
 "Add a reward to my quest" appends. Read the quest, add one `issue_reward` action node with a fresh
