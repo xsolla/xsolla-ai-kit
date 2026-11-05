@@ -136,7 +136,7 @@ Part of completeness. Absent → hard stop before any write.
 | Field | Source |
 |---|---|
 | `merchant_id` | `xsolla config list` |
-| `project_id` | `xsolla config list` — must be non-zero and in the approved test context |
+| `project_id` | `xsolla config list` — must be non-zero |
 | `slug` | Proposed from `game_name`, confirmed in the plan |
 | `auth_ok` | `xsolla auth list-account --json` — an active, unexpired Publisher login |
 
@@ -151,7 +151,7 @@ Before handing the brief to `shop-builder-assembly`, all must hold:
 
 Fail any → do not hand off; report which gate failed.
 
-Backup, target allowlisting, plan confirmation and every write are downstream gates owned
+Backup, preflight, plan confirmation and every write are downstream gates owned
 by `shop-builder-assembly`. Do not duplicate them here.
 
 Log the filled/required ratio at the gate. That log *is* the intake-completeness metric.

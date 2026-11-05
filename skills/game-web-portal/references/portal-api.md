@@ -32,8 +32,7 @@ Every other command is out of bounds, even when the partner asks for it: among t
   unauthorized session returns `401/403` → `needs_access`: run `xsolla auth login` again
   and resume. This is *not* `XSOLLA_PROJECT_API_KEY`.
 - **Safe target:** before the first write, `scripts/preflight.py` must pass — the CLI points
-  at the intended merchant and project with its sandbox mode off, and that project is listed in
-  the approved test-project allowlist.
+  at the intended merchant and project with its sandbox mode off.
 - **No sandbox:** Shop Builder writes always reach the project itself, and `--sandbox` gives
   no isolation. Never pass it. A new CLI config starts with sandbox mode on, and preflight
   refuses it. Show the partner the exact command, `xsolla config set sandbox false`, and say

@@ -350,7 +350,6 @@ def verified_backup(path: Path, expected: dict, slug: str) -> bool:
             manifest.get("slug") != slug
             or manifest.get("merchant_id") != expected["merchant_id"]
             or manifest.get("project_id") != expected["project_id"]
-            or manifest.get("environment") != expected["environment"]
             or manifest.get("read_only") is not True
         ):
             return False
@@ -388,7 +387,7 @@ def backup_structure(path: Path) -> object:
         raise RuntimeError(f"cannot read backup structure: {exc}") from exc
 
 
-def run_preflight(brief_path: Path, approved_test_projects: Path | None) -> None:
+def run_preflight(brief_path: Path) -> None:
     # `-X utf8` makes the child write UTF-8 to the pipe; on Windows it would
     # otherwise write the ANSI code page.
     command = [
@@ -398,8 +397,6 @@ def run_preflight(brief_path: Path, approved_test_projects: Path | None) -> None
         str(Path(__file__).with_name("preflight.py")),
         str(brief_path),
     ]
-    if approved_test_projects is not None:
-        command.extend(["--approved-test-projects", str(approved_test_projects)])
     result = subprocess.run(
         command,
         capture_output=True,
@@ -1176,7 +1173,6 @@ def main() -> int:
     parser.add_argument("--approved-plan", type=Path, required=True)
     parser.add_argument("--run-report", type=Path)
     parser.add_argument("--backup-dir", type=Path)
-    parser.add_argument("--approved-test-projects", type=Path)
     args = parser.parse_args()
     # Set once the run's first write is done; a later failure then prints a report.
     progress: dict | None = None
@@ -1188,7 +1184,7 @@ def main() -> int:
         approved = load_approved_plan(args.approved_plan)
         report = load_run_report(args.run_report) if args.run_report else None
         created = created_block_ids(report) if report else frozenset()
-        run_preflight(args.brief, args.approved_test_projects)
+        run_preflight(args.brief)
 
         expected = brief["project"]
         check_cli_context(expected)

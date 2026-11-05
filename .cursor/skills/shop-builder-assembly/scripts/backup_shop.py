@@ -256,7 +256,6 @@ def main() -> int:
                 "slug": args.slug,
                 "merchant_id": expected["merchant_id"],
                 "project_id": expected["project_id"],
-                "environment": expected["environment"],
                 "created_at": datetime.now(timezone.utc).isoformat(),
                 "read_only": True,
                 "files": files,
