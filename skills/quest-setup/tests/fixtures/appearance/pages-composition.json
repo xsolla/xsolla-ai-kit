@@ -1,0 +1,30 @@
+{
+  "case": "pages-composition",
+  "fixture_only": true,
+  "intent": {"request": "recommend the appearance that fits", "explicit_theme": null, "saved_value_is_explicit": false},
+  "site_evidence": {
+    "page": "Fixture Home",
+    "viewport_px": [320, 375, 768, 1440],
+    "composition": "Xsolla Pages banner above Quests; uniform image-first grid aligned to the Games content container",
+    "neighbors": [
+      {"module_id": "fixture.pages-faq", "font": "Fixture Display", "font_loaded": true, "size_px": 32, "weight": 600, "line_height_px": 40, "color": "#212121", "container_width_px": 1184, "gutter_px": 32, "gap_px": 24},
+      {"module_id": "fixture.pages-games", "font": "Fixture Sans", "font_loaded": true, "size_px": 18, "weight": 400, "line_height_px": 24, "color": "#454545", "container_width_px": 1184, "gutter_px": 32, "card_radius_px": 8}
+    ],
+    "banner": {"artwork_split": "50/50", "desktop_height_px": 353},
+    "quests_grid": {"image_aspect_ratio": "16:9", "desktop_columns": 3, "tablet_columns": 2, "mobile_columns": 1, "pagination": false, "all_selected_visible_up_to_max_quests": true}
+  },
+  "recommendation": {"theme_id": "xsolla-pages", "reason": "Fixture-only modeled recommendation from the included neighbor measurements; not live-site evidence.", "operation": {"op": "update", "values": {"themeId": "xsolla-pages"}}},
+  "gate_result": "Fixture-only modeled post-release gate result; no actual artifact release or site apply is claimed",
+  "whole_page_result": "Fixture-only modeled post-release visual outcome: preserve the existing 50/50 banner and show every selected quest up to maxQuests in a continuous 3/2/1 image-first grid aligned to the measured 1184px container; no actual reload or runtime validation is claimed.",
+  "saved_before": {
+    "_id": "fixture-quests-pages",
+    "module": "_quest-platform_quests-block",
+    "values": {"version": "0.2.7-qp-3256.0", "internalBlockValues": {"themeId": "site-builder", "backpackAction": "external", "questIds": ["quest-a", "quest-b"], "themeAppearance": {"custom": {"version": 1, "baseThemeId": "site-builder", "geometry": {"gap": 24}}}, "layout": {"showHeading": true}, "resources": {"localizedValues": {"L:art": {"asset": "fixture-art"}}}}}
+  },
+  "saved_after": {
+    "_id": "fixture-quests-pages",
+    "module": "_quest-platform_quests-block",
+    "values": {"version": "0.2.7-qp-3256.0", "internalBlockValues": {"themeId": "xsolla-pages", "backpackAction": "external", "questIds": ["quest-a", "quest-b"], "themeAppearance": {"custom": {"version": 1, "baseThemeId": "site-builder", "geometry": {"gap": 24}}}, "layout": {"showHeading": true}, "resources": {"localizedValues": {"L:art": {"asset": "fixture-art"}}}}}
+  },
+  "expected_readback": {"module_id": "_quest-platform_quests-block", "version": "0.2.7-qp-3256.0", "version_status": "present", "theme_id": "xsolla-pages", "theme_id_status": "known", "presets": {"site-builder": {}, "xsolla-pages": {}}, "custom": {"version": 1, "baseThemeId": "site-builder", "geometry": {"gap": 24}}}
+}

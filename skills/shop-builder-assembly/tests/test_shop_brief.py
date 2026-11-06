@@ -284,23 +284,6 @@ class ShopBriefTests(unittest.TestCase):
                         module.run_json("shopbuilder", "delete-block", "--force")
                     run.assert_not_called()
 
-    def test_preflight_rejects_enabled_cli_sandbox_before_shopbuilder_reads(self) -> None:
-        brief = ROOT / "examples" / "mobile-single-page.json"
-        stderr = io.StringIO()
-        with (
-            mock.patch.object(sys, "argv", ["preflight.py", str(brief)]),
-            mock.patch.object(preflight.shutil, "which", return_value="xsolla"),
-            mock.patch.object(
-                preflight,
-                "run_json",
-                return_value={"merchant_id": 12345, "project_id": 67890, "sandbox": True},
-            ) as run_json,
-            contextlib.redirect_stderr(stderr),
-        ):
-            self.assertEqual(1, preflight.main())
-        self.assertIn("CLI sandbox must be disabled", stderr.getvalue())
-        run_json.assert_called_once_with("config", "list")
-
     def test_preflight_accepts_config_without_sandbox_key(self) -> None:
         brief = ROOT / "examples" / "mobile-single-page.json"
         stdout = io.StringIO()

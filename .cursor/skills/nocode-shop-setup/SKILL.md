@@ -143,7 +143,8 @@ widget: this site renders its own checkout and login.
    check 1 holds the project key: don't ask the user for one, in the batch or later, and
    don't take that skill's pasted-key route: this path has none. Creating a project key
    is a write: never before the yes. If the CLI's key fails a read, put creating one in
-   the batch.
+   the batch. If authentication cannot be recovered securely, stop and report the
+   credential blocker; never ask for a key in chat.
 2. `catalog-design` — the items, packs, bundles and LiveOps the site will sell, through
    the CLI's `catalog` and `liveops` commands. Only its catalog steps: the archetype, the
    proposal and pricing. No client catalog, purchase code or checkout: the site has its

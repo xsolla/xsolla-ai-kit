@@ -10,12 +10,15 @@ import subprocess
 import sys
 from pathlib import Path
 
+sys.dont_write_bytecode = True  # keep the installed skill folder clean
+
 # `python3 -I` (isolated mode) does not put the script's own folder on sys.path, so
 # the sibling imports below would fail. Add it explicitly.
 SCRIPTS_DIR = str(Path(__file__).resolve().parent)
 if SCRIPTS_DIR not in sys.path:
     sys.path.insert(0, SCRIPTS_DIR)
 
+import cli_environment
 from render_plan import common_layout_id
 from validate_shop_brief import load_brief, validate
 
@@ -31,7 +34,7 @@ def run_json(*args: str) -> object:
     # The CLI writes UTF-8; without an explicit encoding Windows decodes with the
     # ANSI code page and loses the output.
     result = subprocess.run(
-        ["xsolla", *args, "--json"],
+        cli_environment.command(*args, "--json"),
         capture_output=True,
         text=True,
         encoding="utf-8",
@@ -69,7 +72,7 @@ def cli_has_command(*command: str) -> bool:
 
     try:
         result = subprocess.run(
-            ["xsolla", *command, "--help"],
+            cli_environment.command(*command, "--help"),
             capture_output=True,
             text=True,
             encoding="utf-8",
@@ -151,16 +154,11 @@ def main() -> int:
         if errors:
             raise RuntimeError("invalid shop brief: " + "; ".join(errors))
 
-        config = data(run_json("config", "list"))
-        if not isinstance(config, dict):
-            raise RuntimeError("xsolla config list returned an unexpected shape")
         expected = brief["project"]
-        if config.get("sandbox") is True:
-            raise RuntimeError("CLI sandbox must be disabled for Shop Builder")
-        if config.get("merchant_id") != expected["merchant_id"]:
-            raise RuntimeError("CLI merchant_id does not match the shop brief")
-        if config.get("project_id") != expected["project_id"]:
-            raise RuntimeError("CLI project_id does not match the shop brief")
+        # Shop Builder has no sandbox, so a Shop Builder request implies sandbox
+        # mode off. Preflight never switches it: when the CLI still has sandbox on,
+        # it stops here, and nocode-shop-setup switches it at its first check.
+        cli = cli_environment.select(expected, run_json)
 
         accounts = run_json("auth", "list-account")
         if not active_publisher_account(accounts):
@@ -197,7 +195,7 @@ def main() -> int:
         available_group_ids = group_external_ids(groups)
         requested_groups = {
             (group["external_id"], group["type"])
-            for group in brief["catalog"]["groups"]
+            for group in brief.get("catalog", {}).get("groups", [])
             if group["external_id"] != "__all__"
         }
         missing_groups = sorted(
@@ -208,10 +206,13 @@ def main() -> int:
 
         result = {
             "ok": not missing_groups,
+            # Plan lines the agent shows as they are.
+            "plan_notes": cli_environment.plan_notes(cli),
             "context": {
                 "merchant_id": expected["merchant_id"],
                 "project_id": expected["project_id"],
                 "sandbox": False,
+                "cli_environment": cli["environment"],
             },
             "auth": {"publisher_account_active": True},
             "target": {
