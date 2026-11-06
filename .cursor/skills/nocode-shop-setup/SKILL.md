@@ -126,6 +126,11 @@ answer, so a reply such as "all recommended" settles it:
 - `catalog-design`'s questions: the archetype, what to do with test or demo entries
   already in the project (recommended: disable them under the same yes), and any
   commercial value it can't infer;
+- a single-language catalog: whether to translate `name`, `description`, and
+  `long_description` with `localization`, through one reviewable CSV. Recommended:
+  keep the one language unless they asked for more. A single-language shop is a valid
+  choice. This asks `catalog-design`'s step 8 here, so that step does not ask again on
+  this path. The answer writes nothing until the one yes below;
 - item delivery: whether a game server should receive paid orders. Recommended: not now;
   purchases still work, but items reach the game only once the developer deploys webhook
   handler code on their own server;
@@ -148,7 +153,7 @@ widget: this site renders its own checkout and login.
    the CLI's `catalog` and `liveops` commands. Only its catalog steps: the archetype, the
    proposal and pricing. No client catalog, purchase code or checkout: the site has its
    own. If the project already has that catalog, do not rebuild it. Its proposal waits
-   for the one yes below.
+   for the one yes below. The localization offer is the batch question above.
 3. `login-setup` — only for the Login project the site signs players in with. Before the
    yes, only read the existing ones. Creating or linking one is a write: put it in the one
    approval's proposal, or list it as a Publisher Account step. No Login Widget code and
@@ -171,7 +176,10 @@ desktop and mobile mockup for a store (a game home shows `game-web-portal`'s pla
 ask for **one yes**. That yes lets `catalog-design` create
 the catalog and the storefront skill apply its plan, in that order. The storefront skill
 still runs its own preflight and backup, and asks again only for what its plan didn't
-show. When the catalog already exists, the plan alone is the message.
+show. When the catalog already exists, the plan alone is the message. When they agreed
+to catalog translation, this same message includes the `localization` plan, one CSV for
+`name`, `description`, and `long_description`, and the one yes covers it. When they kept
+one language, leave the catalog as it is.
 
 Before showing the proposal, check it against the limits in `catalog-design`'s LiveOps
 reference: each offer chain or reward chain step takes one item, and offer chain steps
