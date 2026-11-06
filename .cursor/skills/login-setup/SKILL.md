@@ -1,23 +1,11 @@
 ---
 name: login-setup
 description: >-
-  Integrates Xsolla Login (a.k.a. NewID) — the player identity layer that issues JWTs
-  for the Store, Pay Station, webhooks, and the partner's own backend. Covers Publisher
-  Account configuration (OAuth 2.0 clients, callback URLs, user data storage), the full
-  set of authentication methods (username/password, passwordless email and SMS one-time
-  codes, 30+ social networks via browser or native silent flow, device ID, server custom
-  ID, silent cross-platform via Steam/Xbox Live/Epic Games/PlayStation/Meta Horizon),
-  the choice between the Login Widget, raw Login API, and Xsolla SDKs, JWT vs OAuth 2.0
-  protocol, server-token issuance, JWT validation against the JWKS, account linking,
-  multi-factor authentication, password reset, and per-user attributes. Use whenever a
-  developer says "integrate Xsolla Login", "add user authentication / sign-up / sign-in",
-  "log in with Google/Facebook/Steam/Epic/PSN/Xbox/Meta/Quest", "passwordless email or
-  SMS code", "Sign in with Xsolla / Xsolla ID / NewID", "set up the Login widget",
-  "validate a user JWT", "issue a server token", "link social accounts", "two-factor /
-  MFA / 2FA", "reset password", "shadow Login project", "cross-platform account",
-  "main/platform account", "auth via custom ID", or any time a feature elsewhere
-  (Store cart with `Bearer JWT`, Pay Station, webhooks granting items to a `user.id`)
-  needs an authenticated user.
+  Integrates Xsolla Login (Xsolla ID, NewID): sign-up and sign-in by password, email or
+  SMS code, social networks, Steam, Xbox, PSN, Epic, device or custom ID; Login Widget,
+  API or SDK; JWT validation, server tokens, account linking, MFA, password reset. Use
+  for "integrate Xsolla Login", "add sign-in", "validate a user JWT", or when a feature
+  needs a signed-in user.
 metadata:
   owner: mohammed_abujalala
   domain: login
