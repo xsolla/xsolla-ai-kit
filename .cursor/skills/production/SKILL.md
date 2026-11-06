@@ -1,10 +1,11 @@
 ---
 name: production
 description: >-
-  Takes a headless Xsolla shop from sandbox to live: licensing agreement, tax interview,
-  switching off sandbox, deploying the HTTPS storefront and webhooks, and a live-payment
-  checklist. Use for "go live", "leave sandbox", "switch my shop to production",
-  "Merchant contract not signed" or error 0002-0004.
+  Takes Xsolla payments from sandbox to real money. Headless Checkout and Pay
+  Station follow the same steps: licensing agreement, tax interview, switching
+  off sandbox, a public HTTPS webhook, and a live payment checklist. Use for
+  "go live", "leave sandbox", "switch my shop to production",
+  "Merchant contract not signed", or error 0002-0004.
 metadata:
   owner: y.klochikhin
   domain: go-live
@@ -13,8 +14,9 @@ metadata:
 
 # Production / go-live
 
-Move a working **sandbox** shop (Phases 0–6 in `shop-setup`) to **real-money**
-payments. Most steps are **manual for the developer**; the agent prepares config,
+Move a working **sandbox** payment integration to **real-money** payments. The
+steps are the same whether the payment UI is Headless Checkout or Pay Station.
+Most steps are **manual for the developer**; the agent prepares config,
 checks for contract errors, and hands a test plan — it **cannot** complete live
 card or wallet payments.
 
@@ -24,7 +26,7 @@ card or wallet payments.
 
 ## When to use
 
-- Sandbox checkout + webhooks already work
+- Sandbox payments already work
 - Developer wants live payments / leave sandbox
 - Token or Pay Station returns **Merchant contract not signed** /
   `0002-0004` / `support_code` `00020004`
@@ -33,8 +35,8 @@ card or wallet payments.
 
 ## Step 1 — Prove the contract gap (agent)
 
-Mint a **production** payment token (omit `sandbox` / set `sandbox: false` —
-same Method 1/2/3 as `shop-setup`, but not sandbox mode). Then hit Pay Station
+Mint a **production** payment token the same way this integration already mints
+a sandbox token (omit `sandbox` / set `sandbox: false`). Then hit Pay Station
 utils with that token:
 
 ```text
@@ -80,10 +82,11 @@ Re-run Step 1 (production token → utils). The contract error must be gone.
 
 ---
 
-## Step 3 — Flip the shop to production mode (agent + human)
+## Step 3 — Flip the integration to production mode (agent + human)
 
 Keep a **single env/config switch** so sandbox ↔ production stays easy (do not
-hard-delete sandbox code paths).
+hard-delete sandbox code paths). Change only the rows for the payment UI this
+shop uses.
 
 Typical changes:
 
@@ -100,15 +103,18 @@ passes utils (Step 1).
 
 ---
 
-## Step 4 — Deploy publicly (human)
+## Step 4 — Reachable on the public internet (human)
 
-The storefront **and** webhook endpoint must be reachable on the public
-internet over **HTTPS**. Localhost / ephemeral tunnels are not a go-live setup.
+Anything Xsolla must call, and any page the player returns to, has to be on
+the public internet over **HTTPS**. Localhost and ephemeral tunnels are not a
+go-live setup.
 
-- Deploy SPA + API (or static + backend) to the production host
-- Register the production webhook URL in PA (`webhooks-impl` Prerequisites /
-  `testing.md`)
-- Confirm CORS / `CLIENT_ORIGIN` / return URLs match the live domain
+- If the user hosts the storefront, deploy it. A shop hosted on Xsolla's side
+  does not need its own storefront deploy.
+- If a backend grants the purchase, register a stable public HTTPS webhook URL
+  in Publisher Account (`webhooks-impl`).
+- Return URLs are public HTTPS. For a user-hosted storefront, CORS and
+  `CLIENT_ORIGIN` match the live domain.
 
 ---
 
@@ -119,8 +125,8 @@ and real cards/wallets. The developer must test themselves after deploy.
 
 ### Card (required)
 
-Same UX as `headless-checkout-integration` (Phase 1 card form), but with a
-**real** card. Prefer the **lowest-priced** catalog SKU.
+Same payment UI the shop already uses, but with a **real** card. Prefer the
+**lowest-priced** catalog SKU.
 
 **Pass when:**
 
@@ -142,15 +148,16 @@ Also complete (or attempt) live:
 - **Google Pay**
 - **Apple Pay**
 
-(domain / merchant setup for wallets may already be done in sandbox phases —
-see `google-pay` / `apple-pay` references.)
+(domain / merchant setup for wallets may already be done in sandbox —
+Headless Checkout keeps it in that skill's `google-pay` / `apple-pay`
+references; Pay Station shows the methods on its hosted page.)
 
 ### Broader method coverage (recommended)
 
-Skim method families in
-`headless-checkout-integration` → `references/payment-methods.md`. At least
-**open** other types (redirect / QR / mobile) in production UI even if you do
-not finish every payment — sandbox cannot exercise most of them.
+Open the other method types the shop offers (redirect, QR, mobile) in the live
+UI even if every payment is not finished — sandbox cannot exercise most of
+them. For Headless Checkout, the list is in that skill's
+`references/payment-methods.md`.
 
 ### Failed payment (required)
 

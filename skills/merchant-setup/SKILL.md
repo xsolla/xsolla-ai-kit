@@ -1,10 +1,11 @@
 ---
 name: merchant-setup
 description: >-
-  Gets a developer an Xsolla Publisher Account, a project and API keys, and sets up
-  sandbox testing. Use for "create an Xsolla account", "get an API key", merchant-level
-  vs project-level keys, or starting any Xsolla integration. The user creates the
-  account; this skill gives the exact manual steps.
+  Guide for a merchant or developer setting up an Xsolla Account
+  and obtaining API credentials. Use when the user needs that account, API keys,
+  merchant-level versus project-level keys, sandbox mode, to accept payments,
+  to start an Xsolla integration, or to test payments. The agent cannot create
+  the account. This skill gives the exact steps the user completes manually.
 metadata:
   owner: y-klochikhin
   domain: orchestrator

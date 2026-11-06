@@ -1,10 +1,10 @@
 ---
 name: headless-checkout-integration
 description: >-
-  Integrates Xsolla Headless Checkout (@xsolla/pay-station-sdk): a custom payment UI
-  with card fields in secure iframes. Use for "integrate Headless Checkout", sandbox
-  card payments, 3DS, PayPal and other methods, Google Pay or Apple Pay, a payment
-  method or country selector, and payment status in a coded shop.
+  Integrates Xsolla Headless Checkout — a fully customizable, client-controlled
+  payment UI built on the @xsolla/pay-station-sdk JavaScript SDK, where payment
+  data stays isolated in secure iframes and payments run through Xsolla without
+  the standard Pay Station.
 metadata:
   owner: y.klochikhin
   domain: payments
