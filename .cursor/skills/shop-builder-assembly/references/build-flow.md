@@ -58,5 +58,5 @@ After confirmation, apply the plan in this dependency order:
 - If the plan adds the Custom code (`html`) block, tell the user it is added empty and
   hidden: they paste their code and make the block visible in the Site Builder editor.
   Never write HTML, CSS, or JavaScript into it.
-- Last, run `scripts/restore_sandbox.py` (SKILL.md, Run end) and report that CLI sandbox
-  mode is back on when this run had switched it off.
+- Last, report the CLI sandbox state: the switch made at nocode-shop-setup's first check
+  stays until the publisher runs the undo from the first message.

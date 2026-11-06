@@ -27,21 +27,9 @@ def write_json(path: Path, value: object) -> None:
 
 def block_operations_brief(
     operations: list[dict], *, merchant_id: int, project_id: int, slug: str,
-    legacy_acknowledgment: bool = False,
 ) -> dict:
-    project = {"merchant_id": merchant_id, "project_id": project_id, "environment": "test"}
-    if legacy_acknowledgment:
-        project["test_project_acknowledged"] = True
+    project = {"merchant_id": merchant_id, "project_id": project_id}
     return {
         "version": 1, "project": project, "site": {"slug": slug},
         "block_operations": copy.deepcopy(operations),
     }
-
-
-def approved_projects(
-    merchant_id: int, project_id: int, *, approved_by: str, approval_reference: str,
-) -> dict:
-    return {"version": 1, "projects": [{
-        "merchant_id": merchant_id, "project_id": project_id,
-        "approved_by": approved_by, "approval_reference": approval_reference,
-    }]}

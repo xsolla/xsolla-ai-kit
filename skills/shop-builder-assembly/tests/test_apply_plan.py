@@ -17,7 +17,7 @@ from unittest import mock
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from block_test_support import approved_projects, capture_main, write_json  # noqa: E402
+from block_test_support import capture_main  # noqa: E402
 
 
 def load_apply_plan():
@@ -299,11 +299,7 @@ class ApplyPlanTests(unittest.TestCase):
                 apply_plan.ensure_common_layout("shop")
 
     def test_verified_backup_requires_identity_and_matching_checksums(self) -> None:
-        expected = {
-            "merchant_id": 100,
-            "project_id": 200,
-            "environment": "test",
-        }
+        expected = {"merchant_id": 100, "project_id": 200}
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             for name in apply_plan.BACKUP_FILE_NAMES:
@@ -325,7 +321,7 @@ class ApplyPlanTests(unittest.TestCase):
             self.assertFalse(apply_plan.verified_backup(root, expected, "test-shop"))
 
     def test_verified_backup_rejects_partial_digest_manifest(self) -> None:
-        expected = {"merchant_id": 100, "project_id": 200, "environment": "test"}
+        expected = {"merchant_id": 100, "project_id": 200}
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             for name in ("structure.json", "landing.json"):
@@ -546,7 +542,7 @@ class ApplyPlanTests(unittest.TestCase):
         )
         with mock.patch.object(apply_plan.subprocess, "run", return_value=failed):
             with self.assertRaisesRegex(RuntimeError, "wrong project"):
-                apply_plan.run_preflight(Path("brief.json"), None)
+                apply_plan.run_preflight(Path("brief.json"))
 
     def test_run_json_refuses_force_before_login_or_write(self) -> None:
         with mock.patch.object(apply_plan.subprocess, "run") as run:
@@ -1281,7 +1277,7 @@ class FakeShopBuilderCli:
                 "data": {
                     "merchant_id": self.project["merchant_id"],
                     "project_id": self.project["project_id"],
-                    "sandbox": self.project["environment"] == "sandbox",
+                    "sandbox": False,
                 },
             }
         command = args[1]
@@ -1430,10 +1426,6 @@ class NamedEnvironmentRunReportTests(unittest.TestCase):
         self.brief["catalog"] = {"groups": [], "featured_skus": []}
         self.brief_path = self.root / "brief.json"
         self.brief_path.write_text(json.dumps(self.brief, indent=2), encoding="utf-8")
-        self.allowlist = self.root / "approved-test-projects.json"
-        write_json(self.allowlist, approved_projects(
-            12345, 67890, approved_by="test fixture", approval_reference="test fixture",
-        ))
         self.approved = apply_plan.build_plan(self.brief)
         self.approved_path = self.root / "approved-plan.json"
         self.approved_path.write_text(json.dumps(self.approved, indent=2), encoding="utf-8")
@@ -1444,8 +1436,6 @@ class NamedEnvironmentRunReportTests(unittest.TestCase):
         argv = [
             "apply_plan.py",
             str(self.brief_path),
-            "--approved-test-projects",
-            str(self.allowlist),
             "--approved-plan",
             str(self.approved_path),
             "--confirmation-id",
@@ -1652,7 +1642,7 @@ class ObjectPagePathTests(unittest.TestCase):
             {
                 "merchant_id": project["merchant_id"],
                 "project_id": project["project_id"],
-                "sandbox": project["environment"] == "sandbox",
+                "sandbox": False,
             },
             self.recorded_context,
         )
@@ -1908,11 +1898,6 @@ class CommonLayoutPreflightTests(unittest.TestCase):
         with (
             mock.patch.object(sys, "argv", ["preflight.py", str(EXAMPLE_BRIEF)]),
             mock.patch.object(preflight.shutil, "which", return_value="xsolla"),
-            mock.patch.object(
-                preflight,
-                "approved_test_project",
-                return_value={"approval_reference": "test approval"},
-            ),
             mock.patch.object(preflight, "run_json", side_effect=cli),
             mock.patch.object(
                 preflight, "cli_has_command", return_value=has_create_block
@@ -1947,11 +1932,6 @@ class CommonLayoutPreflightTests(unittest.TestCase):
             with (
                 mock.patch.object(sys, "argv", ["preflight.py", str(path)]),
                 mock.patch.object(preflight.shutil, "which", return_value="xsolla"),
-                mock.patch.object(
-                    preflight,
-                    "approved_test_project",
-                    return_value={"approval_reference": "test approval"},
-                ),
                 mock.patch.object(preflight, "run_json", side_effect=FakePreflightCli()),
                 mock.patch.object(preflight, "cli_has_command", return_value=True),
                 contextlib.redirect_stdout(stdout),

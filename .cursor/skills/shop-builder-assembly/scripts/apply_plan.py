@@ -318,7 +318,7 @@ def validate_run_report_context(report: dict | None, expected: dict) -> None:
     context = report["context"]
     if not isinstance(context, dict):
         raise RuntimeError("the run report has an invalid CLI context")
-    for key in ("merchant_id", "project_id", "environment"):
+    for key in ("merchant_id", "project_id"):
         if key in context and context[key] != expected[key]:
             raise RuntimeError(
                 f"the run report {key} does not match the shop brief. "
@@ -339,7 +339,7 @@ def validate_run_report_context(report: dict | None, expected: dict) -> None:
 
 def check_cli_context(expected: dict, report: dict | None = None) -> dict:
     """Select the brief's sandbox-off CLI context and bind it to any run report."""
-    selected = cli_environment.select(expected, run_json, switch=False)
+    selected = cli_environment.select(expected, run_json)
     config = selected["config"]
     RUN_AUTH["context"] = cli_context(config)
     if report is not None:
@@ -353,10 +353,8 @@ def check_cli_context(expected: dict, report: dict | None = None) -> dict:
     return {
         "merchant_id": expected["merchant_id"],
         "project_id": expected["project_id"],
-        "environment": expected["environment"],
         "sandbox": False,
         "cli_environment": selected["environment"],
-        "sandbox_switched_off": selected["sandbox_switched_off"],
     }
 
 
@@ -437,7 +435,6 @@ def verified_backup(path: Path, expected: dict, slug: str) -> bool:
             manifest.get("slug") != slug
             or manifest.get("merchant_id") != expected["merchant_id"]
             or manifest.get("project_id") != expected["project_id"]
-            or manifest.get("environment") != expected["environment"]
             or manifest.get("read_only") is not True
         ):
             return False
@@ -945,7 +942,8 @@ def page_for_id(value: dict, page_id: str) -> dict:
             return page
     raise RuntimeError(f"page {page_id} is no longer on the site")
 
-def run_preflight(brief_path: Path, approved_test_projects: Path | None) -> None:
+
+def run_preflight(brief_path: Path) -> None:
     # `-X utf8` makes the child write UTF-8 to the pipe; on Windows it would
     # otherwise write the ANSI code page.
     command = [
@@ -955,8 +953,6 @@ def run_preflight(brief_path: Path, approved_test_projects: Path | None) -> None
         str(Path(__file__).with_name("preflight.py")),
         str(brief_path),
     ]
-    if approved_test_projects is not None:
-        command.extend(["--approved-test-projects", str(approved_test_projects)])
     result = subprocess.run(
         command,
         capture_output=True,
@@ -1741,7 +1737,6 @@ def _main() -> int:
     parser.add_argument("--approved-plan", type=Path, required=True)
     parser.add_argument("--run-report", type=Path)
     parser.add_argument("--backup-dir", type=Path)
-    parser.add_argument("--approved-test-projects", type=Path)
     args = parser.parse_args()
     # Set once the run's first write is done; a later failure then prints a report.
     progress: dict | None = None
@@ -1756,7 +1751,7 @@ def _main() -> int:
         expected = brief["project"]
         validate_run_report_context(report, expected)
         created = created_block_ids(report) if report else frozenset()
-        run_preflight(args.brief, args.approved_test_projects)
+        run_preflight(args.brief)
 
         run_context = check_cli_context(expected, report)
         if "block_operations" in brief and report is not None:

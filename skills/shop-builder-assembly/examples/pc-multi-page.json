@@ -2,8 +2,7 @@
   "version": 1,
   "project": {
     "merchant_id": 12345,
-    "project_id": 67890,
-    "environment": "test"
+    "project_id": 67890
   },
   "game": {
     "name": "Iron Frontier",

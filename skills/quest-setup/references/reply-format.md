@@ -51,7 +51,6 @@ The following rules apply only to rendered `block_operations` plans:
 - If `warnings` says card text replaces editor text, include “(replaces the text set in the Site Builder editor)” in Change.
 - Include any returned `plan_notes` line exactly; add no sandbox/environment line if empty.
 - Show only the rendered plan after preflight and backup, never a preliminary plan.
-  Never ask for confirmation of a dedicated test project.
 - End: `Next: reply "yes" to apply this exact plan.` One later yes covers only that plan.
 
 ## Sandbox command confirmation
@@ -62,7 +61,7 @@ are owned by [Gate commands](quests-block-brief.md#gate-commands). A sandbox sto
 ## Examples
 
 Capability questions get these facts with no tool call or site list and no approval,
-safety, test-project, sandbox or catalog notes. For general capabilities:
+safety, sandbox or catalog notes. For general capabilities:
 
 ```
 **I set up quests on Quest Platform and the Quests block on your Shop Builder site.**
@@ -124,7 +123,7 @@ A yes routes to [Editing](quest-edit.md#editing). Card-content questions follow
 
 | Outcome | Reply content and next action |
 |---|---|
-| Not approved (`needs_human`) | Project is not approved for test writes; site unchanged; maintainer adds it to the approved test projects. Ask publisher to retry afterwards. No project IDs. |
+| Project mismatch (`needs_human`) | The CLI's project differs from the brief's, or the site is not the publisher's; nothing written. Ask publisher to check the CLI project and retry. No project IDs. |
 | Non-Quests site change | **That's outside the Quests block.** Then `Next: anything to change on the Quests block?` No steps, menus or editor instructions. |
 | Shop Builder site publish request | **Publish the site in Publisher Account when ready.** The site stays unpublished. Quest creation/activation follows [quest-publish.md](quest-publish.md) after approval of its exact proposal. One next ask. |
 | Localized card texts | Single-language for now; card text translations postponed, heading may use already enabled languages. Ask which heading language, no invented locale codes. |

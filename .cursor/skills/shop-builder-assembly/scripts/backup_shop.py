@@ -216,7 +216,7 @@ def main() -> int:
             raise RuntimeError("invalid shop brief: " + "; ".join(errors))
         expected = brief["project"]
         # Reuses the sandbox-off environment preflight settled; never changes config.
-        config_data = cli_environment.select(expected, run_json, switch=False)["config"]
+        config_data = cli_environment.select(expected, run_json)["config"]
         config = {"ok": True, "data": config_data}
         RUN_AUTH["context"] = cli_context(config_data)
 
@@ -252,7 +252,6 @@ def main() -> int:
                 "slug": args.slug,
                 "merchant_id": expected["merchant_id"],
                 "project_id": expected["project_id"],
-                "environment": expected["environment"],
                 "created_at": datetime.now(timezone.utc).isoformat(),
                 "read_only": True,
                 "files": files,

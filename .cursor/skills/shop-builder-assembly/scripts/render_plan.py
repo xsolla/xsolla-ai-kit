@@ -867,7 +867,6 @@ def build_block_operations_plan(brief: dict, current_structure: object | None) -
         "target": {
             "merchant_id": brief["project"]["merchant_id"],
             "project_id": brief["project"]["project_id"],
-            "environment": brief["project"]["environment"],
             "slug": brief["site"]["slug"],
             "quests_versions": versions,
         },
@@ -938,7 +937,6 @@ def build_plan(
         "target": {
             "merchant_id": brief["project"]["merchant_id"],
             "project_id": brief["project"]["project_id"],
-            "environment": brief["project"]["environment"],
             "site_name": brief["site"]["name"],
             "slug": brief["site"]["slug"],
         },

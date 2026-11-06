@@ -82,18 +82,17 @@ brand inputs, bounds, limitations and the publisher's choice before a write.
 ## Operations
 
 Operations go in the brief's `block_operations` list and run in order. The brief
-needs `version`, `project` (`environment: test`, `merchant_id`, `project_id`),
+needs `version`, `project` (`merchant_id`, `project_id`),
 `site.slug` and `block_operations`. Nothing else is
 allowed: the gate rejects any other top-level key (`game`, `catalog`, `content`,
 `brand`, `sources`), any other `project` key and any `site` key but `slug`. Fill real
 values from the conversation and the backup, never from memory. There is no
-acknowledgement flag: the gate's approval list is the dedicated-test-project
-acknowledgement (see Hard rule 2 in [quests-block-flow.md](quests-block-flow.md)).
+acknowledgement flag.
 
 ```json
 {
   "version": 1,
-  "project": {"environment": "test", "merchant_id": 1, "project_id": 2},
+  "project": {"merchant_id": 1, "project_id": 2},
   "site": {"slug": "<site-slug>"},
   "block_operations": [ ...operations below... ]
 }
@@ -156,22 +155,21 @@ Move, duplicate, hide, show:
 
 Run these exactly, each from the publisher's folder (never `cd` into a skill folder: the
 Quest Platform credential is read from the working folder). Do not run `--help`, read
-the gate's scripts or docs, or edit CLI config yourself. `G` is
-`<skill base dir>/../shop-builder-assembly/scripts`; `A` is the approval list,
-`$HOME/.config/xsolla/approved-test-projects.json` (pass it, never read it).
+the gate's scripts or docs, or edit CLI config yourself, except the sandbox switch in
+step 3. `G` is `<skill base dir>/../shop-builder-assembly/scripts`.
 
 1. Ids: run the block summary from [Describe the block](quests-block-flow.md#describe-the-block).
    It gives `merchant_id`, `project_id`, each block's `block_id` and each card's
    `quest_id`, in block order. Never show these ids to the publisher.
 2. Run `mktemp -d` once and reuse the printed path `W`. Write the brief to `W/brief.json`.
-3. Run `python3 "G/preflight.py" "W/brief.json" --approved-test-projects "A"`.
-   If it stops with `SandboxConfirmationNeeded`, stop before the switch, backup,
-   render or apply. Reply with a bold line that Shop Builder needs sandbox mode off to
-   plan the change, one bullet containing the exact command and directory from the
-   stop message, and `Next: reply "yes" to run this exact command.` Never paraphrase,
-   reconstruct or broaden it. Only after that separate explicit yes rerun preflight
-   with `--confirm-sandbox-off`; a decline makes no switch. The later yes to the
-   rendered plan is still required and authorizes only that plan.
+3. Run `python3 "G/preflight.py" "W/brief.json"`.
+   If it stops with "CLI sandbox mode is on", switch it off yourself with
+   `xsolla config set sandbox false`, run from the folder that holds the config in use
+   (the one `xsolla config list` reads). Say in your first message that the CLI config
+   keeps the change, so every later `xsolla` command reaches the live project, payments
+   and refunds included, and give the undo: `xsolla config set sandbox true` and the
+   previous merchant and project, by ID. Then rerun preflight. The plan's yes is the
+   only confirmation; nothing is written to the project before it.
    When preflight returns `cli_environment`, add `--environment <name>` to read-only
    `xsolla shopbuilder` commands; this named environment does not change global config.
 4. `python3 "G/backup_shop.py" --brief "W/brief.json" --slug <slug> --output-dir "W/backup"`
@@ -180,15 +178,12 @@ the gate's scripts or docs, or edit CLI config yourself. `G` is
    Show its exact operations, `confirmation_id` and any returned `plan_notes` in the
    one plan (Plan shape in [reply-format.md](reply-format.md)), then end the turn.
 6. After a later "yes":
-   `python3 "G/apply_plan.py" "W/brief.json" --approved-plan "W/approved-plan.json" --confirmation-id <id> --backup-dir "W/backup" --approved-test-projects "A"`.
+   `python3 "G/apply_plan.py" "W/brief.json" --approved-plan "W/approved-plan.json" --confirmation-id <id> --backup-dir "W/backup"`.
    This is one confirmed operations run: do not pass `--run-report`. Apply verifies
    saved leaves and block preservation, then prints `editor_url`.
-7. If preflight switched sandbox off, run
-   `python3 "G/restore_sandbox.py"` as the final step after apply/readback, or whenever
-   the run stops before apply. If the plan is declined or abandoned, restore before
-   stopping. Waiting for exact-plan confirmation remains pending; decline or abandonment
-   ends it and requires restoration. Report the final restored state. Do not leave a
-   confirmed switch behind after an ended run.
+7. The sandbox switch from step 3, if you made one, stays on the CLI config. Nothing
+   restores it automatically: the undo in your first message does, and say so in the
+   final reply when the run ends.
 
 If apply says the target structure changed after backup, someone edited the site
 meanwhile and nothing was written: run steps 4 and 5 again with a new backup folder, say

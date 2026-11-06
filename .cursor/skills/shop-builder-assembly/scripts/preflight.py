@@ -140,74 +140,9 @@ def group_external_ids(value: object) -> set[str]:
     }
 
 
-def approved_test_project(path: Path | None, expected: dict) -> dict:
-    """Return the approval record for a dedicated test project.
-
-    The allowlist is the acknowledgement that the project is a dedicated test
-    project; nobody is asked to confirm it in chat.
-    """
-    if expected["environment"] != "test":
-        raise RuntimeError("Shop Builder assembly requires a dedicated test project")
-    if path is None:
-        raise RuntimeError(
-            "--approved-test-projects is required for a dedicated test project"
-        )
-    try:
-        value = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
-        raise RuntimeError(f"cannot read approved test projects: {exc}") from exc
-    if not isinstance(value, dict) or value.get("version") != 1:
-        raise RuntimeError("approved test projects must be a version 1 object")
-    projects = value.get("projects")
-    if not isinstance(projects, list):
-        raise RuntimeError("approved test projects must contain a projects list")
-
-    target = (expected["merchant_id"], expected["project_id"])
-    for index, project in enumerate(projects):
-        if not isinstance(project, dict):
-            raise RuntimeError(f"approved test projects[{index}] must be an object")
-        merchant_id = project.get("merchant_id")
-        project_id = project.get("project_id")
-        if (
-            isinstance(merchant_id, bool)
-            or not isinstance(merchant_id, int)
-            or isinstance(project_id, bool)
-            or not isinstance(project_id, int)
-        ):
-            raise RuntimeError(
-                f"approved test projects[{index}] must contain integer IDs"
-            )
-        if not isinstance(project.get("approved_by"), str) or not project[
-            "approved_by"
-        ].strip():
-            raise RuntimeError(
-                f"approved test projects[{index}].approved_by is required"
-            )
-        if not isinstance(project.get("approval_reference"), str) or not project[
-            "approval_reference"
-        ].strip():
-            raise RuntimeError(
-                f"approved test projects[{index}].approval_reference is required"
-            )
-        if (merchant_id, project_id) == target:
-            return project
-    raise RuntimeError(
-        f"needs_human: merchant {expected['merchant_id']} / project "
-        f"{expected['project_id']} is not in the approved test-project allowlist. A "
-        "human maintainer adds it to the allowlist; the agent never asks the "
-        "publisher to confirm a test project instead"
-    )
-
-
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("brief", type=Path)
-    parser.add_argument("--approved-test-projects", type=Path)
-    parser.add_argument(
-        "--confirm-sandbox-off",
-        action="store_true",
-        help="the user said yes to running the sandbox switch command shown in the stop message",
-    )
     args = parser.parse_args()
 
     if shutil.which("xsolla") is None:
@@ -220,18 +155,10 @@ def main() -> int:
             raise RuntimeError("invalid shop brief: " + "; ".join(errors))
 
         expected = brief["project"]
-        # The allowlist is the dedicated-test-project acknowledgement: a project
-        # on it is acknowledged, one missing from it stops here, before any CLI
-        # call or config change.
-        test_project_approval = approved_test_project(
-            args.approved_test_projects, expected
-        )
         # Shop Builder has no sandbox, so a Shop Builder request implies sandbox
-        # mode off. Preflight switches it only after the user confirms the exact
-        # command (see cli_environment); without a confirmation it stops here.
-        cli = cli_environment.select(
-            expected, run_json, switch=True, confirmed=args.confirm_sandbox_off
-        )
+        # mode off. Preflight never switches it: when the CLI still has sandbox on,
+        # it stops here, and nocode-shop-setup switches it at its first check.
+        cli = cli_environment.select(expected, run_json)
 
         accounts = run_json("auth", "list-account")
         if not active_publisher_account(accounts):
@@ -284,13 +211,8 @@ def main() -> int:
             "context": {
                 "merchant_id": expected["merchant_id"],
                 "project_id": expected["project_id"],
-                "environment": expected["environment"],
                 "sandbox": False,
                 "cli_environment": cli["environment"],
-                "sandbox_switched_off": cli["sandbox_switched_off"],
-                "test_project_acknowledged": True,
-                "test_project_allowlisted": True,
-                "approval_reference": test_project_approval["approval_reference"],
             },
             "auth": {"publisher_account_active": True},
             "target": {
@@ -328,10 +250,6 @@ def main() -> int:
             )
             return 1
         return 0
-    except cli_environment.SandboxConfirmationNeeded as exc:
-        # Not a failure: nothing was written. The agent asks the user first.
-        print(f"Preflight needs confirmation: {exc}", file=sys.stderr)
-        return 1
     except (OSError, RuntimeError, ValueError) as exc:
         print(f"Preflight failed: {exc}", file=sys.stderr)
         return 1

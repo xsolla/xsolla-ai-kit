@@ -1,14 +1,13 @@
 # CLI assembly operations
 
-Dependency map for `xsolla` 1.9.4 or newer. Run every command against the verified
-dedicated-test-project context; do not add per-command project overrides after
-preflight.
+This is the dependency map for `xsolla` 1.9.4 or newer. Run every command against the
+already verified project context; do not add per-command
+project overrides after preflight.
 
 | Phase | Command | Consumes | Produces / unlocks |
 |---|---|---|---|
 | Discover | `xsolla config list --json` | Local profile | Merchant and project match; sandbox mode is off (see [Sandbox mode](#sandbox-mode)) |
 | Discover | `xsolla auth list-account --json` | Credential store | Active Publisher login state |
-| Safety | `preflight.py --approved-test-projects <fixed path>` | Approval list read by scripts only (see [shop brief](shop-brief.md)) | Exact test-project identity is allowlisted |
 | Safety | `shopbuilder create-block --help`, only when the site has no common layout | Installed CLI | The usage line names `create-block`; otherwise the layout step is skipped |
 | Discover | `xsolla shopbuilder list-websites --json` | Project context | Slug, landing ID, type |
 | Backup | `get-landing`, `get-structure`, `get-localization`, `list-assets`, `list-versions` | Existing slug | Restorable configuration evidence |
@@ -33,42 +32,34 @@ No script passes `--force`; an operation that requires it stops for review. That
 ## Sandbox mode
 
 Shop Builder has no sandbox, so a Shop Builder request implies CLI sandbox mode off.
-`preflight.py` settles it (`scripts/cli_environment.py`):
+`preflight.py` never switches it. It settles the choice (`scripts/cli_environment.py`):
 
 1. Sandbox already off in the active environment: nothing changes.
 2. Another environment of the config file in use has sandbox off and the brief's merchant
-   and project (`test` first): every script call gets `--environment <name>` and no
-   config file is written. Preflight reports the name as `cli_environment`; add the same
-   flag to any `xsolla` command you run yourself.
-3. Otherwise preflight stops before any CLI write and says it needs confirmation. The
-   stop names the exact command, `xsolla config set sandbox false`, and the folder it
-   runs in. Show that exact command and directory verbatim, without reconstructing them,
-   and ask for a separate explicit yes to that command only. The later site-plan yes is
-   still required. Only after the command yes, rerun preflight with
-   `--confirm-sandbox-off`. Preflight then runs the command in the
-   directory of the config file in use and records the switch in a restore record,
-   `~/.shop-builder-sandbox.json`.
-4. The last step of the run is `scripts/restore_sandbox.py`. It runs
-   `xsolla config set sandbox true` in the same directory and removes the record. With no
-   record it changes nothing. Run it after apply and verification, and also when the run
-   stopped or the plan was not confirmed; a run that never restores leaves sandbox off.
+   and project: every script call gets `--environment <name>` and no config file is
+   written. Preflight reports the name as `cli_environment`; add the same flag to any
+   `xsolla` command you run yourself.
+3. Otherwise preflight stops with "CLI sandbox mode is on". `nocode-shop-setup` switches
+   it off at its first check, before the plan, with `xsolla config set sandbox false`,
+   then runs preflight again. Its first message says the CLI config keeps the change, so
+   every later `xsolla` command, in this session and others, reaches the live project,
+   payments and refunds included, and gives the undo: `xsolla config set sandbox true`
+   and the previous merchant and project, by ID. The plan's one yes is the only
+   confirmation; nothing is written to the project before it.
 
-Preflight adds one line to `plan_notes`, shown as one plan bullet: "Using the CLI test
-environment (sandbox off)" on path 2 (no config written), "CLI sandbox mode switched off
-for Shop Builder; it is switched back on when the run ends" on path 3, nothing on path 1.
-Backup, apply and verification reuse the choice and never change the config. The CLI
-1.9.4 reads `./.xsolla.json` when the working
-directory has one, else `~/.xsolla.json`, and `config set` writes `./.xsolla.json`,
-creating a stub without merchant or project when there is none. So never run
-`xsolla config set` yourself, and never from the working folder.
+No step switches sandbox back on. The undo in the first message does that. The CLI 1.9.4
+reads `./.xsolla.json` when the working directory has one, else `~/.xsolla.json`, and
+`config set` writes `./.xsolla.json`, creating a stub without merchant or project when
+that folder has none. Run `config set` from the folder that holds the config in use.
+Preflight's plan line is "Using the CLI test environment (sandbox off)" on path 2 only,
+nothing otherwise. Backup, apply and verification reuse the choice and never change the
+config.
 
 ## Runs under one yes
 
 The developer's one yes can cover more than one `apply_plan.py` run. Each later run is
 covered only when its render says so; `apply_plan.py` checks this again and stops before
-any write. Every script that writes (`apply_plan.py`, `apply_style.py`,
-`patch_backgrounds.py`) also takes
-`--approved-test-projects <allowlist>`, and refuses to write without it.
+any write.
 
 - **A new site's two runs.** A new site's generated blocks have no IDs before creation, so
   it is applied in two runs: the bootstrap, then the rest. Save run 1's report as
@@ -89,8 +80,8 @@ any write. Every script that writes (`apply_plan.py`, `apply_style.py`,
 - **Background fixes after the visual review.** The yes covers `values.background` leaves
   (color, gradient, image, position, size) on blocks this assembly created, applied with
   `scripts/patch_backgrounds.py <brief.json> --approved-plan approved-plan.json
-  --run-report <report> --backup-dir <dir> --fixes fixes.json --approved-test-projects
-  <allowlist>` after a fresh export. Pass `--run-report` once for every earlier run
+  --run-report <report> --backup-dir <dir> --fixes fixes.json` after a
+  fresh export. Pass `--run-report` once for every earlier run
   (`run1-report.json` and run 2's report for a new site): run 1's report is the one that
   lists the blocks it created. `fixes.json` is a list of
   `{"block_id": …, "leaf": …, "value": …}`. It refuses anything else, an image not
@@ -98,7 +89,7 @@ any write. Every script that writes (`apply_plan.py`, `apply_style.py`,
   over a block that keeps its image.
 - **The theme, images and copy, after the last apply run.** Export again, then run
   `scripts/apply_style.py <brief.json> --approved-plan approved-plan.json --run-report
-  <report> --backup-dir <dir> --approved-test-projects <allowlist>`, with `--run-report`
+  <report> --backup-dir <dir>`, with `--run-report`
   once for every earlier run, as above. It sets the approved `brand.theme` on the site
   theme's `theme.input`, only keys the site already has, each in its current format, and
   sets `theme.enabled` to `false` on the planned pages that use their own theme: pages the

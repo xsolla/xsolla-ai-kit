@@ -1,7 +1,6 @@
 # Shop Builder assembly skill
 
-Assembles an unpublished Shop Builder site in a dedicated test project
-from a normalized JSON shop brief.
+Assembles an unpublished Shop Builder site from a normalized JSON shop brief.
 
 ## Prerequisites
 
@@ -9,10 +8,8 @@ from a normalized JSON shop brief.
   every new site, needs a CLI with `shopbuilder create-block` and the Shop Builder API
   support for it; without the command, assembly skips the layout step and says so
 - `xsolla auth login` completed for a Publisher account
-- An acknowledged dedicated test project with CLI sandbox mode disabled
+- CLI sandbox mode disabled
 - Existing catalog group IDs for any `newStore` sections
-- A separate local approval allowlist containing the
-  exact merchant/project identity and the mentor or lead's approval reference
 
 ## Happy path
 
@@ -22,8 +19,7 @@ from a normalized JSON shop brief.
 
    ```bash
    python3 scripts/validate_shop_brief.py brief.json
-   python3 scripts/preflight.py brief.json \
-     --approved-test-projects /path/to/approved-test-projects.json
+   python3 scripts/preflight.py brief.json
    ```
 
 3. If the target exists, back it up before rendering or confirming a plan:
@@ -39,8 +35,7 @@ from a normalized JSON shop brief.
    python3 scripts/render_plan.py brief.json --structure ./backups/my-shop/structure.json \
      > approved-plan.json
    python3 scripts/apply_plan.py brief.json --approved-plan approved-plan.json \
-     --confirmation-id <id> --backup-dir ./backups/my-shop \
-     --approved-test-projects /path/to/approved-test-projects.json
+     --confirmation-id <id> --backup-dir ./backups/my-shop
    ```
 
    For a new slug, render without `--structure` and apply the bootstrap-only plan.
@@ -53,19 +48,18 @@ from a normalized JSON shop brief.
 
    ```bash
    python3 scripts/apply_plan.py brief.json --approved-plan approved-plan.json \
-     --confirmation-id <id> --approved-test-projects <allowlist> > run1-report.json
+     --confirmation-id <id> > run1-report.json
    python3 scripts/render_plan.py brief.json --structure ./backups/my-shop/structure.json \
      --approved-plan approved-plan.json --run-report run1-report.json > run2-plan.json
    python3 scripts/apply_plan.py brief.json --approved-plan approved-plan.json \
-     --run-report run1-report.json --confirmation-id <id> --backup-dir ./backups/my-shop \
-     --approved-test-projects <allowlist>
+     --run-report run1-report.json --confirmation-id <id> --backup-dir ./backups/my-shop
    ```
 
    `render_plan.py` prints "Covered by the approved plan" or "Needs a new yes" with the
    changes; `apply_plan.py` checks the same and stops before any write.
    After the last apply run, back up again and set the approved palette, images, copy and SEO with
    `scripts/apply_style.py` (same `--approved-plan`, `--run-report` for every run,
-   `--backup-dir` and allowlist). Background fixes after the visual review go through
+   and `--backup-dir`). Background fixes after the visual review go through
    `scripts/patch_backgrounds.py`, which accepts only background leaves on blocks the run
    reports list as created.
 
@@ -86,10 +80,9 @@ catalog. Federated wrappers use their effective `values.blockId` module.
 
 - Record formal inventory and preset approval in `references/expert-review.md` during
   PR review; implementation testing may start earlier.
-- Test project IDs are intentionally not stored in committed examples.
-- A `test` brief is insufficient on its own: preflight and apply also require a
-  separate, uncommitted allowlist record for the exact merchant/project IDs.
-- Sandbox briefs are rejected, and the scripts never pass `--force` to the CLI.
+- Real project IDs are intentionally not stored in committed examples.
+- Preflight stops when CLI sandbox mode is on, and the scripts never pass `--force` to
+  the CLI.
 - The CLI does not currently expose an authoritative list of standard block modules.
 - Multi-command Shop Builder authentication, readiness verification, and CLI preview
   have confirmed defects captured in `references/test-findings.md`.

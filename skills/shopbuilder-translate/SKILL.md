@@ -24,7 +24,7 @@ Nothing here publishes the site. `--commit` writes the live project named by `XS
 
 1. Name the target locale in the user's words (`Japanese` → `ja-JP`). Codes are in [references/i18n-support.md](references/i18n-support.md).
 2. Ask whether they already have translations. If yes, `scripts/ingest-user-translations.sh`. If no, the model fills the gaps after they confirm the plan.
-3. Show the plan: locale, what will change, what already has a translation. Wait for an explicit yes. Then write.
+3. Run `apply.sh` as a dry run and show the plan: locale, what will change, and the dry run's list of existing translations it would replace. Wait for an explicit yes. Then write.
 4. Catalog and LiveOps strings are out of scope. Stop. Do not translate them with this skill.
 
 ## Page copy
@@ -41,11 +41,11 @@ scripts/apply.sh <domain> ja-JP --commit --confirm-overwrites
 scripts/verify.sh <domain> ja-JP
 ```
 
-`export-backup.sh` reads the live site with `get-structure` and `get-localization` and writes those two files. It does not change the site. Before any write, the project must be on the approved-test-project allowlist (`XSOLLA_APPROVED_TEST_PROJECTS`). The scripts read that path and `XSOLLA_MERCHANT_ID` and `XSOLLA_PROJECT_ID` only from the environment; on the Shop Builder path, set the IDs from `xsolla config list --json` for each run. A project that is not on the list is not written. The slug must also appear in that project's `list-websites` result. `get-structure` is not that check.
+`export-backup.sh` reads the live site with `get-structure` and `get-localization` and writes those two files. It does not change the site. Before any write, the CLI's configured project must match `XSOLLA_MERCHANT_ID` and `XSOLLA_PROJECT_ID`. The scripts read the IDs only from the environment; on the Shop Builder path, set them from `xsolla config list --json` for each run. The slug must also appear in that project's `list-websites` result. `get-structure` is not that check.
 
-`--commit` enables the language with `add-language`, then writes the copy. It runs `add-language` only after the allowlist, the `list-websites` check and the pre-write export. If the pre-write export already lists the locale, `add-language` is skipped. A 400 with the message "language is taken" is also success. Any other failure stops the run before any copy is written. If the copy write fails after this run enabled the language, the run prints the `delete-language` command for it. Show it to the user. This skill does not run it.
+`--commit` enables the language with `add-language`, then writes the copy. It runs `add-language` only after the project check, the `list-websites` check and the pre-write export. If the pre-write export already lists the locale, `add-language` is skipped. A 400 with the message "language is taken" is also success. Any other failure stops the run before any copy is written. If the copy write fails after this run enabled the language, the run prints the `delete-language` command for it. Show it to the user. This skill does not run it.
 
-`--commit` blocks when it would replace an existing translation until `--confirm-overwrites`. `--commit` exports the site again into `l10n/pre-write/` and blocks if the text about to be written changed since extract. A write that returns non-zero fails the run.
+`--commit` blocks when it would replace an existing translation until `--confirm-overwrites`. That list comes from the dry run and is part of the plan, so the yes covers it: pass the flag then, without asking again. `--commit` exports the site again into `l10n/pre-write/` and blocks if the text about to be written changed since extract. A write that returns non-zero fails the run.
 
 The shop opens in the first language of the site language list. This skill does not reorder that list and does not call `delete-language`. If the partner wants the shop to open in the new language, they reorder the list in Publisher Account.
 

@@ -131,7 +131,7 @@ first, except capabilities and card-reward refusals. Pure quest requests skip si
 or build-path questions: bold “Which shop do you mean?”, site-name bullets in returned order,
 then “a headless storefront in your code”, and `Next: reply with one of these.`
 
-Every site write uses the `block_operations` gate on the chosen approved test site only.
+Every site write uses the `block_operations` gate on the chosen site only.
 A named different/protected site gets no plan or write. The gate owns preflight, backup,
 render, confirmation identity before side effects, apply and readback. Follow the authoritative
 [Gate commands](references/quests-block-brief.md#gate-commands) for the separate exact-command

@@ -17,7 +17,7 @@ metadata:
 # Shop Builder Assembly
 
 Build an unpublished Publisher Account **Shop Builder site**, not a custom frontend,
-in a dedicated non-partner test project through `xsolla shopbuilder`.
+in the developer's project through `xsolla shopbuilder`.
 
 A Game Web Portal is built by `game-web-portal`, not here. If the user asked for a
 game home, or the existing site has `/news`, `/rewards`, and `/store`, hand off to
@@ -53,12 +53,8 @@ until [expert-review.md](references/expert-review.md) records approval.
 
 ## Non-negotiable safety gate
 
-1. Run `scripts/preflight.py <brief.json> --approved-test-projects <local-allowlist.json>`.
-   The allowlist is at `$XSOLLA_APPROVED_TEST_PROJECTS`, by default
-   `~/.config/xsolla/approved-test-projects.json`; `nocode-shop-setup` collects the
-   approver and approval link in its first batch, not at this step.
-   Read back the matched merchant ID, project ID, safety environment, approval
-   reference, active Publisher login, target site, and catalog groups.
+1. Run `scripts/preflight.py <brief.json>`. Read back the matched merchant ID, project
+   ID, active Publisher login, target site, and catalog groups.
    When `catalog-design`'s proposal is still waiting for the same yes, preflight's only
    allowed failure is the groups that proposal creates: render and show the plan with
    it. After the yes and the catalog's creation, run preflight again; it must pass in
@@ -68,15 +64,15 @@ until [expert-review.md](references/expert-review.md) records approval.
    Xsolla CLI; the site is built without it". Tell the user in the plan, before any
    write: a site without the common layout won't open in the Editor, Publish or
    private preview.
-2. If the CLI points at another merchant or project, or has sandbox mode on, switch it only
-   after the developer's yes (`nocode-shop-setup` asks in its batch), then rerun
-   preflight; if preflight asks to switch sandbox mode off, pass `--confirm-sandbox-off`.
-   Never override later commands.
+2. If the CLI points at another merchant or project, or has sandbox mode on, switch it to
+   the brief's project with sandbox off (`nocode-shop-setup` does this at its first
+   check), then rerun preflight; never override later commands.
 3. If the target site exists, export it before the first write with
    `scripts/backup_shop.py --brief <brief.json> --slug <slug> --output-dir <dir>`.
 4. Render with `scripts/render_plan.py <brief.json> --structure
    <backup-dir>/structure.json`, save the output as `approved-plan.json`, and show one
-   plan in plain language: each page and its sections in order, the products and offers in
+   plan in plain language: the project by name and IDs (the name from `xsolla publisher
+   list-projects`), each page and its sections in order, the products and offers in
    each, the visual direction (palette, backgrounds, artwork and where it came from), each
    page's search title, description and share image, exact block removals, the template
    sections each new page comes with that are removed (`template_removals`), catalog
@@ -96,12 +92,9 @@ until [expert-review.md](references/expert-review.md) records approval.
    `nocode-shop-setup` shows it in one message with a pending catalog proposal, that yes
    covers creating the catalog too. Earlier permission to "build a shop" is not that
    yes. Apply with `--approved-plan approved-plan.json --confirmation-id <its
-   confirmation_id> --approved-test-projects <allowlist>`; the script refuses an edited
-   plan file, and every script that writes needs the allowlist flag.
+   confirmation_id>`; the script refuses an edited plan file.
 
-The brief must target an acknowledged dedicated test project and match a separate
-local allowlist with exact IDs, approver, and approval reference. Never use sandbox
-as a Shop Builder target or use a partner project. Never publish, attach a production
+Never use sandbox as a Shop Builder target. Never publish, attach a production
 domain, enable live payments, or apply a saved version. A human publishes in Publisher Account.
 
 **More than one run under the yes.** A new site is applied in two runs, a run that stops
@@ -185,17 +178,16 @@ If the CLI lacks an operation, stop it, record the gap, and file a CLI/API ticke
   screenshots in the handoff. If the preview doesn't open, say the review wasn't done
   and why; never call the site reviewed without them.
 - Report skips, interventions, and gaps; state that the site is **not published**.
-- If preflight recorded a sandbox switch, run `scripts/restore_sandbox.py` when the run
-  ends or stops, including when the plan was not confirmed.
 - If the plan adds the Custom code (`html`) block, tell the user it is added empty and
   hidden: they paste their code and make the block visible in the Site Builder editor.
-  Never write HTML, CSS, or JavaScript into it.
+  Never write HTML, CSS, or JavaScript into it. Custom blocks from a Figma design are
+  different: `nocode-shop-setup` creates them after the last apply run, as its
+  [Figma reference](../nocode-shop-setup/references/figma-custom-blocks.md) describes.
 
 ## Stop conditions
 
 Stop before writes when project identity is ambiguous, backup fails, confirmation is
-missing, the target is not an acknowledged dedicated test project,
-catalog/project IDs do not match, or the plan requires an unverified block module.
+missing, catalog/project IDs do not match, or the plan requires an unverified block module.
 Preserve completed safe work and explain the smallest action needed to continue.
 
 ## Known limitations

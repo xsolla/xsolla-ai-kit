@@ -10,13 +10,12 @@ Loaded for a Quests block request on a Shop Builder site. Settings and the opera
    Direct CLI is read-only: `list-websites`, `get-structure`, `get-localization` only.
    No manual writes, HTTP, cookies or tokens. Missing block tooling/support means stop
    with the refusal shape, without naming a skill.
-2. **Approved test project only.** Brief `environment: test`, gate allowlist, clear
-   project identity. Stop on partner projects, `sandbox` or unclear identity. Only the
-   gate reads the approval list; it is the dedicated-test-project acknowledgement,
-   with no brief flag or publisher test-project confirmation. A denied project uses
-   [Not approved](reply-format.md#examples). If QP/test-site environments or mapping
-   differ or are unclear, ask once whether public quests on this test site are intended.
-   A site the publisher did not choose or forbade gets no plan/write; ask which to use.
+2. **The publisher's own project.** The brief's merchant and project IDs must match the
+   CLI's, with sandbox mode off. Stop on partner projects or unclear identity; the gate
+   reports a mismatch with the refusal shape in [reply-format](reply-format.md#examples).
+   If QP/test-site environments or mapping differ or are unclear, ask once whether public
+   quests on this site are intended. A site the publisher did not choose or forbade gets
+   no plan/write; ask which to use.
 3. **Never publish.** [SKILL authority](../SKILL.md#access-and-authority) and
    [publish reply](reply-format.md#examples) apply. No saved-version application,
    domain attachment or live payments.
@@ -26,15 +25,15 @@ Loaded for a Quests block request on a Shop Builder site. Settings and the opera
 6. **Quests block only.** Its requested [appearance](quests-block-appearance.md) is in
    scope; site/page themes, header, other blocks and languages use the refusal shape,
    without site-wide suggestions, steps or menu names.
-7. **Sandbox stop.** [Gate commands](quests-block-brief.md#gate-commands) owns exact
-   command/directory, separate switch yes, later plan yes and restoration on ended runs.
+7. **Sandbox stop.** [Gate commands](quests-block-brief.md#gate-commands) owns the
+   sandbox check: while the CLI has sandbox on, preflight stops and no site work begins.
 
 ## Prerequisites
 
 Check each one and stop with the smallest missing action when it fails.
 
 - **Gate available** with `block_operations` support (see Hard rule 1).
-- **Shop Builder site** exists in an approved test project and is unpublished.
+- **Shop Builder site** exists in the publisher's project and is unpublished.
   Creating the site itself is the gate's flow.
 - **Scope.** The merchant and project for the Quest Platform calls come from the
   same resolved credential as in

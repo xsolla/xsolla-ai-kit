@@ -18,7 +18,7 @@ from unittest import mock
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from block_test_support import approved_projects, block_operations_brief, capture_main, write_json  # noqa: E402
+from block_test_support import block_operations_brief, capture_main, write_json  # noqa: E402
 
 import render_plan  # noqa: E402
 import preflight  # noqa: E402
@@ -276,9 +276,7 @@ class FakeSite:
 
 
 def ops_brief(operations: list[dict]) -> dict:
-    return block_operations_brief(
-        operations, merchant_id=1, project_id=2, slug=SLUG, legacy_acknowledgment=True,
-    )
+    return block_operations_brief(operations, merchant_id=1, project_id=2, slug=SLUG)
 
 
 class BlockOpsApplyBase(unittest.TestCase):
@@ -727,7 +725,7 @@ class FakeApplySubprocessBoundary:
     def __call__(self, command: list[str], **kwargs: object) -> subprocess.CompletedProcess:
         if command and command[0] == sys.executable:
             # Execute the actual preflight entrypoint in-process; only its CLI
-            # subprocess boundary is fake, so its allowlist/context guards run.
+            # subprocess boundary is fake, so its context guards run.
             script = next(
                 (index for index, item in enumerate(command) if Path(item).name == "preflight.py"),
                 None,
@@ -836,10 +834,6 @@ class ApplyNamedEnvironmentIntegrationTests(unittest.TestCase):
         )
         self.brief_path = self.root / "brief.json"
         self.brief_path.write_text(json.dumps(self.brief, indent=2), encoding="utf-8")
-        self.allowlist = self.root / "approved-test-projects.json"
-        write_json(self.allowlist, approved_projects(
-            1, 2, approved_by="test fixture", approval_reference="test fixture",
-        ))
         self.boundary = FakeApplySubprocessBoundary(self.site)
 
     def configure_default(self, *, sandbox: bool, include_named_test: bool) -> None:
@@ -910,7 +904,6 @@ class ApplyNamedEnvironmentIntegrationTests(unittest.TestCase):
     ) -> list[str]:
         argv = [
             "apply_plan.py", str(self.brief_path),
-            "--approved-test-projects", str(self.allowlist),
             "--approved-plan", str(approved_path),
             "--confirmation-id", approved["confirmation_id"],
         ]

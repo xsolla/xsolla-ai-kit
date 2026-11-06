@@ -503,7 +503,7 @@ def main() -> int:
         target = plan.get("target") or {}
         slug = target.get("slug")
         # The CLI reads below use the sandbox-off environment preflight settled.
-        cli_environment.select(target, run_json, switch=False)
+        cli_environment.select(target, run_json)
         result = verify(
             plan,
             load_object(args.structure, "structure"),

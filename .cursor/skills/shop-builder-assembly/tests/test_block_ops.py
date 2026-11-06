@@ -62,7 +62,7 @@ def make_structure(extra_quests: bool = True) -> dict:
 
 def ops_brief(operations: list[dict]) -> dict:
     return block_operations_brief(
-        operations, merchant_id=1, project_id=2, slug="my-test-site", legacy_acknowledgment=True,
+        operations, merchant_id=1, project_id=2, slug="my-test-site",
     )
 
 
@@ -469,13 +469,14 @@ class BlockOpsTests(unittest.TestCase):
             render_plan.build_plan(brief, structure)
         self.assertNotIn("delete", block_ops.OPERATIONS)
 
-    def test_ops_mode_requires_a_test_environment(self) -> None:
+    def test_ops_mode_rejects_an_environment_key(self) -> None:
         brief = ops_brief([add_op()])
-        brief["project"]["environment"] = "sandbox"
-        errors = validate_shop_brief.validate(brief)
-        self.assertTrue(any("environment" in e and "test" in e for e in errors), errors)
         brief["project"]["environment"] = "test"
-        self.assertEqual([], validate_shop_brief.validate(brief))
+        errors = validate_shop_brief.validate(brief)
+        self.assertTrue(
+            any(e == "project.environment is not allowed with block_operations" for e in errors),
+            errors,
+        )
 
     def test_ops_mode_skips_site_wide_phases(self) -> None:
         plan = render_plan.build_plan(ops_brief([add_op()]), make_structure(False))
@@ -493,7 +494,7 @@ class BlockOpsTests(unittest.TestCase):
     def test_ops_mode_minimal_brief_is_valid(self) -> None:
         brief = ops_brief([add_op()])
         self.assertEqual([], validate_shop_brief.validate(brief))
-        for path in (("project", "environment"), ("project", "merchant_id"),
+        for path in (("project", "merchant_id"),
                      ("project", "project_id"), ("site", "slug")):
             broken = copy.deepcopy(brief)
             del broken[path[0]][path[1]]

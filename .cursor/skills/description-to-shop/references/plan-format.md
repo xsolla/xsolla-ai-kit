@@ -11,8 +11,7 @@ validates.
   "version": 1,
   "project": {
     "merchant_id": 12345,
-    "project_id": 67890,
-    "environment": "test"
+    "project_id": 67890
   },
   "game": { "name": "Tidepool", "platforms": ["mobile"], "lifecycle": "launch" },
   "site": {
@@ -36,7 +35,7 @@ validates.
 }
 ```
 
-Use real values discovered from the selected test project; never copy the example IDs.
+Use real values discovered from the CLI's project; never copy the example IDs.
 Raise uncertainty in conversation before serializing — do not add unofficial fields to
 the shared contract.
 

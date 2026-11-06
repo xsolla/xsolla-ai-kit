@@ -6,9 +6,7 @@ Builder site. Run preflight and create a verified backup, then render with
 `approved-plan.json` and apply it with both `--approved-plan approved-plan.json` and its
 `--confirmation-id`. Do not pass `--run-report`; operations are a single confirmed run.
 The current assembly entrypoint verifies the saved result and touches only the listed
-blocks. If preflight recorded a sandbox switch, run
-`scripts/restore_sandbox.py` when the run ends or stops. Brief fields are in
-[shop brief](shop-brief.md).
+blocks. Brief fields are in [shop brief](shop-brief.md).
 
 ## Operation plan confirmation
 
