@@ -106,11 +106,11 @@ Do not write the answer to `.env`.
 
 When a Shop Builder site, new or existing, has to look like a Figma design, follow
 [Matching a Figma design in Shop Builder](references/figma-design.md): standard blocks
-first; a Custom Block (`xsolla shopbuilder create-custom-block`) only for a section
-layout standard blocks can't reach, named in the plan with its reason; never custom code,
-and never touch custom code already on the site; prices, timers, items, cart and login
-stay live; never publish; check at 1440, 1024 and 390 px against the Figma frames, and
-list what can't match.
+first; a Custom Block (`xsolla shopbuilder create-custom-block`) for each section a
+standard block can't match one to one, named in the plan by its purpose with the reason;
+never custom code, and never touch custom code already on the site; prices, timers,
+items, cart and login stay live; never publish; check at 1440, 1024 and 390 px against
+the Figma frames, and list what neither can match.
 
 ## One batch of questions
 

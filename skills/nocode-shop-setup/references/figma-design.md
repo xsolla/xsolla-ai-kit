@@ -6,9 +6,10 @@ Use these rules whenever a Shop Builder site, new or existing, has to look like 
 
 1. **Standard blocks first.** Build each section with the theme, block settings, images in standard image
    slots and Design mode styles.
-2. **Custom Blocks only for really hard layouts.** A Custom Block is a React component that Shop Builder
-   compiles and hosts (`xsolla shopbuilder create-custom-block`). Use one only for a section whose Figma layout
-   standard blocks can't reach, under the conditions in "When a Custom Block is allowed".
+2. **A Custom Block where a standard block can't match one to one.** A Custom Block is a React component that
+   Shop Builder compiles and hosts (`xsolla shopbuilder create-custom-block`). When the standard build of a
+   section can't reproduce its Figma design exactly, build that section as a Custom Block, under the conditions
+   in "When a Custom Block is allowed". Sections that standard blocks do match stay standard.
 3. **Never custom code.** Custom code means:
    - the Custom code (HTML) block
    - a block script (the per-block custom JS, `values.script`)
@@ -23,8 +24,9 @@ Use these rules whenever a Shop Builder site, new or existing, has to look like 
    catalog: through standard blocks, or through Shop Builder's hooks inside a Custom Block. Never bake them
    into images or hard-code them.
 6. **Safe writes.** Never publish. Back up each block before writing, send one patch per call and read it back.
-7. **Exact means checked at 1440, 1024 and 390 px** against the Figma frames. Whatever still can't match goes
-   on a limits list shown to the user. Never approximate silently and never fall back to custom code.
+7. **Exact means checked at 1440, 1024 and 390 px** against the Figma frames. Whatever neither a standard block
+   nor a Custom Block can match goes on a limits list shown to the user. Never approximate silently and never
+   fall back to custom code.
 
 ## Pick a tool for each Figma element (first match wins)
 
@@ -35,14 +37,14 @@ Use these rules whenever a Shop Builder site, new or existing, has to look like 
 | Scenes, characters, logos, frames, plates, ornaments | Images in standard slots: block or hero background, logo, slider slides, item images, Daily or Offer chain backgrounds, Bento image components |
 | Card look: rim, glow, gradients, radius, padding, plate, badge or corners on a live card | Design mode (Element inspector) styles, with overlays as background layers |
 | A static card with no live data (club, promo, banner) | The whole Figma card as one image in a Bento image component, with the cell's click action |
-| A whole section whose layout the rows above can't reach | A Custom Block (see below) |
-| A small detail the rows above can't reach | The limits list, shown to the user |
+| A section the rows above can't match one to one, even in a detail | A Custom Block for that section (see below) |
+| Something a Custom Block can't match either | The limits list, shown to the user |
 
 ## When a Custom Block is allowed
 
 All of these must hold:
-- **The layout is really hard.** The standard build was tried, or a known limit rules it out, and the gap
-  breaks the section's look, not just a detail. Typical cases: desktop and mobile arrange the section
+- **Standard blocks can't match it one to one.** The standard build was tried, or a known limit rules it out,
+  and the section still differs from its Figma frames. Typical cases: desktop and mobile arrange the section
   differently, elements overlap in ways standard layouts don't allow, or Design mode can't reach the elements
   (it has no per-width values).
 - **One Figma section per block.** Header, footer, store, rewards and any other section that standard blocks
@@ -55,6 +57,9 @@ All of these must hold:
   block's settings panel where possible.
 - **Its commerce is live.** Prices, buying, items, limits and login use Shop Builder's hooks.
 - **It has both layouts.** It draws the Figma desktop and mobile frames.
+- **It's named by what it does.** Its name says the section's purpose, such as "Daily rewards" or "Hero". Never
+  name it after a partner, game or project, or with an abbreviation taken from a Figma file, another site or an
+  internal repository.
 - **It's approved.** The plan names the block and why the standard build can't match, and the user says yes
   before it's created.
 
