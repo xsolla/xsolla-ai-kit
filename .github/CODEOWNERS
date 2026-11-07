@@ -11,31 +11,67 @@
 # doesn't actually use. See CONTRIBUTING-skills.md and VALID_OWNERS in
 # .github/scripts/validate_skills.py.
 
-# Default owner for everything
-*                                         @JavadManashti
+# Who reviews what
+#
+# Each team reviews its own skills: the domain owner is listed first on its lines.
+# The AI Kit maintainers are listed after the domain owner only as a fallback. GitHub
+# accepts an approval from any one listed owner, and an author can't approve their own
+# PR, so a domain owner's own PR still needs someone who can approve it. The domain
+# owner is the expected reviewer; the maintainers step in when the owner is the author.
+# The AI Kit maintainers own the platform: CI, the validator, the generated files,
+# AGENTS.md and the contributor guides.
+#
+# Adding a new skill: add its CODEOWNERS line for your team in the same PR. The
+# maintainers then review only that line and the platform files you touched.
+#
+# GitHub uses the LAST matching line, so domain lines below override the default.
 
-# Repo plumbing — CI, generated-file sync, security policy
-/.github/                                 @JavadManashti
-/CONTRIBUTING-skills.md                   @JavadManashti
-/SECURITY.md                              @JavadManashti
+# Default: the AI Kit maintainers (anything not listed below)
+*                                         @JavadManashti @y-klochikhin
 
-# Skills require the domain SME + Javad
-/skills/catalog-design/                   @p-sanachev @JavadManashti
-/skills/login-setup/                      @mabujalala @JavadManashti
-/skills/login-styling/                    @aspringut-xsolla @JavadManashti
-/skills/headless-checkout-integration/    @y-klochikhin @JavadManashti
-/skills/shop-setup/                       @y-klochikhin @JavadManashti
-/skills/merchant-setup/                   @y-klochikhin @JavadManashti
-/skills/production/                       @y-klochikhin @JavadManashti
+# Platform — CI, validator, generated files, agent context, contributor guides
+/.github/                                 @JavadManashti @y-klochikhin
+/AGENTS.md                                @JavadManashti @y-klochikhin
+/CLAUDE.md                                @JavadManashti @y-klochikhin
+/CONTRIBUTING.md                          @JavadManashti @y-klochikhin
+/CONTRIBUTING-skills.md                   @JavadManashti @y-klochikhin
+/SECURITY.md                              @JavadManashti @y-klochikhin
 
-# SB AI skills — the Shop Builder path
-/skills/nocode-shop-setup/                @apyanzin-xsolla @JavadManashti
-/skills/shop-builder-assembly/            @apyanzin-xsolla @JavadManashti
-/skills/description-to-shop/              @apyanzin-xsolla @JavadManashti
-/skills/shopbuilder-translate/            @apyanzin-xsolla @JavadManashti
-/skills/game-web-portal/                  @apyanzin-xsolla @JavadManashti
+# Catalog
+/skills/catalog-design/                          @p-sanachev @JavadManashti @y-klochikhin
 
-# TODO: `webhooks-impl` is owned by @e.chernykh, whose GitHub handle could not be
-# resolved and who is not yet a collaborator on this repo. Left to the default owner
-# rather than written as an invalid entry — an unresolvable handle disables routing
-# for the path entirely, which is the bug this file previously had on every line.
+# Login
+/skills/login-setup/                             @mabujalala @JavadManashti @y-klochikhin
+/skills/login-styling/                           @aspringut-xsolla @JavadManashti @y-klochikhin
+
+# Payments and go-live
+/skills/headless-checkout-integration/           @y-klochikhin @JavadManashti
+/skills/shop-setup/                              @y-klochikhin @JavadManashti
+/skills/merchant-setup/                          @y-klochikhin @JavadManashti
+/skills/production/                              @y-klochikhin @JavadManashti
+
+# Webhooks — metadata owner is e.chernykh, who has no GitHub access to this repo
+# yet. Payments reviews it until then; replace the handle once access is granted.
+/skills/webhooks-impl/                           @y-klochikhin @JavadManashti
+
+# Shop Builder
+/skills/nocode-shop-setup/                       @apyanzin-xsolla @JavadManashti @y-klochikhin
+/skills/shop-builder-assembly/                   @apyanzin-xsolla @JavadManashti @y-klochikhin
+/skills/description-to-shop/                     @apyanzin-xsolla @JavadManashti @y-klochikhin
+/skills/shopbuilder-translate/                   @apyanzin-xsolla @JavadManashti @y-klochikhin
+/skills/game-web-portal/                         @apyanzin-xsolla @JavadManashti @y-klochikhin
+
+# Generated Cursor mirror follows the same owners as its source
+/.cursor/skills/catalog-design/                  @p-sanachev @JavadManashti @y-klochikhin
+/.cursor/skills/login-setup/                     @mabujalala @JavadManashti @y-klochikhin
+/.cursor/skills/login-styling/                   @aspringut-xsolla @JavadManashti @y-klochikhin
+/.cursor/skills/headless-checkout-integration/   @y-klochikhin @JavadManashti
+/.cursor/skills/shop-setup/                      @y-klochikhin @JavadManashti
+/.cursor/skills/merchant-setup/                  @y-klochikhin @JavadManashti
+/.cursor/skills/production/                      @y-klochikhin @JavadManashti
+/.cursor/skills/webhooks-impl/                   @y-klochikhin @JavadManashti
+/.cursor/skills/nocode-shop-setup/               @apyanzin-xsolla @JavadManashti @y-klochikhin
+/.cursor/skills/shop-builder-assembly/           @apyanzin-xsolla @JavadManashti @y-klochikhin
+/.cursor/skills/description-to-shop/             @apyanzin-xsolla @JavadManashti @y-klochikhin
+/.cursor/skills/shopbuilder-translate/           @apyanzin-xsolla @JavadManashti @y-klochikhin
+/.cursor/skills/game-web-portal/                 @apyanzin-xsolla @JavadManashti @y-klochikhin
