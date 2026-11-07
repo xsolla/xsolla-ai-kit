@@ -1781,6 +1781,23 @@ class CommonLayoutPreflightTests(unittest.TestCase):
         self.assertIsNone(target["common_layout_id"])
         self.assertEqual("create", target["layout_step"])
 
+    def test_a_published_site_stops_before_the_catalog_read(self) -> None:
+        site = {"pages": [], "layouts": [], "blocks": [], "published": True}
+        cli = FakePreflightCli(site)
+        code, stdout, stderr, _ = self.run_preflight(cli, has_create_block=True)
+        self.assertEqual(1, code)
+        self.assertEqual("", stdout)
+        self.assertIn("the target site is published", stderr)
+        self.assertNotIn(("catalog", "list-item-groups", "--project-id", "67890"), cli.calls)
+
+    def test_published_state_is_read_from_the_site(self) -> None:
+        for value, published in ((None, False), (False, False), (True, True), (1, True)):
+            with self.subTest(value=value):
+                self.assertEqual(published, apply_plan.is_published({"published": value}))
+        apply_plan.refuse_published({"published": None})
+        with self.assertRaisesRegex(RuntimeError, "Nothing was written"):
+            apply_plan.refuse_published({"published": True})
+
     def test_existing_site_without_common_layout_skips_without_create_block(self) -> None:
         site = {"pages": [], "layouts": ["side-id"], "blocks": ["side-id"]}
         cli = FakePreflightCli(site, {"side-id": "side-by-side-layout"})

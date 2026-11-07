@@ -294,6 +294,9 @@ def backup_before_write():
     if got != DOMAIN:
         block(f"domain {DOMAIN!r} does not belong to the configured project "
               f"(get-structure returned domain {got!r}).")
+    if structure.get('published') not in (None, False):
+        block(f"{DOMAIN!r} is published, and this skill writes only to an unpublished "
+              "site. Unpublish it in Publisher Account first, or translate a copy.")
     base_loc = os.path.join(os.path.normpath(BASE), 'localization.json') if BASE else ''
     changed = live_drift(base_loc, os.path.join(out, 'localization.json'))
     if changed:
