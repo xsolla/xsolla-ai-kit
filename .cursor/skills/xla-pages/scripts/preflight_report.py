@@ -317,9 +317,10 @@ def report(responses: dict, bundle_errors: list[str], manifest: dict, config: di
     future = [saved["file"] for saved in used.values() if saved["moment"] > now + CLOCK_SKEW]
     age_hours = round((now - oldest).total_seconds() / 3600, 2) if oldest else None
     complete = not bundle_errors and not missing and not future
+    fresh_until = iso(oldest + timedelta(hours=max_age)) if oldest else None
     header = (
-        f"Responses requested {iso(oldest)} to {iso(newest)}; the oldest is {age_hours} h old "
-        f"(writes need {max_age:g} h or less)."
+        f"Responses requested {iso(oldest)} to {iso(newest)}; the oldest is {age_hours} h old, "
+        f"so writes may use them until {fresh_until} ({max_age:g} h)."
         if oldest
         else "No responses used."
     )
@@ -333,6 +334,7 @@ def report(responses: dict, bundle_errors: list[str], manifest: dict, config: di
         "now": iso(now),
         "age_hours": age_hours,
         "max_age_hours": max_age,
+        "fresh_until": fresh_until,
         "fresh_for_write": bool(oldest) and complete and (now - oldest) <= timedelta(hours=max_age),
         "responses": sorted(
             ({"url": url, "requested_at": s["requested_at"], "status": s["status"]} for url, s in used.items()),

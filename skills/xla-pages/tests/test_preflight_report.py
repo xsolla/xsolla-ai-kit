@@ -40,10 +40,11 @@ class PreflightReportTests(unittest.TestCase):
         self.assertEqual({"oldest": "2026-11-07T08:55:00Z", "newest": "2026-11-07T09:00:00Z"},
                          self.report["requested_at"])
         self.assertEqual(
-            "Responses requested 2026-11-07T08:55:00Z to 2026-11-07T09:00:00Z; the oldest is 2.08 h old "
-            "(writes need 24 h or less).",
+            "Responses requested 2026-11-07T08:55:00Z to 2026-11-07T09:00:00Z; the oldest is 2.08 h old, "
+            "so writes may use them until 2026-11-08T08:55:00Z (24 h).",
             self.report["lines"][0],
         )
+        self.assertEqual("2026-11-08T08:55:00Z", self.report["fresh_until"])
         self.assertTrue(all(r["requested_at"] for r in self.report["responses"]))
         self.assertEqual(19, len(self.report["responses"]))
 

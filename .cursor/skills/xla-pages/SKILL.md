@@ -80,7 +80,9 @@ All scripts are in `scripts/` and run with `python3 -I`. Keep each run's files i
    - that the Pages team publishes this site themselves, and their next publication ships these
      draft changes to x.la.
 
-   Ask for one explicit yes. A request to "create the pages" is not that yes.
+   Ask for one explicit yes. A request to "create the pages" is not that yes. When
+   `cli_gate.py` reports missing commands, show the plan and the gate's report, say that
+   nothing can be written until the CLI has them, and don't ask for the yes.
 5. **Apply.** `apply_pages.py --plan <run>/plan.json --confirmation-id <its confirmation_id>
    --backup-dir <run>/backup --pub-dir <run>/pub`. Before the first write it stops, with zero
    writes, on: an edited plan, another backup, any manifest violation, /pub responses older than
@@ -96,7 +98,8 @@ All scripts are in `scripts/` and run with `python3 -I`. Keep each run's files i
 
 ## When something changes
 
-- **Responses older than 24 hours:** request them again (step 1); the plan stays valid.
+- **Responses older than 24 hours:** request them again (step 1); the plan stays valid. Quote
+  the report's `fresh_until` time; don't work it out.
 - **The site changed after the backup** (the Pages team edits it too): back up again, render
   again, show the new plan, and ask again.
 - **A run that stopped partway** prints what it created. Back up, render (created pages now show
