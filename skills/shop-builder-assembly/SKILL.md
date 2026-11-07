@@ -55,9 +55,9 @@ until [expert-review.md](references/expert-review.md) records approval.
    full before apply.
    When the site needs a common layout (a new site, or one without it) and the CLI has
    no `shopbuilder create-block`, preflight prints "the common layout needs a newer
-   Xsolla CLI; the site is built without it". Tell the user in the plan, before any
-   write: a site without the common layout won't open in the Editor, Publish or
-   private preview.
+   Xsolla CLI; the site is built without it". The rendered plan's `warnings` then say
+   the site won't open in the Editor, Publish or private preview; show them with the
+   plan, before any write.
 2. If the CLI points at another merchant or project, or has sandbox mode on, switch it to
    the brief's project with sandbox off (`nocode-shop-setup` does this at its first
    check), then rerun preflight; never override later commands.

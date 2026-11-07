@@ -1210,6 +1210,7 @@ def main() -> int:
         slug = brief["site"]["slug"]
         websites = run_json("shopbuilder", "list-websites")
         existed = website_exists(websites, slug)
+        has_create_block = cli_has_command("shopbuilder", "create-block")
         if existed:
             if args.backup_dir is None:
                 raise RuntimeError("--backup-dir is required for an existing target")
@@ -1218,9 +1219,20 @@ def main() -> int:
                     "a complete verified backup created before confirmation is required"
                 )
             saved_structure = backup_structure(args.backup_dir)
-            plan = build_plan(brief, saved_structure, created, args.brief.resolve().parent)
+            plan = build_plan(
+                brief,
+                saved_structure,
+                created,
+                args.brief.resolve().parent,
+                has_create_block,
+                lambda block_id: site_block_module(slug, block_id),
+            )
         else:
-            plan = build_plan(brief, base_dir=args.brief.resolve().parent)
+            plan = build_plan(
+                brief,
+                base_dir=args.brief.resolve().parent,
+                has_create_block=has_create_block,
+            )
 
         check_approval(args, plan, approved, report)
         approved_id = approved["confirmation_id"]
