@@ -71,8 +71,8 @@ until [expert-review.md](references/expert-review.md) records approval.
    page's search title, description and share image, exact block removals, the template
    sections each new page comes with that are removed (`template_removals`), catalog
    mappings (for an `__all__` section, every enabled item it pulls in, with test or
-   leftover entries flagged; disabling them goes in the catalog proposal under the same
-   yes), existing pages the theme puts on the site colors, that a preview link anyone can
+   leftover entries flagged; recommend sections of the new groups only, since disabling
+   an entry changes the live catalog at once), existing pages the theme puts on the site colors, that a preview link anyone can
    open will be created for the visual review after the build, and what is still to
    connect, with a desktop and mobile
    [mockup](references/visual-style.md#mockup-for-the-approval). Call each section by its
@@ -173,9 +173,9 @@ If the CLI lacks an operation, stop it, record the gap, and file a CLI/API ticke
 - Report skips, interventions, and gaps; state that the site is **not published**.
 - If the plan adds the Custom code (`html`) block, tell the user it is added empty and
   hidden: they paste their code and make the block visible in the Site Builder editor.
-  Never write HTML, CSS, or JavaScript into it. Custom blocks from a Figma design are
-  different: `nocode-shop-setup` creates them after the last apply run, as its
-  [Figma reference](../nocode-shop-setup/references/figma-custom-blocks.md) describes.
+  Never write HTML, CSS, or JavaScript into it. A site that must match a Figma design
+  uses no custom code, and Custom Blocks only as
+  [Matching a Figma design](../nocode-shop-setup/references/figma-design.md) allows.
 
 ## Stop conditions
 

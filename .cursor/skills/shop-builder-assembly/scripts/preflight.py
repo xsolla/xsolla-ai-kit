@@ -177,6 +177,11 @@ def main() -> int:
             site = data(run_json("shopbuilder", "get-structure", "--slug", slug))
             if not isinstance(site, dict):
                 raise RuntimeError("get-structure returned an unexpected shape")
+            if site.get("published") not in (None, False):
+                raise RuntimeError(
+                    "the target site is published: assembly writes only to an unpublished "
+                    "site. Build on another slug, or unpublish it in Publisher Account first"
+                )
             layout_id = common_layout_id(
                 site, lambda block_id: site_block_module(slug, block_id)
             )

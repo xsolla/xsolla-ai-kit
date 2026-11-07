@@ -86,6 +86,16 @@ FAKE_CONFIG_PROJECT=99 XSOLLA_MERCHANT_ID=1 XSOLLA_PROJECT_ID=2 \
 set -e
 chk "CLI pointed at another project is BLOCKED" "[ $crc -ne 0 ]"
 chk "CLI mismatch names the configured project" "grep -q 'configured merchant/project' cfg.out"
+mkdir -p "$TMP/published-store"
+cp "$HERE/fixtures/baseline/"*.json "$TMP/published-store/"
+jq '.data.published = true' "$HERE/fixtures/baseline/structure.json" > "$TMP/published-store/structure.json"
+set +e
+FAKE_STORE="$TMP/published-store" XSOLLA_MERCHANT_ID=1 XSOLLA_PROJECT_ID=2 \
+  bash "$HERE/apply.sh" voidwall-45e0 de-DE --commit > published.out 2>&1; prc=$?
+set -e
+chk "a published site is BLOCKED" "[ $prc -ne 0 ]"
+chk "the block says the site is published" "grep -q 'is published' published.out"
+chk "a published site gets no language or copy" "! grep -q 'Copy was written' published.out"
 set +e
 XSOLLA_MERCHANT_ID=1 XSOLLA_PROJECT_ID=2 \
   bash "$HERE/apply.sh" other-shop de-DE --commit > domain.out 2>&1; domrc=$?
