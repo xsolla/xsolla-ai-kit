@@ -1,0 +1,8 @@
+{
+  "method": "GET",
+  "url": "https://xla-pages.xsolla.com/pub/games/hidden-gem/core-attributes?project_id=200002",
+  "requested_at": "2026-11-07T09:00:00Z",
+  "status": 200,
+  "content_type": "application/json",
+  "body": "{\"$schema\": \"https://xla-pages.xsolla.com/schemas/GetResponse.json\", \"data\": {\"game_id\": \"00000000-0000-4000-8000-000000000509\", \"slug\": \"hidden-gem\", \"project_id\": \"300003\", \"store_group_id\": \"\", \"title\": \"Hidden Gem\", \"description\": \"Served by core-attributes, absent from the catalog. Longer synthetic description.\", \"short_description\": \"Served by core-attributes, absent from the catalog.\", \"icon\": \"00000000-0000-4000-8000-000000000809\", \"cover\": \"00000000-0000-4000-8000-000000000008\", \"game_key_sku\": \"HG-KEY\", \"game_key_price\": \"5.99\", \"game_key_price_ico\": \"USD\", \"publisher\": \"Synthetic Publisher\", \"developer\": \"Synthetic Studio\", \"platforms\": [\"windows\"], \"genres\": [\"Strategy\"], \"tags\": [], \"media\": [\"00000000-0000-4000-8000-000000001450\"], \"faq\": [{\"question\": \"Synthetic question 1?\", \"answer\": \"Synthetic answer 1.\"}], \"payment_methods\": [], \"attributes\": {\"title\": \"Hidden Gem\", \"currency_name\": \"\"}, \"extra_data\": {\"note\": \"synthetic partner data\"}}}"
+}

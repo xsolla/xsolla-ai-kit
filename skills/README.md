@@ -19,6 +19,7 @@ Each subdirectory contains a `SKILL.md` — a structured workflow file for an Xs
 | [`webhooks-impl`](webhooks-impl/SKILL.md)                                 | Webhook handler generation              | @e.chernykh         | Done   |
 | [`production`](production/SKILL.md)                                       | Sandbox → live / go-live checklist      | @y.klochikhin       | Done   |
 | [`shopbuilder-translate`](shopbuilder-translate/SKILL.md)                 | Shop Builder page copy          | @s.hossain          | Draft  |
+| [`xla-pages`](xla-pages/SKILL.md)                                         | XLA Pages on x.la (Shop Builder)        | @a.pyanzin          | Draft  |
 
 ## Adding a skill
 

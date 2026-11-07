@@ -86,6 +86,7 @@ XSOLLA_PROJECT_API_KEY=<your API key>
 | `shop-builder-assembly` | Shop Builder site assembly | @k.shah | Draft   |
 | `game-web-portal` | Game Web Portal — PC game home + shop | @a.pyanzin | Draft   |
 | `shopbuilder-translate` | Shop Builder page copy | @s.hossain | Draft   |
+| `xla-pages` | XLA Pages on x.la — game and payment provider pages | @a.pyanzin | Draft   |
 | `merchant-setup` | Merchant and Project setup  | @y.klochikhin | Done    |
 | `catalog-design` | Items, pricing, virtual currency, bundles | @p.sanachev | Planned |
 | `login-setup` | Login / NewID / auth | @mohammed_abujalala | Planned |
@@ -112,7 +113,7 @@ specific skill:
 and `production`. `nocode-shop-setup` is the entry for Shop Builder: a store goes to
 `description-to-shop` and `shop-builder-assembly`, and a PC game home goes to
 `game-web-portal`. `shopbuilder-translate` translates the page copy of a Shop Builder
-site.
+site. `xla-pages` builds the XLA Pages on x.la from their own manifest.
 
 ## Contributing
 

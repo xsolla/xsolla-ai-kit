@@ -12,3 +12,6 @@ __pycache__/
 
 # Xsolla CLI local config (`xsolla config init`): merchant and project ids.
 .xsolla.json
+
+# Skill run files (ledger, backups, plans, saved /pub responses, xla-pages.json): real ids.
+.xsolla/

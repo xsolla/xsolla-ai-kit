@@ -1,0 +1,8 @@
+{
+  "method": "GET",
+  "url": "https://xla-pages.xsolla.com/pub/catalog/games?publisher_project_id=200002&mode=top_up&page=1&size=50",
+  "requested_at": "2026-11-07T08:55:00Z",
+  "status": 200,
+  "content_type": "application/json",
+  "body": "{\"$schema\": \"https://xla-pages.xsolla.com/schemas/CatalogGamesResponse.json\", \"data\": [{\"slug\": \"coin-realm\", \"title\": \"Coin Realm\", \"short_description\": \"A synthetic game sold as in-game currency.\", \"store_group_id\": \"sg-7001\", \"cover\": \"https://cdn.example.invalid/xla/00000000-0000-4000-8000-000000000007.webp\", \"currency_name\": \"Realm Coins\"}]}"
+}

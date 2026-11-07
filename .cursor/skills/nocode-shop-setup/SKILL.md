@@ -12,6 +12,7 @@ description: >-
   Also the first-run setup for Shop Builder: it installs the Xsolla CLI this path
   runs on and has the user sign in. If the user will write and deploy the code, open
   shop-setup.
+  Not for XLA Pages on x.la; use `xla-pages`.
 metadata:
   owner: a.pyanzin
   domain: store
