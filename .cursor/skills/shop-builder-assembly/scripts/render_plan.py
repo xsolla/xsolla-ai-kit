@@ -858,6 +858,12 @@ def build_plan(
         )
     warnings.extend(custom_code_warnings(pages))
     warnings.extend(layout_warnings(current_structure, has_create_block, module_of))
+    environment = brief["project"].get("environment")
+    if environment not in (None, "test"):
+        warnings.append(
+            f"The brief marks this project as {environment!r}. Assembly writes only to an "
+            "unpublished site, but catalog changes in this project reach players at once."
+        )
     plan = {
         "version": 2,
         "target": {

@@ -211,8 +211,8 @@ class ApplyPlanTests(unittest.TestCase):
             self.assertIsNone(apply_plan.ensure_common_layout("shop"))
         run_json.assert_not_called()
         self.assertIn(
-            "the common layout needs a newer Xsolla CLI; the site is built without it. A site "
-            "without the common layout won't open in the Editor, Publish or private preview",
+            "The common layout needs a newer Xsolla CLI, so the site is built without it. A "
+            "site without the common layout won't open in the Editor, Publish or private preview.",
             stderr.getvalue(),
         )
 
@@ -1213,8 +1213,9 @@ class ApplyPlanTests(unittest.TestCase):
         self.assertTrue(skipped["ok"], skipped["errors"])
         self.assertEqual(
             [
-                "the common layout needs a newer Xsolla CLI; the site is built without it. A site "
-                "without the common layout won't open in the Editor, Publish or private preview"
+                "The common layout needs a newer Xsolla CLI, so the site is built without it. A "
+                "site without the common layout won't open in the Editor, Publish or private "
+                "preview."
             ],
             skipped["warnings"],
         )
@@ -1753,8 +1754,8 @@ class CommonLayoutPreflightTests(unittest.TestCase):
         code, stdout, stderr, has_command = self.run_preflight(cli, has_create_block=False)
         self.assertEqual(0, code, stderr)
         self.assertIn(
-            "the common layout needs a newer Xsolla CLI; the site is built without it. A site "
-            "without the common layout won't open in the Editor, Publish or private preview",
+            "The common layout needs a newer Xsolla CLI, so the site is built without it. A "
+            "site without the common layout won't open in the Editor, Publish or private preview.",
             stderr,
         )
         self.assertEqual("skip", json.loads(stdout)["target"]["layout_step"])
@@ -1806,6 +1807,20 @@ class CommonLayoutPreflightTests(unittest.TestCase):
         self.assertEqual("", stdout)
         self.assertIn("the target site is published", stderr)
         self.assertNotIn(("catalog", "list-item-groups", "--project-id", "67890"), cli.calls)
+
+    def test_a_non_test_environment_in_the_brief_is_a_plan_warning(self) -> None:
+        brief = json.loads(EXAMPLE_BRIEF.read_text(encoding="utf-8"))
+        self.assertFalse(
+            any("marks this project" in w for w in render_plan.build_plan(brief)["warnings"])
+        )
+        for environment in ("test", "production"):
+            brief["project"]["environment"] = environment
+            warnings = render_plan.build_plan(brief)["warnings"]
+            self.assertEqual(
+                environment == "production",
+                any("marks this project as 'production'" in w for w in warnings),
+                environment,
+            )
 
     def test_published_state_is_read_from_the_site(self) -> None:
         for value, published in ((None, False), (False, False), (True, True), (1, True)):
