@@ -16,13 +16,11 @@ SCRIPTS_DIR = str(Path(__file__).resolve().parent)
 if SCRIPTS_DIR not in sys.path:
     sys.path.insert(0, SCRIPTS_DIR)
 
-from render_plan import common_layout_id
+from render_plan import LAYOUT_WARNING, common_layout_id
 from validate_shop_brief import load_brief, validate
 
-LAYOUT_SKIPPED = (
-    "the common layout needs a newer Xsolla CLI; the site is built without it. A site "
-    "without the common layout won't open in the Editor, Publish or private preview"
-)
+# One text for preflight, verification and the plan's warning.
+LAYOUT_SKIPPED = LAYOUT_WARNING
 
 
 def run_json(*args: str) -> object:
@@ -177,6 +175,11 @@ def main() -> int:
             site = data(run_json("shopbuilder", "get-structure", "--slug", slug))
             if not isinstance(site, dict):
                 raise RuntimeError("get-structure returned an unexpected shape")
+            if site.get("published") not in (None, False):
+                raise RuntimeError(
+                    "the target site is published: assembly writes only to an unpublished "
+                    "site. Build on another slug, or unpublish it in Publisher Account first"
+                )
             layout_id = common_layout_id(
                 site, lambda block_id: site_block_module(slug, block_id)
             )

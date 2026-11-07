@@ -238,6 +238,24 @@ def structure(slug: str) -> dict:
     return value
 
 
+PUBLISHED_SITE = (
+    "the target site is published. Nothing was written. Assembly writes only to an "
+    "unpublished site: build on another slug, or unpublish this one in Publisher Account "
+    "first"
+)
+
+
+def is_published(site: object) -> bool:
+    """The site's own published state, as get-structure reports it."""
+    return isinstance(site, dict) and site.get("published") not in (None, False)
+
+
+def refuse_published(site: object) -> None:
+    """Stop before any write to a site that is live."""
+    if is_published(site):
+        raise RuntimeError(PUBLISHED_SITE)
+
+
 def site_block_module(slug: str, block_id: str) -> object:
     block = data(
         run_json("shopbuilder", "get-block", "--slug", slug, "--block-id", block_id)
@@ -1162,7 +1180,7 @@ def stopped_partway_report(progress: dict, error: str) -> dict:
             "Apply under the same yes only if the render says it is covered; otherwise "
             "show the changes and ask again."
         ),
-        "published": False,
+        "published": bool(progress.get("published")),
     }
 
 
@@ -1192,6 +1210,7 @@ def main() -> int:
         slug = brief["site"]["slug"]
         websites = run_json("shopbuilder", "list-websites")
         existed = website_exists(websites, slug)
+        has_create_block = cli_has_command("shopbuilder", "create-block")
         if existed:
             if args.backup_dir is None:
                 raise RuntimeError("--backup-dir is required for an existing target")
@@ -1200,15 +1219,27 @@ def main() -> int:
                     "a complete verified backup created before confirmation is required"
                 )
             saved_structure = backup_structure(args.backup_dir)
-            plan = build_plan(brief, saved_structure, created, args.brief.resolve().parent)
+            plan = build_plan(
+                brief,
+                saved_structure,
+                created,
+                args.brief.resolve().parent,
+                has_create_block,
+                lambda block_id: site_block_module(slug, block_id),
+            )
         else:
-            plan = build_plan(brief, base_dir=args.brief.resolve().parent)
+            plan = build_plan(
+                brief,
+                base_dir=args.brief.resolve().parent,
+                has_create_block=has_create_block,
+            )
 
         check_approval(args, plan, approved, report)
         approved_id = approved["confirmation_id"]
 
         if existed:
             current = structure(slug)
+            refuse_published(current)
             if structure_hash(current) != structure_hash(saved_structure):
                 raise RuntimeError(
                     "target structure changed after backup. Nothing was written. Export "
@@ -1267,6 +1298,8 @@ def main() -> int:
             raise RuntimeError(
                 f"target landing type is {current.get('type')!r}, expected 'store'"
             )
+        refuse_published(current)
+        progress["published"] = is_published(current)
         landing_id = current.get("_id")
         if not isinstance(landing_id, str):
             raise RuntimeError("landing has no _id")
@@ -1297,7 +1330,7 @@ def main() -> int:
                             "Apply it under the same yes only if the render says it is "
                             "covered; otherwise show the changes and ask again."
                         ),
-                        "published": False,
+                        "published": progress["published"],
                     },
                     indent=2,
                 )
@@ -1326,7 +1359,7 @@ def main() -> int:
                             "Apply it under the same yes only if the render says it is "
                             "covered; otherwise show the changes and ask again."
                         ),
-                        "published": False,
+                        "published": progress["published"],
                     },
                     indent=2,
                 )
@@ -1367,7 +1400,7 @@ def main() -> int:
                         if any(page.get("hidden_custom_code") for page in pages)
                         else []
                     ),
-                    "published": False,
+                    "published": progress["published"],
                 },
                 indent=2,
             )
