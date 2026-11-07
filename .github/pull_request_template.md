@@ -27,7 +27,7 @@ you ran and a one-line result. "It looks right" is not an agent test.
 ## Checklist
 
 - [ ] `python3 .github/scripts/validate_skills.py` passes
-- [ ] Registries updated if a skill was added or renamed — `skills/README.md` and `AGENTS.md`
+- [ ] Skill table regenerated if a skill was added, renamed or re-described — `python3 .github/scripts/skill_table.py`
 - [ ] Generated files committed — `.cursor/skills/**` and `CLAUDE.md` (CI fails on drift)
 - [ ] No real credentials anywhere: keys, tokens, JWTs, webhook secrets, session cookies
 - [ ] Cross-references to other skills point at guidance that actually exists there

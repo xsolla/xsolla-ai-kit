@@ -31,9 +31,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Sync skills and CLAUDE.md
+      - name: Sync skill tables, skills and CLAUDE.md
         run: |
           set -euo pipefail
+
+          python3 .github/scripts/skill_table.py
 
           rm -rf .cursor/skills
           mkdir -p .cursor/skills
@@ -53,7 +55,7 @@ jobs:
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add .cursor/skills/ CLAUDE.md
+          git add .cursor/skills/ CLAUDE.md AGENTS.md .github/copilot-instructions.md
           if git diff --staged --quiet; then
             echo "Already in sync — nothing to commit."
             exit 0
