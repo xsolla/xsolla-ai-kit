@@ -6,9 +6,12 @@ federated blocks only, pinned to the reference pages' versions and bound to the 
 
 ## Status
 
-Draft. Preflight, plan, validation and the after-write check work. Writes are closed by a gate
-until the Xsolla CLI ships the commands in [cli-gaps.md](references/cli-gaps.md); with the
-current CLI every batch that creates a page stops with zero writes and reports what is missing.
+Draft. Preflight, plan, validation and the after-write check work. Data connections, bindings
+and SEO are written through today's `update-block` and `update-many-localization`, in the shapes
+the Site Builder server uses. Creating a page needs two CLI flags that don't exist yet
+([cli-gaps.md](references/cli-gaps.md)): `add-page --provider-id/--provider-input` and
+`add-block --package/--version`. With the current CLI a batch that creates a page stops at the
+gate with zero writes and reports what is missing; an update of an existing page runs.
 
 ## Happy path
 
@@ -37,7 +40,10 @@ fixtures: the `/pub` responses have the structure of real ones and invented valu
 block outside the manifest, a theme or style write, typed game data, a row over the limits, the
 current CLI at the gate, responses older than 24 hours, an edited plan, a changed site and a
 published site each stop with zero writes; a batch creates every page and passes the check; the
-check reports the exact difference; an update keeps the page's bindings identical; the preflight
+check reports the exact difference; an update keeps the page's bindings identical and runs on
+the current CLI; connections and bindings are stored as Site Builder stores them (site-level
+`valuesSystem`, `#VC:` values, `usedBy`); a block the server adds at another version than the
+pinned one stops the run; the preflight
 covers empty `payment_methods`, a capitalized provider id, empty `countries`, a provider listed
 twice, more than 20 media, a cover whose info is 404, a title over 60 characters, an empty `faq`,
 and a game served by `core-attributes` but missing from the catalog.
@@ -53,15 +59,23 @@ What the code assumes and a real site still has to confirm:
   `partnerLogoUrl` and `offersJson` by the kit's guess. A plan refuses any field the reference
   page's block doesn't have.
 - **Where settings live.** Row content and settings are written to
-  `values.internalBlockValues.<field>`, the shape seen on other federated blocks.
-- **Read-back shapes** the CLI doesn't return yet, proposed in cli-gaps.md: `values.package` on a
-  federated block, `pages[].dataConnections`, `blocks[].bindings`, `pages[].seo`, and a dynamic
-  page's `path`. Until they exist, a check fails rather than passes.
-- **Versions.** The `stable_releases` lists, the hero 0.2.0 sorting warning, and what `add-block`
-  does without a version.
+  `values.internalBlockValues.<field>`, as Site Builder stores federated block values.
+- **The CLI's pass-through.** That `update-block --data` passes a `valuesSystem` entity to the
+  batch API unchanged, and that the CLI's `get-structure` returns `valuesSystem`, the page `path`
+  object with `connectionId`, `dataConnectionId`, and `seo` with its `L:` strings. Read from the
+  Site Builder server code, not from a CLI run. Until a read-back has them, a check fails rather
+  than passes.
+- **Block ids.** That a federated block's `values.blockId` holds the scoped package name
+  (`@xla-pages/hero`). The indexed Site Builder code has no `@xla-pages` block.
+- **Versions.** The `stable_releases` lists and the hero 0.2.0 sorting warning. The server falls
+  back to the latest stable version when the asked one is missing; the skill reads the version
+  back and stops.
 - **Hiding a federated block** with the `["hidden"]` patch; seen only on other modules.
-- **The linked data provider.** That `add-page` with a paths provider creates
-  `ugc-d-data-game-provider-v2` itself.
+- **The linked data provider.** The server's add-page hands out `dataConnectionId`; the Editor
+  client writes the `ugc-d-data-game-provider-v2` connection. The skill writes it when it is
+  missing, with `slug` bound to the route param.
+- **A new page's SEO.** That add-page gives a page `L:` strings for its SEO title, description
+  and share image; without them the SEO write stops.
 - **Bound value types.** That federated blocks bind only strings, numbers and booleans.
 - **Page look.** Only `theme` is a known page key; `background` and `layout` are guesses. The
   design values (`#141d1f`, 1640 px, gutters, the 4 px gap) are not checked by the scripts; the

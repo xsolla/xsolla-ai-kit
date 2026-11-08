@@ -1,119 +1,109 @@
-# Xsolla CLI: commands XLA Pages needs
+# What XLA Pages still needs from the Xsolla CLI and Site Builder
 
-For the Xsolla CLI owners. The `xla-pages` skill builds XLA Pages on x.la in Shop Builder from
-the [manifest](manifest.yaml). Its preflight, plan, validation and after-write check work today;
-its writes are closed by a gate until the CLI has the commands below.
+For the Xsolla CLI owners and the Shop Builder team. The `xla-pages` skill builds XLA Pages on
+x.la in Shop Builder from the [manifest](manifest.yaml). Its preflight, plan, validation and
+after-write check work today. Its writes go through the commands the CLI already has wherever
+Site Builder's API allows it; two CLI changes and one server change are left. Until then, a
+batch that creates a page stops at the gate with zero writes. An update of an existing page
+(row text, settings, SEO text, page look) runs today.
 
-**The gate** ([`scripts/cli_gate.py`](../scripts/cli_gate.py)) reads `xsolla <command> --help` and
-needs the usage line `xsolla shopbuilder <command>` and every flag listed here. It never checks the
-CLI version number. If a command ships under another name or flag, change the table in
-`cli_gate.py` and this file together.
+The Site Builder facts below come from the Site Builder server and Editor code, read
+2026-11-08. The Shop Builder team has the file references; they stay out of this public
+repository.
 
-Conventions for all six, as for the other `shopbuilder` commands: `--json` prints
-`{"ok": true, "data": …}`; exit code 10 on HTTP 401/403; no `--force` is ever needed; the command
-writes only to the site's draft and never publishes.
+## Already possible with today's commands
 
-## 1. A dynamic page with a paths provider
+| Operation | Command | How Site Builder stores it |
+|---|---|---|
+| Connect a value data provider to a page (the catalog with `mode: buy` or `top_up`) | `update-block`, entity `valuesSystem` | `{"type": "valuesSystem", "id": "current-values-system", "patches": [{"op": "add", "path": ["dataProviderConnections", "<id>"], "value": {"id", "dataProviderId", "input", "usedBy": ["page:<page id>"]}}]}`. A connection with the same provider and input is reused: only `page:<id>` is added to its `usedBy` |
+| The linked game-data connection of a dynamic page | `update-block`, entity `valuesSystem` | `{"id": <page.dataConnectionId>, "dataProviderId": "ugc-d-data-game-provider-v2", "input": {"slug": "#VC:conn-route-params:slug", "publisherProjectId": …}, "usedBy": ["page:<id>"]}`, written by the Editor client after add-page |
+| Bind a block field to a provider output | `update-block`, entities `block` and `valuesSystem` in one batch | The field holds `"#VC:<connection id>:<output>"` in `values.internalBlockValues.<field>`, its previous value moves to `values.preBindValues.<field>`, and `block:<id>` joins the connection's `usedBy` |
+| SEO title, description and share image | `update-many-localization` | The page's `seo.title`, `seo.description` and `seo.ogImage` hold `L:` strings; a bound one holds `"#VC:…"` in its text, and the page joins the connection's `usedBy` |
+| Canonical URL | `update-block`, entity `page`, path `["seo", "canonicalUrl"]` | A plain string in the page's `seo` |
+| Settings and row content, hiding an optional block, the page look, deleting blocks add-page seeded in the same run | `update-block` | Block and page patches, as the kit's other Shop Builder skills use them |
 
-```text
+## What the CLI must add
+
+These are the commands and flags the skill's gate ([`scripts/cli_gate.py`](../scripts/cli_gate.py)) looks
+for in `--help`. It never checks the CLI version number.
+
+### 1. add-page: a dynamic page with a paths provider
+
+```bash
 xsolla shopbuilder add-page --slug <domain> --name <name> --path /game/:slug \
-  --paths-provider ugc-d-paths-games-provider-v2 \
+  --provider-id ugc-d-paths-games-provider-v2 \
   --provider-input '{"publisherProjectId":"<project id>","locale":"en-US"}'
 ```
 
-- `--path` accepts one `:param` segment for a dynamic page. Today `add-page` allows only a–z, 0–9,
-  hyphen and slash.
-- Creates the page with that paths provider and creates its linked value provider
-  (`ugc-d-data-game-provider-v2`, input `{"slug": "{path}", "publisherProjectId": …}`) the way the
-  Editor does.
-- Prints `{"_id": "<page id>"}`. Fails with a clear error for an unknown provider or input that
-  doesn't match the provider's schema.
-- **Read-back** in `get-structure`: `pages[].path` is `{"pathSegment": "/game/:slug", "type":
-  "dynamic"}`, and `pages[].dataConnections` lists both connections as
-  `{"_id", "provider", "kind": "path" | "value", "input"}`.
+- The server already takes these fields: `POST /merchant/:merchantId/project/:projectId/landing/:domain/pages`
+  with `path: {"type": "dynamic", "pathSegment": "/game/:slug"}`, `providerId` and `providerInput`.
+  It creates or reuses the paths connection and the route-params connection, and returns the page with
+  `path.connectionId` and `dataConnectionId`.
+- The CLI must accept one `:param` segment in `--path` (today: a–z, 0–9, `-` and `/`) and send the path
+  object and the two fields.
+- Optional, used when present: `--type blank`. A blank page is on the site theme and, on a site with a
+  common layout, has no blocks. Without it, the skill deletes the blocks add-page seeded on a page it created in the same run.
 
-## 2. A data connection on a page
+### 2. add-block: a federated block at an exact version
 
-```text
-xsolla shopbuilder add-data-connection --landing-id <landing id> --page-id <page id> \
-  --provider ugc-d-catalog-games-provider-v2 \
-  --input '{"publisherProjectId":"<project id>","mode":"top_up"}'
-```
-
-- Adds a value data provider to a static or dynamic page. Prints `{"_id": "<connection id>"}`.
-- The same provider may be connected twice with different input (`mode: buy` and `mode: top_up`).
-- **Read-back:** the connection in `pages[].dataConnections`, as in 1.
-
-## 3. Binding a block field to a provider output
-
-```text
-xsolla shopbuilder bind-block-field --landing-id <landing id> --block-id <block id> \
-  --field title --connection-id <connection id> --output title
-```
-
-- Binds one field of a block to one output of a connection on the same page. Other bindings on
-  the block and the page stay as they are.
-- Fails when the output isn't one the provider exposes, or the field isn't on the block's version.
-- **Read-back:** `pages[].blocks[].bindings` = `{"<field>": {"connection": "<connection id>",
-  "output": "<output>"}}`.
-- Related, for Site Builder: restoring a saved version currently drops a page's data-provider
-  connections, so version history can't serve as a backup for these pages.
-
-## 4. Adding a federated block at an exact version, and reading the version back
-
-```text
+```bash
 xsolla shopbuilder add-block --landing-id <landing id> --page-id <page id> \
-  --block federated --package @xla-pages/hero --version 0.2.0 --index 1
+  --block federated --package <blocks-service id> --version 0.2.0 --index 1
 ```
 
-- Adds exactly that package version. No fallback to "latest" or "latest stable": a version that
-  isn't published is an error. A pre-release version given exactly is allowed.
-- Why exact: `@xla-pages/hero` 0.2.0 sorts above every newer build, so a "latest stable" fallback
-  would pick an older hero.
-- Prints `{"_id": "<block id>"}`.
-- **Read-back:** the federated block's `values.package` (the scoped name, `@xla-pages/hero`) and
-  `values.version`. Today exports carry only an unscoped `values.blockId` and `values.version`, so
-  `@xla-pages/hero` can't be told apart from another `hero`.
+- Adds exactly that version, never "latest" or "latest stable". `@xla-pages/hero` 0.2.0 sorts above
+  every newer build, so a fallback would pick an older hero. A pre-release given exactly is allowed.
+- Today `add-block` calls the legacy `POST …/ui/{landing}/page/{pageId}/block` with `{block, index}`,
+  which has no version. The block resource `POST …/landing/:domain/pages/:pageId/blocks` takes `module`,
+  `version`, `position` and `blockValues`, but builds public federated modules from the latest catalog
+  entry.
+- Prints `{"_id": "<block id>"}`. The skill reads the block back and stops if its version isn't the
+  pinned one.
 
-## 5. Page SEO fields
+## What the Site Builder server must change
 
-```text
-xsolla shopbuilder set-page-seo --landing-id <landing id> --page-id <page id> --field title --value "Top up with Klarna"
-xsolla shopbuilder set-page-seo --landing-id <landing id> --page-id <page id> --field title \
-  --connection-id <connection id> --output title
-```
+- **No silent fallback.** When the requested version of a federated block isn't found, the server
+  falls back to the latest stable version. For an exact add, an unknown version must be an error.
+- **XLA blocks through the block resource.** Creating a federated block that isn't one of the public
+  modules at a given version.
+- Not needed by the skill: auto-upgrades. The server never moves a 0.x version or a pre-release,
+  and the `@xla-pages` blocks are 0.x.
 
-- `--field` is `title`, `description`, `image` or `canonical`. Either `--value` (static text) or
-  `--connection-id` and `--output` (bound to a provider output on the same page).
-- On a dynamic page a `canonical` value may hold the path parameter: `https://x.la/game/{slug}`.
-- **Read-back:** `pages[].seo.<field>` = `{"value": "<text>"}` or
-  `{"connection": "<connection id>", "output": "<output>"}`. Today `seo.title`, `seo.description`
-  and `seo.ogImage` hold localization IDs and there is no `canonical`.
+## Read-back the skill needs
 
-## 6. A page without seeded blocks
+The plan and the check stop, rather than pass, when a read-back lacks one of these:
 
-```text
-xsolla shopbuilder add-page --slug <domain> --name <name> --path /payment/klarna --empty
-```
+- `get-structure`: `valuesSystem.dataProviderConnections`; each page's `path` object with `connectionId`
+  and its `dataConnectionId`; each federated block's `values.blockId` and `values.version`; each page's
+  `seo` with its `L:` strings and `canonicalUrl`.
+- `get-localization`: `pages.<page id>.texts.<L:id>.{description, translations}`.
+- The skill tells `@xla-pages/hero` from another `hero` by `values.blockId` holding the scoped package
+  name. If the blocks service keeps another id for the XLA blocks, the mapping per package is needed.
 
-- Creates the page with no blocks and on the site theme. Today `add-page` seeds the template's
-  standard blocks and gives the page its own theme copy.
-- Optional for the gate: without `--empty`, the skill deletes the blocks `add-page` seeded on a page
-  it created in the same run, with a page-level `update-block` remove patch, and sets the page look
-  to the reference page's values.
+## Not verified yet
+
+- That `xsolla shopbuilder update-block` passes `"type": "valuesSystem"` through to the batch API unchanged.
+- That the CLI's `get-structure` returns `valuesSystem`.
+- That a page created by add-page has its SEO `L:` strings.
+- The blocks-service ids of the `@xla-pages` blocks.
+- Whether the server's add-page will also write the linked data connection (the Editor client does today;
+  the skill writes it when it is missing).
+
+## Authorization
+
+The skill uses only the Publisher Account session `xsolla auth login` gives the CLI. It never calls
+Site Builder's API directly.
 
 ## The gate's table
 
-| Capability | Command | Flags `--help` must list |
-|---|---|---|
-| `add-page` | `shopbuilder add-page` | `--slug`, `--name`, `--path` |
-| `add-page-dynamic` | `shopbuilder add-page` | `--paths-provider`, `--provider-input` |
-| `add-block-pinned` | `shopbuilder add-block` | `--landing-id`, `--page-id`, `--block`, `--package`, `--version`, `--index` |
-| `update-block` | `shopbuilder update-block` | `--landing-id`, `--data` |
-| `add-data-connection` | `shopbuilder add-data-connection` | `--landing-id`, `--page-id`, `--provider`, `--input` |
-| `bind-block-field` | `shopbuilder bind-block-field` | `--landing-id`, `--block-id`, `--field`, `--connection-id`, `--output` |
-| `set-page-seo` | `shopbuilder set-page-seo` | `--landing-id`, `--page-id`, `--field`, `--value`, `--connection-id`, `--output` |
-| `add-page-empty` (optional) | `shopbuilder add-page` | `--empty` |
+| Capability | Command | Flags `--help` must list | Today |
+|---|---|---|---|
+| `add-page` | `shopbuilder add-page` | `--slug`, `--name`, `--path` | yes |
+| `add-page-dynamic` | `shopbuilder add-page` | `--provider-id`, `--provider-input` | missing |
+| `add-block-pinned` | `shopbuilder add-block` | `--landing-id`, `--page-id`, `--block`, `--package`, `--version`, `--index` | `--package`, `--version` missing |
+| `update-block` | `shopbuilder update-block` | `--landing-id`, `--data` | yes |
+| `update-many-localization` | `shopbuilder update-many-localization` | `--slug`, `--data` | yes |
+| `add-page-blank` (optional) | `shopbuilder add-page` | `--type` | not known |
 
-A plan needs only the capabilities its writes use (`cli_gate.py --plan <plan>`); `cli_gate.py
---all` checks the whole table.
+A plan needs only the capabilities its writes use (`cli_gate.py --plan <plan>`); `cli_gate.py --all`
+checks the whole table.

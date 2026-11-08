@@ -4,7 +4,8 @@
 For each page: pass, or the exact difference (blocks, order, versions, hidden flags, fields,
 bindings, data connections, SEO, page look). For a page that existed before the run, the set
 of data bindings must be identical before and after. Also computes the manifest's acceptance
-numbers.
+numbers. Reads the Site Builder shapes xla_common describes: site-level data connections,
+"#VC:" bound values and SEO texts in the localization.
 """
 
 from __future__ import annotations
@@ -23,7 +24,7 @@ import xla_common as common  # noqa: E402
 
 
 def connection_identity(conn: dict) -> tuple:
-    return (conn.get("provider"), conn.get("kind"), common.canonical_hash(conn.get("input")))
+    return (conn.get("provider"), common.canonical_hash(conn.get("input")))
 
 
 def describe_connection(conn: dict | None) -> str:
@@ -32,30 +33,32 @@ def describe_connection(conn: dict | None) -> str:
     return f"{conn.get('provider')} {json.dumps(conn.get('input'), sort_keys=True)}"
 
 
-def binding_set(page: dict | None) -> list[tuple]:
+def binding_set(page: dict | None, structure: dict, localization: dict, locale: str) -> list[tuple]:
     """Every data binding on the page, by block package, field, connection and output."""
     if not page:
         return []
-    by_id = {c.get("_id"): c for c in common.page_connections(page)}
+    by_id = common.all_connections(structure)
     found = []
     for block in page.get("blocks") or []:
         package = common.block_identity(block)[0] or common.block_label(block)
         for field, binding in sorted(common.block_bindings(block).items()):
-            conn = by_id.get(binding.get("connection")) if isinstance(binding, dict) else None
-            found.append((package, field, describe_connection(conn), (binding or {}).get("output")))
-    for field, value in sorted(common.page_seo(page).items()):
-        if isinstance(value, dict) and "connection" in value:
-            found.append(("seo", field, describe_connection(by_id.get(value["connection"])), value.get("output")))
+            found.append((package, field, describe_connection(by_id.get(binding["connection"])), binding["output"]))
+    for field, value in sorted(common.page_seo(page, localization, locale).items()):
+        if "connection" in value:
+            found.append(("seo", field, describe_connection(by_id.get(value["connection"])), value["output"]))
     return sorted(found)
 
 
-def compare_page(expected: dict, page: dict | None) -> tuple[list[str], dict]:
+def compare_page(expected: dict, page: dict | None, structure: dict, localization: dict,
+                 locale: str) -> tuple[list[str], dict]:
     counts = {"outside": 0, "custom": 0, "hand_typed": 0}
     if page is None:
         return [f"the page {expected['route']} is missing"], counts
+    if common.site_connections(structure) is None:
+        return ["get-structure returned no valuesSystem, so data connections can't be read"], counts
     diffs: list[str] = []
-    connections = common.page_connections(page)
-    by_id = {c.get("_id"): c for c in connections}
+    by_id = common.all_connections(structure)
+    connections = common.page_connections(structure, page)
     wanted = {conn["key"]: conn for conn in expected["connections"]}
     actual_ids = [connection_identity(c) for c in connections]
     for key, conn in wanted.items():
@@ -65,6 +68,16 @@ def compare_page(expected: dict, page: dict | None) -> tuple[list[str], dict]:
     for conn in connections:
         if connection_identity(conn) not in wanted_ids:
             diffs.append(f"extra data connection {describe_connection(conn)}")
+
+    def bound_right(actual: dict | None, want: dict) -> bool:
+        conn = by_id.get(actual.get("connection")) if isinstance(actual, dict) else None
+        want_conn = wanted.get(want["source"])
+        return (
+            conn is not None
+            and want_conn is not None
+            and connection_identity(conn) == connection_identity(want_conn)
+            and actual.get("output") == want["output"]
+        )
 
     expected_packages = [block["package"] for block in expected["blocks"]]
     seen: dict[str, dict] = {}
@@ -104,24 +117,18 @@ def compare_page(expected: dict, page: dict | None) -> tuple[list[str], dict]:
         for field, bind in want["bindings"].items():
             actual = bindings.get(field)
             label = f"{bind['source']}.{bind['output']}"
-            if not isinstance(actual, dict):
+            if actual is None:
                 diffs.append(f"{package} field {field}: expected binding {label}, got none")
                 if fields.get(field) not in (None, "", [], {}):
                     counts["hand_typed"] += 1
                     diffs.append(f"{package} field {field}: holds a typed value instead of {label}")
-                continue
-            conn = by_id.get(actual.get("connection"))
-            want_conn = wanted.get(bind["source"])
-            if (
-                conn is None
-                or want_conn is None
-                or connection_identity(conn) != connection_identity(want_conn)
-                or actual.get("output") != bind["output"]
-            ):
+            elif not bound_right(actual, bind):
                 diffs.append(
                     f"{package} field {field}: expected binding {label}, got "
-                    f"{describe_connection(conn)}.{actual.get('output')}"
+                    f"{describe_connection(by_id.get(actual['connection']))}.{actual['output']}"
                 )
+            elif common.block_usage(block.get("_id")) not in by_id[actual["connection"]]["usedBy"]:
+                diffs.append(f"{package} field {field}: its connection doesn't list the block in usedBy")
         for field in sorted(set(bindings) - set(want["bindings"])):
             diffs.append(f"{package} field {field}: bound, but the manifest lists no binding for it")
 
@@ -129,41 +136,34 @@ def compare_page(expected: dict, page: dict | None) -> tuple[list[str], dict]:
     if order != expected_order:
         diffs.append(f"block order differs: expected {expected_order}, got {order}")
 
-    seo = common.page_seo(page)
+    seo = common.page_seo(page, localization, locale)
     for field, want in expected["seo"].items():
         actual = seo.get(field)
         if "value" in want:
             got = actual.get("value") if isinstance(actual, dict) else None
-            if not isinstance(actual, dict) or "connection" in actual or got != want["value"]:
-                diffs.append(f"seo {field}: expected {want['value']!r}, got {got if got is not None else actual!r}")
-        else:
-            label = f"{want['source']}.{want['output']}"
-            conn = by_id.get(actual.get("connection")) if isinstance(actual, dict) else None
-            want_conn = wanted.get(want["source"])
-            if (
-                conn is None
-                or want_conn is None
-                or connection_identity(conn) != connection_identity(want_conn)
-                or actual.get("output") != want["output"]
-            ):
-                diffs.append(f"seo {field}: expected binding {label}, got {actual!r}")
+            if got != want["value"]:
+                diffs.append(f"seo {field}: expected {want['value']!r}, got {got!r}")
+        elif not bound_right(actual, want):
+            diffs.append(f"seo {field}: expected binding {want['source']}.{want['output']}, got {actual!r}")
     for key, value in expected["look"].items():
         if page.get(key) != value:
             diffs.append(f"page {key} differs from the reference page")
     return diffs, counts
 
 
-def verify(plan: dict, structure: dict, before: dict, manifest: dict, config: dict) -> dict:
-    structure = common.data(structure)
-    before = common.data(before)
+def verify(plan: dict, structure: dict, before: dict, manifest: dict, config: dict,
+           localization: dict, before_localization: dict) -> dict:
+    structure, before = common.data(structure), common.data(before)
+    localization, before_localization = common.data(localization), common.data(before_localization)
+    locale = common.site_locale(manifest)
     style = sum(1 for e in plan_checks.validate(plan, manifest, config, before) if e["category"] == "style")
     pages, totals = [], {"outside": 0, "custom": 0, "hand_typed": 0}
     for planned in plan.get("pages") or []:
         page = common.find_page(structure, planned["route"])
-        diffs, counts = compare_page(planned["expected"], page)
+        diffs, counts = compare_page(planned["expected"], page, structure, localization, locale)
         if planned.get("action") != "create":
-            old = binding_set(common.find_page(before, planned["route"]))
-            new = binding_set(page)
+            old = binding_set(common.find_page(before, planned["route"]), before, before_localization, locale)
+            new = binding_set(page, structure, localization, locale)
             if old != new:
                 removed = [b for b in old if b not in new]
                 added = [b for b in new if b not in old]
@@ -200,16 +200,22 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--plan", required=True, type=Path)
     parser.add_argument("--structure", required=True, type=Path, help="get-structure after the writes")
-    parser.add_argument("--before", required=True, type=Path, help="the backup's structure.json")
+    parser.add_argument("--localization", required=True, type=Path, help="get-localization after the writes")
+    parser.add_argument("--backup-dir", required=True, type=Path, help="the backup taken before the writes")
     parser.add_argument("--config", type=Path, default=common.DEFAULT_CONFIG)
     args = parser.parse_args(argv)
     try:
+        import backup  # noqa: PLC0415
+
+        config = common.load_config(args.config)
         result = verify(
             common.load_json(args.plan, "plan"),
             common.load_json(args.structure, "structure"),
-            common.load_json(args.before, "structure"),
+            backup.load(args.backup_dir, config),
             common.load_manifest(),
-            common.load_config(args.config),
+            config,
+            common.load_json(args.localization, "localization"),
+            backup.load_localization(args.backup_dir, config),
         )
     except (OSError, ValueError, KeyError) as exc:
         print(f"Verification failed: {exc}", file=sys.stderr)

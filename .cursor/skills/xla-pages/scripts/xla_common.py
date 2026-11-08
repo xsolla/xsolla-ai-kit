@@ -4,8 +4,9 @@
 Standard library only. Every script runs under `python3 -I`.
 
 Shapes marked VERIFIED were seen in Shop Builder exports (shop-builder-assembly's references).
-Shapes marked PROPOSED come from references/cli-gaps.md: the CLI doesn't return them yet, so a
-real read-back that lacks them fails verification instead of passing it.
+Shapes marked SITE BUILDER come from the Site Builder server and Editor code, read 2026-11-08
+(references/cli-gaps.md). Shapes marked PROPOSED are asked of the CLI there. A real read-back that lacks a shape fails
+verification instead of passing it.
 """
 
 from __future__ import annotations
@@ -31,9 +32,22 @@ PACKAGE_SCOPE = "@xla-pages/"
 # VERIFIED (pages carry their own theme copy); `background` and `layout` are PROPOSED names.
 PAGE_LOOK_KEYS = ("theme", "background", "layout")
 
+# SITE BUILDER: data connections live on the site, in valuesSystem.dataProviderConnections, as
+# {id, dataProviderId, input, usedBy: ["page:<id>" | "block:<id>"]}. A bound value is the string
+# "#VC:<connection id>:<output>". A dynamic page's slug reaches its data connection through the
+# built-in route-params connection.
+VC_PREFIX = "#VC:"
+VC_VALUE = re.compile(r"#VC:[^<>\"'\s:]+:[^<>\"'\s]+")
+ROUTE_PARAMS_CONN_ID = "conn-route-params"
+ROUTE_PARAMS_PROVIDER_ID = "route-params-provider"
+VALUES_SYSTEM_ID = "current-values-system"
+# The manifest's SEO field -> its `L:` string in page.seo (VERIFIED: title, description and
+# ogImage hold localization IDs). canonical is a plain page.seo.canonicalUrl (SITE BUILDER).
+SEO_STRINGS = {"title": "title", "description": "description", "image": "ogImage"}
+
 # The commands any script may run. Everything else (catalog, liveops, publish, preview,
 # verify-website, versions, delete-block, duplicate-block, create-website, create-block,
-# custom blocks, localization) is refused before the CLI runs.
+# custom blocks) is refused before the CLI runs.
 READ_COMMANDS = frozenset(
     {
         ("config", "list"),
@@ -41,6 +55,7 @@ READ_COMMANDS = frozenset(
         ("shopbuilder", "get-landing"),
         ("shopbuilder", "get-structure"),
         ("shopbuilder", "get-block"),
+        ("shopbuilder", "get-localization"),
     }
 )
 WRITE_COMMANDS = frozenset(
@@ -48,9 +63,7 @@ WRITE_COMMANDS = frozenset(
         ("shopbuilder", "add-page"),
         ("shopbuilder", "add-block"),
         ("shopbuilder", "update-block"),
-        ("shopbuilder", "add-data-connection"),
-        ("shopbuilder", "bind-block-field"),
-        ("shopbuilder", "set-page-seo"),
+        ("shopbuilder", "update-many-localization"),
     }
 )
 
@@ -238,6 +251,17 @@ def get_structure(slug: str) -> dict:
     return value
 
 
+def get_localization(slug: str) -> dict:
+    value = data(run_json("shopbuilder", "get-localization", "--slug", slug))
+    if not isinstance(value, dict):
+        raise CliError("get-localization returned an unexpected shape")
+    return value
+
+
+def site_locale(manifest: dict) -> str:
+    return str((manifest.get("site") or {}).get("default_locale") or "en-US")
+
+
 # --------------------------------------------------------------------------- target
 
 
@@ -277,7 +301,8 @@ def check_target(structure: dict, config: dict, for_write: bool = True) -> None:
 
 def page_route(page: object) -> str | None:
     """VERIFIED for static pages: `path` is "/x" or {"pathSegment": "/x", "type": "static"}.
-    PROPOSED for dynamic pages: {"pathSegment": "/game/:slug", "type": "dynamic"}."""
+    SITE BUILDER for dynamic pages: {"type": "dynamic", "pathSegment": "/game/:slug",
+    "connectionId": <the paths connection>}."""
     if not isinstance(page, dict):
         return None
     path = page.get("path")
@@ -298,9 +323,10 @@ def find_page(structure: dict, route: str) -> dict | None:
 def block_identity(block: dict) -> tuple[str | None, str | None]:
     """(package, version) of a federated block.
 
-    VERIFIED: `module: "federated"` and the version in `values.version`.
-    PROPOSED: the package in `values.package` (exports seen so far keep only an unscoped
-    `values.blockId`, which is not enough to tell `@xla-pages/hero` from another hero).
+    VERIFIED: `module: "federated"`, the blocks-service id in `values.blockId` and the version
+    in `values.version`. The package is read from `values.blockId` when it is the scoped name
+    (`@xla-pages/hero`), else from a PROPOSED `values.package`. An unscoped id such as `hero`
+    is not enough to tell `@xla-pages/hero` from another hero.
     """
     if not isinstance(block, dict) or block.get("module") != "federated":
         return None, None
@@ -331,22 +357,125 @@ def block_fields(block: dict) -> dict:
     return fields if isinstance(fields, dict) else {}
 
 
+def parse_vc(value: object) -> tuple[str, str] | None:
+    """(connection id, output) of a whole bound value "#VC:<connection>:<output>", else None."""
+    if not isinstance(value, str) or not VC_VALUE.fullmatch(value):
+        return None
+    _, connection, output = value.split(":", 2)
+    return connection, output
+
+
+def vc(connection_id: str, output: str) -> str:
+    return f"{VC_PREFIX}{connection_id}:{output}"
+
+
+def page_usage(page_id: object) -> str:
+    return f"page:{page_id}"
+
+
+def block_usage(block_id: object) -> str:
+    return f"block:{block_id}"
+
+
+def stable_id(*parts: object) -> str:
+    """A 24-hex id derived from its parts, so a rerun writes the same connection id."""
+    return hashlib.sha256(":".join(map(str, parts)).encode("utf-8")).hexdigest()[:24]
+
+
 def block_bindings(block: dict) -> dict:
-    """PROPOSED: `bindings: {field: {"connection": <id>, "output": <name>}}` on the block."""
-    bindings = block.get("bindings") if isinstance(block, dict) else None
-    return bindings if isinstance(bindings, dict) else {}
+    """SITE BUILDER: a bound federated field holds "#VC:<connection>:<output>" in
+    `values.internalBlockValues.<field>` (the value it had moves to `values.preBindValues`)."""
+    return {
+        field: {"connection": parsed[0], "output": parsed[1]}
+        for field, value in block_fields(block).items()
+        if (parsed := parse_vc(value))
+    }
 
 
-def page_connections(page: dict) -> list[dict]:
-    """PROPOSED: `dataConnections: [{"_id", "provider", "kind", "input"}]` on the page."""
-    connections = page.get("dataConnections") if isinstance(page, dict) else None
-    return [c for c in connections if isinstance(c, dict)] if isinstance(connections, list) else []
+def site_connections(structure: dict) -> dict | None:
+    """SITE BUILDER: `valuesSystem.dataProviderConnections` by id; None when get-structure
+    doesn't return it, which the plan and the check treat as a stop."""
+    values = structure.get("valuesSystem") if isinstance(structure, dict) else None
+    connections = values.get("dataProviderConnections") if isinstance(values, dict) else None
+    if not isinstance(connections, dict):
+        return None
+    return {key: value for key, value in connections.items() if isinstance(value, dict)}
 
 
-def page_seo(page: dict) -> dict:
-    """PROPOSED: `seo: {field: {"value": ...} | {"connection": <id>, "output": <name>}}`."""
-    seo = page.get("seo") if isinstance(page, dict) else None
-    return seo if isinstance(seo, dict) else {}
+def normalize_input(value: object) -> object:
+    """A connection input as the manifest writes it: a route-params reference reads "{path}"."""
+    if isinstance(value, dict):
+        return {key: normalize_input(item) for key, item in value.items()}
+    parsed = parse_vc(value)
+    if parsed and parsed[0] == ROUTE_PARAMS_CONN_ID:
+        return "{path}"
+    return value
+
+
+def connection_view(connection_id: str, connection: dict) -> dict:
+    return {
+        "_id": connection.get("id", connection_id),
+        "provider": connection.get("dataProviderId"),
+        "input": normalize_input(connection.get("input") or {}),
+        "usedBy": list(connection.get("usedBy") or []),
+    }
+
+
+def all_connections(structure: dict) -> dict:
+    return {key: connection_view(key, value) for key, value in (site_connections(structure) or {}).items()}
+
+
+def page_connections(structure: dict, page: dict) -> list[dict]:
+    """The connections the page or one of its blocks uses, without the built-in route-params one."""
+    if not isinstance(page, dict):
+        return []
+    path = page.get("path") if isinstance(page.get("path"), dict) else {}
+    direct = {path.get("connectionId"), page.get("dataConnectionId")}
+    usages = {page_usage(page.get("_id"))} | {
+        block_usage(block.get("_id")) for block in page.get("blocks") or [] if isinstance(block, dict)
+    }
+    return [
+        view
+        for key, view in all_connections(structure).items()
+        if view["provider"] != ROUTE_PARAMS_PROVIDER_ID
+        and key != ROUTE_PARAMS_CONN_ID
+        and (key in direct or usages & set(view["usedBy"]))
+    ]
+
+
+def localization_text(localization: dict, page_id: object, lid: str, locale: str) -> tuple[str, str, object]:
+    """(scope, description, text in locale) of an `L:` string: the page's texts or `common`.
+    VERIFIED get-localization shape: pages.<page>.texts.<L:id>.{description, translations}."""
+    localization = localization if isinstance(localization, dict) else {}
+    page_texts = ((localization.get("pages") or {}).get(str(page_id)) or {}).get("texts") or {}
+    for scope, texts in ((str(page_id), page_texts), ("common", localization.get("common") or {})):
+        entry = texts.get(lid) if isinstance(texts, dict) else None
+        if isinstance(entry, dict):
+            translations = entry.get("translations") if isinstance(entry.get("translations"), dict) else {}
+            text = translations.get(locale, translations.get(locale.split("-")[0]))
+            description = entry.get("description")
+            return scope, description if isinstance(description, str) else "", text
+    return str(page_id), "", None
+
+
+def page_seo(page: dict, localization: dict, locale: str) -> dict:
+    """{field: {"value": text} | {"connection": id, "output": name}} for title, description,
+    image (localized `L:` strings, a bound one holds "#VC:…") and canonical (page.seo.canonicalUrl)."""
+    seo = page.get("seo") if isinstance(page, dict) and isinstance(page.get("seo"), dict) else {}
+    found: dict = {}
+    for field, slot in SEO_STRINGS.items():
+        lid = seo.get(slot)
+        if not (isinstance(lid, str) and lid.startswith("L:")):
+            continue
+        _, _, text = localization_text(localization, page.get("_id"), lid, locale)
+        if not isinstance(text, str) or not text:
+            continue
+        parsed = parse_vc(text)
+        found[field] = {"connection": parsed[0], "output": parsed[1]} if parsed else {"value": text}
+    canonical = seo.get("canonicalUrl")
+    if isinstance(canonical, str) and canonical:
+        found["canonical"] = {"value": canonical}
+    return found
 
 
 def has_custom_code(block: dict) -> bool:

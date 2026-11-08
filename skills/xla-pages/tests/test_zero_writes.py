@@ -108,11 +108,11 @@ class ZeroWriteTests(unittest.TestCase):
         self.assertEqual("blocked_capability", report["status"])
         self.assertEqual([], cli.writes())
         missing = {item["capability"]: item["missing"] for item in report["details"]}
-        self.assertEqual(["the command"], missing["add-data-connection"])
-        self.assertEqual(["the command"], missing["bind-block-field"])
-        self.assertEqual(["the command"], missing["set-page-seo"])
-        self.assertEqual(["--package", "--version"], missing["add-block-pinned"])
-        self.assertEqual(["--paths-provider", "--provider-input"], missing["add-page-dynamic"])
+        # Everything else (connections, bindings, SEO) goes through commands the CLI has today.
+        self.assertEqual({
+            "add-page-dynamic": ["--provider-id", "--provider-input"],
+            "add-block-pinned": ["--package", "--version"],
+        }, missing)
 
     def test_responses_older_than_24_hours_stop_with_zero_writes(self) -> None:
         code, report = harness.apply(self.cli, self.plan_path, self.backup, now="2026-11-08T09:00:00Z")

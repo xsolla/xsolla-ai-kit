@@ -53,7 +53,9 @@ def prepare(directory: Path, cli: stand_in_cli.StandInCli, batch: dict | None = 
     with patched(cli):
         backup.take(config, backup_dir)
     structure = backup.load(backup_dir, config)
-    plan, errors = render_plan.build_plan(common.load_manifest(), config, structure, batch or load_batch())
+    localization = backup.load_localization(backup_dir, config)
+    plan, errors = render_plan.build_plan(common.load_manifest(), config, structure, batch or load_batch(),
+                                          localization)
     plan_path = Path(directory) / f"{name}-plan.json"
     common.write_json(plan_path, plan)
     return plan, errors, plan_path, backup_dir

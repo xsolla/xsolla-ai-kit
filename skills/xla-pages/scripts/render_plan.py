@@ -57,7 +57,7 @@ def create_ops(expected: dict) -> list[dict]:
     return ops
 
 
-def update_ops(expected: dict, page: dict) -> list[dict]:
+def update_ops(expected: dict, page: dict, localization: dict, locale: str) -> list[dict]:
     """Only what an update may change: row content, settings, hiding an empty optional block,
     adding a missing unbound block, static SEO text and the page look. Bindings stay as they are."""
     route = expected["route"]
@@ -89,7 +89,7 @@ def update_ops(expected: dict, page: dict) -> list[dict]:
                 ops.append({"op": "set_block_field", "route": route, "key": want["key"], "field": field, "value": value})
         if want["hidden"] and block.get("hidden") is not True:
             ops.append({"op": "hide_block", "route": route, "key": want["key"]})
-    seo = common.page_seo(page)
+    seo = common.page_seo(page, localization, locale)
     for field, value in expected["seo"].items():
         if "value" in value and seo.get(field) != {"value": value["value"]}:
             ops.append({"op": "set_page_seo", "route": route, "field": field, **value})
@@ -99,16 +99,18 @@ def update_ops(expected: dict, page: dict) -> list[dict]:
     return ops
 
 
-def plan_page(manifest: dict, config: dict, structure: dict, type_name: str, row: dict | None) -> tuple[dict, list[str], list[str]]:
+def plan_page(manifest: dict, config: dict, structure: dict, localization: dict, type_name: str,
+              row: dict | None) -> tuple[dict, list[str], list[str]]:
     route = common.route_for(manifest, type_name, row.get("provider") if row else None)
     existing = common.find_page(structure, route)
     expected, errors, notes = plan_model.desired_page(manifest, config, structure, type_name, row, existing)
     if existing is None:
         ops, action, now = create_ops(expected), "create", []
     else:
-        ops = update_ops(expected, existing)
+        locale = common.site_locale(manifest)
+        ops = update_ops(expected, existing, localization, locale)
         action = "update" if ops else "unchanged"
-        now = verify_pages.compare_page(expected, existing)[0]
+        now = verify_pages.compare_page(expected, existing, structure, localization, locale)[0]
     return {
         "page_type": type_name,
         "route": route,
@@ -121,20 +123,26 @@ def plan_page(manifest: dict, config: dict, structure: dict, type_name: str, row
     }, errors, notes
 
 
-def build_plan(manifest: dict, config: dict, structure: dict, batch: dict) -> tuple[dict, list[str]]:
-    structure = common.data(structure)
+def build_plan(manifest: dict, config: dict, structure: dict, batch: dict,
+               localization: dict) -> tuple[dict, list[str]]:
+    structure, localization = common.data(structure), common.data(localization)
     rows, errors = plan_model.batch_rows(batch)
     try:
         common.check_target(structure, config)
     except common.CliError as exc:
         errors.append(str(exc))
+    if common.site_connections(structure) is None:
+        errors.append(
+            "get-structure returned no valuesSystem.dataProviderConnections, so the pages' data "
+            "connections can't be read (references/cli-gaps.md, read-back)"
+        )
     pages, notes = [], []
     work = [("game", None)] + [
         (type_name, row) for row in rows if isinstance(row, dict) for type_name in ("payment_provider", "combined")
     ]
     if not errors:
         for type_name, row in work:
-            page, page_errors, page_notes = plan_page(manifest, config, structure, type_name, row)
+            page, page_errors, page_notes = plan_page(manifest, config, structure, localization, type_name, row)
             pages.append(page)
             errors += [f"{page['route']}: {e}" for e in page_errors if f"{page['route']}: {e}" not in errors]
             notes += [n for n in page_notes if n not in notes]
@@ -150,6 +158,7 @@ def build_plan(manifest: dict, config: dict, structure: dict, batch: dict) -> tu
         },
         "manifest_sha256": common.canonical_hash(manifest),
         "structure_sha256": common.structure_hash(structure),
+        "localization_sha256": common.canonical_hash(localization),
         "rows": rows,
         "pages": pages,
         "notes": notes,
@@ -182,7 +191,8 @@ def main(argv: list[str] | None = None) -> int:
         config = common.load_config(args.config)
         manifest = common.load_manifest()
         structure = backup.load(args.backup_dir, config)
-        plan, errors = build_plan(manifest, config, structure, common.load_json(args.batch, "batch"))
+        localization = backup.load_localization(args.backup_dir, config)
+        plan, errors = build_plan(manifest, config, structure, common.load_json(args.batch, "batch"), localization)
     except (OSError, ValueError) as exc:
         print(f"Plan failed: {exc}", file=sys.stderr)
         return 1

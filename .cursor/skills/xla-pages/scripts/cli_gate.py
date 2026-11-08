@@ -20,29 +20,22 @@ if SCRIPTS_DIR not in sys.path:
 import xla_common as common  # noqa: E402
 
 # capability -> (command, flags its --help must list). Keep in step with references/cli-gaps.md.
+# Connections, bindings, settings, hiding, the page look and the canonical URL go through
+# update-block's batch patches (entities block, page and valuesSystem); SEO texts through
+# update-many-localization. Both exist today. What the CLI still lacks: the add-page fields the
+# server already takes (providerId, providerInput) and an add-block at an exact version.
 CAPABILITIES = {
     "add-page": (("shopbuilder", "add-page"), ("--slug", "--name", "--path")),
-    "add-page-dynamic": (("shopbuilder", "add-page"), ("--paths-provider", "--provider-input")),
+    "add-page-dynamic": (("shopbuilder", "add-page"), ("--provider-id", "--provider-input")),
     "add-block-pinned": (
         ("shopbuilder", "add-block"),
         ("--landing-id", "--page-id", "--block", "--package", "--version", "--index"),
     ),
     "update-block": (("shopbuilder", "update-block"), ("--landing-id", "--data")),
-    "add-data-connection": (
-        ("shopbuilder", "add-data-connection"),
-        ("--landing-id", "--page-id", "--provider", "--input"),
-    ),
-    "bind-block-field": (
-        ("shopbuilder", "bind-block-field"),
-        ("--landing-id", "--block-id", "--field", "--connection-id", "--output"),
-    ),
-    "set-page-seo": (
-        ("shopbuilder", "set-page-seo"),
-        ("--landing-id", "--page-id", "--field", "--value", "--connection-id", "--output"),
-    ),
+    "update-many-localization": (("shopbuilder", "update-many-localization"), ("--slug", "--data")),
 }
-# Used when present: a new page without the blocks add-page seeds (the plan deletes them otherwise).
-OPTIONAL = {"add-page-empty": (("shopbuilder", "add-page"), ("--empty",))}
+# Used when present: a blank page (page type "blank"), so add-page seeds nothing to delete.
+OPTIONAL = {"add-page-blank": (("shopbuilder", "add-page"), ("--type",))}
 
 
 def needed(plan: dict) -> list[str]:
@@ -57,14 +50,12 @@ def needed(plan: dict) -> list[str]:
                     names.add("add-page-dynamic")
             elif kind == "add_block":
                 names.add("add-block-pinned")
-            elif kind in ("set_block_field", "hide_block", "set_page_look"):
+            elif kind in ("set_block_field", "hide_block", "set_page_look", "add_data_connection", "bind_field"):
                 names.add("update-block")
-            elif kind == "add_data_connection":
-                names.add("add-data-connection")
-            elif kind == "bind_field":
-                names.add("bind-block-field")
             elif kind == "set_page_seo":
-                names.add("set-page-seo")
+                names.add("update-block")
+                if op.get("field") != "canonical":
+                    names.add("update-many-localization")
     return [name for name in CAPABILITIES if name in names]
 
 

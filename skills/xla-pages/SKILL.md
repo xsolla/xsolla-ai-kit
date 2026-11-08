@@ -25,9 +25,11 @@ the spec: page types, blocks, bindings, writes and checks. Anything it doesn't l
 allowed. The general Shop Builder rules (standard blocks first, Custom Blocks where needed,
 theme and copy from a brief) don't apply to these pages.
 
-The scripts do the checking; follow their output and never work around a refusal. Today the
-CLI lacks the commands for dynamic pages, data connections, bindings, pinned versions and page
-SEO, so every batch that creates a page stops at the gate with zero writes. Hand the user
+The scripts do the checking; follow their output and never work around a refusal. Data
+connections, bindings and SEO go through commands the CLI has today (`update-block`,
+`update-many-localization`), stored the way Site Builder stores them. Today's CLI can't create
+a dynamic page or add a block at a pinned version, so a batch that creates a page stops at the
+gate with zero writes; an update of an existing page runs. Hand the user
 [the CLI command spec](references/cli-gaps.md) and the gate's report.
 
 ## Before anything
@@ -62,8 +64,8 @@ All scripts are in `scripts/` and run with `python3 -I`. Keep each run's files i
    [saved /pub responses](references/pub-responses.md) gives. Only GET, only
    `https://xla-pages.xsolla.com/pub/*`, no credentials. Repeat until it prints none, then run
    `preflight_report.py report --pub-dir <run>/pub --batch <batch.json>`.
-2. **Backup.** `backup.py --out-dir <run>/backup` saves the skill's own `get-structure`
-   snapshot. It is the backup: Shop Builder's version history isn't, because restoring a version
+2. **Backup.** `backup.py --out-dir <run>/backup` saves the skill's own `get-structure` and
+   `get-localization` snapshot. It is the backup: Shop Builder's version history isn't, because restoring a version
    currently drops the data-provider connections.
 3. **Plan.** `render_plan.py --batch <batch.json> --backup-dir <run>/backup --output
    <run>/plan.json`. It pins every block to the version on its page type's reference page and
@@ -93,7 +95,7 @@ All scripts are in `scripts/` and run with `python3 -I`. Keep each run's files i
 6. **Check and hand off.** Apply reads every page back and prints the per-page result: pass, or
    the exact difference, plus the manifest's acceptance numbers. For an update it checks that the
    page's data bindings are identical before and after. `verify_pages.py --plan --structure
-   --before` runs the same check on any export. Report every page, the numbers, and that nothing
+   --localization --backup-dir` runs the same check on any export. Report every page, the numbers, and that nothing
    was published: a person publishes, all pages of the site at once.
 
 ## When something changes
@@ -121,6 +123,6 @@ All scripts are in `scripts/` and run with `python3 -I`. Keep each run's files i
 
 ## Known limits
 
-The manifest's block field names, the binding and dynamic-page shapes, and the published-site
-semantics are not verified against a real site yet; [README.md](README.md) lists every
+The manifest's block field names, the `@xla-pages` blocks' ids in the blocks service, and the
+published-site semantics are not verified against a real site yet; [README.md](README.md) lists every
 unverified item. Read-back shapes the CLI doesn't return yet make the check fail, not pass.

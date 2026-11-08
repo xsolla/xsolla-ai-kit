@@ -1,0 +1,88 @@
+{
+  "ok": true,
+  "data": {
+    "pages": {
+      "page-game": {
+        "texts": {
+          "L:page-game-seo-title": {
+            "description": "",
+            "translations": {
+              "en-US": "#VC:c-game-data:title"
+            }
+          },
+          "L:page-game-seo-description": {
+            "description": "",
+            "translations": {
+              "en-US": "#VC:c-game-data:shortDescription"
+            }
+          },
+          "L:page-game-seo-ogImage": {
+            "description": "",
+            "translations": {
+              "en-US": "#VC:c-game-data:cover"
+            }
+          }
+        }
+      },
+      "page-psc": {
+        "texts": {
+          "L:page-psc-seo-title": {
+            "description": "",
+            "translations": {
+              "en-US": "Top up with Paysafecard"
+            }
+          },
+          "L:page-psc-seo-description": {
+            "description": "",
+            "translations": {
+              "en-US": "Synthetic reference copy."
+            }
+          },
+          "L:page-psc-seo-ogImage": {
+            "description": "",
+            "translations": {}
+          }
+        }
+      },
+      "page-psc-game": {
+        "texts": {
+          "L:page-psc-game-seo-title": {
+            "description": "",
+            "translations": {
+              "en-US": "#VC:c-psc-game-data:title"
+            }
+          },
+          "L:page-psc-game-seo-description": {
+            "description": "",
+            "translations": {
+              "en-US": "#VC:c-psc-game-data:shortDescription"
+            }
+          },
+          "L:page-psc-game-seo-ogImage": {
+            "description": "",
+            "translations": {
+              "en-US": "#VC:c-psc-game-data:cover"
+            }
+          }
+        }
+      },
+      "page-home": {
+        "texts": {
+          "L:page-home-seo-title": {
+            "description": "",
+            "translations": {}
+          },
+          "L:page-home-seo-description": {
+            "description": "",
+            "translations": {}
+          },
+          "L:page-home-seo-ogImage": {
+            "description": "",
+            "translations": {}
+          }
+        }
+      }
+    },
+    "common": {}
+  }
+}

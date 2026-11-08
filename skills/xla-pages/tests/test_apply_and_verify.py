@@ -35,6 +35,16 @@ class ApplyAndVerifyTests(unittest.TestCase):
     def tearDown(self) -> None:
         self.tmp.cleanup()
 
+    def verify(self, plan: dict, after: dict, backup_dir: Path) -> dict:
+        import backup
+
+        return verify_pages.verify(plan, after, backup.load(backup_dir, self.config), self.manifest, self.config,
+                                   self.cli.localization, backup.load_localization(backup_dir, self.config))
+
+    def bindings(self, route: str) -> list:
+        return verify_pages.binding_set(page(self.cli.site, route), self.cli.site, self.cli.localization,
+                                        common.site_locale(self.manifest))
+
     def run_batch(self, batch: dict | None = None, name: str = "backup") -> tuple[dict, dict, Path]:
         plan, errors, plan_path, backup_dir = harness.prepare(self.dir, self.cli, batch=batch, name=name)
         self.assertEqual([], errors)
@@ -79,28 +89,66 @@ class ApplyAndVerifyTests(unittest.TestCase):
         self.assertLessEqual(commands, set(common.WRITE_COMMANDS))
         self.assertFalse(any("publish" in call[1] or "preview" in call[1] for call in self.cli.calls))
 
-    def test_add_page_empty_is_used_when_the_cli_has_it(self) -> None:
-        self.cli = stand_in_cli.StandInCli(capabilities="proposed", seed_empty_flag=True)
+    def test_a_blank_page_is_used_when_the_cli_has_the_type_flag(self) -> None:
+        self.cli = stand_in_cli.StandInCli(capabilities="proposed", blank_flag=True)
         self.run_batch()
         add_pages = [call for call in self.cli.writes() if call[1] == "add-page"]
-        self.assertTrue(all("--empty" in call for call in add_pages))
+        self.assertTrue(all(call[call.index("--type") + 1] == "blank" for call in add_pages))
         self.assertFalse(any('"op":"remove"' in " ".join(call) for call in self.cli.writes()))
+
+    def test_connections_and_bindings_are_written_the_way_site_builder_stores_them(self) -> None:
+        self.run_batch()
+        site = self.cli.site
+        connections = site["valuesSystem"]["dataProviderConnections"]
+        klarna = page(site, "/payment/klarna")
+        # The catalog connections with the same provider and input are reused, not copied.
+        catalog = [c for c in connections.values() if c["dataProviderId"] == "ugc-d-catalog-games-provider-v2"]
+        self.assertEqual(2, len(catalog))
+        top_up = block(klarna, "@xla-pages/top-up")
+        self.assertEqual("#VC:c-top:gamesJson", common.block_fields(top_up)["gamesJson"])
+        self.assertIn("page:" + klarna["_id"], connections["c-top"]["usedBy"])
+        self.assertIn("block:" + top_up["_id"], connections["c-top"]["usedBy"])
+        # A dynamic page gets the linked game-data connection the server handed an id for.
+        combined = page(site, "/payment/klarna/:slug")
+        linked = connections[combined["dataConnectionId"]]
+        self.assertEqual("ugc-d-data-game-provider-v2", linked["dataProviderId"])
+        self.assertEqual({"slug": "#VC:conn-route-params:slug", "publisherProjectId": "200002"}, linked["input"])
+        self.assertEqual("c-paths", combined["path"]["connectionId"])
+        hero = block(combined, "@xla-pages/hero")
+        self.assertEqual("#VC:" + combined["dataConnectionId"] + ":title", common.block_fields(hero)["title"])
+        self.assertEqual("", hero["values"]["preBindValues"]["title"])
+        # SEO: texts in the localization, the canonical URL on the page.
+        texts = self.cli.localization["pages"][combined["_id"]]["texts"]
+        self.assertEqual("#VC:" + combined["dataConnectionId"] + ":title",
+                         texts[combined["seo"]["title"]]["translations"]["en-US"])
+        self.assertEqual("https://x.la/payment/klarna/{slug}", combined["seo"]["canonicalUrl"])
+
+    def test_a_version_the_server_falls_back_from_stops_the_run(self) -> None:
+        plan, errors, plan_path, backup_dir = harness.prepare(self.dir, self.cli)
+        self.assertEqual([], errors)
+        del self.cli.defaults[("@xla-pages/hero", "0.4.1-next.3")]
+        self.cli.defaults[("@xla-pages/hero", "0.4.2")] = {"title": ""}
+        code, report = harness.apply(self.cli, plan_path, backup_dir)
+        self.assertEqual(1, code)
+        self.assertEqual("stopped-partway", report["status"])
+        self.assertEqual(
+            "add-block added @xla-pages/hero@0.4.2, not the pinned @xla-pages/hero@0.4.1-next.3",
+            report["reason"],
+        )
 
     def test_the_after_write_check_reports_the_exact_difference(self) -> None:
         plan, report, backup_dir = self.run_batch()
         after = copy.deepcopy(self.cli.site)
         klarna = page(after, "/payment/klarna")
         block(klarna, "@xla-pages/hero")["values"]["version"] = "0.2.0"
-        del block(klarna, "@xla-pages/top-up")["bindings"]["gamesJson"]
+        block(klarna, "@xla-pages/top-up")["values"]["internalBlockValues"]["gamesJson"] = ""
         klarna["blocks"].insert(2, {"_id": "x-store", "module": "newStore", "values": {}})
         block(klarna, "@xla-pages/footer")["hidden"] = True
         combined = page(after, "/payment/toss/:slug")
         hero = block(combined, "@xla-pages/hero")
-        del hero["bindings"]["title"]
         hero["values"]["internalBlockValues"]["title"] = "Star Forge"
         combined["blocks"].append({"_id": "x-html", "module": "html", "values": {}})
-        result = verify_pages.verify(plan, after, common.load_json(backup_dir / "structure.json", "s"),
-                                     self.manifest, self.config)
+        result = self.verify(plan, after, backup_dir)
         pages = {p["route"]: p for p in result["pages"]}
         self.assertEqual([
             "block 3 (newStore) is outside the manifest",
@@ -136,16 +184,15 @@ class ApplyAndVerifyTests(unittest.TestCase):
             [("set_block_field", "title"), ("hide_block", None), ("set_page_seo", "title")],
             [(op["op"], op.get("field")) for op in ops],
         )
-        before = verify_pages.binding_set(page(self.cli.site, "/payment/klarna"))
+        before = self.bindings("/payment/klarna")
         code, report = harness.apply(self.cli, plan_path, backup_dir)
         self.assertEqual(0, code, report)
-        self.assertEqual(before, verify_pages.binding_set(page(self.cli.site, "/payment/klarna")))
+        self.assertEqual(before, self.bindings("/payment/klarna"))
         self.assertTrue(block(page(self.cli.site, "/payment/klarna"), "@xla-pages/special-offers")["hidden"])
 
         after = copy.deepcopy(self.cli.site)
-        del block(page(after, "/payment/klarna"), "@xla-pages/games")["bindings"]["gamesJson"]
-        result = verify_pages.verify(plan, after, common.load_json(backup_dir / "structure.json", "s"),
-                                     self.manifest, self.config)
+        block(page(after, "/payment/klarna"), "@xla-pages/games")["values"]["internalBlockValues"]["gamesJson"] = ""
+        result = self.verify(plan, after, backup_dir)
         differences = {p["route"]: p["differences"] for p in result["pages"]}["/payment/klarna"]
         self.assertIn(
             "the page's data bindings changed: removed [('@xla-pages/games', 'gamesJson', "
@@ -153,6 +200,18 @@ class ApplyAndVerifyTests(unittest.TestCase):
             "'gamesJson')], added []",
             differences,
         )
+
+    def test_an_update_of_row_text_runs_on_the_current_cli(self) -> None:
+        self.run_batch()
+        self.cli.table = dict(stand_in_cli.CURRENT)
+        batch = harness.load_batch()
+        batch["providers"][1]["hero_description"] = "Pay with Toss in two taps"
+        plan, errors, plan_path, backup_dir = harness.prepare(self.dir, self.cli, batch=batch, name="current")
+        self.assertEqual([], errors)
+        self.assertEqual(["update-block", "update-many-localization"], plan["capabilities"])
+        code, report = harness.apply(self.cli, plan_path, backup_dir)
+        self.assertEqual(0, code, report)
+        self.assertEqual("100%", report["verification"]["acceptance"]["pages_matching_manifest"])
 
     def test_an_update_never_adds_bindings(self) -> None:
         self.run_batch()
@@ -173,7 +232,7 @@ class ApplyAndVerifyTests(unittest.TestCase):
 
     def test_a_reference_block_without_a_readable_package_stops_the_plan(self) -> None:
         reference = page(self.cli.site, "/payment/paysafecard")
-        del block(reference, "@xla-pages/faq")["values"]["package"]
+        block(reference, "@xla-pages/faq")["values"]["blockId"] = "faq"
         _, errors, _, _ = harness.prepare(self.dir, self.cli)
         self.assertTrue(any("no readable package" in e for e in errors), errors)
 

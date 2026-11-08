@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Save the site's structure before the first write: the skill's own get-structure snapshot.
+"""Save the site before the first write: the skill's own get-structure snapshot, and its
+get-localization (page SEO texts live there).
 
 Shop Builder's version history is not the backup: restoring a version currently drops the
-data-provider connections. The snapshot is also the structure the plan is rendered from, and
-apply refuses to write when the site no longer matches it.
+data-provider connections. The snapshot is also what the plan is rendered from, and apply
+refuses to write when the site no longer matches it.
 """
 
 from __future__ import annotations
@@ -22,6 +23,7 @@ if SCRIPTS_DIR not in sys.path:
 import xla_common as common  # noqa: E402
 
 STRUCTURE = "structure.json"
+LOCALIZATION = "localization.json"
 RECORD = "backup.json"
 
 
@@ -35,8 +37,12 @@ def take(config: dict, out_dir: Path) -> dict:
     if not isinstance(structure, dict) or not isinstance(structure.get("pages"), list):
         raise common.CliError("get-structure returned an unexpected shape")
     common.check_target(structure, config, for_write=False)
+    raw_localization = common.run_json("shopbuilder", "get-localization", "--slug", config["site_slug"])
+    if not isinstance(common.data(raw_localization), dict):
+        raise common.CliError("get-localization returned an unexpected shape")
     out_dir.mkdir(parents=True, exist_ok=True)
     common.write_json(out_dir / STRUCTURE, raw)
+    common.write_json(out_dir / LOCALIZATION, raw_localization)
     record = {
         "merchant_id": config["merchant_id"],
         "project_id": config["project_id"],
@@ -44,15 +50,16 @@ def take(config: dict, out_dir: Path) -> dict:
         "taken_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "read_only": True,
         "published": common.is_published(structure),
-        "sha256": {STRUCTURE: hashlib.sha256((out_dir / STRUCTURE).read_bytes()).hexdigest()},
+        "sha256": {
+            name: hashlib.sha256((out_dir / name).read_bytes()).hexdigest() for name in (STRUCTURE, LOCALIZATION)
+        },
         "structure_sha256": common.structure_hash(structure),
     }
     common.write_json(out_dir / RECORD, record)
     return record
 
 
-def load(backup_dir: Path, config: dict) -> dict:
-    """The backed-up structure, after checking the record and the file's checksum."""
+def _read(backup_dir: Path, config: dict, name: str) -> dict:
     backup_dir = Path(backup_dir)
     record = common.load_json(backup_dir / RECORD, "backup record")
     if not isinstance(record, dict) or record.get("read_only") is not True:
@@ -60,17 +67,27 @@ def load(backup_dir: Path, config: dict) -> dict:
     for key in ("merchant_id", "project_id", "site_slug"):
         if record.get(key) != config[key]:
             raise ValueError(f"{backup_dir} is a backup of another site ({key} differs)")
-    path = backup_dir / STRUCTURE
+    path = backup_dir / name
     try:
         digest = hashlib.sha256(path.read_bytes()).hexdigest()
     except OSError as exc:
         raise ValueError(f"cannot read {path}: {exc}") from None
-    if digest != (record.get("sha256") or {}).get(STRUCTURE):
+    if digest != (record.get("sha256") or {}).get(name):
         raise ValueError(f"{path} changed after the backup was taken")
-    structure = common.data(common.load_json(path, "structure"))
-    if not isinstance(structure, dict):
-        raise ValueError(f"{path} holds no structure")
-    return structure
+    value = common.data(common.load_json(path, name))
+    if not isinstance(value, dict):
+        raise ValueError(f"{path} holds no object")
+    return value
+
+
+def load(backup_dir: Path, config: dict) -> dict:
+    """The backed-up structure, after checking the record and the file's checksum."""
+    return _read(backup_dir, config, STRUCTURE)
+
+
+def load_localization(backup_dir: Path, config: dict) -> dict:
+    """The backed-up get-localization, checked the same way."""
+    return _read(backup_dir, config, LOCALIZATION)
 
 
 def main(argv: list[str] | None = None) -> int:
