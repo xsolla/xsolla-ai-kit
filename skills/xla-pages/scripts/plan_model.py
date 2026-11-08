@@ -108,7 +108,7 @@ def reference_pins(manifest: dict, structure: dict, type_name: str) -> tuple[dic
             if block.get("module") == "federated":
                 errors.append(
                     f"reference {route} block {index + 1} ({common.block_label(block)}) has no readable "
-                    "package: the CLI must return it (references/cli-gaps.md, add-block)"
+                    "package: the CLI must return it in values.blockId"
                 )
             continue
         key = packages.get(package)

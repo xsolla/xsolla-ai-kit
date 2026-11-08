@@ -6,7 +6,7 @@ federated blocks, SEO texts in the localization, and the batch patch API behind 
 (entities block, page, site and valuesSystem).
 
 `capabilities="current"` answers --help like CLI 1.9.4. `capabilities="proposed"` also lists the
-flags references/cli-gaps.md asks for (add-page --provider-id/--provider-input, add-block
+flags scripts/cli_gate.py waits for (add-page --provider-id/--provider-input, add-block
 --package/--version), so the write path can run end to end in tests. Like the server,
 add-block falls back to the latest published version of a package when the asked one is missing.
 Every call is logged; any other command fails the test.

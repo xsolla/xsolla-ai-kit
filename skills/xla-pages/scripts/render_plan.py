@@ -134,7 +134,7 @@ def build_plan(manifest: dict, config: dict, structure: dict, batch: dict,
     if common.site_connections(structure) is None:
         errors.append(
             "get-structure returned no valuesSystem.dataProviderConnections, so the pages' data "
-            "connections can't be read (references/cli-gaps.md, read-back)"
+            "connections can't be read"
         )
     pages, notes = [], []
     work = [("game", None)] + [

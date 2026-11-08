@@ -402,7 +402,7 @@ writes:
     history is not a backup: restoring a version currently drops the data-provider connections.
   cli_gate: >
     Writes run only when `--help` lists every command and flag the plan needs
-    (references/cli-gaps.md). The CLI version number is not checked.
+    (scripts/cli_gate.py). The CLI version number is not checked.
 
 validation:
   before_write:

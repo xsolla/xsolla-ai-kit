@@ -29,8 +29,8 @@ The scripts do the checking; follow their output and never work around a refusal
 connections, bindings and SEO go through commands the CLI has today (`update-block`,
 `update-many-localization`), stored the way Site Builder stores them. Today's CLI can't create
 a dynamic page or add a block at a pinned version, so a batch that creates a page stops at the
-gate with zero writes; an update of an existing page runs. Hand the user
-[the CLI command spec](references/cli-gaps.md) and the gate's report.
+gate with zero writes; an update of an existing page runs. Show the user the gate's report:
+it names the missing commands and flags, which the Shop Builder team tracks.
 
 ## Before anything
 

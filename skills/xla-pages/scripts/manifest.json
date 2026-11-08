@@ -578,7 +578,7 @@
     ],
     "approval": "one plan per batch listing every page, its type and its blocks, and every page that appears or changes; nothing is written before approval",
     "backup": "The agent's own get-structure snapshot, saved before the first write. Shop Builder's version history is not a backup: restoring a version currently drops the data-provider connections.\n",
-    "cli_gate": "Writes run only when `--help` lists every command and flag the plan needs (references/cli-gaps.md). The CLI version number is not checked.\n"
+    "cli_gate": "Writes run only when `--help` lists every command and flag the plan needs (scripts/cli_gate.py). The CLI version number is not checked.\n"
   },
   "validation": {
     "before_write": [

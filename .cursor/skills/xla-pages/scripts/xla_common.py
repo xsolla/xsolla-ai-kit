@@ -4,8 +4,8 @@
 Standard library only. Every script runs under `python3 -I`.
 
 Shapes marked VERIFIED were seen in Shop Builder exports (shop-builder-assembly's references).
-Shapes marked SITE BUILDER come from the Site Builder server and Editor code, read 2026-11-08
-(references/cli-gaps.md). Shapes marked PROPOSED are asked of the CLI there. A real read-back that lacks a shape fails
+Shapes marked SITE BUILDER come from the Site Builder server and Editor code, read 2026-11-08.
+Shapes marked PROPOSED are what the skill needs the CLI to return. A real read-back that lacks a shape fails
 verification instead of passing it.
 """
 

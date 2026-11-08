@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """The write gate: does the installed CLI's --help list every command and flag the plan needs?
 
-It reads `xsolla <command> --help` only. The CLI version number is never checked. The commands
-and flags are the ones specified in references/cli-gaps.md; until the CLI ships them, the gate
-fails and nothing is written.
+It reads `xsolla <command> --help` only. The CLI version number is never checked. The table
+below is the one source of the commands and flags the writes need; until the CLI ships them,
+the gate fails and nothing is written.
 """
 
 from __future__ import annotations
@@ -19,7 +19,8 @@ if SCRIPTS_DIR not in sys.path:
 
 import xla_common as common  # noqa: E402
 
-# capability -> (command, flags its --help must list). Keep in step with references/cli-gaps.md.
+# capability -> (command, flags its --help must list). When the CLI ships these under other
+# names, change this table and the scripts that call them together.
 # Connections, bindings, settings, hiding, the page look and the canonical URL go through
 # update-block's batch patches (entities block, page and valuesSystem); SEO texts through
 # update-many-localization. Both exist today. What the CLI still lacks: the add-page fields the
@@ -86,7 +87,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--plan", type=Path, help="check what this plan's writes need")
-    group.add_argument("--all", action="store_true", help="check every capability in references/cli-gaps.md")
+    group.add_argument("--all", action="store_true", help="check every capability in the table")
     args = parser.parse_args(argv)
     try:
         names = list(CAPABILITIES) if args.all else needed(common.load_json(args.plan, "plan"))
