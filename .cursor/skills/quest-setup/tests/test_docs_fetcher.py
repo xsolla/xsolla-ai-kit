@@ -43,6 +43,8 @@ def cache_files(cache: Path):
 
 
 class DocsFetcherTests(IsolatedCase):
+    INSTALL_DOCS = False
+
     def cache_dir(self) -> Path:
         return self.home / ".cache" / qp_docs.CACHE_DIR_NAME
 
@@ -51,7 +53,7 @@ class DocsFetcherTests(IsolatedCase):
         return qp_docs.fetch_docs(home=str(self.home), transport=transport, **kwargs)
 
     def test_ac_04_constants_and_default_host(self) -> None:
-        self.assertEqual(qp_docs.DEFAULT_BASE_URL, "https://xsolla--e401f7.preview.redocly.app")
+        self.assertEqual(qp_docs.DEFAULT_BASE_URL, "https://developers.xsolla.com")
         self.assertEqual(qp_docs.CACHE_DIR_NAME, "quest-setup-docs")
         self.assertIsInstance(qp_docs.TTL_SECONDS, int)
         self.assertGreater(qp_docs.TTL_SECONDS, 0)

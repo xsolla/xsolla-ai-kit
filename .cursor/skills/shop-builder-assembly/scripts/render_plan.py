@@ -19,10 +19,10 @@ SCRIPTS_DIR = str(Path(__file__).resolve().parent)
 if SCRIPTS_DIR not in sys.path:
     sys.path.insert(0, SCRIPTS_DIR)
 
+import quests_versions
 from block_ops import (
-    QUESTS_CANDIDATE_VERSIONS,
-    QUESTS_VERSION,
     block_fingerprints,
+    quests_add_version,
     plan_block_operations,
 )
 from validate_shop_brief import load_brief, validate
@@ -838,7 +838,7 @@ def build_block_operations_plan(brief: dict, current_structure: object | None) -
                             versions[block_id] = value
             continue
         if operation.get("op") == "add":
-            versions[f"op:{index}"] = operation.get("version", QUESTS_VERSION)
+            versions[f"op:{index}"] = quests_add_version(operation)
 
     warnings = [
         f"block_operations[{item['op_index']}] "
@@ -848,7 +848,7 @@ def build_block_operations_plan(brief: dict, current_structure: object | None) -
         if item["type"] == "block_card_text"
     ]
     for target, version in versions.items():
-        if version not in QUESTS_CANDIDATE_VERSIONS:
+        if not quests_versions.is_prerelease(version):
             continue
         target_label = (
             f"add operation {target.removeprefix('op:')}"

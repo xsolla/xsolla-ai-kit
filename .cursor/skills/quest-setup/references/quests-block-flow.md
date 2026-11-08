@@ -138,8 +138,8 @@ yourself:
   the Flow (step 1). If a wanted quest is missing, use the Missing quest offer there.
 - **Card content.** State only applicable defaults whenever stopping/asking about it:
   title = quest name; explanation = quest description; image = quest image when present
-  (the first reward's image is a fallback only from Quests block 0.2.14, not yet pinned, see
-  [block-versions](block-versions.md)); reward text/image = quest reward (read-only on the block).
+  (newer block versions fall back to the first reward's image; say "the reward image, if the
+  block shows one" rather than promising it); reward text/image = quest reward (read-only on the block).
   Never require an explanation or ask for defaulted text. At most one optional question
   about a different title/image. Reward changes use the quest edit flow.
 
@@ -150,55 +150,41 @@ and the layout defaults in the [settings table](quests-block-brief.md#block-sett
 at most 24 quests. For the end of the home page, set the `add` operation's `index` to
 the position of the page's `footer` block (so the Quests block lands above the footer),
 or to the page's current block count when there is no footer. Read both from the gate's
-backup. Never omit `index`, because an `add` without it puts the block first. Always set
-the `add` operation's `version` field to the latest version in
-[block-versions.md](block-versions.md) (`0.2.10`), themed or not.
+backup. Never omit `index`, because an `add` without it puts the block first. Leave the
+`add` operation's `version` out: the gate adds the newest published version
+([Versions](quests-block-brief.md#versions)).
 
 Do not ask for IDs, hosts or slugs you can read from the CLI. Existing block ids come
 from the block summary or the gate's backup, never from a guess.
 
 ## Quest public view
 
-Cards read their content from each quest's public view:
+Cards read their content from each quest's public view (`view` on the public quests operation):
+the card's title, description and image are the view's `name`, `description` and `image_url`.
+What the view contains, how a `public_view` builds it, which references it may use, its size and
+value rules, and when a quest is listed at all are in the Public quests guide. Read it before
+proposing a change.
 
-| Card part | Source |
-|---|---|
-| Title | `view.name` |
-| Description | `view.description` |
-| Image | `view.image_url` |
+- **Listed.** A quest shows only when the docs' listing rules hold: it is public (`is_public:
+  true`), active, and inside its dates. Check all three before saying a card will show; a quest
+  that is not active or is outside its dates needs the activation or date change, not a block
+  change.
+- **Default view.** When a quest has no `public_view`, the card gets the default view the docs
+  describe, including the rewards. Never add a `public_view` only to make a quest public.
+- **Custom view.** A `public_view` replaces the default view, and the card reads only from it.
+  Add one only when the publisher wants custom card text or an image, and keep the reward
+  references the docs list for each reward node, or the card loses its reward row and its See in
+  Backpack button ([Card rewards](rewards.md#card-rewards-on-the-quests-block)).
+- **Images.** When added, `image_url` must be an absolute `https` URL (an `http` URL is refused,
+  see [Rules for every operation](quests-block-brief.md#rules-for-every-operation)). Never invent
+  an image. If the publisher has none, leave it empty and the card shows its neutral placeholder.
 
-A quest appears to anonymous visitors only when it is public: `is_public: true`.
-`public_view` is optional. When it is empty, the card uses the quest's default view
-(quest name, description and rewards), so never add a `public_view` only to pass this
-check. Set `is_public` through the edit flow in [`quest-edit.md`](quest-edit.md#editing)
-(read, change, full `PUT`, before/after diff, one approval, read back).
-
-A `public_view` replaces the default view, and the card reads only from it. Add one only when the
-publisher wants custom card text or an image. For a Web3 quest, send the full view below every time:
-without the reward references, the card loses its reward row and its See in Backpack button
-([Card rewards](rewards.md#card-rewards-on-the-quests-block)). Never set a `public_view` on an
-`issue_catalog_item` quest: its items render as quantity only, so the card loses the reward name and
-image that the default view gives.
-
-```json
-{"name": {"$ref": "quest.name"}, "description": {"$ref": "quest.description"}, "image_url": "https://...", "rewards": {"$ref": "reward.<node id>.items"}, "reward_type": {"$ref": "reward.<node id>.type"}}
-```
-
-- Values are text (at most 500 characters), a number, `true` or `false`, a `{"$ref": ...}` reference,
-  or a group. Arrays and `null` are refused. At most 8 KB, 3 levels deep and 50 values.
-- References: `quest.name`, `quest.description`, `quest.start_date`, `quest.end_date` and
-  `reward.<node id>.<field>`. An `issue_web3_item` node exposes quantity, name, description, image_url
-  and `type`. The public-quests guide lists no `items` field for a Web3 node, so check the `rewards`
-  reference in the template on the read-back. An `issue_catalog_item` node exposes only `quantity`
-  through `items` in a public_view, so it takes no full view.
-- A reference that no longer resolves, such as a removed reward node, is left out of the card.
-When it is added, `image_url` must be an absolute `https` URL (an `http` URL is refused, see
-[Rules for every operation](quests-block-brief.md#rules-for-every-operation)). Never invent an
-image. If the publisher has none, leave it empty and the card shows its neutral placeholder.
+Set `is_public` and `public_view` through the edit flow in [`quest-edit.md`](quest-edit.md#editing)
+(read, change, full update, before/after diff, one approval, read back).
 
 A quest triggered by an event the Quests block sends (`login_xsolla_id`, `daily_visit`,
-`weekly_visit`) must set `client_sendable: true` on its trigger, or the block's event is refused
-with 403. See [node-subtypes](node-subtypes.md#dynamic_event-client_sendable).
+`weekly_visit`) must set `client_sendable: true` on its trigger, or the block's event is refused.
+See [Triggers](quest-authoring.md#triggers).
 
 If the read-back does not show `is_public: true` (and the `public_view` you set, if any), stop and report that.
 
@@ -226,8 +212,8 @@ or description to work around its read-only block behavior.
 2. **Make them public.** For each chosen quest that is not public (`is_public` is not
    `true`), set `is_public` per [Quest public view](#quest-public-view): one proposal,
    one approval. A missing `public_view` alone is not a reason to edit or stop. Stop if
-   a quest is not found or the read-back does not show `is_public: true`. An `active`
-   quest's `PUT` re-checks its dates ([dates on edit](quest-edit.md#editing)); put any
+   a quest is not found or the read-back does not show `is_public: true`. An active
+   quest's update re-checks its dates ([dates on edit](quest-edit.md#editing)); put any
    date move in this same proposal, never a plan the server will reject.
 3. **Build the brief.** For an appearance request, first follow
    [appearance](quests-block-appearance.md) and give the recommendation with its measured
@@ -253,8 +239,8 @@ or description to work around its read-only block behavior.
    cannot satisfy the public readback check.
 7. **Hand off.** Report what changed. Say the site
    is **not published**: the publisher previews and publishes it in Publisher Account.
-   Anonymous visitors see the cards. Do not promise signed-in progress on a production
-   site. Use the hand-off shape in [reply-format.md](reply-format.md#examples), with the
+   Visitors see cards for quests that are public, active and inside their dates. Do not
+   promise signed-in progress on a production site. Use the hand-off shape in [reply-format.md](reply-format.md#examples), with the
    returned `editor_url` as is. Report only the result and any skipped work or known gap.
 
 If the gate cannot express an operation (no support, unknown key, block not found),

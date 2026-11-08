@@ -5,6 +5,7 @@ import io
 import json
 import sys
 import unittest
+import urllib.parse
 from contextlib import redirect_stdout
 from pathlib import Path
 from unittest import mock
@@ -161,9 +162,16 @@ class LookupCompletenessTests(unittest.TestCase):
     def setUp(self) -> None:
         # No real credential resolution, URL construction or network calls.
         self.creds = mock.Mock(merchant_id="1", project_id="2")
+        operation = mock.Mock(method="GET")
+
+        def prepare(op, params, query, body, creds, hosts):
+            return "https://example.invalid/quests?" + urllib.parse.urlencode(query)
+
         for name, replacement in (
             ("resolve_credentials", mock.Mock(return_value=self.creds)),
-            ("build_url", mock.Mock(return_value="https://example.invalid/quests")),
+            ("configured_hosts", mock.Mock(return_value={"quests": "https://example.invalid"})),
+            ("load_operations", mock.Mock(return_value={qbs.LIST_QUESTS: operation})),
+            ("prepare", mock.Mock(side_effect=prepare)),
             ("send", mock.Mock()),
         ):
             patcher = mock.patch.object(qbs.qp_request, name, replacement)
@@ -234,7 +242,7 @@ class LookupCompletenessTests(unittest.TestCase):
                 )
                 self.creds.project_id = "other-project"
                 self.assertIsNone(qbs.fetch_quests("1", "2"))
-                self.build_url.assert_not_called()
+                self.prepare.assert_not_called()
                 self.send.assert_not_called()
         result = self.summarize_lookup(None)
         self.assertEqual(result["quest_names"], "unavailable")

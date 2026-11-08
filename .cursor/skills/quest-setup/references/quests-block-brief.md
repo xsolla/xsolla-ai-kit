@@ -4,9 +4,7 @@ Brief keys, settings and operations for the `block_operations` brief that the
 `shop-builder-assembly` gate validates. The agent never shows these keys to the publisher.
 Appearance recommendations and fitting rules are in
 [quests-block-appearance.md](quests-block-appearance.md). Appearance leaves are
-supported only on block versions that
-[block-versions.md](block-versions.md) lists as supporting them. Existing
-block appearance updates and resets require an exact saved-version match.
+supported only on block versions that support them ([Versions](#versions)).
 
 ## Block settings
 
@@ -57,16 +55,13 @@ Notes:
 
 ## Block contract (facts for every write)
 
-Source: the block contract at commit 0b1586eb59. Version pins live only in
-[block-versions.md](block-versions.md).
-
 - `themeId` is `site-builder`, `xsolla-pages` or `custom`. `themeAppearance` leaves are keyed by preset (valid for that preset); `custom` is sent only when `themeId` is custom.
   The preset-keyed leaves under `site-builder` and `xsolla-pages` are listed in the table above.
 - `questIds` absent means the block never had a selection and the editor fills it once, while `questIds` set to `[]` means the publisher cleared it and it is never refilled.
 - `overrides` images are https only; reward overrides are ignored.
-- Versions and event-field capabilities belong to [block-versions.md](block-versions.md).
+- Versions and their capabilities belong to [Versions](#versions).
   Never write `autoEvents` or `loginEventName`; match the trigger name exactly.
-  Backpack Overlay is blocked on upstream v2: decline it and make no write.
+  Opening the Backpack overlay from a card is not supported: decline it and make no write.
 - Custom-block creation 403: account lacks permission to create custom blocks;
   Xsolla support is next. Do not retry or create a file.
 
@@ -108,15 +103,14 @@ acknowledgement flag.
 | Hide or show a block | `hide`, `show` |
 | Remove or delete a block | none: `needs_human`, offer `hide` (see below) |
 
-Every new block, themed or not, is added with an explicit `version` equal to the latest
-in [block-versions.md](block-versions.md) (`0.2.10`). Never omit it: this skill does not
-rely on the gate's own default.
+Leave `version` out of an `add`: the gate adds the newest published stable release of the
+block and the rendered plan shows which one ([Versions](#versions)). Set `version` only when the
+publisher asks for a specific published version.
 
 Create a block with settings and a heading:
 
 ```json
 {"op": "add", "module": "_quest-platform_quests-block", "page": "/", "index": 2,
- "version": "0.2.10",
  "values": {"questIds": ["<quest-id-1>", "<quest-id-2>"], "maxQuests": 4,
             "layout.cardAlign": "center"},
  "translations": {"en-US": {"heading": "Quests"}}}
@@ -150,6 +144,42 @@ Move, duplicate, hide, show:
 {"op": "hide", "block_id": "<block-id>"}
 {"op": "show", "block_id": "<block-id>"}
 ```
+
+## Versions
+
+No block version is remembered in this skill. The gate reads them from the published block
+itself: a version exists when its files are published, the newest stable release is the target
+for every new block, and a version supports theme settings when its published defaults carry
+them. Candidate (prerelease) versions are accepted on saved blocks and flagged in the plan for
+review; they are never proposed for a new block.
+
+Before any block write, read the version the site reports for the block (the block summary's
+`appearance.version`) and let the gate check it:
+
+- A write that needs a capability the saved version lacks (for example a theme on a version
+  without theme settings) is unsupported.
+- An unknown or unreported version: ask the user or stop. Do not guess, and do not infer support
+  from version ordering or package metadata.
+- For an unsupported version, say that the block's version cannot take the change, make no
+  write, and offer only a path the gate supports (below).
+- When the gate reports that the site needs a newer Xsolla CLI, say so in one line; never pin or
+  name a CLI version yourself.
+
+### Theme request on an older block
+
+The gate can choose a version only on `add`. No operation changes an existing block's version;
+`update` writes values/translations, and `duplicate` copies without retargeting.
+
+So for a theme or appearance request on a block whose version has no theme settings, the reply:
+
+- says in plain words that this block's version has no theme settings;
+- says this toolkit cannot change the version of an existing block;
+- offers only these, one at a time with one `Next:`: (1) a new Quests block at the newest
+  published version, with the same quests, and the old block hidden, never deleted, as its own
+  plan with its own yes; or (2) the version change is done in the Site Builder editor, and the
+  theme is applied afterwards once the block reports a version with theme settings.
+
+Never offer to upgrade, migrate or change the version of the existing block.
 
 ## Gate commands
 

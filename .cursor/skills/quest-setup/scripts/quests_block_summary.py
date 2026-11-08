@@ -40,6 +40,7 @@ import qp_request  # noqa: E402
 BLOCK_ID = "_quest-platform_quests-block"
 TAG = re.compile(r"<[^>]+>")
 QUEST_PAGES = 5
+LIST_QUESTS = "list-quests-in-project"  # documented operationId
 QUEST_PAGE_SIZE = 50
 THEME_IDS = {"site-builder", "xsolla-pages", "custom"}
 PRESET_FIELDS = {
@@ -88,17 +89,23 @@ def run_cli(args: List[str]) -> Dict[str, Any]:
 
 
 def fetch_quests(merchant: str, project: str) -> Optional[QuestLookup]:
-    """Bounded quest lookup, or None when access is missing, mismatched or fails."""
+    """Bounded quest lookup, or None when access or the docs are missing, mismatched or fail."""
+    environ, folder = qp_request.os.environ, Path.cwd()
     try:
-        creds = qp_request.resolve_credentials(qp_request.os.environ, Path.cwd())
+        creds = qp_request.resolve_credentials(environ, folder)
+        hosts = qp_request.configured_hosts(environ, folder)
+        op = qp_request.load_operations(environ, folder).get(LIST_QUESTS)
     except qp_request.Refusal:
         return None
-    if (creds.merchant_id, creds.project_id) != (str(merchant), str(project)):
+    if op is None or (creds.merchant_id, creds.project_id) != (str(merchant), str(project)):
         return None
     quests: Dict[str, Dict[str, Any]] = {}
-    path = f"/api/v2/merchants/{merchant}/projects/{project}/quests"
     for page in range(1, QUEST_PAGES + 1):
-        url = qp_request.build_url(path, False, creds) + f"?page={page}&limit={QUEST_PAGE_SIZE}"
+        try:
+            url = qp_request.prepare(op, {}, [("page", str(page)), ("limit", str(QUEST_PAGE_SIZE))],
+                                     None, creds, hosts)
+        except qp_request.Refusal:
+            return None
         result = qp_request.send("GET", url, creds, None)
         body = result.get("body")
         if not result.get("ok") or not isinstance(body, dict):

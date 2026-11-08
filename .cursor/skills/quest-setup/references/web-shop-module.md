@@ -22,7 +22,7 @@ contract. Give a brief progress update only when the work takes long enough to
 need one, then make the edits and run the shop's available checks.
 
 Out of scope: user progress / completion UI, fabricating sample quests,
-changing AdTech APIs. Shop Builder sites are handled by
+changing Xsolla APIs. Shop Builder sites are handled by
 [`quests-block-flow.md`](quests-block-flow.md), not here.
 
 ## Identity (source of truth)
@@ -51,11 +51,11 @@ merchant against the shop's setting; never infer or copy the Store catalog proje
 Keep Store catalog/checkout settings intact. If QP scope is unresolved, ask which
 connected QP project to use, never for an API URL or a sample ID.
 
-Production public base is `https://quests-platform.xsolla.com`. Form the public URL
-from it and the resolved QP scope. A validated exact URL/base override takes precedence
-only if the shop already supports overrides or the developer supplied one. Never use
-an internal/private host for a public shop. This browser override never changes the
-agent's write host in [the publisher contract](qp-api-contract.md).
+The public base is the server the live contract lists (`servers` in the docs' OpenAPI document,
+see [live-docs.md](live-docs.md)). Form the public URL from it and the resolved QP scope. A
+validated exact URL/base override takes precedence only if the shop already supports overrides or
+the developer supplied one. Never use an internal/private host for a public shop. This browser
+override never changes where the agent's own calls go.
 
 Expose only IDs/public URL in browser build config, using the shop's naming convention:
 
@@ -70,40 +70,33 @@ For Vite use `VITE_XSOLLA_QP_MERCHANT_ID` / `VITE_XSOLLA_QP_PROJECT_ID`; for Nex
 Store settings such as `VITE_XSOLLA_PROJECT_ID` for catalog/checkout. These names are
 code/config only, never reply content. No API keys or Authorization in browser code.
 
-## Wire contract (consume verbatim)
+## Wire contract
 
-`GET {base}/api/v2/public/merchants/{merchant_id}/projects/{project_id}/quests?page=1&limit=100`
+Read the public quests list operation in the live contract (Public quests group) and the Public
+quests guide before writing the fetch: its path, page size limit, the response envelope, the
+per-quest `view` object, caching and its error answers all come from there, never from memory.
+No auth header and no credentials on this fetch. Build `{base}` from the docs' server or an
+existing validated override.
 
-No auth header. The maximum page size is 100. Build `{base}` from the production
-default or an existing validated override.
+What the rendering must respect, whatever the docs' field list is today:
 
-**200 envelope:** `page`, `limit`, `total`, `data[]` with:
-
-| Field | Rule |
-|---|---|
-| `data[].id` | Required string (UUID); list key |
-| `data[].name` | Required string |
-| `data[].description` | Optional; omit when absent |
-| `data[].rewards` | Required array (may be empty) |
-| `rewards[].name`, `rewards[].description`, `rewards[].image_url` | Present; may be **null**; skip nulls when rendering |
-| `rewards[].quantity` | Required int |
-| `rewards[].type` | Required string |
-
-Empty success is a 200 response with `data: []`. Do not describe a failed
-request as an empty quest list. A JSON 404 means the merchant/project pair is
-unknown, not onboarded, or mismatched; re-check the resolved pair
-without guessing. Plain-text `Cannot GET <path>` means the route
-is unavailable at that host or the path is wrong. A 422, network, or CORS
-failure is also unavailable, not empty. Show the neutral unavailable message
-for fetch or missing-configuration errors, and keep the catalog working. Never
-fabricate quests or rewards.
+- Each quest is an `id` plus a `view` object; render from `view`. A quest without a `public_view`
+  has the default view the docs describe (name, optional description and rewards); a quest with
+  one carries whatever keys the publisher defined, so render only the keys you recognize and
+  skip the rest.
+- Reward fields can be missing or null: skip them when rendering, never show "null".
+- An empty list is a successful answer with no quests. Do not describe a failed request as an
+  empty quest list. A not-found answer means the merchant/project pair is unknown, not onboarded,
+  or mismatched; re-check the resolved pair without guessing. A rate-limit, validation, network
+  or CORS failure is also unavailable, not empty. Show the neutral unavailable message for fetch
+  or missing-configuration errors, and keep the catalog working. Never fabricate quests or rewards.
 
 ## Markup shape
 
 Use the marked root from [Identity](#identity-source-of-truth), with a disclaimer,
 loading text `Loading quests...` (`role="status"`, `aria-live="polite"`), and visible
-empty/error text or articles keyed by `data[].id` (for example `data-quest-id`). Render
-name, optional description and each reward's non-null name/quantity and safe image.
+empty/error text or articles keyed by each quest's `id` (for example `data-quest-id`). Render
+the view's name, optional description and each reward's non-null name/quantity and safe image.
 Use the fixed copy below, without repeating it in a second managed region.
 
 **Fixed copy (exact):**
@@ -150,8 +143,8 @@ or reward descriptions are long.
   auto-escaping templates only.
 - **Forbid** `innerHTML`, `dangerouslySetInnerHTML`, and HTML string
   concatenation into markup for API strings.
-- Images: only absolute `http:` / `https:` URLs. Skip relative, `javascript:`,
-  `data:`, and other schemes. Set `loading="lazy"` and
+- Images: only absolute `https:` URLs (the docs refuse other links in a view). Skip
+  relative, `http:`, `javascript:`, `data:`, and other schemes. Set `loading="lazy"` and
   `referrerpolicy="no-referrer"` (or `strict-origin-when-cross-origin`).
 
 ## CORS and mixed content

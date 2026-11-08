@@ -5,11 +5,27 @@ import copy
 import inspect
 import unittest
 
-from qs_base import IsolatedCase, RecordingTransport, count_non_get
+from qs_base import IsolatedCase, count_non_get
 import qp_preflight
 
 MERCHANT, PROJECT = "7", "42"
-PROJECT_PATH = "/api/v2/merchants/7/projects/42"
+WRITES = {qp_preflight.ONBOARD_PROJECT}
+
+
+class OperationTransport:
+    """Mock transport(operation_id, body=None) -> (status, json). Records every call."""
+
+    def __init__(self, handler):
+        self.calls = []
+        self.handler = handler
+
+    def __call__(self, operation_id, body=None):
+        self.calls.append((operation_id, body))
+        return self.handler(operation_id, body)
+
+    @property
+    def writes(self) -> int:
+        return sum(1 for op, _ in self.calls if op in WRITES)
 
 
 class PreflightTests(IsolatedCase):
@@ -33,7 +49,7 @@ class PreflightTests(IsolatedCase):
         for case, responses, answer, state, writes, readback in rows:
             with self.subTest(case=case):
                 ordered_responses = iter(copy.deepcopy(responses))
-                transport = RecordingTransport(lambda method, path, body: next(ordered_responses))
+                transport = OperationTransport(lambda op, body: next(ordered_responses))
                 questions, calls_at_ask = [], []
 
                 def confirm(question):
@@ -46,19 +62,19 @@ class PreflightTests(IsolatedCase):
                 self.assertEqual(result["state"], state)
                 self.assertEqual(result["onboard_calls"], writes)
                 self.assertEqual(result["readback_status"], readback)
-                expected_calls = [("GET", PROJECT_PATH, None)]
+                get = (qp_preflight.GET_PROJECT, None)
+                expected_calls = [get]
                 if writes:
                     expected_calls += [
-                        ("POST", PROJECT_PATH + "/onboard", {"merchant_name": "Acme", "project_name": "Shop"}),
-                        ("GET", PROJECT_PATH, None),
+                        (qp_preflight.ONBOARD_PROJECT, {"merchant_name": "Acme", "project_name": "Shop"}),
+                        get,
                     ]
                 self.assertEqual(transport.calls, expected_calls)
-                self.assertEqual(transport.non_get, writes)
+                self.assertEqual(transport.writes, writes)
                 if responses[0][0] == 404:
                     self.assertEqual(len(questions), 1)
                     self.assertTrue(any(token in questions[0] for token in ("Shop", PROJECT)))
-                    self.assertEqual(calls_at_ask, [[("GET", PROJECT_PATH, None)]])
-                    self.assertEqual(count_non_get(calls_at_ask[0]), 0)
+                    self.assertEqual(calls_at_ask, [[(qp_preflight.GET_PROJECT, None)]])
                 else:
                     self.assertEqual(questions, [])
                     self.assertEqual(calls_at_ask, [])

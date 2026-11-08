@@ -9,6 +9,32 @@ from collections.abc import Callable
 from pathlib import Path
 from unittest import mock
 
+SCRIPTS = Path(__file__).resolve().parents[1] / "scripts"
+if str(SCRIPTS) not in sys.path:
+    sys.path.insert(0, str(SCRIPTS))
+
+import quests_versions  # noqa: E402
+
+# What the CDN serves in tests: no network. 0.2.10 is the newest stable release here; theme
+# settings exist where the defaults carry themeId.
+FAKE_QUESTS_RELEASES = {
+    "0.1.5": {"layout": {}, "maxQuests": 3, "translations": {}},
+    "0.1.12": {"layout": {}, "maxQuests": 3, "translations": {}},
+    "0.2.7": {"layout": {}, "maxQuests": 3, "themeId": "", "translations": {}},
+    "0.2.7-qp-3256.0": {"layout": {}, "maxQuests": 3, "themeId": "", "translations": {}},
+    "0.2.10": {"layout": {}, "maxQuests": 3, "themeId": "", "translations": {}},
+    "0.2.10-qp-3256.0": {"layout": {}, "maxQuests": 3, "themeId": "", "translations": {}},
+}
+FAKE_QUESTS_LATEST = "0.2.10"
+
+
+def fake_quests_cdn(version: str) -> dict | None:
+    data = FAKE_QUESTS_RELEASES.get(version)
+    return {"defaultData": dict(data), "resources": {"localizedValues": {}}} if data is not None else None
+
+
+quests_versions.use_fetcher(fake_quests_cdn)
+
 
 def capture_main(main: Callable[[], int], argv: list[str]) -> tuple[int, str, str]:
     stdout, stderr = io.StringIO(), io.StringIO()

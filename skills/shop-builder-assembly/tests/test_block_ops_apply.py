@@ -18,7 +18,12 @@ from unittest import mock
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from block_test_support import block_operations_brief, capture_main, write_json  # noqa: E402
+from block_test_support import (  # noqa: E402
+    FAKE_QUESTS_LATEST,
+    block_operations_brief,
+    capture_main,
+    write_json,
+)
 
 import render_plan  # noqa: E402
 import preflight  # noqa: E402
@@ -27,10 +32,11 @@ import backup_shop  # noqa: E402
 import cli_environment  # noqa: E402
 from block_ops import (  # noqa: E402
     OPERATIONS,
-    QUESTS_CANDIDATE_VERSION,
     QUESTS_MODULE,
-    QUESTS_VERSION,
 )
+
+QUESTS_CANDIDATE_VERSION = "0.2.7-qp-3256.0"
+QUESTS_VERSION = FAKE_QUESTS_LATEST
 
 
 def load_apply_plan():

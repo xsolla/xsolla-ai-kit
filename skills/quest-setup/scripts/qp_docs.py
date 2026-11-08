@@ -24,8 +24,11 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from os import environ as _environ
+from pathlib import Path
 
-DEFAULT_BASE_URL = "https://xsolla--e401f7.preview.redocly.app"
+import qp_config
+
+DEFAULT_BASE_URL = qp_config.ENVIRONMENTS[qp_config.DEFAULT_ENV]["docs"]
 TTL_SECONDS = 6 * 60 * 60
 CACHE_DIR_NAME = "quest-setup-docs"
 META_NAME = "_fetched_at.json"
@@ -35,32 +38,17 @@ MAX_PAGE_BYTES = 2 * 1024 * 1024
 TIMEOUT_SECONDS = 20
 FETCH_BUDGET_SECONDS = 120  # overall budget for all page fetches; the rest are listed as skipped
 PATH_PREFIX = "/api/quests"
-ALLOWED_CONTENT_TYPES = ("text/markdown", "text/plain", "application/yaml", "text/yaml")
-ENV_BASE_URL = "QUEST_SETUP_DOCS_BASE_URL"  # overrides the default docs host (https only)
-OPENAPI_PATH = "/_bundle/api/quests/index.yaml"  # the machine-readable OpenAPI contract
-OPENAPI_NAME = "openapi.yaml"
+ALLOWED_CONTENT_TYPES = ("text/markdown", "text/plain", "application/json")
+ENV_BASE_URL = "QUEST_SETUP_DOCS_BASE_URL"  # overrides the configured docs host (https only)
+OPENAPI_PATH = "/_bundle/api/quests/index.json"  # the machine-readable OpenAPI contract
+OPENAPI_NAME = "openapi.json"
 RETRY_STATUS = 202  # the host sometimes answers 202 for a page that is normally 200
 MAX_RETRIES = 3
 RETRY_DELAYS = (1, 2, 2)
 
-SEED_PATHS = [
-    "/api/quests",
-    "/api/quests/onboarding/onboard-project",
-    "/api/quests/onboarding/get-project",
-    "/api/quests/onboarding/list-merchant-projects",
-    "/api/quests/quests/list-quests-in-project",
-    "/api/quests/quests/create-quest-in-project",
-    "/api/quests/quests/get-quest-by-id-in-project",
-    "/api/quests/quests/update-quest-in-project",
-    "/api/quests/quests/delete-quest-in-project",
-    "/api/quests/quests/get-quest-node-types-in-project",
-    "/api/quests/events/publisher-events",
-    "/api/quests/player-quests/list-me-quests",
-    "/api/quests/player-quests/get-me-quest",
-    "/api/quests/public-quests/list-public-quests",
-    "/api/quests/public-quests/get-public-quest",
-    "/api/quests/node-dynamic-event",
-]
+# The overview page links every guide and node page; the OpenAPI document holds every
+# operation, so no endpoint page is listed here.
+SEED_PATHS = ["/api/quests"]
 LINK_RE = re.compile(r"\((/api/quests[^)\s#?]*)")
 ABS_LINK_RE = re.compile(r"\((https://[^)\s#?]+)")
 SAFE_PATH_RE = re.compile(r"/api/quests(?:/[A-Za-z0-9._-]+)*")
@@ -300,15 +288,25 @@ def fetch_docs(base_url=DEFAULT_BASE_URL, home=None, ttl=TTL_SECONDS, transport=
     # The OpenAPI bundle is the machine-readable contract; its absence is a noted skipped page.
     queue.insert(0, OPENAPI_PATH)
     skipped = []
-    for index, path in enumerate(queue[:MAX_PAGES]):
+    index = 0
+    while index < min(len(queue), MAX_PAGES):
+        path = queue[index]
+        index += 1
         if clock() - started > budget:
             # Overall time budget spent: the remaining pages are listed as skipped (partial).
-            skipped.extend(_page_url(base, p) for p in queue[index:MAX_PAGES])
+            skipped.extend(_page_url(base, p) for p in queue[index - 1:MAX_PAGES])
             break
         url = _page_url(base, path)
         status, body = get(url)
         if status == 200:
             fetched[path] = body
+            if path != OPENAPI_PATH:
+                # Guide pages link the node and example pages: follow them, within MAX_PAGES.
+                for raw in LINK_RE.findall(body) + ABS_LINK_RE.findall(body):
+                    link = _link_path(raw, parsed.netloc)
+                    if link and link not in queue and link != SEED_PATHS[0] \
+                            and len(queue) < MAX_PAGES:
+                        queue.append(link)
         else:
             skipped.append(url)
     skipped.extend(_page_url(base, p) for p in queue[MAX_PAGES:])
@@ -346,11 +344,35 @@ def fetch_docs(base_url=DEFAULT_BASE_URL, home=None, ttl=TTL_SECONDS, transport=
     return _result(state, cache, host, _page_list(cache, pages), skipped=skipped, stale=stale)
 
 
+def cached_openapi(base_url=DEFAULT_BASE_URL, home=None):
+    """Path of the cached OpenAPI document for this docs host, or None when there is none."""
+    try:
+        parsed = urllib.parse.urlparse(base_url)
+    except ValueError:
+        return None
+    if parsed.scheme != "https" or not parsed.hostname or "@" in parsed.netloc:
+        return None
+    home = home or os.path.expanduser("~")
+    cache = os.path.join(home, ".cache", CACHE_DIR_NAME, re.sub(r"[^A-Za-z0-9._-]+", "_", parsed.netloc.lower()))
+    if _read_cache(cache, "%s://%s" % (parsed.scheme, parsed.netloc)) is None:
+        return None
+    path = os.path.join(cache, OPENAPI_NAME)
+    try:
+        info = os.lstat(path)
+    except OSError:
+        return None
+    return path if stat.S_ISREG(info.st_mode) else None
+
+
 def main(argv=None, transport=None, home=None):
     args = list(sys.argv[1:] if argv is None else argv)
-    # The default host is a preview host and may change: QUEST_SETUP_DOCS_BASE_URL replaces it
-    # (https only; fetch_docs refuses userinfo). An explicit --base-url wins over the variable.
-    base_url = _environ.get(ENV_BASE_URL) or DEFAULT_BASE_URL
+    # The docs host of the configured environment; QUEST_SETUP_DOCS_BASE_URL replaces it (https
+    # only; fetch_docs refuses userinfo). An explicit --base-url wins over the variable.
+    try:
+        base_url = _environ.get(ENV_BASE_URL) or qp_config.hosts(_environ, Path.cwd())["docs"]
+    except qp_config.UnknownEnvironment:
+        print("ERROR: unknown %s" % qp_config.ENV_NAME)
+        return 2
     if "--base-url" in args:
         idx = args.index("--base-url")
         if idx + 1 >= len(args):

@@ -21,7 +21,7 @@ SCRIPTS_DIR = str(Path(__file__).resolve().parent)
 if SCRIPTS_DIR not in sys.path:
     sys.path.insert(0, SCRIPTS_DIR)
 
-from block_ops import QUESTS_DEV_NAME, QUESTS_MODULE, QUESTS_VERSION, card_text_ref
+from block_ops import QUESTS_DEV_NAME, QUESTS_MODULE, card_text_ref
 import cli_environment
 from preflight import LAYOUT_SKIPPED, cli_has_command, run_json, site_block_module
 from render_plan import (
@@ -238,9 +238,7 @@ def verify_block_operations(
         block = blocks[block_id][2]
         values = block.get("values") or {}
         if kind == "block_add":
-            if values.get("blockId") != QUESTS_MODULE or values.get("version") != item.get(
-                "version", QUESTS_VERSION
-            ):
+            if values.get("blockId") != QUESTS_MODULE or values.get("version") != item.get("version"):
                 errors.append(f"new block {block_id} is not a Quests block at the planned version")
             if values.get("useAsNativeBlock") is not False:
                 errors.append(f"new block {block_id} has useAsNativeBlock set")

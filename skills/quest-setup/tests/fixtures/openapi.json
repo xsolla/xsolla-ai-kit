@@ -1,0 +1,647 @@
+{
+ "components": {
+  "schemas": {
+   "OnboardProjectBody": {
+    "additionalProperties": false,
+    "properties": {
+     "$schema": {
+      "type": "string"
+     },
+     "merchant_name": {
+      "type": "string"
+     },
+     "project_name": {
+      "type": "string"
+     }
+    },
+    "required": [
+     "merchant_name",
+     "project_name"
+    ],
+    "type": "object"
+   },
+   "PublisherEventBody": {
+    "additionalProperties": false,
+    "properties": {
+     "$schema": {
+      "type": "string"
+     },
+     "client_timestamp": {
+      "type": "string"
+     },
+     "idempotency_key": {
+      "type": "string"
+     },
+     "name": {
+      "type": "string"
+     },
+     "properties": {
+      "type": "object"
+     },
+     "quest_id": {
+      "type": "string"
+     },
+     "scope": {
+      "type": "string"
+     },
+     "user_ids": {
+      "type": [
+       "array",
+       "null"
+      ]
+     }
+    },
+    "required": [
+     "idempotency_key",
+     "name",
+     "user_ids",
+     "client_timestamp"
+    ],
+    "type": "object"
+   },
+   "Quest": {
+    "additionalProperties": false,
+    "properties": {
+     "$schema": {
+      "type": "string"
+     },
+     "activation_limits": {
+      "type": "array"
+     },
+     "connections": {
+      "type": "object"
+     },
+     "created_at": {
+      "type": "string"
+     },
+     "created_by": {
+      "type": "string"
+     },
+     "description": {
+      "type": "string"
+     },
+     "end_date": {
+      "type": "string"
+     },
+     "id": {
+      "type": "string"
+     },
+     "is_public": {
+      "type": "boolean"
+     },
+     "metadata": {
+      "type": "object"
+     },
+     "name": {
+      "type": "string"
+     },
+     "nodes": {
+      "type": "array"
+     },
+     "objectives": {
+      "type": "array"
+     },
+     "project_id": {
+      "type": "string"
+     },
+     "public_view": {
+      "type": "object"
+     },
+     "publisher_id": {
+      "type": "string"
+     },
+     "sample_data": {
+      "type": "object"
+     },
+     "start_date": {
+      "type": "string"
+     },
+     "status": {
+      "type": "string"
+     },
+     "type": {
+      "type": "string"
+     },
+     "updated_at": {
+      "type": "string"
+     },
+     "version_id": {
+      "type": "string"
+     }
+    },
+    "required": [
+     "name",
+     "type",
+     "status",
+     "created_by"
+    ],
+    "type": "object"
+   }
+  }
+ },
+ "info": {
+  "title": "Quests (test fixture: trimmed copy of the public contract)",
+  "version": "2.0"
+ },
+ "openapi": "3.1.0",
+ "paths": {
+  "/api/v2/me/merchants/{merchant_id}/projects/{project_id}/quests": {
+   "get": {
+    "operationId": "list-me-quests",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "merchant_id",
+      "required": true
+     },
+     {
+      "in": "path",
+      "name": "project_id",
+      "required": true
+     },
+     {
+      "in": "query",
+      "name": "page"
+     },
+     {
+      "in": "query",
+      "name": "limit"
+     }
+    ],
+    "security": [
+     {
+      "BearerAuth": []
+     }
+    ],
+    "summary": "List quests with the caller's progress"
+   }
+  },
+  "/api/v2/me/merchants/{merchant_id}/projects/{project_id}/quests/{quest_id}": {
+   "get": {
+    "operationId": "get-me-quest",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "merchant_id",
+      "required": true
+     },
+     {
+      "in": "path",
+      "name": "project_id",
+      "required": true
+     },
+     {
+      "in": "path",
+      "name": "quest_id",
+      "required": true
+     }
+    ],
+    "security": [
+     {
+      "BearerAuth": []
+     }
+    ],
+    "summary": "Get a quest with the caller's progress"
+   }
+  },
+  "/api/v2/merchants/{merchant_id}/projects": {
+   "get": {
+    "operationId": "list-merchant-projects",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "merchant_id",
+      "required": true
+     }
+    ],
+    "security": [
+     {
+      "BearerAuth": []
+     }
+    ],
+    "summary": "List a merchant's projects"
+   }
+  },
+  "/api/v2/merchants/{merchant_id}/projects/{project_id}": {
+   "get": {
+    "operationId": "get-project",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "merchant_id",
+      "required": true
+     },
+     {
+      "in": "path",
+      "name": "project_id",
+      "required": true
+     }
+    ],
+    "security": [
+     {
+      "BasicAuth": []
+     },
+     {
+      "BearerAuth": []
+     }
+    ],
+    "summary": "Get project"
+   }
+  },
+  "/api/v2/merchants/{merchant_id}/projects/{project_id}/events": {
+   "post": {
+    "operationId": "publisher-events",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "merchant_id",
+      "required": true
+     },
+     {
+      "in": "path",
+      "name": "project_id",
+      "required": true
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "examples": {
+        "default": {
+         "summary": "Event for the project in the path",
+         "value": {
+          "client_timestamp": "2026-01-15T10:00:00Z",
+          "idempotency_key": "8a1d4f6b-2c3e-4b7a-9d10-5e6f7a8b9c0d",
+          "name": "quest.completed",
+          "properties": {
+           "level": "12"
+          },
+          "user_ids": [
+           {
+            "identifier_type": "gamer_id",
+            "value": "user-123"
+           }
+          ]
+         }
+        }
+       },
+       "schema": {
+        "$ref": "#/components/schemas/PublisherEventBody"
+       }
+      }
+     },
+     "required": true
+    },
+    "security": [
+     {
+      "BasicAuth": []
+     },
+     {
+      "BearerAuth": []
+     }
+    ],
+    "summary": "Send an event"
+   }
+  },
+  "/api/v2/merchants/{merchant_id}/projects/{project_id}/onboard": {
+   "post": {
+    "operationId": "onboard-project",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "merchant_id",
+      "required": true
+     },
+     {
+      "in": "path",
+      "name": "project_id",
+      "required": true
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "examples": {
+        "default": {
+         "summary": "Names for the records this call creates",
+         "value": {
+          "merchant_name": "Acme Games",
+          "project_name": "Acme Quest Hub"
+         }
+        }
+       },
+       "schema": {
+        "$ref": "#/components/schemas/OnboardProjectBody"
+       }
+      }
+     },
+     "required": true
+    },
+    "security": [
+     {
+      "BasicAuth": []
+     },
+     {
+      "BearerAuth": []
+     }
+    ],
+    "summary": "Onboard project"
+   }
+  },
+  "/api/v2/merchants/{merchant_id}/projects/{project_id}/quests": {
+   "get": {
+    "operationId": "list-quests-in-project",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "merchant_id",
+      "required": true
+     },
+     {
+      "in": "path",
+      "name": "project_id",
+      "required": true
+     },
+     {
+      "in": "query",
+      "name": "publisherID"
+     },
+     {
+      "in": "query",
+      "name": "page"
+     },
+     {
+      "in": "query",
+      "name": "limit"
+     }
+    ],
+    "security": [
+     {
+      "BasicAuth": []
+     },
+     {
+      "BearerAuth": []
+     }
+    ],
+    "summary": "List quests (project scope)"
+   },
+   "post": {
+    "operationId": "create-quest-in-project",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "merchant_id",
+      "required": true
+     },
+     {
+      "in": "path",
+      "name": "project_id",
+      "required": true
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "examples": {
+        "default": {
+         "summary": "A daily login quest, saved as inactive",
+         "value": {
+          "activation_limits": [
+           {
+            "count": 1,
+            "time_window": {
+             "duration_unit": "day"
+            },
+            "type": "per_user"
+           }
+          ],
+          "created_by": "backend-service",
+          "description": "Reward players for logging in",
+          "name": "Daily login",
+          "status": "inactive",
+          "type": "liveops"
+         }
+        }
+       },
+       "schema": {
+        "$ref": "#/components/schemas/Quest"
+       }
+      }
+     },
+     "required": true
+    },
+    "security": [
+     {
+      "BasicAuth": []
+     },
+     {
+      "BearerAuth": []
+     }
+    ],
+    "summary": "Create a new quest (project scope)"
+   }
+  },
+  "/api/v2/merchants/{merchant_id}/projects/{project_id}/quests/node-types": {
+   "get": {
+    "operationId": "get-quest-node-types-in-project",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "merchant_id",
+      "required": true
+     },
+     {
+      "in": "path",
+      "name": "project_id",
+      "required": true
+     }
+    ],
+    "security": [
+     {
+      "BasicAuth": []
+     },
+     {
+      "BearerAuth": []
+     }
+    ],
+    "summary": "List permitted quest node types (project scope)"
+   }
+  },
+  "/api/v2/merchants/{merchant_id}/projects/{project_id}/quests/{id}": {
+   "delete": {
+    "operationId": "delete-quest-in-project",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "merchant_id",
+      "required": true
+     },
+     {
+      "in": "path",
+      "name": "project_id",
+      "required": true
+     },
+     {
+      "in": "path",
+      "name": "id",
+      "required": true
+     }
+    ],
+    "security": [
+     {
+      "BasicAuth": []
+     },
+     {
+      "BearerAuth": []
+     }
+    ],
+    "summary": "Delete a quest (project scope)"
+   },
+   "get": {
+    "operationId": "get-quest-by-id-in-project",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "merchant_id",
+      "required": true
+     },
+     {
+      "in": "path",
+      "name": "project_id",
+      "required": true
+     },
+     {
+      "in": "path",
+      "name": "id",
+      "required": true
+     }
+    ],
+    "security": [
+     {
+      "BasicAuth": []
+     },
+     {
+      "BearerAuth": []
+     }
+    ],
+    "summary": "Get quest by ID (project scope)"
+   },
+   "put": {
+    "operationId": "update-quest-in-project",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "merchant_id",
+      "required": true
+     },
+     {
+      "in": "path",
+      "name": "project_id",
+      "required": true
+     },
+     {
+      "in": "path",
+      "name": "id",
+      "required": true
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "examples": {
+        "default": {
+         "summary": "The complete quest with a new description",
+         "value": {
+          "activation_limits": [
+           {
+            "count": 1,
+            "time_window": {
+             "duration_unit": "day"
+            },
+            "type": "per_user"
+           }
+          ],
+          "created_by": "backend-service",
+          "description": "Reward players for logging in every day",
+          "name": "Daily login",
+          "status": "inactive",
+          "type": "liveops"
+         }
+        }
+       },
+       "schema": {
+        "$ref": "#/components/schemas/Quest"
+       }
+      }
+     },
+     "required": true
+    },
+    "security": [
+     {
+      "BasicAuth": []
+     },
+     {
+      "BearerAuth": []
+     }
+    ],
+    "summary": "Update a quest (project scope)"
+   }
+  },
+  "/api/v2/public/merchants/{merchant_id}/projects/{project_id}/quests": {
+   "get": {
+    "operationId": "list-public-quests",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "merchant_id",
+      "required": true
+     },
+     {
+      "in": "path",
+      "name": "project_id",
+      "required": true
+     },
+     {
+      "in": "query",
+      "name": "page"
+     },
+     {
+      "in": "query",
+      "name": "limit"
+     }
+    ],
+    "security": [],
+    "summary": "List public quests"
+   }
+  },
+  "/api/v2/public/merchants/{merchant_id}/projects/{project_id}/quests/{quest_id}": {
+   "get": {
+    "operationId": "get-public-quest",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "merchant_id",
+      "required": true
+     },
+     {
+      "in": "path",
+      "name": "project_id",
+      "required": true
+     },
+     {
+      "in": "path",
+      "name": "quest_id",
+      "required": true
+     }
+    ],
+    "security": [],
+    "summary": "Get a public quest"
+   }
+  }
+ },
+ "servers": [
+  {
+   "url": "https://quests-platform.xsolla.com"
+  }
+ ]
+}

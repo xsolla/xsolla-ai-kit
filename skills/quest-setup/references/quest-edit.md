@@ -1,87 +1,74 @@
 # Quest edit, pause and delete
 
 Loaded only for an edit, pause or delete request. Every write here needs its own yes to the
-exact body or the exact quest. Route rules: [qp-api-contract.md](qp-api-contract.md).
+exact body or the exact quest. Operations, bodies and answers come from the live contract
+([live-docs.md](live-docs.md)).
 
 ## Editing
 
-There is **no PATCH**. Update is a full-document `PUT`: read the quest, change
-what you need, and send the whole object back. Tell the developer this before
-editing, because a partial body silently drops everything it omits.
+Read what the docs say about updating a quest before editing (the Quest guide, editing a live
+quest). This skill always sends the whole document: take the body of a fresh read, change only the
+fields the publisher asked for, and send the rest back as read. Tell the publisher that the change
+replaces the stored quest. Drop fields the docs mark read-only (such as a `$schema` link) and keep
+fields the server assigns as read; the path id wins. A new node gets a fresh random UUID (v4) that
+you generate; existing node ids stay unchanged. Show the before/after diff of the changed fields
+before sending.
 
-Recipe: take the body of a fresh `GET`, change only the fields the developer
-asked for, and send the rest verbatim, `null` values included. Keep the
-server-assigned fields (`id`, `created_at`, `updated_at`, `version_id`,
-`has_personalization`) as read: the server ignores them on `PUT` (the path
-`id` wins). `has_personalization` turns `true` in the next read after a
-`webshop_personalization` (no-op) node is added; that is expected, not a diff
-to report as a change. A `$schema` link may be present; drop it before the
-`PUT`. For a new node, you generate its `id` as a fresh random UUID (v4); the
-server does not assign node ids, and existing node ids stay unchanged. Show the
-before/after diff of the changed fields before sending.
-
-Keep `public_view` the same way: resend the fresh `GET`'s `public_view` unchanged unless the edit
-changes it. Leaving it out keeps the stored one, but a body rebuilt from scratch can drop it, and
-`{}` clears it. If the edit adds, replaces or removes a reward node, update the
-`reward.<node id>.*` references in the same diff when the quest has a `public_view`, because a reference to a missing node is left
-out of the card.
+Keep `public_view` the same way: resend the fresh read's `public_view` unchanged unless the edit
+changes it. If the edit adds, replaces or removes a reward node, update the reward references in
+`public_view` in the same diff, because a reference to a missing node is left out of the card.
 
 Use [SKILL body-file rules](../SKILL.md#access-and-authority), with no loop retry.
 For reward additions versus replacements, follow [Adding a reward](rewards.md#adding-a-reward).
-Apply the [active-write date rule](quest-authoring.md#fields) before the proposal, including
-any required start-at-apply or expired-end move in this same before/after diff. Say when
-the old window ended; ask for approval of the revised edit, not for a date.
+Apply the docs' date rules for an active quest before the proposal; if the old end date has
+passed, propose a new end in the same before/after diff and ask for approval of the revised edit,
+not for a date.
 
-An edit to an active quest applies to the next events after the production
-configuration propagation window. Repeat the activation confirmations
-for the changed part when the edit touches any of: an action's subtype or
-parameters, connections that change which actions run, a reward, the
-activation limits, the dates, or `status`. An edit to `name` or
-`description` only needs no repeat. If the edit changes an amount or SKU,
-check node names that mention the old value. Whenever a reward changes, also
-check whether the quest name still describes it. If the name mentions the old
-reward (for example, Fire Sword changed to Ice Sword), update the quest name in
-the same proposed edit and include it in the before/after diff. Ask only if the
-intended new name is unclear. The reward-change confirmation covers the
-combined reward and name edit.
+**Locked once players start.** The docs refuse a structural change (the parts they list, such as
+nodes, connections, limits or the start date) on a quest that players already have progress on,
+with a 409. Before proposing such a change, say it may be refused for that reason. If the update
+answers 409, nothing was saved: say the quest's steps and rewards are locked because players have
+started it, that texts, the end date and pausing still work, and offer a new quest for the rest.
+Never retry it and never try to work around the lock.
 
-`version_id` changes on every write but is ignored on PUT: no optimistic concurrency
-or quest 409, last write wins. Read immediately before PUT.
+An edit to an active quest applies to the next events after the propagation delay the docs
+describe. Repeat the activation confirmations for the changed part when the edit touches any of:
+an action's subtype or parameters, connections that change which actions run, a reward, the
+activation limits, the dates, or `status`. An edit to `name` or `description` only needs no
+repeat. If the edit changes an amount or SKU, check node names that mention the old value.
+Whenever a reward changes, also check whether the quest name still describes it. If the name
+mentions the old reward (for example, Fire Sword changed to Ice Sword), update the quest name in
+the same proposed edit and include it in the before/after diff. Ask only if the intended new name
+is unclear. The reward-change confirmation covers the combined reward and name edit.
+
+Read immediately before the update: the last write wins for changes the docs do not lock.
 
 ## Pausing
 
-There is no pause route. To pause, send the full-document `PUT` from the recipe
-with `status: inactive` and keep the dates, nodes and limits as they are. The
-date rules apply only to `active` writes, so an old `start_date` is fine here;
-reactivating later runs them again (see Fields).
+To pause, send the full-document update from the recipe with the inactive status the docs
+describe, and keep the dates, nodes and limits as they are. Say what the docs say about
+reactivating later (dates are checked again, and after progress a start date in the past may
+block it).
 
-While the quest is inactive, events do not run the inactive configuration and
-are not replayed automatically on reactivation. During the production
-propagation window, an event may still see the previous configuration; warn
-before sending an event for a quest with an external reward.
+While the quest is inactive, events do not run it and are not replayed on reactivation. During
+the propagation delay, an event may still see the previous configuration; warn before sending an
+event for a quest with an external reward.
 
 ## Deleting
 
-`DELETE {scope}/quests/{id}` needs `questconfig:delete`
-(a project key acts with author rights, which include it) and returns 200 with
-`{"message": "Quest deleted successfully"}`. It is a soft delete: the quest and
-all its triggers get `status: deleted`, so events stop matching it after the
-production propagation window, and its execution records stay. After that,
-`GET`, the list and
-a second `DELETE` treat it as not found: 404 problem+json with
-`"detail":"Quest not found"`. A 404
-`{"error":"Project not found"}` is a scope answer instead, not a verdict on
-the quest; see the auth reference. There is no restore route. Do not use an
-update as a restore, and do not `PUT` to a deleted id.
+Deleting is the contract's delete operation. Read its docs first: a deleted quest cannot be
+restored, and a deleted quest reads as not found afterwards. A not-found answer about the project
+instead is a scope answer, not a verdict on the quest; see the auth reference. Never use an update
+as a restore, and never update a deleted id.
 
 Recipe:
 
-- Delete only quests the developer names by id or exact name. Never select
+- Delete only quests the publisher names by id or exact name. Never select
   them by pattern or "all test quests" without showing the list first.
-- Re-list or `GET` right before deleting, and show each quest's name, id,
-  `status`, dates and actions. For an `active` quest or one with an
-  `issue_reward` or another external action, say it is live and what stops.
-- Say that the delete cannot be undone through the API, and get a yes.
-- Delete one quest per call. Stop on the first non-200 and report it; after a
-  timeout or 5xx, `GET` the quest to check before trying again.
+- Re-list or read right before deleting, and show each quest's name, id,
+  status, dates and actions. For an active quest or one with a reward or another
+  external action, say it is live and what stops.
+- Say that the delete cannot be undone, and get a yes.
+- Delete one quest per call. Stop on the first failure and report it; after a
+  timeout or 5xx, read the quest to check before trying again.
 - Re-list afterwards and show that the deleted quests are gone.

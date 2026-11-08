@@ -14,6 +14,8 @@ import math
 import re
 from urllib.parse import urlparse
 
+import quests_versions
+
 # Contract recorded in references/block-operations.md ("Quests block contract").
 QUESTS_MODULE = "_quest-platform_quests-block"
 # Operations-only blocks: exported contracts exist, but they are outside the reviewed
@@ -22,29 +24,9 @@ QUESTS_MODULE = "_quest-platform_quests-block"
 OPS_BLOCK_MODULES = frozenset({QUESTS_MODULE})
 # add-block --block federated, then one update-block retargeting the wrapper.
 QUESTS_ADD_STRATEGY = "federated_patch"
-# Latest stable release: the version of every NEW Quests block, themed or not. A new
-# release means updating this constant and quest-setup block-versions.md together.
-QUESTS_LATEST_VERSION = "0.2.10"
-# Gate default for an add operation without an explicit version (kept at the old
-# stable pin). quest-setup never relies on it: it always passes the latest version.
-QUESTS_VERSION = "0.1.5"
-# Candidate of the latest release (accepted, never proposed as a target).
-QUESTS_LATEST_CANDIDATE_VERSION = "0.2.10-qp-3256.0"
-# Legacy accepted pins: blocks already saved on them must still pass exact-version
-# checks. The agent never proposes them as a target for a new block.
-QUESTS_LEGACY_PLAIN_VERSION = "0.1.5"
-QUESTS_CANDIDATE_VERSION = "0.2.7-qp-3256.0"
-# Capabilities are keyed by exact artifact pins, never inferred by semver. These
-# releases and their CDN artifacts have been verified (served, probed 2026-11-04).
-QUESTS_CAPABILITIES = {
-    QUESTS_LATEST_VERSION: {"appearance": True},
-    QUESTS_LATEST_CANDIDATE_VERSION: {"appearance": True},
-    QUESTS_CANDIDATE_VERSION: {"appearance": True},
-    QUESTS_LEGACY_PLAIN_VERSION: {"appearance": False},
-}
-# Pins that are candidate (prerelease) builds and need review before approval.
-QUESTS_CANDIDATE_VERSIONS = (QUESTS_CANDIDATE_VERSION, QUESTS_LATEST_CANDIDATE_VERSION)
-QUESTS_CDN_ROOT = "https://cdn.xsolla.net/site-builder-modules/"
+# Versions are read from the CDN at run time (quests_versions.py): a new block gets the newest
+# published stable release, and a version supports theme settings when its served defaults
+# carry them. Nothing here pins a release.
 # Editor layer label that UI-added federated blocks carry (top-level `devName`).
 QUESTS_DEV_NAME = "Quests"
 BLOCK_VALUES_ROOT = ("values", "internalBlockValues")
@@ -175,7 +157,7 @@ QUEST_ID_RE = re.compile(r"[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}")
 TITLE_MAX = 120
 DESCRIPTION_MAX = 400
 TRANSLATION_KEYS = {"heading"}
-# Objects the pinned default-data.json already contains. A freshly added block has
+# Objects the published default-data.json already contains. A freshly added block has
 # these; every other parent object must be created before its leaves are patched.
 DEFAULT_PARENTS = {("overrides",)}
 
@@ -295,9 +277,24 @@ def required_parents(keys: list[str]) -> list[tuple[str, ...]]:
     return sorted(parents, key=lambda parent: (len(parent), parent))
 
 
-def quests_host(version: str = QUESTS_VERSION) -> str:
+def quests_host(version: str) -> str:
     """CDN folder the federated wrapper's ``values.host`` points at."""
-    return f"{QUESTS_CDN_ROOT}{QUESTS_MODULE}/{version}/"
+    return quests_versions.host(version)
+
+
+def quests_add_version(operation: dict) -> str | None:
+    """The version an add operation targets: the one it names, else the newest stable release."""
+    version = operation.get("version")
+    return version if version is not None else quests_versions.latest_stable()
+
+
+def quests_version_error(version: object) -> str | None:
+    """Why a version cannot be used for a write, or None when the CDN serves it."""
+    if version is None:
+        return "must be a published Quests block version, but the CDN cannot be read"
+    if not quests_versions.is_version(version) or quests_versions.defaults(version) is None:
+        return f"must be a published Quests block version; {version!r} is not served"
+    return None
 
 
 def has_object(root: object, segments: tuple[str, ...]) -> bool:
@@ -577,12 +574,10 @@ def _check_capability_and_custom_contract(
 ) -> None:
     op = operation.get("op")
     if op == "add":
-        version = operation.get("version", QUESTS_VERSION)
-        if not isinstance(version, str) or version not in QUESTS_CAPABILITIES:
-            errors.append(
-                f"{prefix}.version must use a recognized Quests source pin: "
-                + ", ".join(QUESTS_CAPABILITIES)
-            )
+        version = quests_add_version(operation)
+        problem = quests_version_error(version)
+        if problem:
+            errors.append(f"{prefix}.version {problem}")
         internal = None
     else:
         version = _block_version(block or {})
@@ -602,14 +597,10 @@ def _check_capability_and_custom_contract(
         return
     for key in relevant:
         capability = _appearance_key(key)
-        if (
-            not isinstance(version, str)
-            or not QUESTS_CAPABILITIES.get(version, {}).get(capability, False)
-        ):
+        if not isinstance(version, str) or not quests_versions.supports(version, capability):
             errors.append(
-                f"{prefix}.{key}: unsupported Quests version {version or 'unknown'} "
-                f"for {capability}; configured candidate source pin is "
-                f"{QUESTS_CANDIDATE_VERSION}"
+                f"{prefix}.{key}: unsupported Quests version {version or 'unknown'} for "
+                f"{capability} (its served defaults have no theme settings)"
             )
 
     custom_keys = [
@@ -838,14 +829,6 @@ def validate_block_operations(brief: dict, structure: dict | None = None) -> lis
                     f"{prefix}.module must be an operations block: "
                     + ", ".join(sorted(OPS_BLOCK_MODULES))
                 )
-        if op == "add" and "version" in operation and (
-            not isinstance(operation["version"], str)
-            or operation["version"] not in QUESTS_CAPABILITIES
-        ):
-            errors.append(
-                f"{prefix}.version must use a verified Quests artifact version: "
-                + ", ".join(QUESTS_CAPABILITIES)
-            )
         if "page" in operation:
             page = operation["page"]
             if not isinstance(page, str) or not page.startswith("/"):
@@ -1128,7 +1111,7 @@ def plan_block_operations(brief: dict, structure: dict) -> list[dict]:
                     "block_ref": ref,
                     "module": operation["module"],
                     "strategy": QUESTS_ADD_STRATEGY,
-                    "version": operation.get("version", QUESTS_VERSION),
+                    "version": quests_add_version(operation),
                     "page": operation["page"],
                     "page_id": page.get("_id"),
                     "index": position,

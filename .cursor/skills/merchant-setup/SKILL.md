@@ -135,8 +135,8 @@ Only needed for Xsolla CLI or API calls where the endpoint URL has **no `project
 Some APIs use project-level credentials and others require a merchant-level
 key. Quest Platform publisher routes are an API-specific exception: they use
 the configured merchant ID as the HTTP Basic username with the project API key
-as password, as documented in
-[`qp-api-contract.md`](../quest-setup/references/qp-api-contract.md). Do not
+as password, as the live Quests docs describe (see
+[`live-docs.md`](../quest-setup/references/live-docs.md)). Do not
 apply that Quest Platform format to Catalog, Store, or unrelated APIs.
 
 ---

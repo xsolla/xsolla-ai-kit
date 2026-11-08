@@ -59,8 +59,34 @@ class RecordingTransport:
         return count_non_get(self.calls)
 
 
+DOCS_FIXTURE = FIXTURES / "openapi.json"
+
+
+def install_docs(home: Path, base_url: str = "https://developers.xsolla.com") -> Path:
+    """Write the docs cache qp_docs.py would write: the trimmed public contract as openapi.json."""
+    import json
+    import time
+
+    import qp_docs
+
+    host = base_url.split("://", 1)[1]
+    cache = Path(home) / ".cache" / qp_docs.CACHE_DIR_NAME / host
+    cache.mkdir(parents=True, exist_ok=True)
+    (cache / qp_docs.OPENAPI_NAME).write_text(DOCS_FIXTURE.read_text(encoding="utf-8"), encoding="utf-8")
+    meta = {"fetched_at": int(time.time()), "host": host, "base_url": base_url, "complete": True,
+            "skipped": [], "pages": [{"path": qp_docs.OPENAPI_PATH, "file": qp_docs.OPENAPI_NAME}]}
+    (cache / qp_docs.META_NAME).write_text(json.dumps(meta), encoding="utf-8")
+    return cache
+
+
 class IsolatedCase(unittest.TestCase):
-    """AC-1 base: no env, temp HOME and cwd, no real sockets, no read of ~/qs-test/.env."""
+    """AC-1 base: no env, temp HOME and cwd, no real sockets, no read of ~/qs-test/.env.
+
+    The docs cache is installed in the temp HOME (as after a docs refresh) unless a class sets
+    INSTALL_DOCS = False.
+    """
+
+    INSTALL_DOCS = True
 
     def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()
@@ -108,6 +134,8 @@ class IsolatedCase(unittest.TestCase):
             self.addCleanup(p.stop)
 
         self.addCleanup(self._assert_no_leaks)
+        if self.INSTALL_DOCS:
+            install_docs(self.home)
 
     def _assert_no_leaks(self) -> None:
         self.assertEqual(self.socket_attempts, [], "real socket opened")

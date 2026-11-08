@@ -13,6 +13,7 @@ import qp_request
 
 QUESTS = "/api/v2/merchants/7/projects/42/quests"
 BLOCKS = "/api/v2/merchants/7/projects/42/blocks"
+QUEST = {"name": "q", "type": "liveops", "status": "inactive", "created_by": "AI Toolkit"}
 
 
 class WriteGuardTests(IsolatedCase):
@@ -38,7 +39,7 @@ class WriteGuardTests(IsolatedCase):
                             environ=dict(SENTINEL_ENV))
 
     def test_ac_20_http_quest_image_is_rejected_before_any_call(self) -> None:
-        payload = {"name": "q", "public_view": {"image_url": "http://cdn.example.test/a.png"}}
+        payload = dict(QUEST, public_view={"image_url": "http://cdn.example.test/a.png"})
         code, out, err = self.post_body(QUESTS, payload)
         self.assertIn("https only", out + err)
         self.assertNotEqual(code, 0)
@@ -52,33 +53,37 @@ class WriteGuardTests(IsolatedCase):
         self.assertEqual(self.calls, [])
 
     def test_ac_20_https_image_is_sent(self) -> None:
-        payload = {"name": "q", "public_view": {"image_url": "https://cdn.example.test/a.png"}}
+        payload = dict(QUEST, public_view={"image_url": "https://cdn.example.test/a.png"})
         code, out, _ = self.post_body(QUESTS, payload)
         self.assertEqual(code, 0)
         self.assertEqual(len(self.calls), 1)
         self.assertEqual(self.calls[0][0], "POST")
 
-    def test_ac_22_403_on_create_custom_block_one_call_no_retry_no_files(self) -> None:
+    def test_ac_22_403_on_a_write_is_one_call_no_retry_no_files(self) -> None:
         def forbidden(opener, request, *args, **kwargs):
             self.calls.append((request.get_method(), request.full_url))
             raise urllib.error.HTTPError(request.full_url, 403, "Forbidden", {}, BytesIO(b"forbidden"))
 
         before = self.tree(self.tmp)
         with mock.patch.object(urllib.request.OpenerDirector, "open", forbidden):
-            code, out, _ = self.post_body("/api/v2/merchants/7/projects/42/custom-blocks", {"name": "x"})
+            code, out, _ = self.post_body(QUESTS, QUEST)
         after = [p for p in self.tree(self.tmp) if p != "body.json"]
         self.assertEqual(code, 1)
         self.assertEqual(json.loads(out)["error"], "access_denied")
         self.assertEqual(len(self.calls), 1)
         self.assertEqual([p for p in after if p not in before], [])
-        self.assertFalse((self.home / ".cache").exists())
+
+    def test_undocumented_route_is_never_called(self) -> None:
+        code, out, _ = self.post_body("/api/v2/merchants/7/projects/42/custom-blocks", QUEST)
+        self.assertEqual(json.loads(out), {"ok": False, "error": "target_not_allowed"})
+        self.assertEqual(self.calls, [])
 
 
     def test_ac_27_recorded_calls_use_the_non_get_definition(self) -> None:
         self.capture(qp_request.main, ["GET", QUESTS], environ=dict(SENTINEL_ENV))
         self.assertEqual(len(self.calls), 1)
         self.assertEqual(count_non_get(self.calls), 0)
-        self.post_body(QUESTS, {"name": "q"})
+        self.post_body(QUESTS, QUEST)
         self.assertEqual(count_non_get(self.calls), 1)
 
 

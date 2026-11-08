@@ -53,6 +53,8 @@ class IsolationHarnessTests(IsolatedCase):
 
 
 class SentinelScanTests(IsolatedCase):
+    INSTALL_DOCS = False
+
     """AC-3: a sentinel secret in .env must not show up anywhere observable."""
 
     def setUp(self) -> None:

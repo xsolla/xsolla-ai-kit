@@ -21,6 +21,7 @@ SCRIPTS = Path(__file__).resolve().parents[1] / "scripts"
 sys.path.insert(0, str(SCRIPTS))
 
 import qp_request  # noqa: E402
+from qs_base import install_docs  # noqa: E402
 
 MERCHANT = "7"
 PROJECT = "42"
@@ -32,6 +33,7 @@ ENV_FULL = {
 }
 SENTINEL_TOKEN = base64.b64encode(f"{MERCHANT}:{SENTINEL}".encode()).decode()
 QUESTS = "/api/v2/merchants/7/projects/42/quests"
+QUEST_BODY = '{"name": "Hello", "type": "liveops", "status": "inactive", "created_by": "AI Toolkit"}'
 
 
 def fake_response(status: int = 200, body: bytes = b'{"quests": []}') -> mock.MagicMock:
@@ -45,6 +47,8 @@ class CliTestCase(unittest.TestCase):
     def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()
         self.tmp = Path(self._tmp.name)
+        self.home = self.tmp / "home"
+        install_docs(self.home)
         # Patched on the class, so the mock is called without `self`: args[0] is the Request.
         patcher = mock.patch.object(urllib.request.OpenerDirector, "open")
         self.urlopen = patcher.start()
@@ -55,6 +59,7 @@ class CliTestCase(unittest.TestCase):
     def run_cli(self, argv, environ=None, cwd=None):
         out, err = io.StringIO(), io.StringIO()
         env = {} if environ is None else environ
+        env.setdefault("HOME", str(self.home))
         with redirect_stdout(out), redirect_stderr(err):
             code = qp_request.main(argv, environ=env, cwd=str(cwd or self.tmp))
         return code, out.getvalue(), err.getvalue()
@@ -102,7 +107,10 @@ class CredentialTests(CliTestCase):
                 else:
                     self.assertEqual(code, 0)
                     if argv == ["whoami"]:
-                        self.assertEqual(json.loads(out), {"ok": True, "merchant_id": ids[0], "project_id": ids[1]})
+                        result = json.loads(out)
+                        self.assertEqual((result["merchant_id"], result["project_id"]), ids)
+                        self.assertEqual(result["environment"], "production")
+                        self.assertEqual(result["source"], "environment" if case.startswith("env_") else "folder")
                         self.urlopen.assert_not_called()
                     else:
                         self.urlopen.assert_called_once()
@@ -153,23 +161,26 @@ class TargetTests(CliTestCase):
             with self.subTest(path=path):
                 self.assert_refused(["GET", path], "target_not_allowed")
 
-    def test_disallowed_methods_and_store_routes(self) -> None:
+    def test_disallowed_methods_and_undocumented_operations(self) -> None:
         rows = (
-            ("qp_head", ["HEAD", QUESTS]),
-            ("store_post", ["POST", "/api/v2/project/42/admin/items/virtual_items", "--store"]),
-            ("store_delete", ["DELETE", "/api/v2/project/42/admin/items/virtual_items/sku/A", "--store"]),
-            ("store_other_kind", ["GET", "/api/v2/project/42/admin/items/other", "--store"]),
-            ("store_sku_traversal", ["GET", "/api/v2/project/42/admin/items/virtual_items/sku/../x", "--store"]),
+            ("qp_head", ["HEAD", QUESTS], "target_not_allowed"),
+            ("undocumented_route", ["POST", "/api/v2/merchants/7/projects/42/custom-blocks"], "target_not_allowed"),
+            ("player_token_route", ["GET", "/api/v2/me/merchants/7/projects/42/quests"], "target_not_allowed"),
+            ("public_route", ["GET", "/api/v2/public/merchants/7/projects/42/quests"], "target_not_allowed"),
+            ("method_not_documented", ["PATCH", QUESTS + "/q1"], "target_not_allowed"),
+            ("unknown_operation", ["call", "list-merchant-projects"], "unknown_operation"),
+            ("catalog_sku_traversal", ["catalog-item", "../x"], "usage"),
+            ("catalog_extra_args", ["catalog-list", "--param", "x=1"], "usage"),
         )
-        for case, argv in rows:
+        for case, argv, error in rows:
             with self.subTest(case=case):
-                self.assert_refused(argv, "target_not_allowed")
+                self.assert_refused(argv, error)
 
     def test_scope_mismatch_on_merchant_or_project_segment(self) -> None:
         rows = (
             ("merchant", ["GET", "/api/v2/merchants/999/projects/42/quests"]),
             ("qp_project", ["GET", "/api/v2/merchants/7/projects/999/quests"]),
-            ("store_project", ["GET", "/api/v2/project/999/admin/items/virtual_items", "--store"]),
+            ("call_scope_param", ["call", "list-quests-in-project", "--param", "merchant_id=999"]),
         )
         for case, argv in rows:
             with self.subTest(case=case):
@@ -179,10 +190,15 @@ class TargetTests(CliTestCase):
         rows = (
             ("qp_query", ["GET", QUESTS, "--query", "page=1", "--query", "limit=50"],
              "https://quests-platform.xsolla.com/api/v2/merchants/7/projects/42/quests?page=1&limit=50"),
-            ("store_placeholder_list", ["GET", "/api/v2/project/{project_id}/admin/items/virtual_items", "--store",
-                                        "--query", "limit=50", "--query", "offset=0"],
+            ("call_by_operation_id", ["call", "list-quests-in-project", "--query", "page=2"],
+             "https://quests-platform.xsolla.com/api/v2/merchants/7/projects/42/quests?page=2"),
+            ("call_with_path_param", ["call", "get-quest-by-id-in-project", "--param", "id=q-1"],
+             "https://quests-platform.xsolla.com/api/v2/merchants/7/projects/42/quests/q-1"),
+            ("literal_segment_wins", ["GET", QUESTS + "/node-types"],
+             "https://quests-platform.xsolla.com/api/v2/merchants/7/projects/42/quests/node-types"),
+            ("catalog_list", ["catalog-list", "--query", "limit=50", "--query", "offset=0"],
              "https://store.xsolla.com/api/v2/project/42/admin/items/virtual_items?limit=50&offset=0"),
-            ("store_concrete_sku", ["GET", "/api/v2/project/42/admin/items/virtual_items/sku/FIRE_SWORD_01", "--store"],
+            ("catalog_item", ["catalog-item", "FIRE_SWORD_01"],
              "https://store.xsolla.com/api/v2/project/42/admin/items/virtual_items/sku/FIRE_SWORD_01"),
         )
         for case, argv, url in rows:
@@ -200,7 +216,7 @@ class TargetTests(CliTestCase):
                 self.assertEqual(req.get_header("Authorization"), "Basic " + SENTINEL_TOKEN)
 
     def test_invalid_query_key_is_refused(self) -> None:
-        for pair in ("a b=1", "page", "=1", "k&x=1", "k?=1"):
+        for pair in ("a b=1", "page", "=1", "k&x=1", "k?=1", "undocumented=1", "merchant_id=1"):
             with self.subTest(pair=pair):
                 self.assert_refused(["GET", "/api/v2/merchants/7/projects/42/quests", "--query", pair],
                                     "invalid_query")
@@ -291,8 +307,10 @@ class RedirectTests(unittest.TestCase):
                 out = io.StringIO()
                 with mock.patch.object(urllib.request.HTTPSHandler, "https_open", https_open), \
                         redirect_stdout(out), redirect_stderr(io.StringIO()):
+                    home = Path(self._tmp.name) / "home"
+                    install_docs(home)
                     code = qp_request.main(["GET", "/api/v2/merchants/7/projects/42/quests"],
-                                           environ=dict(ENV_FULL), cwd=self._tmp.name)
+                                           environ=dict(ENV_FULL, HOME=str(home)), cwd=self._tmp.name)
                 self.assertEqual(code, 1)
                 result = json.loads(out.getvalue())
                 self.assertEqual(result["ok"], False)
@@ -306,14 +324,14 @@ class RedirectTests(unittest.TestCase):
 class BodyTests(CliTestCase):
     def test_body_file_sent_as_json(self) -> None:
         body_path = self.tmp / "quest.json"
-        body_path.write_text('{"name": "Hello"}', encoding="utf-8")
+        body_path.write_text(QUEST_BODY, encoding="utf-8")
         code, _, _ = self.run_cli(
             ["POST", "/api/v2/merchants/7/projects/42/quests", "--body-file", str(body_path)],
             environ=dict(ENV_FULL))
         self.assertEqual(code, 0)
         req = self.urlopen.call_args.args[0]
         self.assertEqual(req.get_method(), "POST")
-        self.assertEqual(req.data, b'{"name": "Hello"}')
+        self.assertEqual(req.data, QUEST_BODY.encode())
         self.assertEqual(req.get_header("Content-type"), "application/json")
         self.assertEqual(req.get_header("Authorization"), "Basic " + SENTINEL_TOKEN)
 
@@ -322,6 +340,8 @@ class BodyTests(CliTestCase):
             ("malformed_json", "POST", "{not json"),
             ("oversized_json", "POST", '"' + "a" * qp_request.MAX_BODY_FILE_BYTES + '"'),
             ("get_with_body", "GET", "{}"),
+            ("undocumented_field", "POST", QUEST_BODY[:-1] + ', "publisher": {"id": 1}}'),
+            ("missing_required_field", "POST", '{"name": "Hello"}'),
         )
         for case, method, body in rows:
             with self.subTest(case=case):
@@ -340,8 +360,45 @@ class WhoamiTests(CliTestCase):
     def test_whoami_prints_ids_only(self) -> None:
         code, out, _ = self.run_cli(["whoami"], environ=dict(ENV_FULL))
         self.assertEqual(code, 0)
-        self.assertEqual(set(json.loads(out)), {"ok", "merchant_id", "project_id"})
+        self.assertEqual(set(json.loads(out)), {"ok", "merchant_id", "project_id", "environment", "source"})
         self.urlopen.assert_not_called()
+
+
+class DocsDrivenTests(CliTestCase):
+    def test_ops_lists_only_operations_the_publisher_key_may_call(self) -> None:
+        code, out, _ = self.run_cli(["ops"], environ=dict(ENV_FULL))
+        self.assertEqual(code, 0)
+        ids = {op["id"] for op in json.loads(out)["operations"]}
+        self.assertIn("create-quest-in-project", ids)
+        self.assertIn("get-quest-node-types-in-project", ids)
+        self.assertIn("publisher-events", ids)
+        for not_publisher in ("list-public-quests", "list-me-quests", "list-merchant-projects"):
+            self.assertNotIn(not_publisher, ids)
+        self.urlopen.assert_not_called()
+
+    def test_missing_docs_cache_refuses_quest_calls_but_not_whoami(self) -> None:
+        empty_home = self.tmp / "empty-home"
+        env = dict(ENV_FULL, HOME=str(empty_home))
+        for argv in (["ops"], ["GET", QUESTS], ["call", "list-quests-in-project"]):
+            with self.subTest(argv=argv):
+                code, out, _ = self.run_cli(argv, environ=dict(env))
+                self.assertEqual((code, json.loads(out)), (2, {"ok": False, "error": "docs_unavailable"}))
+        code, _, _ = self.run_cli(["whoami"], environ=dict(env))
+        self.assertEqual(code, 0)
+        self.urlopen.assert_not_called()
+
+    def test_environment_comes_from_the_fixed_list(self) -> None:
+        self.urlopen.return_value = fake_response()
+        code, out, _ = self.run_cli(["call", "list-quests-in-project"],
+                                    environ=dict(ENV_FULL, QUEST_SETUP_ENV="production"))
+        self.assertEqual(code, 0)
+        self.assertTrue(self.urlopen.call_args.args[0].full_url.startswith("https://quests-platform.xsolla.com/"))
+        for unknown in ("stage", "https://evil.example"):
+            with self.subTest(environment=unknown):
+                self.urlopen.reset_mock()
+                code, out, _ = self.run_cli(["whoami"], environ=dict(ENV_FULL, QUEST_SETUP_ENV=unknown))
+                self.assertEqual((code, json.loads(out)), (2, {"ok": False, "error": "unknown_environment"}))
+                self.urlopen.assert_not_called()
 
 
 if __name__ == "__main__":

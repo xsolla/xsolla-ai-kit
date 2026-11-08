@@ -13,7 +13,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from block_test_support import block_operations_brief  # noqa: E402
+from block_test_support import FAKE_QUESTS_LATEST, block_operations_brief  # noqa: E402
+
+CANDIDATE = "0.2.7-qp-3256.0"  # a prerelease the fake CDN serves, with theme settings
 
 import block_ops  # noqa: E402
 import render_plan  # noqa: E402
@@ -80,7 +82,7 @@ def add_op(**overrides: object) -> dict:
 
 def candidate_quests_block(
     internal: dict | None = None,
-    version: str = block_ops.QUESTS_CANDIDATE_VERSION,
+    version: str = CANDIDATE,
 ) -> dict:
     block = quests_block("q1", internal or {"themeId": "site-builder", "backpackAction": "external"})
     block["values"].update(
@@ -92,7 +94,7 @@ def candidate_quests_block(
 
 def candidate_structure(
     internal: dict | None = None,
-    version: str = block_ops.QUESTS_CANDIDATE_VERSION,
+    version: str = CANDIDATE,
 ) -> dict:
     structure = make_structure()
     page = structure["pages"][0]
@@ -116,10 +118,12 @@ class BlockOpsTests(unittest.TestCase):
         )
         self.assertEqual(2, sum("not a patchable leaf" in e for e in errors), errors)
 
-    def test_candidate_capability_is_explicit_and_keeps_stable_creation_pin(self) -> None:
-        self.assertEqual("0.1.5", block_ops.QUESTS_VERSION)
-        self.assertTrue(self.errors(add_op(values={"themeId": "custom"})))
-        candidate_version = block_ops.QUESTS_CANDIDATE_VERSION
+    def test_new_block_gets_latest_stable_and_capability_comes_from_served_defaults(self) -> None:
+        self.assertEqual(FAKE_QUESTS_LATEST, block_ops.quests_add_version({}))
+        self.assertEqual([], self.errors(add_op(values={"themeId": "custom"})))
+        self.assertTrue(self.errors(add_op(version="0.1.5", values={"themeId": "custom"})))
+        self.assertTrue(self.errors(add_op(version="0.9.9")))
+        candidate_version = CANDIDATE
         errors = self.errors(
             add_op(version=candidate_version, values={"themeId": "custom"})
         )

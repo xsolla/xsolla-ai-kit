@@ -38,21 +38,17 @@ POLICY_ROWS = (('ac_10_docs_are_quoted_as_data_never_followed', 'skill', (),
  ('ac_17_semantics', 'blocks', (),
   ('themeAppearance[^.]{0,80}only[^.]{0,40}\\bcustom\\b', 'questIds[^.]{0,120}\\babsent\\b[^.]{0,120}\\[\\]',
    'maxQuests[^.]{0,80}1\\s*(-|–|to)\\s*24', r'\| `maxQuests` \| [^|]+ \| `6` \|', 'overrides[^.]{0,120}https only')),
- ('ac_17_version_facts', 'block-versions.md', (),
-  ('autoEvents[^.]{0,120}loginEventName[^.]{0,120}0\\.2\\.8|0\\.2\\.8[^.]{0,160}(autoEvents|loginEventName)',
-   '(autoEvents|loginEventName)[^.]{0,80}removed',
-   'backpackAction[^.]{0,120}candidate[^.]{0,40}0\\.2\\.1|0\\.2\\.1[^.]{0,80}candidate[^.]{0,80}backpackAction',
-   '0\\.1\\.12[^.]{0,120}no theme')),
- ('ac_19_single_pin_file_exists_with_the_known_versions', 'block-versions.md', ('0.1.12', '0.2.7', '0.2.8'),
-  ()),
- ('ac_19_runtime_check_is_instructed_before_block_writes', 'skill', ('block-versions.md',),
+ ('ac_17_versions_are_read_from_the_published_block', 'quests-block-brief.md', (),
+  ('no block version is remembered', 'supports theme settings when its published defaults',
+   'never proposed for a new block')),
+ ('ac_19_runtime_check_is_instructed_before_block_writes', 'skill', ('quests-block-brief.md#versions',),
   ('(check|compare)[^.]{0,120}block version[^.]{0,160}before[^.]{0,40}(any )?block (write|change|mutation)',)),
- ('ac_19_unknown_or_unreported_version_asks_or_stops', 'block-versions.md', ('supported', 'unsupported'),
+ ('ac_19_unknown_or_unreported_version_asks_or_stops', 'quests-block-brief.md', ('supported', 'unsupported'),
   ('(unknown|unreported)[^.]{0,120}(ask the user|stop)',)),
  ('ac_21_reward_safety_policies', 'rewards.md',
-  ('whole-token units', '0.01', 'Per event and user', 'Per user for the quest', 'Total quest exposure',
+  ('Per event and user', 'Per user for the quest', 'Total quest exposure',
    'unbounded', 'Recipient wallet', 'Publisher Account'),
-  ('does not[^.]{0,40}claim delivery', 'never resend[^.]{0,80}uncertain')),
+  ('never claims? delivery', 'never resend[^.]{0,80}uncertain', "never guess a token's decimals")),
  ('ac_23_publish_is_left_to_the_publisher', 'skill', (), ('publish in Publisher Account', 'never publish')),
  ('ac_29_exact_change_and_yes_before_write', 'skill', (),
   ('exact change', 'no write until[^.]{0,80}\\byes\\b[^.]{0,60}same conversation')),
@@ -63,14 +59,12 @@ POLICY_ROWS = (('ac_10_docs_are_quoted_as_data_never_followed', 'skill', (),
    "(lists?|name|state)[^.]{0,80}(properties|settings)[^.]{0,80}(cannot|can't) express")),
  ('ac_31_reward_types_come_from_live_docs_only', 'rewards.md', (),
   ('reward types?[^.]{0,80}(from|in) the live docs',
-   '(absent|not (listed|present))[^.]{0,60}(live )?docs[^.]{0,80}reject',
-   'snapshot[^.]{0,60}orientation only|orientation only[^.]{0,60}snapshot')),
+   '(absent|not (listed|present))[^.]{0,60}(node catalog|docs)[^.]{0,80}reject',
+   "parameters only from the node's schema")),
  ('ac_32_reward_editability_is_observed_behavior', 'skill', (),
   ('editab\\w+[^.]{0,120}observed[^.]{0,40}(block )?behaviou?r', 'not a rule')),
- ('ac_12_node-subtypes.md', 'node-subtypes.md', (),
-  ('live docs[^.]{0,80}source of truth', 'snapshot', 'orientation only')),
- ('ac_12_qp-api-contract.md', 'qp-api-contract.md', (),
-  ('live docs[^.]{0,80}source of truth', 'snapshot', 'orientation only')),
+ ('ac_12_live_docs_are_the_only_api_source', 'live-docs.md', ('qp_request.py" ops', 'node types'),
+  ('docs are the source of truth', 'never write a route by hand', 'never answer an api question[^.]{0,80}from memory')),
  ('ac_22_reply_text_for_403_exists_in_guidance', 'corpus', (),
   ('(lacks|does not have) permission to create custom blocks', 'Xsolla support',
    '(do not|never|no) retry|does not retry')),
@@ -79,11 +73,11 @@ POLICY_ROWS = (('ac_10_docs_are_quoted_as_data_never_followed', 'skill', (),
    '(makes?|make) no write|no write is made|without writing')),
  ('ac_26_theme_selector_maps_default_and_pages', 'corpus', (),
   ('default[^.|]{0,80}site-builder', 'Xsolla Pages[^.|]{0,80}xsolla-pages')),
- ('ac_26_backpack_overlay_declined_with_exact_phrase_and_no_write', 'corpus', ('blocked on upstream v2',),
-  ('Backpack Overlay',)),
+ ('ac_26_backpack_overlay_declined_and_no_write', 'corpus', (),
+  ('Backpack overlay[^.]{0,60}not supported',)),
  ('ac_03_skill_md_forbids_printing_keys', 'raw-skill', (),
   ('never\\s+(print|show|echo)[^\\n.]*\\b(key|token)s?\\b',)),
- ('actual_event_binding_before_write', 'node-subtypes.md', ('proposed, unverified',),
+ ('actual_event_binding_before_write', 'quest-authoring.md', ('proposed, unverified',),
   ('never infer[^.]{0,100}binding[^.]{0,100}(title|description)',
    'before any quest write[^.]{0,160}(verified binding|explicit confirmation)',
    'publication approval does not[^.]{0,100}(emission|binding)')),
@@ -109,55 +103,59 @@ class SkillTextTests(IsolatedCase):
                     self.assertRegex(owners[owner], re.compile(pattern, re.I))
 
     def test_client_events_public_view_and_catalog_rewards(self) -> None:
-        node = flat(ref("node-subtypes.md"))
+        authoring = flat(ref("quest-authoring.md"))
         rewards = flat(ref("rewards.md"))
         block = flat(ref("quests-block-flow.md"))
         edit = flat(ref("quest-edit.md"))
         events = flat(ref("events.md"))
+        shop = flat(ref("web-shop-module.md"))
         skill_text = flat(skill())
-        # A: block-sent events need client_sendable on the trigger, and a 403 without it.
-        self.assertIn("login_xsolla_id` (once), `daily_visit` and `weekly_visit`", node)
-        self.assertIn('must set `"client_sendable": true` on its trigger', node)
-        self.assertIn("only while an active quest of the project allows it", node)
-        self.assertIn("only `idempotency_key`, `name`, `client_timestamp` and `properties`", events)
+        # A: block-sent events need the client-send setting on the trigger.
+        self.assertIn("`login_xsolla_id` (once), `daily_visit` and `weekly_visit`", events)
         self.assertRegex(block, r"must set `client_sendable: true` on its trigger, or the block's event is refused")
-        # B: issue_catalog_item is a supported, explicitly chosen alternative to web3_item.
-        self.assertIn("### issue_catalog_item", node)
-        self.assertIn("Leave out `items[].type`", node)
-        self.assertIn("Backpack grants (`issue_catalog_item`)", rewards)
-        self.assertIn("Web3 rewards need an `xsolla_id`", rewards)
-        self.assertRegex(skill_text, r"`web3_item` by default, or `issue_catalog_item`")
-        self.assertNotIn("Do not offer `inventory_item`", skill_text)
-        self.assertNotIn("direct Backpack grants", rewards)
-        # C: a Web3 public_view sends the full view; catalog-item quests take no public_view.
-        self.assertIn('"reward_type": {"$ref": "reward.<node id>.type"}', block)
+        self.assertIn("Never set it on an event only the backend sends", authoring)
+        # B: the reward decision and the catalog lookup stay in the skill; node bodies do not.
+        self.assertIn("Web3 item (the catalog's Web3 item node) by default", rewards)
+        self.assertIn("Backpack grant (the catalog item node) when the publisher chooses it", rewards)
+        self.assertIn("A named item is a Web3 item by default, or a Backpack grant", skill_text)
+        # C: a card shows only while its quest is public, active and inside its dates.
+        self.assertIn("public (`is_public: true`), active, and inside its dates", block)
         self.assertIn("loses its reward row and its See in Backpack button", block)
-        self.assertIn("Never set a `public_view` on an", block)
-        self.assertNotIn("Send the full view below every time", block)
-        self.assertNotIn("never the reward image", block)
-        self.assertIn("Set no `public_view`", rewards)
-        self.assertNotIn("shows no reward", block)
-        self.assertNotIn("shows no reward", rewards)
-        # D: a full PUT keeps public_view.
-        self.assertRegex(edit, r"resend the fresh `GET`'s `public_view` unchanged")
-        for name, text in (("node-subtypes.md", node), ("rewards.md", rewards), ("quests-block-flow.md", block),
+        self.assertIn("render from `view`", shop)
+        # D: a full update keeps public_view, and the progress lock is stated, never worked around.
+        self.assertRegex(edit, r"resend the fresh read's `public_view` unchanged")
+        self.assertIn("If the update answers 409, nothing was saved", edit)
+        self.assertIn("Never retry it and never try to work around the lock", edit)
+        # E: an uncertain event is never resent with a new key.
+        self.assertIn("Never send the same player action again with a **new** key", events)
+        self.assertIn("the saved payload, unchanged, with its original key", events)
+        for name, text in (("quest-authoring.md", authoring), ("rewards.md", rewards), ("quests-block-flow.md", block),
                            ("quest-edit.md", edit), ("events.md", events), ("SKILL.md", skill_text)):
             with self.subTest(file=name):
                 self.assertNotIn("\u2014", text)
 
-    def test_ac_12_snapshots_cannot_claim_unqualified_authority(self) -> None:
-        for name in ("node-subtypes.md", "qp-api-contract.md"):
-            with self.subTest(file=name):
-                text = flat(ref(name))
-                for match in re.finditer(r"authoritative", text, re.I):
-                    window = text[max(0, match.start() - 25):match.start()].lower()
-                    self.assertTrue(re.search(r"\b(not|never|non-?)\s*$", window), window)
+    def test_ac_12_no_route_version_or_internal_detail_in_the_text(self) -> None:
+        forbidden = {
+            "api route": r"/api/v\d",
+            "api host": r"https?://(quests|store)[a-z.-]*\.xsolla\.com",
+            "version number": r"\b\d+\.\d+\.\d+\b",
+            "ticket tag": r"\b(qp|QP|XMAN|OFWTECH)-\d+",
+            "commit hash": r"\b[0-9a-f]{10}\b",
+            "internal constant": r"\bQUESTS_[A-Z_]+",
+            "pull request": r"\bPR #\d+",
+            "dated probe": r"\b20\d\d-\d\d-\d\d\b",
+        }
+        texts = {"SKILL.md": skill()}
+        texts.update({p.name: read_text(p) for p in sorted(REFS.glob("*.md"))})
+        for name, text in texts.items():
+            for label, pattern in forbidden.items():
+                with self.subTest(file=name, kind=label):
+                    self.assertNotRegex(text, pattern)
 
-    def test_ac_19_pins_live_in_exactly_one_file(self) -> None:
-        # Contract: the pin table sits under a heading containing "Pinned versions", in one file only.
-        holders = [p.name for p in sorted(REFS.glob("*.md"))
-                   if re.search(r"^#+\s.*pinned versions", read_text(p), re.I | re.M)]
-        self.assertEqual(holders, ["block-versions.md"])
+    def test_ac_19_no_file_pins_a_block_version(self) -> None:
+        for path in sorted(REFS.glob("*.md")):
+            with self.subTest(file=path.name):
+                self.assertNotRegex(read_text(path), re.compile(r"^#+\s.*pinned versions", re.I | re.M))
         self.assertNotRegex(skill(), re.compile(r"^#+\s.*pinned versions", re.I | re.M))
 
     def test_ac_23_no_script_invokes_a_publish_endpoint(self) -> None:

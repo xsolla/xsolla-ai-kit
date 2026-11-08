@@ -104,8 +104,8 @@ XSOLLA_PROJECT_API_KEY=<your API key>
 Setup by `merchant-setup` skill.
 
 Each API's authentication format is specific to that API. Quest Platform
-publisher Basic authentication is documented in
-`skills/quest-setup/references/qp-api-contract.md`.
+publisher Basic authentication is documented in the live Quests docs; see
+`skills/quest-setup/references/live-docs.md`.
 
 ---
 

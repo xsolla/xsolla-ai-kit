@@ -28,7 +28,7 @@ to copy.
 - The Site Builder editor link is the one place a reply shows merchant and project IDs. Give it only in the hand-off after a successful apply.
 - A status or list reply names only quests, values and history that appear in the data just read. Never infer or add history ("never activated", "older copies of X", variant names) the read did not return; if asked about history, say the read does not show it.
 - When the gate reports that the site's layout needs a newer CLI, repeat that warning in one line in each plan that shows it.
-- Unsupported theme/version replies follow only [block-versions.md](block-versions.md#theme-request-on-an-older-block).
+- Unsupported theme/version replies follow only [Theme request on an older block](quests-block-brief.md#theme-request-on-an-older-block).
 - "Show my block again" with exactly one hidden Quests block on the chosen site: show the plan for the show operation in the same turn, not only a summary.
 - A limit outside 1 to 24 gets one line that names only the range, 1 to 24. Don't offer to hide the block.
 

@@ -58,7 +58,7 @@ The plan runs against the backup structure and rejects these before confirmation
 
 | Op | Effect |
 |---|---|
-| `add` | Create a federated Quests wrapper from the selected pin's defaults, with its own default localized texts. Default index is 0; explicit index chooses the position. |
+| `add` | Create a federated Quests wrapper from the selected version's published defaults (the newest stable release when the operation names none), with its own default localized texts. Default index is 0; explicit index chooses the position. |
 | `update` values | Replace named leaves only. Create an absent parent object first, never overwrite an existing parent or whole values map. A leaf under a missing parent can return 200 while being ignored. |
 | `update` title/description | Update the plain field and any valid editor localization ref for every site locale; warn that editor text is replaced. |
 | `reset` | Remove selected leaves, skip absent ones; title/description reset also removes its matching ref. |
@@ -89,8 +89,8 @@ from `values.resources.localizedValues[<overrides.<questId>.titleRef>].texts.id`
   (CDN-verified), `useAsNativeBlock: false`. The npm name `@quest-platform/quests-block`
   is stored with `@` and `/` replaced by `_`.
 - Creation uses `federated_patch` with CDN `default-data.json`, not a palette template
-  (template-name add returns HTTP 500). Version pins/defaults are below. New releases
-  require changing `QUESTS_LATEST_VERSION` and the caller's version catalogue together.
+  (template-name add returns HTTP 500). Versions are read from the CDN at run time (below);
+  a new release needs no change here.
 - Patchable leaves, all under `["values","internalBlockValues", ...]`: `questIds`,
   `maxQuests`, `overrides.<questId>.{title,description,imageUrl,imageRef}`,
   `layout.{showHeading,showDescription,showImage,cardAlign,imageFit,buttonStyle,blockBackground,cardBackground}`
@@ -110,25 +110,24 @@ from `values.resources.localizedValues[<overrides.<questId>.titleRef>].texts.id`
 
 ## Appearance capability
 
-Adds accept exactly `0.2.10` (latest stable, `QUESTS_LATEST_VERSION`, target for every
-new block), `0.2.10-qp-3256.0` (same-release candidate), `0.2.7-qp-3256.0` (legacy
-appearance candidate) and `0.1.5` (legacy, no appearance). Never propose candidates or
-legacy pins for a new block. An omitted version uses gate `QUESTS_VERSION` default
-`0.1.5`; a themed add must provide a version explicitly. The three themed pins have
-identical settings and verified release/CDN artifacts (2026-11-04).
+No version is pinned in the gate (`scripts/quests_versions.py`). A version is accepted when the
+CDN serves its `default-data.json`. An `add` without a version gets the newest stable release,
+found by walking release numbers upward from the first one until a round of ten finds nothing;
+the rendered plan carries the chosen version. Never propose a candidate (prerelease) version for
+a new block.
 
-Appearance update/reset requires the target's exact saved `values.version` to match
-one of those three themed pins. No inference from ordering: `0.2.8`, `0.2.9`, `0.1.12`
-are refused for appearance. Candidate plans warn to review the build before approval.
+A version supports appearance when its served defaults carry `themeId`. Appearance
+update/reset requires the target's saved `values.version` to support it; nothing is inferred
+from version ordering. Candidate plans warn to review the build before approval.
 No operation changes an existing block's version; duplicate preserves it. On an older
 block, offer a new latest-stable block with the same quests and hide the old one under
 its own plan/yes, or a version change by the Site Builder team/editor before rechecking.
 
-The verified artifacts default `themeId` to `site-builder` and use an
+Versions with appearance default `themeId` to `site-builder` and use an
 optional open `themeAppearance` map. The operation paths below it are leaf patches under
 `values.internalBlockValues`.
 
-On those pins, the gate accepts the `themeId` values `site-builder`, `xsolla-pages`
+On those versions, the gate accepts the `themeId` values `site-builder`, `xsolla-pages`
 and `custom`, the existing per-preset leaves under
 `themeAppearance.site-builder.*` / `themeAppearance.xsolla-pages.*`, and Custom V1
 leaves under `themeAppearance.custom`. Custom is an open saved map, but the gate allows

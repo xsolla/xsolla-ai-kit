@@ -73,8 +73,8 @@ appearance or a hard-coded card label.
 - Keep the original Pages preset's 72px display heading by selecting Pages and omitting
   Custom heading overrides. In Custom, `headingSize` and `headingLineHeight` control the
   section heading only; card titles inherit the base.
-- Use the adaptation spec's pinned comparison assets only as references. Where the
-  source reference is available, approved component geometry should match within 2px.
+- Where a reference design for the page is available, approved component geometry should
+  match it within 2px.
   Document a deliberate full-bleed exception instead of forcing it into the container.
 - Check 320px for overflow and 375, 768 and 1440px for whole-page alignment and grid
   wrapping. Apply only the smallest supported correction, then reload and compare the
@@ -133,19 +133,17 @@ example:
 ```
 
 This is a shape example, not a recommended design. Use only measured and approved
-values. Follow the saved-version checks, explicit new-block version and unsupported-version
-fallback in [block-versions.md](block-versions.md). Never infer support from version ordering
+values. Follow the saved-version checks and the older-block fallback in
+[Versions](quests-block-brief.md#versions). Never infer support from version ordering
 or package metadata, or change an existing block's version.
 Preserve a before snapshot and, after a new block at a supported version is approved and
 added, read back quest IDs/order, refs, overrides, layout, auth and all unrelated saved
 fields before any appearance edit. Do not promise downgrade preservation unless it is
 verified.
 
-The requested Backpack button under Web3 rewards must open the installed stock Overlay.
-The current deployed Quests v1 has no supported host API for that action, so this feature
-remains blocked until a supported contract ships. Do not substitute external/new-tab
-navigation, add an app-owned controller, or claim the old external Backpack flow as this
-integration. Treat obsolete saved action-looking fields as opaque unknown data: never
+Opening the installed Backpack overlay from a card's reward button is not supported yet: decline
+it. Do not substitute external/new-tab navigation, add an app-owned controller, or claim another
+Backpack flow as this integration. Treat obsolete saved action-looking fields as opaque unknown data: never
 display, interpret, initialize, migrate, write or delete them. Normal quest and reward
 approval gates still apply.
 

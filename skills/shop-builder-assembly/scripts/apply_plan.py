@@ -48,7 +48,6 @@ from block_ops import (
     BLOCK_VALUES_ROOT,
     QUESTS_DEV_NAME,
     QUESTS_MODULE,
-    QUESTS_VERSION,
     card_text_ref,
     find_block,
     has_leaf,
@@ -620,7 +619,9 @@ def block_ids_on_page(ctx: ApplyContext, page_id: str) -> set:
 def add_quests_block(item: dict, ctx: ApplyContext) -> dict:
     """federated_patch: bare `federated` wrapper, then one update-block retarget."""
     page_id = item["page_id"]
-    version = item.get("version") or QUESTS_VERSION
+    version = item.get("version")
+    if not isinstance(version, str):
+        raise RuntimeError("the approved plan names no Quests block version")
     # Read the CDN first so a network failure cannot leave an empty wrapper behind.
     defaults = fetch_quests_defaults(version)
     before = block_ids_on_page(ctx, page_id)

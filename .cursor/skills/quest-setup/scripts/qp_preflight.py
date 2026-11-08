@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """Onboarding preflight: Get project, ask, Onboard project only after a yes, Get project readback.
 
-Library use: preflight(...) takes transport(method, path, body=None) -> (status, json) and
+Library use: preflight(...) takes transport(operation_id, body=None) -> (status, json) and
 confirm(question) -> bool. There are no defaults, so nothing there can reach a network on its own.
+Operations are named by their documented operationId; qp_request.py resolves the route from the
+docs cache.
 
 CLI (same credential lane as qp_request.py; keys are never printed):
     python3 qp_preflight.py check
@@ -56,11 +58,14 @@ def _question(project_name):
             "confirmed by a Get project readback." % project_name)
 
 
+GET_PROJECT = "get-project"
+ONBOARD_PROJECT = "onboard-project"
+
+
 def preflight(merchant_id, project_id, transport, confirm, merchant_name="", project_name=""):
     if not valid_id(merchant_id) or not valid_id(project_id):
         return _outcome("error", detail="invalid merchant or project id")
-    base = "/api/v2/merchants/%s/projects/%s" % (merchant_id, project_id)
-    status, _ = transport("GET", base)
+    status, _ = transport(GET_PROJECT)
     if status == 200:
         return _outcome("onboarded")
     if status != 404:
@@ -72,10 +77,10 @@ def preflight(merchant_id, project_id, transport, confirm, merchant_name="", pro
     if confirm(_question(project_name)) is not True:
         return _outcome("declined")
     body = {"merchant_name": merchant_name, "project_name": project_name}
-    onboard_status, _ = transport("POST", base + "/onboard", body)
+    onboard_status, _ = transport(ONBOARD_PROJECT, body)
     if not isinstance(onboard_status, int) or not 200 <= onboard_status < 300:
         return _outcome("error", 1, None, "Onboard project returned %s" % onboard_status)
-    readback, _ = transport("GET", base)
+    readback, _ = transport(GET_PROJECT)
     return _outcome("onboarded_now" if readback == 200 else "error", 1, readback)
 
 
@@ -83,16 +88,17 @@ def _emit(obj):
     print(json.dumps(obj, ensure_ascii=False))
 
 
-def _make_transport(creds, qp_request):
-    def transport(method, path, body=None):
-        qp_request.check_shape(method, path, False)
-        url = qp_request.build_url(path, False, creds)
-        data = None
-        if body is not None:
-            data = json.dumps(body).encode("utf-8")
-            if qp_request.route_kind(path) == "onboard":
-                qp_request.check_onboard_body(data)
-        result = qp_request.send(method, url, creds, data)
+def _make_transport(creds, qp_request, environ, folder):
+    hosts = qp_request.configured_hosts(environ, folder)
+    ops = qp_request.load_operations(environ, folder)
+
+    def transport(operation_id, body=None):
+        op = ops.get(operation_id)
+        if op is None:
+            raise qp_request.Refusal("unknown_operation")
+        data = json.dumps(body).encode("utf-8") if body is not None else None
+        url = qp_request.prepare(op, {}, [], data, creds, hosts)
+        result = qp_request.send(op.method, url, creds, data)
         return result.get("status", 0), result.get("body")
     return transport
 
@@ -132,12 +138,15 @@ def main(argv=None, environ=None, cwd=None, send_transport=None):
     except qp_request.Refusal as refusal:
         _emit({"ok": False, "error": refusal.error})
         return 2
-    transport = send_transport or _make_transport(creds, qp_request)
+    try:
+        transport = send_transport or _make_transport(creds, qp_request, env, folder)
+    except qp_request.Refusal as refusal:
+        _emit({"ok": False, "error": refusal.error})
+        return 2
 
     if command == "check":
-        base = "/api/v2/merchants/%s/projects/%s" % (creds.merchant_id, creds.project_id)
         try:
-            status, _ = transport("GET", base)
+            status, _ = transport(GET_PROJECT)
         except qp_request.Refusal as refusal:
             _emit({"ok": False, "error": refusal.error})
             return 2
