@@ -12,61 +12,42 @@ AI Agent **cannot** create an Xsolla account automatically. The user must comple
 
 ## Step 0: Check for Existing Credentials
 
-**Before anything else**, check for a `.env` file in the project root. Parse it
-as text and inspect only whether the expected names have non-empty values.
-Never run `source`, `eval`, or shell interpolation on `.env`. Do not print the
-file, values, or encoded headers.
+**Before anything else**, check the project root's `.env` with the skill's script, run from
+that folder. It parses `.env` as text, never sources it, and never prints the key:
 
 ```bash
-python3 - <<'PY'
-from pathlib import Path
-
-expected = (
-    "XSOLLA_MERCHANT_ID",
-    "XSOLLA_PROJECT_ID",
-    "XSOLLA_PROJECT_API_KEY",
-)
-values = {}
-path = Path(".env")
-for line in path.read_text().splitlines() if path.is_file() else ():
-    line = line.rstrip("\r\n").strip()
-    if not line or line.startswith("#") or "=" not in line:
-        continue
-    name, _, value = line.partition("=")
-    name = name.strip()
-    if name.startswith("export "):
-        name = name[7:].strip()
-    if name not in expected:
-        continue
-    value = value.strip()
-    if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
-        value = value[1:-1]
-    values[name] = value
-for name in expected:
-    print(f"{name}: {'set' if values.get(name) else 'missing'}")
-PY
+python3 "<skill base dir>/scripts/env_credentials.py" check
 ```
 
-Report only `XSOLLA_MERCHANT_ID: set/missing`,
-`XSOLLA_PROJECT_ID: set/missing`, and `XSOLLA_PROJECT_API_KEY: set/missing`.
-If all three are set, continue with the integration without showing any values.
+It prints the merchant ID and project ID (they are not secrets, and they show which project is
+configured) and only `set` or `missing` for `XSOLLA_PROJECT_API_KEY`. Show the user those three
+lines and confirm the IDs are the intended project. If all three are set and the project is the
+right one, continue with the integration. Never print, echo or show the key, even masked or
+encoded.
 
-If the file is missing or any variable is absent, continue with the steps below.
-For a coded shop, tell the user which required key is missing from the
-project-local `.env`. Do not ask them to paste the project API key into chat.
+If the file is missing or any value is missing, continue with the steps below. For a coded shop,
+tell the user which value is missing. Do not ask them to paste the project API key into chat.
 
 **Where the key lives:**
 
 - A shop the user codes (`shop-setup`) has a project directory. Write the merchant id, project id, and project API key to `.env` ([Step 5](#step-5-write-credentials-to-env)). That file is for the application.
-- A shop created on Xsolla's side (`nocode-shop-setup`) has no project directory. Do
-  not create `.env`; use the project key held by the signed-in Xsolla CLI instead.
+- A shop created on Xsolla's side (`nocode-shop-setup`) has no project directory. Use the
+  project key held by the signed-in Xsolla CLI; do not create `.env` unless the recovery
+  below needs one.
 - When `xsolla auth login` reports that it created a Store API key for the project and
   saved it to the keychain, CLI commands use that key. Do not ask for a key or copy it
   into `.env` or chat. Check it with one read-only catalog command for this project. If
-  that read returns 401 after a project switch, run `xsolla auth login` for the intended
-  project and repeat the read once. If it still returns 401, stop and report the secure
-  credential setup blocker; do not create or request a key as a chat fallback. Never ask
-  the user to paste a session token.
+  that read returns 401 (seen after switching projects), run `xsolla auth login` for the
+  intended project and repeat the read once.
+- If it still returns 401, `auth login` made no key for this project. Creating one is a
+  write: propose it and wait for the user's yes (for `nocode-shop-setup`, in its one batch).
+  Then create one project key with `xsolla publisher create-api-key` (confirm the command
+  with `xsolla publisher --help`) and pipe its output straight into
+  `python3 "<skill base dir>/scripts/env_credentials.py" write --merchant-id <id> --project-id <id> --key-stdin`,
+  run from the folder the CLI runs from, so the key is saved to `.env` there (the CLI reads
+  it) and never appears in the output or the chat. Create one key per project, not one per
+  run. If the key cannot be saved this way, stop and report the credential blocker.
+- Never ask the user to paste a key or a session token into chat.
 
 ---
 
@@ -172,20 +153,28 @@ Full go-live checklist (utils probe, flip sandbox flags, deploy, live payment te
 
 ## Step 5: Write Credentials to .env
 
-For a coded shop, write confirmed credentials to the project-local `.env` using
-`XSOLLA_MERCHANT_ID`, `XSOLLA_PROJECT_ID`, and `XSOLLA_PROJECT_API_KEY`. For a
-Shop Builder shop without a code repository, do not create `.env`; the signed-in
-Xsolla CLI holds the project key.
+For a coded shop, write the confirmed credentials to the project-local `.env` with the skill's
+script, run from the project root. It first makes sure `.env` is ignored by Git, then sets
+`XSOLLA_MERCHANT_ID`, `XSOLLA_PROJECT_ID` and `XSOLLA_PROJECT_API_KEY` in place (existing lines,
+including `export NAME=` lines, are updated without duplicates; every other line is kept) and
+leaves the file at mode `600`:
 
-Before saving any values, verify `.env` is ignored by Git. Add it to `.gitignore`
-before creating a new file. Create the file with only the required settings and
-set its mode to `600`. For an existing file, update required assignments in place,
-including lines that start with `export NAME=`, without adding duplicates. Preserve
-all unrelated lines and settings.
+```bash
+python3 "<skill base dir>/scripts/env_credentials.py" write --merchant-id <merchant_id> --project-id <project_id>
+```
 
-Never source, execute, or interpolate `.env`. After writing, confirm only the
-set/missing state of each key. Never print or echo saved values, even masked or
-encoded.
+This writes the two IDs and keeps a key already in the file. To add the key, give the user this
+command to run in their own terminal; it asks for the key with hidden input, so the key never
+reaches the chat:
+
+```bash
+python3 "<skill base dir>/scripts/env_credentials.py" write --merchant-id <merchant_id> --project-id <project_id> --key-prompt
+```
+
+Both print the same result as `check`: the two IDs and `set` or `missing` for the key. For a Shop
+Builder shop without a code repository, do not create `.env`; the signed-in Xsolla CLI holds the
+project key (see [Where the key lives](#step-0-check-for-existing-credentials)). Never source,
+execute or interpolate `.env`, and never print or echo the key, even masked or encoded.
 
 ## Checklist
 
@@ -194,7 +183,7 @@ encoded.
 - [ ] Merchant ID known
 - [ ] Project ID known
 - [ ] Project-level API key securely available in `.env` for a coded shop or the signed-in CLI for Shop Builder
-- [ ] For a coded shop, `.env` has mode 600 and is ignored by Git
+- [ ] For a coded shop, `.env` written with the skill's script: mode 600 and ignored by Git
 - [ ] *(Optional)* Merchant-level API key saved — only needed for CLI or cross-project API calls
 
 Once credentials are available from `.env` or the signed-in CLI, proceed with the integration.
