@@ -1,10 +1,8 @@
 # XLA Pages: page-type manifest for AI Kit page generation
 #
-# Sources, read 2026-11-07:
-#   XLA Pages API   gitlab user-platform/xla-pages-api, master (public /pub surface)
-#   Data providers  gitlab site-builder/site-builder, master, packages/data-providers/src/ugc-d-providers
-#   Design          github xsolla/pages_design, main (src/pages/AppShell.tsx, src/content/types.ts)
-#   Block releases  #shop-builder-sdk publish log, 2026-10-14 .. 2026-11-06
+# Sources, read 2026-11-07: the XLA Pages API's public /pub surface, the Shop Builder data
+# providers, the XLA Pages design, and the block release log from 2026-10-14 to 2026-11-06.
+# Internal repositories and channels stay out of this public repository.
 #
 # The agent builds XLA pages only from what this file lists. Anything not listed is not allowed.
 #
