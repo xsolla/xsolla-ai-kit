@@ -60,10 +60,10 @@ until [expert-review.md](references/expert-review.md) records approval.
    it. After the yes and the catalog's creation, run preflight again; it must pass in
    full before apply.
    When the site needs a common layout (a new site, or one without it) and the CLI has
-   no `shopbuilder create-block`, preflight prints "the common layout needs a newer
-   Xsolla CLI; the site is built without it". Tell the user in the plan, before any
-   write: a site without the common layout won't open in the Editor, Publish or
-   private preview.
+   no `shopbuilder create-block`, preflight and the rendered plan's `warnings` say the site
+   is built without it and won't open in the Editor, Publish or private preview; show that
+   with the plan, before any write. The plan depends on that CLI check, so a CLI upgrade
+   between render and apply changes its confirmation ID: render again and show it.
 2. If the CLI points at another merchant or project, or has sandbox mode on, switch it to
    the brief's project with sandbox off (`nocode-shop-setup` does this at its first
    check), then rerun preflight; never override later commands.
@@ -77,8 +77,8 @@ until [expert-review.md](references/expert-review.md) records approval.
    page's search title, description and share image, exact block removals, the template
    sections each new page comes with that are removed (`template_removals`), catalog
    mappings (for an `__all__` section, every enabled item it pulls in, with test or
-   leftover entries flagged; disabling them goes in the catalog proposal under the same
-   yes), existing pages the theme puts on the site colors, that a preview link anyone can
+   leftover entries flagged; recommend sections of the new groups only, since disabling
+   an entry changes the live catalog at once), existing pages the theme puts on the site colors, that a preview link anyone can
    open will be created for the visual review after the build, and what is still to
    connect, with a desktop and mobile
    [mockup](references/visual-style.md#mockup-for-the-approval). Call each section by its
@@ -180,9 +180,9 @@ If the CLI lacks an operation, stop it, record the gap, and file a CLI/API ticke
 - Report skips, interventions, and gaps; state that the site is **not published**.
 - If the plan adds the Custom code (`html`) block, tell the user it is added empty and
   hidden: they paste their code and make the block visible in the Site Builder editor.
-  Never write HTML, CSS, or JavaScript into it. Custom blocks from a Figma design are
-  different: `nocode-shop-setup` creates them after the last apply run, as its
-  [Figma reference](../nocode-shop-setup/references/figma-custom-blocks.md) describes.
+  Never write HTML, CSS, or JavaScript into it. A site that must match a Figma design
+  uses no custom code, and Custom Blocks only as
+  [Matching a Figma design](../nocode-shop-setup/references/figma-design.md) allows.
 
 ## Stop conditions
 

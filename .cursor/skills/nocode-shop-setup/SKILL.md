@@ -104,11 +104,13 @@ Do not write the answer to `.env`.
 
 ## A Figma design
 
-When the request links a Figma file, the design is the site: build every page and
-section of it with custom blocks right away, not a preset or a standard-block layout, and
-don't ask whether to use it. Only the store sections (catalog, cart, checkout) and
-sign-in stay standard blocks, in the design's colors and fonts. The CLI check, reading the
-design, the plan and the build are in [Figma to custom blocks](references/figma-custom-blocks.md).
+When a Shop Builder site, new or existing, has to look like a Figma design, follow
+[Matching a Figma design in Shop Builder](references/figma-design.md): standard blocks
+first; a Custom Block (`xsolla shopbuilder create-custom-block`) for each section a
+standard block can't match one to one, named in the plan by its purpose with the reason;
+never custom code, and never touch custom code already on the site; prices, timers,
+items, cart and login stay live; never publish; check at 1440, 1024 and 390 px against
+the Figma frames, and list what neither can match.
 
 ## One batch of questions
 
@@ -124,8 +126,9 @@ answer, so a reply such as "all recommended" settles it:
   later with `shopbuilder-translate`, which shows its own preview). The storefront
   skills read these answers and don't ask them again;
 - `catalog-design`'s questions: the archetype, what to do with test or demo entries
-  already in the project (recommended: disable them under the same yes), and any
-  commercial value it can't infer;
+  already in the project (recommended: leave them and show only the new groups on the
+  site; disabling one changes the live catalog at once), and any commercial value it
+  can't infer;
 - item delivery: whether a game server should receive paid orders. Recommended: not now;
   purchases still work, but items reach the game only once the developer deploys webhook
   handler code on their own server;
@@ -172,7 +175,9 @@ desktop and mobile mockup for a store (a game home shows `game-web-portal`'s pla
 ask for **one yes**. That yes lets `catalog-design` create
 the catalog and the storefront skill apply its plan, in that order. The storefront skill
 still runs its own preflight and backup, and asks again only for what its plan didn't
-show. When the catalog already exists, the plan alone is the message.
+show. When the catalog already exists, the plan alone is the message. When the proposal
+writes to the catalog, the plan says so: the project is live, and catalog changes reach
+the store and game clients at once, with no publish step.
 
 Before showing the proposal, check it against the limits in `catalog-design`'s LiveOps
 reference: each offer chain or reward chain step takes one item, and offer chain steps
