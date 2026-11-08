@@ -8,10 +8,11 @@ federated blocks only, pinned to the reference pages' versions and bound to the 
 
 Draft. Preflight, plan, validation and the after-write check work. Data connections, bindings
 and SEO are written through today's `update-block` and `update-many-localization`, in the shapes
-the Site Builder server uses. Creating a page needs two CLI flags that don't exist yet
-([cli-gaps.md](references/cli-gaps.md)): `add-page --provider-id/--provider-input` and
-`add-block --package/--version`. With the current CLI a batch that creates a page stops at the
-gate with zero writes and reports what is missing; an update of an existing page runs.
+the Site Builder server uses. Creating a page needs what the CLI doesn't have yet
+([cli-gaps.md](references/cli-gaps.md)): a dynamic page with a data provider from `add-page`,
+and a federated block at an exact version. With the current CLI a batch that creates a page
+stops at the gate with zero writes and reports what is missing; an update of an existing page
+runs.
 
 ## Happy path
 
