@@ -27,10 +27,12 @@
 /skills/shop-setup/                       @y-klochikhin @JavadManashti
 /skills/merchant-setup/                   @y-klochikhin @JavadManashti
 /skills/production/                       @y-klochikhin @JavadManashti
+/skills/quest-setup/                      @raliyev-xsolla @JavadManashti
 
 # SB AI skills — the Shop Builder path
 /skills/nocode-shop-setup/                @apyanzin-xsolla @JavadManashti
 /skills/shop-builder-assembly/            @apyanzin-xsolla @JavadManashti
+/docs/shop-builder-assembly/              @apyanzin-xsolla @JavadManashti
 /skills/description-to-shop/              @apyanzin-xsolla @JavadManashti
 /skills/shopbuilder-translate/            @apyanzin-xsolla @JavadManashti
 /skills/game-web-portal/                  @apyanzin-xsolla @JavadManashti

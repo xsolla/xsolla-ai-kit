@@ -4,7 +4,7 @@ Agent skills for Xsolla — works with Claude Code, GitHub Copilot, Codex CLI, W
 
 Install the kit in your AI coding tool and your agent can integrate Xsolla's APIs directly into your game, build a fully functional headless web shop you own and host with full control of the frontend, or, in preview, assemble a Shop Builder site from a plain-language description of your game. It works with the AI coding tools you already use, with no engine lock-in and no proprietary assistant. Instead of generating code that looks right but breaks in production, your agent follows validated, production-ready logic encoding the correct integration paths, so the first AI-assisted attempt is the right one, with validation built in. From setting up a project and configuring a catalog to integrating Pay Station and implementing webhooks, the kit takes you from zero to a working integration.
 
-On the Shop Builder path, in preview, the agent turns your game description into a validated shop brief and builds an unpublished Shop Builder site from it through the Xsolla CLI, in a dedicated test project you approve. You review the site and publish it yourself in Publisher Account.
+On the Shop Builder path, in preview, the agent turns your game description into a validated shop brief and builds an unpublished Shop Builder site from it through the Xsolla CLI, in your own Publisher Account project. You review the site and publish it yourself in Publisher Account.
 
 To use it today, install the Xsolla CLI 1.9.4 or later: `brew install xsolla/xsolla-cli/xsolla`. A new store opens in the Shop Builder Editor and preview only with a CLI that has `shopbuilder create-block`; the agent checks this first and tells you.
 
@@ -93,6 +93,7 @@ XSOLLA_PROJECT_API_KEY=<your API key>
 | `headless-checkout-integration` | Payments via Headless Checkout | @y.klochikhin | Done |
 | `webhooks-impl` | Webhook handler generation | @e.chernykh | Done |
 | `production` | Sandbox → live / go-live | @y.klochikhin | Done |
+| `quest-setup` | Quest Platform quests, events, rewards, Web Shop and Shop Builder Quests operations | @r.aliyev | Draft |
 
 ## Invoking a skill
 
@@ -112,7 +113,8 @@ specific skill:
 and `production`. `nocode-shop-setup` is the entry for Shop Builder: a store goes to
 `description-to-shop` and `shop-builder-assembly`, and a PC game home goes to
 `game-web-portal`. `shopbuilder-translate` translates the page copy of a Shop Builder
-site.
+site. `quest-setup` creates and manages Quest Platform quests, events, rewards, Web Shop
+quest modules, and approved Shop Builder Quests block operations.
 
 ## Contributing
 

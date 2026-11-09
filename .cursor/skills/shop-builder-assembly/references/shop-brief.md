@@ -80,6 +80,31 @@ Paths must be unique root-relative kebab-case paths. Blocks must be module names
 already verified in Shop Builder; unverified modules are rejected
 before planning or writes.
 
+## Operation mode (`block_operations`, Quests block only)
+
+A brief with `block_operations` edits individual Quests blocks on an existing site and
+cannot be combined with `content.page_overrides`. Required: `version`, `project`
+(`merchant_id`, `project_id`), `site.slug` and
+`block_operations`. Nothing else is allowed: validation rejects any other top-level key
+(`game`, `catalog`, `content`, `brand`, `sources`), any other `site` key (`name`, `pages`)
+and any other `project` key, because the plan would silently ignore them. Operations write
+only after the CLI check in [CLI operations](cli-operations.md#sandbox-mode) passes, with
+sandbox mode off and the brief's IDs matching the CLI.
+
+```json
+"block_operations": [
+  {"op": "add", "module": "_quest-platform_quests-block", "page": "/", "index": 2,
+   "values": {"questIds": ["..."], "maxQuests": 6, "layout.cardAlign": "center"},
+   "translations": {"en-US": {"heading": "Quests"}}},
+  {"op": "update", "block_id": "<id>", "values": {"overrides.<questId>.title": "..."}},
+  {"op": "reset", "block_id": "<id>", "paths": ["overrides.<questId>.imageUrl"]}
+]
+```
+
+Other operations are `move`/`duplicate` with `block_id` and `index`, and `hide`/`show`
+with `block_id`. Full effects, leaf/parent rules, bounds, locale/index conflicts and
+`needs_human` delete handling are in [block-operations.md](block-operations.md).
+
 ## Handoff contract for other skills
 
 - Description skills populate `game`, approved `content`, and relevant `sources`.

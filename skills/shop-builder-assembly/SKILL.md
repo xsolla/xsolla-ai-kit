@@ -29,6 +29,12 @@ Normalize publisher answers, existing stores, descriptions, and designs into the
 [shop brief](references/shop-brief.md). Writes require that brief; callers own source
 extraction.
 
+For Quests block operations on an existing Shop Builder site, including settings and
+appearance changes, use a `block_operations` brief and follow
+[block operations](references/block-operations.md). This path plans and applies only
+confirmed block operations; it does not reconcile pages, navigation, site or page themes,
+or catalog sections.
+
 If `preset` is `auto`, choose in this order:
 
 1. Live-service game with active events or rotating offers → `live-service-events`.
@@ -78,8 +84,9 @@ until [expert-review.md](references/expert-review.md) records approval.
    [mockup](references/visual-style.md#mockup-for-the-approval). Call each section by its
    block name in the [block catalog](references/block-catalog.md), such as Offer chain or
    Reward system, never by a module ID such as `sb-offer-chain`. Don't show the developer
-   module IDs or the `confirmation_id`, not even labelled as audit details. Preserve
-   configured blocks lacking replacement data. Omit `--structure` only for a new slug's
+   module IDs or the `confirmation_id` on standalone build plans, even as audit details.
+   The `block_operations` mode instead follows its local [operation-plan confirmation](references/block-operations.md#operation-plan-confirmation)
+   exception. Preserve configured blocks lacking replacement data. Omit `--structure` only for a new slug's
    bootstrap-only plan; it still shows every page and section to be built.
 5. Ask for one explicit yes to that plan before the first remote write. When
    `nocode-shop-setup` shows it in one message with a pending catalog proposal, that yes
@@ -189,6 +196,9 @@ Preserve completed safe work and explain the smallest action needed to continue.
   layout. Assembly builds on it with any preset: the template's hero and daily rewards
   block stay, demo blocks are exact removals, pages it adds drop their own header and
   footer, and the shared header's links are an Editor step that names each page.
+- Every write path, Quests block operations included, stops before any write when the
+  target site is published. Unpublish it in Publisher Account first, or build on another
+  slug.
 - When the requested slug is taken elsewhere in Shop Builder, `create-website` creates
   the site under another slug; `apply_plan.py` stops and names it. The new address needs
   a new yes, so propose a distinctive slug in the plan, not a generic `<game>-shop`.
