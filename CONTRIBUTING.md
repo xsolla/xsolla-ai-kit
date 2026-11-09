@@ -11,8 +11,8 @@ Run the validator. It checks everything CI checks and takes about a second:
 python3 .github/scripts/validate_skills.py
 ```
 
-It verifies skill frontmatter, the required sections, relative link targets, JSON
-validity, that every skill appears in both registries (`skills/README.md` and
+It verifies skill frontmatter, relative link targets, JSON validity, that every
+skill appears in both registries (`skills/README.md` and
 `AGENTS.md`), and that the generated files (`.cursor/skills/**`, `CLAUDE.md`) match
 their sources. It also scans for credentials.
 

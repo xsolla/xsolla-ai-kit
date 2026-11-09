@@ -10,7 +10,7 @@
     {
       "name": "xsolla-ai-kit",
       "source": "./",
-      "description": "All Xsolla workflow skills in one plugin: shop-setup (coded shop), nocode-shop-setup (Shop Builder), merchant-setup, catalog-design, login-setup, login-styling, headless-checkout-integration, webhooks-impl, production, and, in preview, the Shop Builder path: description-to-shop, shop-builder-assembly, game-web-portal, shopbuilder-translate and xla-pages (XLA Pages on x.la).",
+      "description": "All Xsolla workflow skills in one plugin: shop-setup (coded shop), nocode-shop-setup (Shop Builder), merchant-setup, catalog-design, login-setup, login-styling, headless-checkout-integration, webhooks-impl, production, and quest-setup for Quest Platform quests, rewards, Web Shop modules and Shop Builder Quests block operations. In preview, the Shop Builder path includes description-to-shop, shop-builder-assembly, game-web-portal, shopbuilder-translate and xla-pages (XLA Pages on x.la).",
       "category": "productivity",
       "keywords": [
         "xsolla",

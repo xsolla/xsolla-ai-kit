@@ -35,6 +35,7 @@ Two ways to build a shop, for different goals. Before building, find out whether
 | `login-styling`                 | Applies a custom visual style / theme / brand to the Login UI (pairs with `login-setup`) |
 | `headless-checkout-integration` | Payments via Headless Checkout                                                           |
 | `webhooks-impl`                 | Generates webhook handler code for order/payment events                                  |
+| `quest-setup`                    | Creates and manages Quest Platform quests, events, rewards and optional Web Shop quest sections and Shop Builder Quests block operations |
 | `production`                    | Sandbox → live: contract, flip flags, deploy, developer live-payment checklist           |
 | `description-to-shop`           | Prose → shop brief for shop-builder-assembly — reached via nocode-shop-setup             |
 | `shopbuilder-translate`         | Translates Shop Builder page copy. Catalog and LiveOps text are out of scope             |
@@ -85,6 +86,15 @@ Set up a Game Web Portal for my PC game — a game home with news, rewards and a
 Create the x.la pages for Klarna / update the PayPal page on x.la / generate XLA game pages
 → triggers: xla-pages (XLA Pages only; its manifest overrides the general Shop Builder rules;
   never publishes)
+
+Create a quest that rewards players
+→ triggers: quest-setup
+
+Show quests in my Web Shop
+→ triggers: quest-setup
+
+Add a quest module to my shop
+→ triggers: quest-setup, which routes approved block settings to shop-builder-assembly
 ```
 
 ---
@@ -97,6 +107,10 @@ XSOLLA_PROJECT_ID=<your project ID>
 XSOLLA_PROJECT_API_KEY=<your API key>
 ```
 Setup by `merchant-setup` skill.
+
+Each API's authentication format is specific to that API. Quest Platform
+publisher Basic authentication is documented in
+`skills/quest-setup/references/qp-api-contract.md`.
 
 ---
 
