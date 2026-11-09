@@ -73,7 +73,7 @@ verified stays out of `completed`. A step that is under way has no `status` key 
 |---|---|---|---|
 | `intake` | `nocode-shop-setup` | Every required intake value is in the ledger, or was given in the conversation when there is no project directory | The ledger, or the conversation |
 | `plan` | `nocode-shop-setup` | The shop is created on Xsolla's side (the user said so, or no repo with storefront code and the agent said so), and `site_kind` is `shop` or `portal` | The ledger when it exists; otherwise the conversation |
-| `merchant` | `merchant-setup` | Merchant id, project id, and project API key are known — in `.env` for a shop the user codes, held by the signed-in Xsolla CLI (`xsolla auth login`) on the Shop Builder path, or in the chat with neither — and the project answers an authenticated read | The same read |
+| `merchant` | `merchant-setup` | Merchant id, project id, and project key are available in `.env` for a coded shop or in the signed-in Xsolla CLI for Shop Builder, and the project answers an authenticated read. If neither secure store is available, stop with the credential blocker | The same read |
 | `catalog` | `catalog-design` | Every catalog group the site uses reads back from the project | Read each group |
 | `login` | `login-setup` | `XSOLLA_LOGIN_PROJECT_ID` is set, or on the Shop Builder path the Login project ID is in the ledger or the conversation, and the Login project reads back | Read the Login project |
 | `storefront` | the storefront skill | Its read-back matches the confirmed plan | The same read-back |
@@ -92,7 +92,7 @@ state (Resume, rule 4).
 | **File** | `.xsolla/onboarding.json` in the project root |
 | **Git** | Ignored: add `.xsolla/` to the project's `.gitignore` before the first write |
 | **Written by** | `nocode-shop-setup` first, when a project directory exists — `site_kind` and intake, once the side is settled — then the storefront skills, for their steps and the steps they discover |
-| **Holds** | The intake values, the site kind, and one entry per step. Never a secret, and never the build path. API keys stay in `.env` when the shop has a repo, in the signed-in Xsolla CLI on the Shop Builder path, or in the chat with neither |
+| **Holds** | The intake values, the site kind, and one entry per step. Never a secret, and never the build path. API keys stay in `.env` when the shop has a repo or in the signed-in Xsolla CLI on the Shop Builder path; the ledger and chat never hold a key |
 
 ```json
 {
@@ -150,7 +150,7 @@ On every start of a storefront skill that follows this contract, before any writ
    `401/403`) and say why.
 3. **Continue from the first step that is not `completed`.** Never repeat a completed step's
    writes.
-4. **A step with no entry, but Xsolla state that shows it** (credentials in `.env` or given in this chat, a Login
+4. **A step with no entry, but Xsolla state that shows it** (credentials in `.env` or the signed-in CLI, a Login
    project, an existing site at the domain): discover it, record the step if its evidence
    verifies, then continue as in 3.
 5. **A seeded block is hidden, never deleted,** only on a page the agent created and
