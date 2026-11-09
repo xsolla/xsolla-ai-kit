@@ -199,6 +199,3 @@ Preserve completed safe work and explain the smallest action needed to continue.
 - When the requested slug is taken elsewhere in Shop Builder, `create-website` creates
   the site under another slug; `apply_plan.py` stops and names it. The new address needs
   a new yes, so propose a distinctive slug in the plan, not a generic `<game>-shop`.
-  render and apply stop on them before any write for full site assembly. Quests block
-  operations do not touch the header or navigation and can proceed. Report the stop for
-  full assembly; do not suggest another site, manual edits, or another workaround.

@@ -93,6 +93,7 @@ fabricate one. Bold line first, then these bullets, in business terms:
 
 ```
 **Plan: create the "<quest name>" quest in <project name>**
+- Project: merchant <merchant_id>, project <project_id>
 - What the player does:
 - Reward: <item name>, quantity 1
 - Schedule (UTC): <start> to <end>

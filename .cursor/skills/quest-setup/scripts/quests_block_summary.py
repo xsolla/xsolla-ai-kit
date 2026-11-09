@@ -78,7 +78,13 @@ QuestFetcher = Callable[[str, str], Optional[QuestLookup]]
 
 
 def run_cli(args: List[str]) -> Dict[str, Any]:
-    proc = subprocess.run(["xsolla", "shopbuilder", *args], capture_output=True, text=True)
+    proc = subprocess.run(
+        ["xsolla", "shopbuilder", *args],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
     if proc.returncode != 0:
         return {"ok": False}
     try:
@@ -105,7 +111,11 @@ def fetch_quests(merchant: str, project: str) -> Optional[QuestLookup]:
             return None
         for quest in body.get("data") or []:
             quests[str(quest.get("id"))] = quest
-        if page * QUEST_PAGE_SIZE >= int(body.get("total") or 0):
+        try:
+            total = int(body.get("total") or 0)
+        except (TypeError, ValueError):
+            return None
+        if page * QUEST_PAGE_SIZE >= total:
             return QuestLookup(quests, True)
     return QuestLookup(quests, False)
 

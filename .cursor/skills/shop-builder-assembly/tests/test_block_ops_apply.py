@@ -1368,6 +1368,25 @@ class PublisherTemplateSiteTests(unittest.TestCase):
             "block operations must not add a header or footer to a template site",
         )
 
+    def test_apply_block_ops_refuses_a_published_site_before_any_write(self) -> None:
+        site = self.site(own_header=True)
+        structure_value = site.structure_value
+
+        def published_structure() -> dict:
+            return {**structure_value(), "published": True}
+
+        site.structure_value = published_structure
+        code, stdout, stderr, _ = self.run_apply(site)
+        self.assertNotEqual(0, code)
+        self.assertIn("the target site is published", stdout + stderr)
+        self.assertEqual([], self.writes(site))
+        self.assertEqual(3, site.find("q1")["values"]["internalBlockValues"]["maxQuests"])
+
+    def test_apply_block_ops_reports_no_published_field(self) -> None:
+        code, stdout, stderr, _ = self.run_apply(self.site(own_header=True))
+        self.assertEqual(0, code, stderr)
+        self.assertNotIn("published", json.loads(stdout))
+
     def test_apply_block_ops_never_calls_the_template_header_check(self) -> None:
         site = self.site(own_header=False)
         with mock.patch.object(

@@ -58,6 +58,8 @@ QP_ROUTE_METHODS = {
     "onboard": ("POST",),
     "custom-blocks": ("GET", "POST"),  # SKILL.md: a 403 on creating a custom block gets one reply
 }
+# Onboarding runs only through qp_preflight.py, behind its --yes gate.
+PREFLIGHT_ONLY_ROUTES = frozenset({"onboard"})
 ONBOARD_BODY_KEYS = frozenset({"merchant_name", "project_name"})
 STORE_PATH_PATTERN = re.compile(
     r"/api/v2/project/(\{project_id\}|[0-9]+)/admin/items/virtual_items(?:/sku/([A-Za-z0-9_.:-]+))?"
@@ -164,8 +166,11 @@ def route_kind(path: str) -> Optional[str]:
     return match.group(3) or "project"
 
 
-def check_shape(method: str, path: str, store: bool) -> None:
-    """Refuse anything that is not an allowed target, before credentials are read."""
+def check_shape(method: str, path: str, store: bool, preflight: bool = False) -> None:
+    """Refuse anything that is not an allowed target, before credentials are read.
+
+    Routes in PREFLIGHT_ONLY_ROUTES are allowed only when `preflight` is set.
+    """
     if method not in METHODS or not isinstance(path, str):
         raise Refusal("target_not_allowed")
     lowered = path.lower()
@@ -178,6 +183,8 @@ def check_shape(method: str, path: str, store: bool) -> None:
         return
     kind = route_kind(path)
     if kind is None or method not in QP_ROUTE_METHODS[kind]:
+        raise Refusal("target_not_allowed")
+    if kind in PREFLIGHT_ONLY_ROUTES and not preflight:
         raise Refusal("target_not_allowed")
 
 
@@ -325,10 +332,6 @@ def main(argv: Optional[List[str]] = None, environ: Optional[Mapping[str, str]] 
             body = load_body(args.body_file)
         check_shape(method, args.path, args.store)
         query = parse_query(args.query)
-        if not args.store and route_kind(args.path) == "onboard":
-            if body is None:
-                raise Refusal("invalid_body")
-            check_onboard_body(body)
         creds = resolve_credentials(env, folder)
         url = build_url(args.path, args.store, creds)
         if query:

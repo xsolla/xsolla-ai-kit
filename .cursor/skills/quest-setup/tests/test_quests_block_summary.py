@@ -242,6 +242,20 @@ class LookupCompletenessTests(unittest.TestCase):
             self.assertNotIn("found", card)
             self.assertNotIn("public", card)
 
+    def test_non_numeric_total_is_unavailable(self) -> None:
+        for total in ("many", [1], {"n": 1}):
+            with self.subTest(total=total):
+                self.send.reset_mock()
+                self.send.return_value = {"ok": True, "body": {"data": [], "total": total}}
+                self.assertIsNone(qbs.fetch_quests("1", "2"))
+                self.assertEqual(self.send.call_count, 1)
+
+    def test_cli_output_is_decoded_as_utf8(self) -> None:
+        completed = qbs.subprocess.CompletedProcess([], 0, stdout='{"ok": true}', stderr="")
+        with mock.patch.object(qbs.subprocess, "run", return_value=completed) as run:
+            self.assertEqual({"ok": True}, qbs.run_cli(["list-websites", "--json"]))
+        self.assertEqual("utf-8", run.call_args.kwargs["encoding"])
+
     def test_failed_page_is_unavailable_without_retry(self) -> None:
         self.send.side_effect = [
             {"ok": True, "body": {"data": [QUESTS["q-a"]], "total": 300}},

@@ -85,7 +85,7 @@ def _emit(obj):
 
 def _make_transport(creds, qp_request):
     def transport(method, path, body=None):
-        qp_request.check_shape(method, path, False)
+        qp_request.check_shape(method, path, False, preflight=True)
         url = qp_request.build_url(path, False, creds)
         data = None
         if body is not None:

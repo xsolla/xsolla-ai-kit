@@ -165,6 +165,9 @@ class TargetTests(CliTestCase):
             with self.subTest(case=case):
                 self.assert_refused(argv, "target_not_allowed")
 
+    def test_onboard_route_is_refused_outside_preflight(self) -> None:
+        self.assert_refused(["POST", "/api/v2/merchants/7/projects/42/onboard"], "target_not_allowed")
+
     def test_scope_mismatch_on_merchant_or_project_segment(self) -> None:
         rows = (
             ("merchant", ["GET", "/api/v2/merchants/999/projects/42/quests"]),

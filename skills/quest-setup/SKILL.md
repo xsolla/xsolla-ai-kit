@@ -1,20 +1,11 @@
 ---
 name: quest-setup
 description: >-
-  Load this FIRST, before any file search, ls or .env read, for any request about a named
-  quest card (its title, text, image or reward): that card is on the publisher's Quests
-  block, not in local code. Use for Xsolla Quest Platform quests (create, edit, list,
-  activate, pause, delete or debug a quest, Web3 rewards, conditions, sending a quest event)
-  and for the Quests block on a Shop Builder site: add, move, duplicate, reorder, hide or
-  show it, or change its heading, card count, card titles, descriptions, images, alignment
-  or button style (a card reward is read-only: it comes from the quest). Also lists the
-  publisher's shops or Shop Builder sites (a read). Removing the block gets hide offered
-  (the publisher deletes it in the Site Builder editor). Any other Shop Builder site change
-  (header, theme, other blocks) loads this only to decline it in one sentence. A headless
-  storefront quest section is covered on explicit request. Triggers: "create a quest", "my
-  quests", "trigger my quest", "why didn't my quest complete", "Quests block", "show quests
-  in my web shop", "list my shops", "change the title of the Win 3 matches card", "change
-  the reward on the Daily Login card".
+  Create, edit, list, activate, pause, delete or debug Xsolla Quest Platform quests:
+  conditions, rewards (Web3 included) and quest events. Also the Quests block on a Shop
+  Builder site: add, move, hide or show it, and change its heading, card count, or card
+  titles, text, images and buttons. Use when a request names a quest, a quest card or the
+  Quests block, e.g. "create a quest".
 metadata:
   owner: r.aliyev
   domain: quests
@@ -28,9 +19,12 @@ Never name credentials, variables, paths, routes, tools, tickets or skills in re
 The sole command/path/tool exception is the separate sandbox confirmation: reproduce the exact
 command and directory from preflight per [Gate commands](references/quests-block-brief.md#gate-commands), never secrets.
 Omit IDs, hosts and environment names outside the Web Shop URL, returned editor link,
-event payload and exact gate Confirmation ID on rendered block-operation plans only.
+event payload, the merchant and project IDs on quest write proposals, and the exact gate
+Confirmation ID on rendered block-operation plans only.
 Quest create/edit/publish plans have no gate ID; never fabricate one.
-Reward SKUs and item image URLs are content and may be shown.
+Reward SKUs and item image URLs are content and may be shown. Every quest write proposal
+(create, edit, pause, delete, event) shows the merchant and project IDs that `whoami`
+returned, so a credential for another project is caught before the yes.
 
 ## Access and authority
 
@@ -135,7 +129,7 @@ Every site write uses the `block_operations` gate on the chosen site only.
 A named different/protected site gets no plan or write. The gate owns preflight, backup,
 render, confirmation identity before side effects, apply and readback. Follow the authoritative
 [Gate commands](references/quests-block-brief.md#gate-commands) for the separate exact-command
-and directory sandbox yes, later plan yes, and restore-on-stop/final-state obligations.
+and directory sandbox yes, the later plan yes, and the final-reply undo.
 Do not run raw write commands, `--force`, publish, or create stray files. A custom-block 403
 means the account lacks permission to create custom blocks; name Xsolla support, do not retry
 and write no local file.

@@ -1810,10 +1810,11 @@ def _main() -> int:
                 raise RuntimeError("Quests block operations require an existing site")
             if report is not None:
                 raise RuntimeError("Quests block operations do not accept an earlier run report")
+            refuse_published(structure(slug))
             landing_id = (plan.get("current_state") or {}).get("landing_id")
             if not isinstance(landing_id, str):
                 raise RuntimeError("the confirmed Quests settings plan has no landing ID")
-            applied, after = run_block_operations(slug, landing_id, plan)
+            applied, _ = run_block_operations(slug, landing_id, plan)
             print(
                 json.dumps(
                     {
@@ -1828,7 +1829,6 @@ def _main() -> int:
                             expected["merchant_id"], expected["project_id"], slug
                         ),
                         "applied": applied,
-                        "published": after.get("published") not in (None, False),
                     },
                     indent=2,
                 )

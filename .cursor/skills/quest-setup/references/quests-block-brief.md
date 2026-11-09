@@ -163,13 +163,14 @@ step 3. `G` is `<skill base dir>/../shop-builder-assembly/scripts`.
    `quest_id`, in block order. Never show these ids to the publisher.
 2. Run `mktemp -d` once and reuse the printed path `W`. Write the brief to `W/brief.json`.
 3. Run `python3 "G/preflight.py" "W/brief.json"`.
-   If it stops with "CLI sandbox mode is on", switch it off yourself with
-   `xsolla config set sandbox false`, run from the folder that holds the config in use
-   (the one `xsolla config list` reads). Say in your first message that the CLI config
-   keeps the change, so every later `xsolla` command reaches the live project, payments
-   and refunds included, and give the undo: `xsolla config set sandbox true` and the
-   previous merchant and project, by ID. Then rerun preflight. The plan's yes is the
-   only confirmation; nothing is written to the project before it.
+   If it stops with "CLI sandbox mode is on", do not switch it yet: this needs its own
+   yes, separate from the plan's. Reply with the exact command,
+   `xsolla config set sandbox false`, and the folder it runs from (the one that holds
+   the config `xsolla config list` reads). Say that the CLI config keeps the change, so
+   every later `xsolla` command reaches the live project, payments and refunds included,
+   and give the undo: `xsolla config set sandbox true`. End the turn. Only after a yes
+   to that exact command and folder, run it there and rerun preflight. That yes covers
+   the switch only; nothing is written to the site before the plan's own yes.
    When preflight returns `cli_environment`, add `--environment <name>` to read-only
    `xsolla shopbuilder` commands; this named environment does not change global config.
 4. `python3 "G/backup_shop.py" --brief "W/brief.json" --slug <slug> --output-dir "W/backup"`
@@ -182,8 +183,7 @@ step 3. `G` is `<skill base dir>/../shop-builder-assembly/scripts`.
    This is one confirmed operations run: do not pass `--run-report`. Apply verifies
    saved leaves and block preservation, then prints `editor_url`.
 7. The sandbox switch from step 3, if you made one, stays on the CLI config. Nothing
-   restores it automatically: the undo in your first message does, and say so in the
-   final reply when the run ends.
+   switches it back: in the final reply, say the CLI is still live and repeat the undo.
 
 If apply says the target structure changed after backup, someone edited the site
 meanwhile and nothing was written: run steps 4 and 5 again with a new backup folder, say

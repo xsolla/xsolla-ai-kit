@@ -40,8 +40,8 @@ Bold answer first, then 0 to 4 short bullets (`Label: value` when useful), then 
 ## Write proposals (Plan shape)
 
 Quest create/edit/publish proposals use [the quest format](quest-publish.md#proposal-format).
-They have no gate confirmation ID; never fabricate one. Include defaults, active/inactive
-status, schedule, repeat limits and payout impact.
+They have no gate confirmation ID; never fabricate one. Include the merchant and project IDs
+from `whoami`, defaults, active/inactive status, schedule, repeat limits and payout impact.
 
 The following rules apply only to rendered `block_operations` plans:
 
@@ -55,8 +55,8 @@ The following rules apply only to rendered `block_operations` plans:
 
 ## Sandbox command confirmation
 
-The exact command/directory reply, its separate yes, later plan yes and restoration contract
-are owned by [Gate commands](quests-block-brief.md#gate-commands). A sandbox stop is not a site plan.
+The exact command/directory reply, its separate yes, the later plan yes and the final-reply
+undo are owned by [Gate commands](quests-block-brief.md#gate-commands). A sandbox stop is not a site plan.
 
 ## Examples
 
