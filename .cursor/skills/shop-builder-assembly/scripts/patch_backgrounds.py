@@ -24,6 +24,8 @@ if SCRIPTS_DIR not in sys.path:
 from apply_plan import (
     backup_structure,
     check_cli_context,
+    is_published,
+    refuse_published,
     run_json,
     run_preflight,
     structure,
@@ -209,6 +211,8 @@ def main() -> int:
         if not verified_backup(args.backup_dir, brief["project"], slug):
             raise RuntimeError("a complete verified backup taken before the fixes is required")
         current = structure(slug)
+        refuse_published(current)
+        published = is_published(current)
         if structure_hash(current) != structure_hash(backup_structure(args.backup_dir)):
             raise RuntimeError("the site changed after the backup; back up again")
         landing_id = current.get("_id")
@@ -265,7 +269,7 @@ def main() -> int:
                     "patched": [
                         {"block_id": fix["block_id"], "leaf": fix["leaf"]} for fix in fixes
                     ],
-                    "published": False,
+                    "published": published,
                 },
                 indent=2,
             )

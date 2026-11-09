@@ -214,8 +214,8 @@ class ApplyPlanTests(unittest.TestCase):
             self.assertIsNone(apply_plan.ensure_common_layout("shop"))
         run_json.assert_not_called()
         self.assertIn(
-            "the common layout needs a newer Xsolla CLI; the site is built without it. A site "
-            "without the common layout won't open in the Editor, Publish or private preview",
+            "The common layout needs a newer Xsolla CLI, so the site is built without it. A "
+            "site without the common layout won't open in the Editor, Publish or private preview.",
             stderr.getvalue(),
         )
 
@@ -1216,8 +1216,9 @@ class ApplyPlanTests(unittest.TestCase):
         self.assertTrue(skipped["ok"], skipped["errors"])
         self.assertEqual(
             [
-                "the common layout needs a newer Xsolla CLI; the site is built without it. A site "
-                "without the common layout won't open in the Editor, Publish or private preview"
+                "The common layout needs a newer Xsolla CLI, so the site is built without it. A "
+                "site without the common layout won't open in the Editor, Publish or private "
+                "preview."
             ],
             skipped["warnings"],
         )
@@ -1547,7 +1548,9 @@ class ObjectPagePathTests(unittest.TestCase):
     def setUp(self) -> None:
         self.brief = json.loads(EXAMPLE_BRIEF.read_text(encoding="utf-8"))
 
-    def run_apply(self, cli: FakeShopBuilderCli, plan: dict) -> tuple[int, str, str]:
+    def run_apply(
+        self, cli: FakeShopBuilderCli, plan: dict, has_create_block: bool = True
+    ) -> tuple[int, str, str]:
         stdout, stderr = io.StringIO(), io.StringIO()
         with tempfile.TemporaryDirectory() as directory:
             argv = [
@@ -1562,7 +1565,9 @@ class ObjectPagePathTests(unittest.TestCase):
                 mock.patch.dict(apply_plan.RUN_AUTH, {"logged_in": False, "context": None}),
                 mock.patch.object(sys, "argv", argv),
                 mock.patch.object(apply_plan, "run_preflight"),
-                mock.patch.object(apply_plan, "cli_has_command", return_value=True),
+                mock.patch.object(
+                    apply_plan, "cli_has_command", return_value=has_create_block
+                ),
                 mock.patch.object(apply_plan, "run_json", side_effect=cli),
                 contextlib.redirect_stdout(stdout),
                 contextlib.redirect_stderr(stderr),
@@ -1646,6 +1651,19 @@ class ObjectPagePathTests(unittest.TestCase):
             },
             self.recorded_context,
         )
+
+    def test_new_landing_on_cli_without_create_block_applies_the_warned_plan(self) -> None:
+        plan = apply_plan.build_plan(self.brief, has_create_block=False)
+        self.assertIn(render_plan.LAYOUT_WARNING, plan["warnings"])
+        cli = FakeShopBuilderCli(self.brief)
+        code, stdout, stderr = self.run_apply(
+            cli, plan, has_create_block=False
+        )
+        self.assertEqual(0, code, stderr)
+        report = json.loads(stdout)
+        self.assertEqual("bootstrap-complete", report["status"])
+        self.assertIsNone(report["layout_id"])
+        self.assertNotIn("create-block", [call[1] for call in cli.calls])
 
     def test_rerun_on_object_path_landing_passes_plan_and_verify(self) -> None:
         cli = FakeShopBuilderCli(self.brief)
@@ -1913,8 +1931,8 @@ class CommonLayoutPreflightTests(unittest.TestCase):
         code, stdout, stderr, has_command = self.run_preflight(cli, has_create_block=False)
         self.assertEqual(0, code, stderr)
         self.assertIn(
-            "the common layout needs a newer Xsolla CLI; the site is built without it. A site "
-            "without the common layout won't open in the Editor, Publish or private preview",
+            "The common layout needs a newer Xsolla CLI, so the site is built without it. A "
+            "site without the common layout won't open in the Editor, Publish or private preview.",
             stderr,
         )
         self.assertEqual("skip", json.loads(stdout)["target"]["layout_step"])
@@ -1957,6 +1975,37 @@ class CommonLayoutPreflightTests(unittest.TestCase):
         target = json.loads(stdout)["target"]
         self.assertIsNone(target["common_layout_id"])
         self.assertEqual("create", target["layout_step"])
+
+    def test_a_published_site_stops_before_the_catalog_read(self) -> None:
+        site = {"pages": [], "layouts": [], "blocks": [], "published": True}
+        cli = FakePreflightCli(site)
+        code, stdout, stderr, _ = self.run_preflight(cli, has_create_block=True)
+        self.assertEqual(1, code)
+        self.assertEqual("", stdout)
+        self.assertIn("the target site is published", stderr)
+        self.assertNotIn(("catalog", "list-item-groups", "--project-id", "67890"), cli.calls)
+
+    def test_a_non_test_environment_in_the_brief_is_a_plan_warning(self) -> None:
+        brief = json.loads(EXAMPLE_BRIEF.read_text(encoding="utf-8"))
+        self.assertFalse(
+            any("marks this project" in w for w in render_plan.build_plan(brief)["warnings"])
+        )
+        for environment in ("test", "production"):
+            brief["project"]["environment"] = environment
+            warnings = render_plan.build_plan(brief)["warnings"]
+            self.assertEqual(
+                environment == "production",
+                any("marks this project as 'production'" in w for w in warnings),
+                environment,
+            )
+
+    def test_published_state_is_read_from_the_site(self) -> None:
+        for value, published in ((None, False), (False, False), (True, True), (1, True)):
+            with self.subTest(value=value):
+                self.assertEqual(published, apply_plan.is_published({"published": value}))
+        apply_plan.refuse_published({"published": None})
+        with self.assertRaisesRegex(RuntimeError, "Nothing was written"):
+            apply_plan.refuse_published({"published": True})
 
     def test_existing_site_without_common_layout_skips_without_create_block(self) -> None:
         site = {"pages": [], "layouts": ["side-id"], "blocks": ["side-id"]}
@@ -2106,7 +2155,12 @@ class PublisherTemplateSiteTests(unittest.TestCase):
         cli.landing, cli.site_modules = publisher_template_site(self.brief, own_header)
         return cli
 
-    def run_render(self, site: dict) -> tuple[int, str, str]:
+    def run_render(
+        self,
+        site: dict,
+        has_create_block: bool = True,
+        cli: FakeShopBuilderCli | None = None,
+    ) -> tuple[int, str, str]:
         stdout, stderr = io.StringIO(), io.StringIO()
         with tempfile.TemporaryDirectory() as directory:
             structure_path = Path(directory) / "structure.json"
@@ -2114,8 +2168,14 @@ class PublisherTemplateSiteTests(unittest.TestCase):
                 json.dumps({"ok": True, "data": site}), encoding="utf-8"
             )
             argv = ["render_plan.py", str(EXAMPLE_BRIEF), "--structure", str(structure_path)]
+            # render_plan.main() imports its CLI helpers from preflight when it runs.
             with (
                 mock.patch.object(sys, "argv", argv),
+                mock.patch("preflight.cli_has_command", return_value=has_create_block),
+                mock.patch(
+                    "preflight.run_json",
+                    side_effect=cli or AssertionError("unexpected CLI call"),
+                ),
                 contextlib.redirect_stdout(stdout),
                 contextlib.redirect_stderr(stderr),
             ):
@@ -2151,6 +2211,7 @@ class PublisherTemplateSiteTests(unittest.TestCase):
                 mock.patch.dict(apply_plan.RUN_AUTH, {"logged_in": False, "context": None}),
                 mock.patch.object(sys, "argv", argv),
                 mock.patch.object(apply_plan, "run_preflight"),
+                mock.patch.object(apply_plan, "cli_has_command", return_value=True),
                 mock.patch.object(apply_plan, "run_json", side_effect=cli),
                 mock.patch.object(apply_plan, "verified_backup", return_value=True),
                 mock.patch.object(apply_plan, "backup_structure", return_value=saved),
@@ -2213,6 +2274,17 @@ class PublisherTemplateSiteTests(unittest.TestCase):
         self.assertEqual(0, code, stderr)
         self.assertEqual("implemented-phases-applied", json.loads(stdout)["status"])
         self.assertEqual(["/"], [call.args[2]["path"] for call in reconcile.call_args_list])
+
+    def test_render_on_cli_without_create_block_finds_the_layout_by_get_block(self) -> None:
+        cli = self.fake_cli(own_header=True)
+        code, stdout, stderr = self.run_render(cli.landing, has_create_block=False, cli=cli)
+        self.assertEqual(0, code, stderr)
+        self.assertNotIn(render_plan.LAYOUT_WARNING, json.loads(stdout)["warnings"])
+        slug = self.brief["site"]["slug"]
+        self.assertEqual(
+            [("shopbuilder", "get-block", "--slug", slug, "--block-id", "layout-1")],
+            cli.calls,
+        )
 
     def test_header_source_rules(self) -> None:
         site, _ = publisher_template_site(self.brief)
@@ -2629,6 +2701,8 @@ class OneApprovalTests(unittest.TestCase):
             stderr = io.StringIO()
             with (
                 mock.patch.object(sys, "argv", argv),
+                # render_plan.main() imports its CLI helpers from preflight when it runs.
+                mock.patch("preflight.cli_has_command", return_value=True),
                 contextlib.redirect_stdout(io.StringIO()),
                 contextlib.redirect_stderr(stderr),
             ):
