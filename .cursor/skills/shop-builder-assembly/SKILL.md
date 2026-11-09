@@ -196,6 +196,9 @@ Preserve completed safe work and explain the smallest action needed to continue.
   layout. Assembly builds on it with any preset: the template's hero and daily rewards
   block stay, demo blocks are exact removals, pages it adds drop their own header and
   footer, and the shared header's links are an Editor step that names each page.
+- Every write path, Quests block operations included, stops before any write when the
+  target site is published. Unpublish it in Publisher Account first, or build on another
+  slug.
 - When the requested slug is taken elsewhere in Shop Builder, `create-website` creates
   the site under another slug; `apply_plan.py` stops and names it. The new address needs
   a new yes, so propose a distinctive slug in the plan, not a generic `<game>-shop`.

@@ -125,6 +125,7 @@ A yes routes to [Editing](quest-edit.md#editing). Card-content questions follow
 |---|---|
 | Project mismatch (`needs_human`) | The CLI's project differs from the brief's, or the site is not the publisher's; nothing written. Ask publisher to check the CLI project and retry. No project IDs. |
 | Non-Quests site change | **That's outside the Quests block.** Then `Next: anything to change on the Quests block?` No steps, menus or editor instructions. |
+| Published site | **That site is published, so nothing was changed.** Block changes go only to an unpublished site: unpublish it in Publisher Account first, or pick an unpublished site. One next ask. |
 | Shop Builder site publish request | **Publish the site in Publisher Account when ready.** The site stays unpublished. Quest creation/activation follows [quest-publish.md](quest-publish.md) after approval of its exact proposal. One next ask. |
 | Localized card texts | Single-language for now; card text translations postponed, heading may use already enabled languages. Ask which heading language, no invented locale codes. |
 | Missing quest | Only after complete successful list: quest does not exist on the site yet; offer to create first, then add. One yes/no ask, no creation details yet. |

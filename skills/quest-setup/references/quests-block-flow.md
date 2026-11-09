@@ -27,6 +27,9 @@ Loaded for a Quests block request on a Shop Builder site. Settings and the opera
    without site-wide suggestions, steps or menu names.
 7. **Sandbox stop.** [Gate commands](quests-block-brief.md#gate-commands) owns the
    sandbox check: while the CLI has sandbox on, preflight stops and no site work begins.
+8. **Unpublished sites only.** The gate never writes to a published site: apply stops
+   before any write. When the publisher says the site is published, or apply stops on
+   it, render no plan and reply with the [published-site shape](reply-format.md#examples).
 
 ## Prerequisites
 
