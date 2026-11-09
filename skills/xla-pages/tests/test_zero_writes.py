@@ -147,6 +147,40 @@ class ZeroWriteTests(unittest.TestCase):
         self.assertEqual(1, code)
         self.assertEqual([], self.cli.writes())
 
+    def updated_site(self, *providers: int) -> tuple[dict, Path]:
+        """Create the batch's pages, then change the hero title of the given providers' rows."""
+        code, report = harness.apply(self.cli, self.plan_path, self.backup)
+        self.assertEqual(0, code, report)
+        self.cli.calls.clear()
+        batch = harness.load_batch()
+        for index in providers:
+            batch["providers"][index]["hero_title"] = f"New title {index}"
+        return batch, self.dir
+
+    def test_updates_of_existing_pages_are_off_until_verified(self) -> None:
+        batch, _ = self.updated_site(0)
+        plan, errors, plan_path, backup_dir = harness.prepare(self.dir, self.cli, batch=batch, name="update")
+        self.assertEqual([], errors)
+        self.assertIn("updates of existing pages are off", plan["updates_off"])
+        self.cli.calls.clear()
+        code, report = harness.apply(self.cli, plan_path, backup_dir)
+        self.assertEqual(1, code)
+        self.assertEqual("updates_off", report["status"])
+        self.assertEqual(0, report["writes"])
+        self.assertEqual([], self.cli.writes())
+
+    def test_the_local_override_allows_one_updated_page_and_nothing_else(self) -> None:
+        batch, _ = self.updated_site(0, 1)
+        config = harness.write_config(self.dir, allow_unverified_updates=True)
+        plan, errors, plan_path, backup_dir = harness.prepare(self.dir, self.cli, batch=batch, name="two",
+                                                              config_path=config)
+        self.assertEqual([], errors)
+        self.assertIn("updates one page and creates none", plan["updates_off"])
+        self.cli.calls.clear()
+        code, report = harness.apply(self.cli, plan_path, backup_dir, config_path=config)
+        self.assertEqual("updates_off", report["status"])
+        self.assertEqual([], self.cli.writes())
+
     def test_any_other_site_is_refused(self) -> None:
         site = stand_in_cli.load_site()
         site["domain"] = "another-live-site"

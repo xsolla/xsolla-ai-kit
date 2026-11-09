@@ -578,7 +578,11 @@
     ],
     "approval": "one plan per batch listing every page, its type and its blocks, and every page that appears or changes; nothing is written before approval",
     "backup": "The agent's own get-structure snapshot, saved before the first write. Shop Builder's version history is not a backup: restoring a version currently drops the data-provider connections.\n",
-    "cli_gate": "Writes run only when `--help` lists every command and flag the plan needs (scripts/cli_gate.py). The CLI version number is not checked.\n"
+    "cli_gate": "Writes run only when `--help` lists every command and flag the plan needs (scripts/cli_gate.py). The CLI version number is not checked.\n",
+    "updates": {
+      "verified": false,
+      "rule": "Updates of existing pages write shapes no real site has confirmed yet (a federated block's values.blockId, the hidden patch, the page look keys). They stay off until one run updates a single test page and a person checks it in the Editor. For that run only, the local config sets allow_unverified_updates: true, and the plan may update one page and create none. Once the page checks out, set verified to true here.\n"
+    }
   },
   "validation": {
     "before_write": [

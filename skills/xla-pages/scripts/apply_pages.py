@@ -65,6 +65,9 @@ def preconditions(args: argparse.Namespace, now: datetime) -> tuple[dict, dict, 
     errors = plan_checks.validate(plan, manifest, config, structure)
     if errors:
         raise Stop("refused", "the plan breaks the manifest", errors)
+    blocked = common.updates_blocked(plan.get("pages") or [], manifest, config)
+    if blocked:
+        raise Stop("updates_off", blocked)
     providers = [row["provider"] for row in plan.get("rows") or []]
     preflight = preflight_report.build_report(args.pub_dir, config, providers, now, manifest)
     if not preflight["complete"]:

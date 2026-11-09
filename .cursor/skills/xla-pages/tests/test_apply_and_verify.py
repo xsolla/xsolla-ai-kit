@@ -121,7 +121,8 @@ class ApplyAndVerifyTests(unittest.TestCase):
         texts = self.cli.localization["pages"][combined["_id"]]["texts"]
         self.assertEqual("#VC:" + combined["dataConnectionId"] + ":title",
                          texts[combined["seo"]["title"]]["translations"]["en-US"])
-        self.assertEqual("https://x.la/payment/klarna/{slug}", combined["seo"]["canonicalUrl"])
+        # Site Builder fills :slug per game when it renders a dynamic page.
+        self.assertEqual("https://x.la/payment/klarna/:slug", combined["seo"]["canonicalUrl"])
 
     def test_a_version_the_server_falls_back_from_stops_the_run(self) -> None:
         plan, errors, plan_path, backup_dir = harness.prepare(self.dir, self.cli)
@@ -174,7 +175,9 @@ class ApplyAndVerifyTests(unittest.TestCase):
         batch = harness.load_batch()
         batch["providers"][0]["hero_title"] = "Pay later with Klarna"
         batch["providers"][0].pop("offers")
-        plan, errors, plan_path, backup_dir = harness.prepare(self.dir, self.cli, batch=batch, name="second")
+        config = harness.write_config(self.dir, allow_unverified_updates=True)
+        plan, errors, plan_path, backup_dir = harness.prepare(self.dir, self.cli, batch=batch, name="second",
+                                                              config_path=config)
         self.assertEqual([], errors)
         actions = {p["route"]: p["action"] for p in plan["pages"]}
         self.assertEqual("update", actions["/payment/klarna"])
@@ -185,7 +188,7 @@ class ApplyAndVerifyTests(unittest.TestCase):
             [(op["op"], op.get("field")) for op in ops],
         )
         before = self.bindings("/payment/klarna")
-        code, report = harness.apply(self.cli, plan_path, backup_dir)
+        code, report = harness.apply(self.cli, plan_path, backup_dir, config_path=config)
         self.assertEqual(0, code, report)
         self.assertEqual(before, self.bindings("/payment/klarna"))
         self.assertTrue(block(page(self.cli.site, "/payment/klarna"), "@xla-pages/special-offers")["hidden"])
@@ -206,10 +209,13 @@ class ApplyAndVerifyTests(unittest.TestCase):
         self.cli.table = dict(stand_in_cli.CURRENT)
         batch = harness.load_batch()
         batch["providers"][1]["hero_description"] = "Pay with Toss in two taps"
-        plan, errors, plan_path, backup_dir = harness.prepare(self.dir, self.cli, batch=batch, name="current")
+        config = harness.write_config(self.dir, allow_unverified_updates=True)
+        plan, errors, plan_path, backup_dir = harness.prepare(self.dir, self.cli, batch=batch, name="current",
+                                                              config_path=config)
         self.assertEqual([], errors)
         self.assertEqual(["update-block", "update-many-localization"], plan["capabilities"])
-        code, report = harness.apply(self.cli, plan_path, backup_dir)
+        self.assertIsNone(plan["updates_off"])
+        code, report = harness.apply(self.cli, plan_path, backup_dir, config_path=config)
         self.assertEqual(0, code, report)
         self.assertEqual("100%", report["verification"]["acceptance"]["pages_matching_manifest"])
 

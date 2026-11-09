@@ -165,6 +165,7 @@ def build_plan(manifest: dict, config: dict, structure: dict, batch: dict,
         "never": ["publish", "write to the catalog or LiveOps", "write to the XLA Pages API"],
     }
     plan["capabilities"] = cli_gate.needed(plan)
+    plan["updates_off"] = common.updates_blocked(pages, manifest, config)
     if not errors:
         errors += [e["message"] for e in plan_checks.validate(plan, manifest, config, structure)]
     plan["confirmation_id"] = common.confirmation_id(plan)

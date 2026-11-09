@@ -403,6 +403,14 @@ writes:
   cli_gate: >
     Writes run only when `--help` lists every command and flag the plan needs
     (scripts/cli_gate.py). The CLI version number is not checked.
+  updates:
+    verified: false
+    rule: >
+      Updates of existing pages write shapes no real site has confirmed yet (a federated block's
+      values.blockId, the hidden patch, the page look keys). They stay off until one run updates a
+      single test page and a person checks it in the Editor. For that run only, the local config
+      sets allow_unverified_updates: true, and the plan may update one page and create none. Once
+      the page checks out, set verified to true here.
 
 validation:
   before_write:

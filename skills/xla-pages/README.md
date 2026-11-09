@@ -11,8 +11,9 @@ and SEO are written through today's `update-block` and `update-many-localization
 the Site Builder server uses. Creating a page needs what the CLI doesn't have yet: a dynamic
 page with a data provider from `add-page`, and a federated block at an exact version
 (`scripts/cli_gate.py` lists the commands and flags). With the current CLI a batch that creates a page
-stops at the gate with zero writes and reports what is missing; an update of an existing page
-runs.
+stops at the gate with zero writes and reports what is missing. Updates of existing pages are off
+until one run on a single test page confirms their write shapes (the manifest's
+`writes.updates`; `allow_unverified_updates` in the local config opens that one run).
 
 ## Happy path
 
@@ -40,7 +41,8 @@ They run against `tests/stand_in_cli.py`, a stateful stand-in for the CLI, and s
 fixtures: the `/pub` responses have the structure of real ones and invented values. Covered: a
 block outside the manifest, a theme or style write, typed game data, a row over the limits, the
 current CLI at the gate, responses older than 24 hours, an edited plan, a changed site and a
-published site each stop with zero writes; a batch creates every page and passes the check; the
+published site each stop with zero writes; so do updates of existing pages until the
+local override allows one page; a batch creates every page and passes the check; the
 check reports the exact difference; an update keeps the page's bindings identical and runs on
 the current CLI; connections and bindings are stored as Site Builder stores them (site-level
 `valuesSystem`, `#VC:` values, `usedBy`); a block the server adds at another version than the
@@ -98,6 +100,8 @@ Assumptions the manifest leaves open, shown in the plan's `notes` or here:
 
 ## Found while building
 
+- The manifest writes a dynamic page's canonical URL with `{slug}`. Site Builder fills `:slug` with
+  the page's value when it renders, so the plan writes `https://x.la/game/:slug`.
 - Three list items in the original manifest were YAML mappings, not text, because of an unquoted
   `: ` (`game_paths.behavior`, `writes.allowed`, `validation.after_write`). They are quoted now;
   `tests/test_manifest.py` catches it next time.

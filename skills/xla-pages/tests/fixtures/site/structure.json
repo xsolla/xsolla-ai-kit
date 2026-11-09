@@ -264,7 +264,7 @@
           "title": "L:page-game-seo-title",
           "description": "L:page-game-seo-description",
           "ogImage": "L:page-game-seo-ogImage",
-          "canonicalUrl": "https://x.la/game/{slug}"
+          "canonicalUrl": "https://x.la/game/:slug"
         }
       },
       {
@@ -542,7 +542,7 @@
           "title": "L:page-psc-game-seo-title",
           "description": "L:page-psc-game-seo-description",
           "ogImage": "L:page-psc-game-seo-ogImage",
-          "canonicalUrl": "https://x.la/payment/paysafecard/{slug}"
+          "canonicalUrl": "https://x.la/payment/paysafecard/:slug"
         }
       }
     ]

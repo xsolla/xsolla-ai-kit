@@ -108,12 +108,40 @@ def load_config(path: Path) -> dict:
     published = config.get("write_to_published_site", False)
     if not isinstance(published, bool):
         errors.append("write_to_published_site must be true or false")
-    unknown = sorted(set(config) - {"merchant_id", "project_id", "site_slug", "write_to_published_site"})
+    unverified = config.get("allow_unverified_updates", False)
+    if not isinstance(unverified, bool):
+        errors.append("allow_unverified_updates must be true or false")
+    unknown = sorted(set(config) - {"merchant_id", "project_id", "site_slug", "write_to_published_site",
+                                    "allow_unverified_updates"})
     if unknown:
         errors.append("unknown keys: " + ", ".join(unknown))
     if errors:
         raise ValueError(f"{path}: " + "; ".join(errors))
-    return {**config, "write_to_published_site": published}
+    return {**config, "write_to_published_site": published, "allow_unverified_updates": unverified}
+
+
+def updates_verified(manifest: dict) -> bool:
+    return (((manifest.get("writes") or {}).get("updates") or {}).get("verified")) is True
+
+
+def updates_blocked(pages: list, manifest: dict, config: dict) -> str | None:
+    """Why this plan's updates of existing pages can't run yet, or None.
+
+    Until the manifest's writes.updates.verified is true, updates are off. The local config's
+    allow_unverified_updates opens them for the one run that verifies them: one updated page, no
+    created ones.
+    """
+    updated = [p.get("route") for p in pages if p.get("action") == "update"]
+    if not updated or updates_verified(manifest):
+        return None
+    if not config.get("allow_unverified_updates"):
+        return ("updates of existing pages are off until one run on a test page confirms the write "
+                "shapes (manifest writes.updates); this plan updates " + ", ".join(updated))
+    created = [p.get("route") for p in pages if p.get("action") == "create"]
+    if len(updated) > 1 or created:
+        return ("allow_unverified_updates allows a plan that updates one page and creates none; this plan "
+                f"updates {', '.join(updated)}" + (f" and creates {', '.join(created)}" if created else ""))
+    return None
 
 
 def resolve(value: object, config: dict) -> object:

@@ -183,7 +183,12 @@ def seo_model(manifest: dict, spec: dict, row: dict | None, provider: str | None
             if row and name:
                 seo[field] = {"value": row.get(name) or row.get(fallback)}
         elif value.startswith("https://"):
-            seo[field] = {"value": value.replace("{provider}", provider or "{provider}")}
+            text = value.replace("{provider}", provider or "{provider}")
+            if field == "canonical":
+                # The manifest writes a route param as {slug}; Site Builder fills :slug in a dynamic
+                # page's canonical URL with the page's value when it renders.
+                text = re.sub(r"\{([A-Za-z0-9_]+)\}", r":\1", text)
+            seo[field] = {"value": text}
         else:
             source, output = common.split_source(value)
             seo[field] = {"source": source, "output": output}
