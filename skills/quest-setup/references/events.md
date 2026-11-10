@@ -36,10 +36,11 @@ Before any send, confirm the documented project-scoped production POST and publi
 Basic lane against live docs and [the snapshot](qp-api-contract.md#event-ingestion).
 Path IDs must match the selected production quest scope; the body has no `publisher`.
 If the contract is unavailable to the key or its documented probe is a router miss,
-stop and report production event execution unverified. Never fetch OpenAPI.
+stop and tell the publisher, in plain words, that sending this action can't be checked
+right now. Never fetch OpenAPI.
 An inactive or out-of-date quest cannot run: offer activation first.
-For mixed requests, finish separately approved quest work first, then report the event
-blocker with quest id, current status and trigger name. Do not claim verification.
+For mixed requests, finish separately approved quest work first, then say which quest
+blocks the event, by name and plain status, and the player action it waits for. Do not claim verification.
 
 ## Payload
 
@@ -95,7 +96,8 @@ player, so `user_ids`, `quest_id` and `scope` are not sent.
 - An event is accepted only while an active quest of the project allows it: a `dynamic_event` trigger
   with `client_sendable: true`, or an event operand with `include_client_events: true`. Otherwise the
   answer is 403.
-- 404 means the client endpoint is off in that environment. The endpoint is rate limited.
+- 404 means the game can't send actions here yet (agent-only: the client endpoint is off);
+  tell the publisher only that. The endpoint is rate limited.
 - Event-count checks count a client event only where the operand sets `include_client_events`.
 
 ## Before sending

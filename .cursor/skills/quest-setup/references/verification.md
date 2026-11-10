@@ -49,7 +49,8 @@ Read each result in `actions[]` separately. An action absent from the result did
 run. A `COMPLETED` action inside an overall `FAILED` execution did happen and
 is not rolled back. Do not resend a reward event merely to finish later nodes.
 
-For a failed action, report the returned error verbatim and stop before any
+For a failed action, say in plain words what did not happen (for example, the reward was
+not sent) and stop before any
 retry that could create a duplicate external effect.
 
 ## Three separate claims
@@ -74,6 +75,8 @@ action; do not call it a reward failure without evidence.
 ## Unknown results
 
 An unknown event or reward outcome is a safety stop. Preserve the original
-event id, idempotency key, quest id, user and send time. Escalate with those
-values or perform the documented read-only lookup when it is publisher-usable.
+event id, idempotency key, quest id, user and send time. Do the documented read-only
+lookup when it is publisher-usable; otherwise tell the publisher to contact Xsolla support
+and give them, as one bullet to pass on, the event id, idempotency key, quest name and send
+time.
 Never generate a new event to discover what happened.

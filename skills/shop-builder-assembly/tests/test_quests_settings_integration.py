@@ -19,7 +19,7 @@ import apply_plan  # noqa: E402
 import render_plan  # noqa: E402
 
 QUESTS_MODULE = "_quest-platform_quests-block"
-QUESTS_VERSION = "0.2.7-qp-3256.0"
+QUESTS_VERSION = "0.2.22"
 
 
 def candidate_structure() -> dict:
@@ -116,15 +116,7 @@ class QuestsSettingsIntegrationTests(unittest.TestCase):
         self.assertEqual("block_operations", plan["mode"])
         self.assertEqual("my-test-site", plan["target"]["slug"])
         self.assertEqual(
-            {"quests-1": "0.2.7-qp-3256.0"}, plan["target"]["quests_versions"]
-        )
-        self.assertTrue(
-            any(
-                "candidate build" in warning
-                and "0.2.7-qp-3256.0" in warning
-                for warning in plan["warnings"]
-            ),
-            plan["warnings"],
+            {"quests-1": QUESTS_VERSION}, plan["target"]["quests_versions"]
         )
         self.assertTrue(plan["requires_confirmation"])
         self.assertEqual("themeAppearance.site-builder.cardAlign", plan["block_operations"][0]["patches"][0]["key"])

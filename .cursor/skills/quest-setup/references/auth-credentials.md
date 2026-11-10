@@ -39,8 +39,8 @@ Example: `python3 "<skill base dir>/scripts/qp_request.py" GET /api/v2/merchants
 - The script does not bypass approval. Every POST, PUT or DELETE still needs the
   approved proposal first, exactly as the hard rules in [SKILL.md](../SKILL.md) say.
 
-Never print, log or commit credentials or encoded headers. Describe calls by method,
-route and body, never raw commands. Use the exact [access-missing reply](reply-format.md#examples)
+Never print, log or commit credentials or encoded headers. Describe calls to the publisher
+by what they do ("create the quest"), never by method, route, body or raw command. Use the exact [access-missing reply](reply-format.md#examples)
 and stop after missing access or a documented 401/403, with no further check or credential search.
 Keep credential attachment and service/environment names out of replies.
 
@@ -48,7 +48,7 @@ Keep credential attachment and service/environment names out of replies.
 
 The script's publisher Basic lane in [the contract](qp-api-contract.md#publisher-authentication-and-scope)
 is the only lane. Never request pasted secrets, try another configuration/key/gateway or
-probe a credential across hosts. A request for another lane goes to the Quest Platform owner.
+probe a credential across hosts. A request that needs other access gets "contact Xsolla support".
 The catalog project is the configured Store-read scope, not a publisher-supplied credential.
 [Onboarding](#onboarding) is a separate offered write only after Get project 404.
 
@@ -60,17 +60,16 @@ It is not proof of a bad credential or missing project:
 1. Stop and do not retry a guessed route.
 2. For Quest Platform routes (configuration, event ingestion, execution
    read-back), compare with the versioned API contract.
-3. If the contract documents the same operation under another route, show the
-   developer the proposed route and ask before calling it. For a write, show
-   the request again.
-4. If the operation is absent or not publisher-usable, report that it is
-   unavailable and stop.
+3. If the contract documents the same operation under another route, use it. A write
+   still needs its approved proposal, described in plain words.
+4. If the operation is absent or not publisher-usable, reply "That isn't available
+   right now." and stop.
 
 ## Reading a 401 or 404
 
 A 401 means the configured credential was not accepted. Use [Errors](#errors) to
 distinguish project scope from router misses.
-Report a blocker body verbatim only when received in this session and free of secrets.
+Never show a blocker body to the publisher; say in plain words what it means for them.
 Transport failures establish neither authentication nor project state.
 
 ## Onboarding
@@ -89,9 +88,9 @@ onboarding preflight is `python3 "<skill base dir>/scripts/qp_preflight.py"`, wh
 credential lane as `qp_request.py` and never prints the key:
 
 - `qp_preflight.py check` runs Get project only. 200 means onboarded and nothing is written.
-- On a 404, ask the publisher once, showing the project name: "Get project returned 404. That
-  means the project is not onboarded to Quests, or this credential has no access to that
-  merchant or project. Onboard it now? Send me the merchant name and the project name to use." Never offer onboarding as a fix before that question.
+- On a 404, ask the publisher once, showing the project name: "**This project isn't set up
+  for quests yet, or your Quest Platform access doesn't cover it.** Next: send the merchant
+  name and the project name to set it up." Never offer onboarding as a fix before that question.
 - Onboarding goes only through `qp_preflight.py`, never through `qp_request.py` directly.
 - Onboarding needs two names, `merchant_name` and `project_name`. The agent never invents or
   guesses them: the question to the publisher asks for both names, and the proposal shows both
@@ -136,20 +135,24 @@ on request: decline them. Only `qp_request.py` calls, always with the configured
 ## Errors
 
 Branch on the HTTP status first, then on the body texts listed below. The
-API has no stable machine-readable error codes. Quote verbatim only bodies
-received in this session. For a request refused before sending, explain the
+API has no stable machine-readable error codes. Branch only on bodies received in this
+session, and never quote them to the publisher. For a request refused before sending, explain the
   rule in your own words and say nothing was sent; do not present an unverified
   example as a server answer.
 
-| Status | What to tell the developer |
+Translate every row into one plain sentence about what the publisher can change. Never quote
+status bodies, auth-lane, role or capability text. Map 422 field names to
+[plain-word labels](reply-format.md#plain-word-labels) before saying anything about them.
+
+| Status | Agent meaning |
 |---|---|
 | 400 | `Only one authentication method may be used per request`: more than one credential was sent. The script sends exactly one Authorization header, so this is a bug: report it with the body and do not retry. |
 | 401 | `Invalid credentials`: see [Reading a 401 or 404](auth-credentials.md#reading-a-401-or-404). Never fall back to another credential or environment. |
 | 403 | `Insufficient capability`: the credential lacks the capability for that route. `Service identity is inactive`, `Master role required` or `This endpoint requires the user sign-in lane`: the route or identity is off-limits; do not retry. |
 | 404 | `Cannot GET <path>` (plain text, any method): router miss, the route does not exist; not an auth or project answer. Follow [When a route is missing](#when-a-route-is-missing). |
-| 404 | `Project not found` on a project route: the project is unknown, not onboarded, belongs to another merchant, or the id is not a number. The server gives the same body for all of them, so do not pick one. No read-only step narrows it; see [Onboarding](auth-credentials.md#onboarding). `Quest not found`: reply "The quest was not found on this project, or it is not visible with this credential." Never say it was deleted or does not exist, and correct the developer if they conclude that. One follow-up: it may be on another project, and checking needs that project's credentials. For events, follow the [event gate](events.md#production-event-gate). |
-| 409 | Conflict. Quest routes do not return it (see [Editing](quest-edit.md#editing)); report it verbatim. |
-| 422 | Validation failed. Show `detail` verbatim. It never lists allowed enum values; take them from the other reference files. |
+| 404 | `Project not found` on a project route: the project is unknown, not onboarded, belongs to another merchant, or the id is not a number. The server gives the same body for all of them, so do not pick one. No read-only step narrows it; see [Onboarding](auth-credentials.md#onboarding). `Quest not found`: reply "**I can't find that quest on this project.**" Never say it was deleted or does not exist, and correct the developer if they conclude that. One follow-up: it may be on another project, and checking needs Quest Platform access set up for that project. For events, follow the [event gate](events.md#production-event-gate). |
+| 409 | Conflict. Quest routes do not return it (see [Editing](quest-edit.md#editing)); say the change could not be saved and offer to try again after a fresh read. |
+| 422 | Validation failed. Read `detail`, then say in plain words which value to change (the [refused-value reply](reply-format.md#examples)); never show `detail`. It never lists allowed enum values; take them from the other reference files. |
 | 5xx | Server error. `Credential validation is temporarily unavailable` (503) means Xsolla could not check the key; it says nothing about the key. Retry a read at most twice, with backoff. An identical repeated 5xx is a bug, not flakiness: report it with its body. On a write never auto-retry; see [Safety stops for events and failed rewards](events.md#safety-stops-for-events-and-failed-rewards). |
 
 Middleware failures return `{"error": "..."}`; handler failures return RFC

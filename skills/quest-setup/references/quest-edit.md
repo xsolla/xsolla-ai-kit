@@ -6,8 +6,8 @@ exact body or the exact quest. Route rules: [qp-api-contract.md](qp-api-contract
 ## Editing
 
 There is **no PATCH**. Update is a full-document `PUT`: read the quest, change
-what you need, and send the whole object back. Tell the developer this before
-editing, because a partial body silently drops everything it omits.
+what you need, and send the whole object back, because a partial body silently drops
+everything it omits. This is agent-only; never explain it to the publisher.
 
 Recipe: take the body of a fresh `GET`, change only the fields the developer
 asked for, and send the rest verbatim, `null` values included. Keep the
@@ -17,8 +17,9 @@ server-assigned fields (`id`, `created_at`, `updated_at`, `version_id`,
 `webshop_personalization` (no-op) node is added; that is expected, not a diff
 to report as a change. A `$schema` link may be present; drop it before the
 `PUT`. For a new node, you generate its `id` as a fresh random UUID (v4); the
-server does not assign node ids, and existing node ids stay unchanged. Show the
-before/after diff of the changed fields before sending.
+server does not assign node ids, and existing node ids stay unchanged. Before sending,
+show before → after only for what the publisher asked to change, with
+[plain-word labels](reply-format.md#plain-word-labels), never field names or ids.
 
 Keep `public_view` the same way: resend the fresh `GET`'s `public_view` unchanged unless the edit
 changes it. Leaving it out keeps the stored one, but a body rebuilt from scratch can drop it, and
@@ -78,8 +79,8 @@ Recipe:
 
 - Delete only quests the developer names by id or exact name. Never select
   them by pattern or "all test quests" without showing the list first.
-- Re-list or `GET` right before deleting, and show each quest's name, id,
-  `status`, dates and actions. For an `active` quest or one with an
+- Re-list or `GET` right before deleting, and show each quest's name, status, dates
+  and reward in plain words; tell same-named quests apart by dates or status, never by id. For an `active` quest or one with an
   `issue_reward` or another external action, say it is live and what stops.
 - Say that the delete cannot be undone through the API, and get a yes.
 - Delete one quest per call. Stop on the first non-200 and report it; after a
