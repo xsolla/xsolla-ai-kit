@@ -40,10 +40,13 @@ to copy.
   saved-at times, "changed since" narration, `created_by`, or fields they did not ask for.
   The quest schedule is the only date shown unprompted.
 - No quest, block, event or node IDs, and no idempotency keys, in replies. Tell quests
-  apart by name, status and dates. For anything that needs Xsolla to look, say "contact
-  Xsolla support".
+  apart by name, status and dates. Two exceptions: the exact event payload on an event
+  proposal ([events.md](events.md)), and the support hand-off after an unknown result,
+  which gives the event id and idempotency key so support can find it
+  ([verification.md](verification.md#unknown-results)).
 - Never explain the toolkit's own limits (docs, credentials, read-back, environments,
-  endpoints, routes). Say what the publisher can see or do instead.
+  endpoints, routes). Say what the publisher can see or do instead. The access-missing
+  reply and the onboarding question stay as written.
 - Unsupported theme/version replies follow only [block-versions.md](block-versions.md#theme-request-on-an-older-block).
 - Never name a block or CLI version, say a version is pinned or locked, or mention `gameSlug`,
   `visibleGameSlugs` or a game slug ([Versions stay internal](block-versions.md#versions-stay-internal)).
@@ -111,7 +114,7 @@ Next: reply with one of these.
 ```
 
 Describe-the-block replies follow [Describe the block](quests-block-flow.md#describe-the-block)
-for Where, Quests/limit, Heading, Card overrides and returned Appearance facts. No guesses,
+for Where, Quests/limit, Heading, Card overrides and the Style bullet in plain words. No guesses,
 IDs, JSON or publishing notes. With partial quest names, unresolved existence/public status
 stays unknown. End with one question about changing it.
 

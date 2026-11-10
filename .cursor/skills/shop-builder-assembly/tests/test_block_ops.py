@@ -116,6 +116,13 @@ class BlockOpsTests(unittest.TestCase):
         )
         self.assertEqual(2, sum("not a patchable leaf" in e for e in errors), errors)
 
+    def test_older_saved_block_takes_settings_but_not_theme(self) -> None:
+        older = candidate_structure(version="0.2.10")
+        theme = {"op": "update", "block_id": "q1", "values": {"themeId": "custom"}}
+        layout = {"op": "update", "block_id": "q1", "values": {"layout.cardAlign": "end"}}
+        self.assertTrue(self.errors(theme, structure=older))
+        self.assertEqual([], self.errors(layout, structure=older))
+
     def test_one_version_is_written_and_accepted(self) -> None:
         self.assertEqual({block_ops.QUESTS_VERSION}, set(block_ops.QUESTS_CAPABILITIES))
         self.assertEqual([], self.errors(add_op(values={"themeId": "custom"})))

@@ -75,7 +75,8 @@ action; do not call it a reward failure without evidence.
 ## Unknown results
 
 An unknown event or reward outcome is a safety stop. Preserve the original
-event id, idempotency key, quest id, user and send time for the agent's own notes. Do the
-documented read-only lookup when it is publisher-usable; otherwise tell the publisher to
-contact Xsolla support, without the ids unless they ask.
+event id, idempotency key, quest id, user and send time. Do the documented read-only
+lookup when it is publisher-usable; otherwise tell the publisher to contact Xsolla support
+and give them, as one bullet to pass on, the event id, idempotency key, quest name and send
+time.
 Never generate a new event to discover what happened.

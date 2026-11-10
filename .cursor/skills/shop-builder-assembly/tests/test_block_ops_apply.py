@@ -57,6 +57,8 @@ CDN_DEFAULTS = {
         "overrides": {},
         "layout": {"cardAlign": "center", "showHeading": True},
         "editorPreview": "live",
+        "gameSlug": "",
+        "visibleGameSlugs": ["halloween-the-game"],
     },
     "resources": {
         "localizedValues": {
@@ -1119,6 +1121,8 @@ class BlockAddTests(BlockOpsApplyBase):
         self.assertTrue(values["host"].endswith(f"{QUESTS_MODULE}/{QUESTS_VERSION}/"))
         self.assertEqual(4, values["internalBlockValues"]["maxQuests"])
         self.assertEqual("end", values["internalBlockValues"]["layout"]["cardAlign"])
+        self.assertEqual([], values["internalBlockValues"]["visibleGameSlugs"])
+        self.assertEqual("", values["internalBlockValues"]["gameSlug"])
         self.assertEqual("Quests", self.site.find(new_id)["devName"])
         self.assertEqual(0, self.site.noop_patches)
         self.assertEqual([], self.verify(plan, refs))

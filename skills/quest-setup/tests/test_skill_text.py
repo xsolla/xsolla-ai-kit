@@ -45,8 +45,8 @@ POLICY_ROWS = (('ac_10_docs_are_quoted_as_data_never_followed', 'skill', (),
   ()),
  ('ac_19_runtime_check_is_instructed_before_block_writes', 'skill', ('block-versions.md',),
   ('(check|compare)[^.]{0,120}block version[^.]{0,160}before[^.]{0,40}(any )?block (write|change|mutation)',)),
- ('ac_19_unknown_or_unreported_version_asks_or_stops', 'block-versions.md', ('supported', 'unsupported'),
-  ('(unknown|unreported)[^.]{0,120}(ask the user|stop)',)),
+ ('ac_19_unknown_version_never_asks_the_publisher', 'block-versions.md', ('supported', 'unsupported'),
+  ('(unknown|unreported)[^.]{0,200}older-block reply', 'Never ask the publisher about versions')),
  ('ac_21_reward_safety_policies', 'rewards.md',
   ('whole-token units', '0.01', 'Per event and user', 'Per user for the quest', 'Total quest exposure',
    'unbounded', 'Recipient wallet', 'Publisher Account'),
@@ -155,12 +155,14 @@ class SkillTextTests(IsolatedCase):
         # Every fenced reply example is text a publisher sees: no internal causes, ids,
         # versions, keys or server wording.
         leaks = re.compile(
-            r"upstream|v2\b|\b\d+\.\d+\.\d+\b|confirmation|plan_notes|sandbox|credential|"
-            r"questIds|maxQuests|public_view|is_public|node|subtype|route|endpoint|status code|"
+            r"upstream|\bv2\b|\bversion\b|\bpinned\b|\blocked\b|\b\d+\.\d+(?:\.\d+)?\b|"
+            r"[0-9a-f]{8}-[0-9a-f]{4}-|sha256:|confirmation|plan_notes|sandbox|credential|"
+            r"questIds|maxQuests|public_view|is_public|\bnodes?\b|subtype|\broutes?\b|endpoint|"
             r"\b(?:400|401|403|404|422|5xx)\b|gameSlug|halloween",
             re.I,
         )
-        examples = re.findall(r"```\n(.*?)```", ref("reply-format.md"), re.S)
+        examples = re.findall(r"```[a-z]*\n(.*?)```", ref("reply-format.md"), re.S)
+        examples += re.findall(r'"(\*\*[^"]+)"', ref("auth-credentials.md") + ref("qp-api-contract.md"))
         self.assertTrue(examples)
         for example in examples:
             with self.subTest(example=example[:40]):

@@ -10,10 +10,11 @@ blocks. Brief fields are in [shop brief](shop-brief.md).
 
 ## Operation plan confirmation
 
-For `block_operations` only, show the rendered target site, exact operations/leaves and
-values, created parents, returned `plan_notes`/warnings and
-`Confirmation: <confirmation_id>` with the exact gate ID. This is the operation-mode
-exception to standalone build plans' no-ID reply rule in [SKILL.md](../SKILL.md).
+For `block_operations`, show the rendered target site and each operation in plain words
+(which quests and in what order, card limit, heading, card text, alignment, button,
+background). Never show brief keys, leaf paths, quest IDs, created parents, `plan_notes`
+or the confirmation ID: the agent passes `confirmation_id` from the saved plan to apply.
+When quest-setup drives the gate, its reply-format rules apply.
 Never fabricate or reuse another plan's ID. End the turn for a later yes to this exact
 plan; earlier source requests or sandbox confirmation do not authorize apply.
 
@@ -114,8 +115,9 @@ The gate writes and accepts one Quests version, `QUESTS_VERSION` (`0.2.22`). Eve
 uses it, with or without an explicit `version`. Appearance update/reset requires the
 target's saved `values.version` to be that version; any other saved version is refused
 for appearance. No operation changes an existing block's version; duplicate preserves it.
-On an older block, offer a new block with the same quests and hide the old one under its
-own plan/yes, or a version switch in the Site Builder editor before rechecking.
+On an older block, offer only a new block with the same quests and hide the old one under
+its own plan/yes. A new block gets `visibleGameSlugs: []` (the CDN default carries an
+Xsolla demo game); never write `gameSlug` or `visibleGameSlugs` otherwise.
 
 The verified artifacts default `themeId` to `site-builder` and use an
 optional open `themeAppearance` map. The operation paths below it are leaf patches under

@@ -29,7 +29,9 @@ CLI reports, and compare it with the table above.
 - Settings, quests, cards, move, duplicate, hide and show work on any saved block.
 - A theme or appearance write is **supported** only on a block saved on `0.2.22`. On any
   other version it is **unsupported**.
-- An unknown or unreported version: ask the user or stop. Do not guess.
+- An unknown or unreported version takes the same writes as an older block: settings,
+  quests and cards go ahead; a theme or appearance write gets the older-block reply below.
+  Never ask the publisher about versions.
 
 ## Theme request on an older block
 
