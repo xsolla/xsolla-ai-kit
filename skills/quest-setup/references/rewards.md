@@ -115,7 +115,7 @@ and needs no wallet.
 - **Retries.** Never resend an event after an uncertain result, as for Web3.
 - **Card.** Set no `public_view`. The default view gives the card the reward name, image and type, which
   is its reward row and its See in Backpack button. The card image fallback (the first reward's image) is
-  confirmed only from Quests block 0.2.14, and this skill pins 0.2.10. So a catalog quest has no card image
+  not confirmed on the block this skill adds. So a catalog quest has no card image
   of its own unless the publisher gives one. An image needs a `public_view`, which drops the catalog name
   and image: say so in the proposal and ask first.
 

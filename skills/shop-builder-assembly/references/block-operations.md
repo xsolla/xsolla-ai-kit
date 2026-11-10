@@ -110,15 +110,17 @@ from `values.resources.localizedValues[<overrides.<questId>.titleRef>].texts.id`
 
 ## Appearance capability
 
-Adds accept exactly `0.2.10` (latest stable, `QUESTS_LATEST_VERSION`, target for every
-new block), `0.2.10-qp-3256.0` (same-release candidate), `0.2.7-qp-3256.0` (legacy
+Adds accept exactly `0.2.22` (latest stable, `QUESTS_LATEST_VERSION`, target for every
+new block), `0.2.22-qp-3256.0` (same-release candidate), `0.2.21`, `0.2.10`,
+`0.2.10-qp-3256.0` (earlier releases, same appearance settings), `0.2.7-qp-3256.0` (legacy
 appearance candidate) and `0.1.5` (legacy, no appearance). Never propose candidates or
 legacy pins for a new block. An omitted version uses gate `QUESTS_VERSION` default
-`0.1.5`; a themed add must provide a version explicitly. The three themed pins have
-identical settings and verified release/CDN artifacts (2026-11-04).
+`0.1.5`; a themed add must provide a version explicitly. The themed pins have
+identical appearance settings and verified release/CDN artifacts (2026-11-04; 0.2.21 and
+0.2.22 on 2026-11-10).
 
 Appearance update/reset requires the target's exact saved `values.version` to match
-one of those three themed pins. No inference from ordering: `0.2.8`, `0.2.9`, `0.1.12`
+one of those themed pins. No inference from ordering: `0.2.8`, `0.2.9`, `0.1.12`
 are refused for appearance. Candidate plans warn to review the build before approval.
 No operation changes an existing block's version; duplicate preserves it. On an older
 block, offer a new latest-stable block with the same quests and hide the old one under

@@ -108,12 +108,13 @@ quests on my webshop" after naming the site. This is a read, so it needs no gate
    Card overrides in a few words ("all 4 cards: title, description, reward", or "none"),
    with no comment on rewards or matching names. Several Quests blocks: one Where and
    Quests bullet each. Then one Appearance bullet per block, facts only, exactly as the
-   read returned them in `appearance`: the block version (`version`, or "version not
-   reported" when its status is not present), the theme id (`theme_id`, or "no theme set" /
+   read returned them in `appearance`: the theme id (`theme_id`, or "no theme set" /
    "not reported" per `theme_id_status`) and any custom theme values in `custom` (base
    theme, palette, typography, geometry), listed as returned. Add nothing the read did not
    return: no guesses, no inferred history, no judgement of how it looks. When the version
-   has no theme keys, state that as a fact and offer nothing here. No JSON, ids, or
+   has no theme keys, say the block has no theme settings and offer nothing here. Never
+   name the block version or list saved settings the read did not show (see
+   [Versions stay internal](block-versions.md#versions-stay-internal)). No JSON, ids, or
    publishing notes.
 3. `quest_names` is `resolved` only after the quest list is exhausted. `partial` means
    the five-page lookup budget ended first: names and `found`/`public` facts for returned
@@ -141,7 +142,7 @@ yourself:
   the Flow (step 1). If a wanted quest is missing, use the Missing quest offer there.
 - **Card content.** State only applicable defaults whenever stopping/asking about it:
   title = quest name; explanation = quest description; image = quest image when present
-  (the first reward's image is a fallback only from Quests block 0.2.14, not yet pinned, see
+  (the first reward's image is not a confirmed fallback, see
   [block-versions](block-versions.md)); reward text/image = quest reward (read-only on the block).
   Never require an explanation or ask for defaulted text. At most one optional question
   about a different title/image. Reward changes use the quest edit flow.
@@ -155,7 +156,7 @@ the position of the page's `footer` block (so the Quests block lands above the f
 or to the page's current block count when there is no footer. Read both from the gate's
 backup. Never omit `index`, because an `add` without it puts the block first. Always set
 the `add` operation's `version` field to the latest version in
-[block-versions.md](block-versions.md) (`0.2.10`), themed or not.
+[block-versions.md](block-versions.md) (`0.2.22`), themed or not.
 
 Do not ask for IDs, hosts or slugs you can read from the CLI. Existing block ids come
 from the block summary or the gate's backup, never from a guess.

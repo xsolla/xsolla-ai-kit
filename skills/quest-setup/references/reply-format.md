@@ -29,6 +29,10 @@ to copy.
 - A status or list reply names only quests, values and history that appear in the data just read. Never infer or add history ("never activated", "older copies of X", variant names) the read did not return; if asked about history, say the read does not show it.
 - When the gate reports that the site's layout needs a newer CLI, repeat that warning in one line in each plan that shows it.
 - Unsupported theme/version replies follow only [block-versions.md](block-versions.md#theme-request-on-an-older-block).
+- Never name a block or CLI version, say a version is pinned or locked, or mention `gameSlug`,
+  `visibleGameSlugs` or a game slug ([Versions stay internal](block-versions.md#versions-stay-internal)).
+  After a write, report only what the publisher asked to change, never other saved settings
+  or how they differ from before.
 - "Show my block again" with exactly one hidden Quests block on the chosen site: show the plan for the show operation in the same turn, not only a summary.
 - A limit outside 1 to 24 gets one line that names only the range, 1 to 24. Don't offer to hide the block.
 
