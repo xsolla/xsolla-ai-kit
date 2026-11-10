@@ -228,6 +228,13 @@ or description to work around its read-only block behavior.
    [`SKILL.md`](../SKILL.md) (API reference: https://developers.xsolla.com/api/quests),
    then come back here to add the block. Never say there are no quests when the read
    failed; say you cannot check yet.
+   **Project not on Quest Platform:** when the quest list answers "Project not found",
+   no block can show quests. Ask the [onboarding question](auth-credentials.md#onboarding)
+   and add no block before the project is set up.
+   **At least one shown quest:** outside the editor a block with no cards renders
+   nothing, so an `add` needs at least one chosen quest that is active and public (step
+   2 makes it public; a paused or out-of-date quest is activated through its own edit
+   first). Never plan an `add` with no quests; the gate refuses one.
 2. **Make them public.** For each chosen quest that is not public (`is_public` is not
    `true`), set `is_public` per [Quest public view](#quest-public-view): one proposal,
    one approval. A missing `public_view` alone is not a reason to edit or stop. Stop if

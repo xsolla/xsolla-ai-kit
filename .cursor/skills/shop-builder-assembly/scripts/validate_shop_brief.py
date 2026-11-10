@@ -308,7 +308,22 @@ def load_brief(path: Path) -> dict:
         raise ValueError(f"cannot read valid JSON: {exc}") from exc
     if not isinstance(value, dict):
         raise ValueError("top-level value must be an object")
-    return value
+    return normalize_project_ids(value)
+
+
+def normalize_project_ids(brief: dict) -> dict:
+    """Turn numeric-string merchant and project IDs into integers.
+
+    quest-setup's `whoami` returns them as strings; the rest of the brief contract
+    and every CLI comparison use integers.
+    """
+    project = brief.get("project")
+    if isinstance(project, dict):
+        for field in ("merchant_id", "project_id"):
+            value = project.get(field)
+            if isinstance(value, str) and value.isascii() and value.isdigit():
+                project[field] = int(value)
+    return brief
 
 
 def validate(brief: dict) -> list[str]:

@@ -4,9 +4,12 @@ Assembles an unpublished Shop Builder site from a normalized JSON shop brief.
 
 ## Prerequisites
 
-- Xsolla CLI 1.9.4 or newer. Adding the common layout to a site without one, including
-  every new site, needs a CLI with `shopbuilder create-block` and the Shop Builder API
-  support for it; without the command, assembly skips the layout step and says so
+- Xsolla CLI 1.9.4 or newer. No released CLI (1.9.4 is the latest) has the command that
+  adds the common layout, `shopbuilder create-block`: 1.9.4 has `create-custom-block`,
+  which adds a custom code block, not the layout. So assembly skips the layout step on a
+  new site and says so, and that site won't open in the Editor, Publish or private
+  preview until a CLI ships `create-block`. Block operations on an existing site don't
+  need it and print no warning
 - `xsolla auth login` completed for a Publisher account
 - CLI sandbox mode disabled
 - Existing catalog group IDs for any `newStore` sections

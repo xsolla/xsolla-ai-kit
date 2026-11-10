@@ -39,6 +39,18 @@ LAYOUT_WARNING = (
 
 
 class ShopBriefTests(unittest.TestCase):
+    def test_numeric_string_project_ids_load_as_integers(self) -> None:
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "brief.json"
+            path.write_text(json.dumps({"project": {"merchant_id": "877754", "project_id": "304175"}}))
+            brief = validator.load_brief(path)
+        self.assertEqual({"merchant_id": 877754, "project_id": 304175}, brief["project"])
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "brief.json"
+            path.write_text(json.dumps({"project": {"merchant_id": "-1", "project_id": "1e3"}}))
+            brief = validator.load_brief(path)
+        self.assertEqual({"merchant_id": "-1", "project_id": "1e3"}, brief["project"])
+
     def setUp(self) -> None:
         self.brief = json.loads(
             (ROOT / "examples" / "mobile-single-page.json").read_text(encoding="utf-8")

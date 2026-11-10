@@ -83,7 +83,8 @@ brand inputs, bounds, limitations and the publisher's choice before a write.
 ## Operations
 
 Operations go in the brief's `block_operations` list and run in order. The brief
-needs `version`, `project` (`merchant_id`, `project_id`),
+needs `version`, `project` (`merchant_id`, `project_id`, integers; the numeric strings
+`whoami` returns are accepted and converted),
 `site.slug` and `block_operations`. Nothing else is
 allowed: the gate rejects any other top-level key (`game`, `catalog`, `content`,
 `brand`, `sources`), any other `project` key and any `site` key but `slug`. Fill real

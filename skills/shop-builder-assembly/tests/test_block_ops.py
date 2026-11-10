@@ -75,6 +75,10 @@ def add_op(**overrides: object) -> dict:
         "values": {"questIds": [QUEST_A, QUEST_B], "maxQuests": 6, "layout.cardAlign": "center"},
     }
     op.update(overrides)
+    values = op.get("values")
+    if isinstance(values, dict) and "questIds" not in values:
+        # Every add needs a quest; tests that override values keep one unless they set it.
+        op["values"] = {"questIds": [QUEST_A], **values}
     return op
 
 
@@ -115,6 +119,14 @@ class BlockOpsTests(unittest.TestCase):
             add_op(values={"layout.nope": 1}), add_op(values={"hidden": True})
         )
         self.assertEqual(2, sum("not a patchable leaf" in e for e in errors), errors)
+
+    def test_add_without_quests_is_refused(self) -> None:
+        for values in ({}, {"questIds": []}, {"maxQuests": 4}):
+            with self.subTest(values=values):
+                operation = add_op()
+                operation["values"] = values
+                errors = self.errors(operation)
+                self.assertTrue(any("needs at least one public, active quest" in e for e in errors), errors)
 
     def test_older_saved_block_takes_settings_but_not_theme(self) -> None:
         older = candidate_structure(version="0.2.10")

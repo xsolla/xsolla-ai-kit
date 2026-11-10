@@ -497,6 +497,7 @@ OPS_APPLY_SUPPORTED = {
     "block_move",
     "block_duplicate",
     "block_visibility",
+    "block_seed_texts",
     "block_localization",
     "block_card_text",
 }
@@ -763,9 +764,12 @@ def seed_default_texts(ctx: ApplyContext, block_id: str, page_id: str, defaults:
     for locale in locales:
         per_scope: dict[str, dict] = {}
         for text_id, by_locale in texts.items():
-            if locale in by_locale:
+            # Never overwrite a text that is already saved (a publisher's own edit).
+            if locale in by_locale and not localized_text(data(localization), text_id, locale):
                 scope = localization_scope(localization, text_id, page_id)
                 per_scope.setdefault(scope, {})[text_id] = {"translation": by_locale[locale]}
+        if not per_scope:
+            continue
         payload = {"locale": locale, "perScopeValues": per_scope}
         run_json(
             "shopbuilder",
@@ -784,8 +788,10 @@ def seed_default_texts(ctx: ApplyContext, block_id: str, page_id: str, defaults:
     )
     if missing:
         raise RuntimeError(
-            f"new block {block_id}: {len(missing)} default texts did not save "
-            f"(first: {missing[0]}); its buttons and statuses would render empty"
+            f"block {block_id}: {len(missing)} default texts did not save "
+            f"(first: {missing[0]}); its buttons and statuses would render empty. "
+            f"Retry only the texts with a plan holding "
+            f'{{"op": "seed_texts", "block_id": "{block_id}"}}; never add the block again'
         )
 
 
@@ -974,6 +980,13 @@ def apply_block_operation(item: dict, ctx: ApplyContext) -> dict:
         done = apply_move(item, ctx)
     elif kind == "block_duplicate":
         done = apply_duplicate(item, ctx)
+    elif kind == "block_seed_texts":
+        page, _, block = current_block(ctx, item["block_id"])
+        version = (block.get("values") or {}).get("version")
+        if not isinstance(version, str):
+            raise RuntimeError(f"block {item['block_id']} reports no version")
+        seed_default_texts(ctx, item["block_id"], page["_id"], fetch_quests_defaults(version))
+        done = {"block_id": item["block_id"]}
     elif kind == "block_visibility":
         current_block(ctx, item["block_id"])
         set_block_hidden(item["block_id"], item["hidden"], landing_id=ctx.landing_id)

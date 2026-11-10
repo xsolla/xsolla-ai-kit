@@ -172,6 +172,8 @@ OPERATIONS = {
     "duplicate": {"required": {"block_id"}, "optional": {"index"}},
     "hide": {"required": {"block_id"}, "optional": set()},
     "show": {"required": {"block_id"}, "optional": set()},
+    # Writes a block's empty default texts again (after a failed add), never a second add.
+    "seed_texts": {"required": {"block_id"}, "optional": set()},
 }
 # No script deletes a block: `delete-block` asks for confirmation and the only way past
 # the prompt without a terminal is `--force`, which the skill never passes.
@@ -818,6 +820,16 @@ def validate_block_operations(brief: dict, structure: dict | None = None) -> lis
                     f"{prefix}.module must be an operations block: "
                     + ", ".join(sorted(OPS_BLOCK_MODULES))
                 )
+        if op == "add":
+            add_values = operation.get("values")
+            quest_ids = add_values.get("questIds") if isinstance(add_values, dict) else None
+            if not isinstance(quest_ids, list) or not quest_ids:
+                # Outside the editor a Quests block with no cards renders nothing, so an
+                # add without quests would succeed and show an empty page section.
+                errors.append(
+                    f"{prefix}.values.questIds needs at least one public, active quest: "
+                    "a Quests block with no cards shows nothing on the site"
+                )
         if op == "add" and "version" in operation and (
             not isinstance(operation["version"], str)
             or operation["version"] not in QUESTS_CAPABILITIES
@@ -1196,6 +1208,15 @@ def plan_block_operations(brief: dict, structure: dict) -> list[dict]:
                     "page_id": page_id,
                     "source_index": position,
                     "index": operation.get("index", position + 1),
+                }
+            )
+        elif op == "seed_texts":
+            items.append(
+                {
+                    "type": "block_seed_texts",
+                    "op_index": index,
+                    "block_id": block_id,
+                    "page_id": page_id,
                 }
             )
         else:

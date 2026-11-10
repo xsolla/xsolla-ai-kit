@@ -1092,7 +1092,7 @@ class BlockAddTests(BlockOpsApplyBase):
         "module": QUESTS_MODULE,
         "page": "/",
         "index": 2,
-        "values": {"maxQuests": 4, "layout.cardAlign": "end"},
+        "values": {"questIds": [QUEST_A], "maxQuests": 4, "layout.cardAlign": "end"},
         "translations": {"en-US": {"heading": "Smoke quests"}},
     }
 
@@ -1131,6 +1131,23 @@ class BlockAddTests(BlockOpsApplyBase):
         self.assertTrue(self.site.texts[heading_id]["translations"]["en-US"])
         self.site.texts[heading_id]["translations"] = {}
         self.assertTrue(any("no saved text" in e for e in self.verify(plan, refs)))
+
+    def test_seed_texts_fills_empty_texts_without_a_second_add(self) -> None:
+        original = self.site.cmd_update_many_localization
+        self.site.cmd_update_many_localization = lambda options: {"ok": True}
+        before = self.page_ids()
+        with self.assertRaisesRegex(RuntimeError, '"op": "seed_texts"'):
+            self.apply([self.ADD])
+        self.site.cmd_update_many_localization = original
+        (new_id,) = [block_id for block_id in self.page_ids() if block_id not in before]
+        block = self.site.find(new_id)
+        heading_id = block["values"]["resources"]["localizedValues"]["L:short-heading"]["texts"]["id"]
+        self.site.texts[heading_id]["translations"]["en-US"] = "Mine"
+        count = len(self.page_ids())
+        plan, refs = self.apply([{"op": "seed_texts", "block_id": new_id}])
+        self.assertEqual(count, len(self.page_ids()))
+        self.assertEqual("Mine", self.site.texts[heading_id]["translations"]["en-US"])
+        self.assertEqual([], self.verify(plan, refs))
 
     def test_add_fails_loudly_when_default_texts_do_not_save(self) -> None:
         original = self.site.cmd_update_many_localization
@@ -1261,6 +1278,7 @@ class RealRunJsonGuardTests(unittest.TestCase):
             {"op": "duplicate", "block_id": "q1", "index": 4},
             {"op": "hide", "block_id": "q1"},
             {"op": "show", "block_id": "q1"},
+            {"op": "seed_texts", "block_id": "q1"},
         ]
         # Every op the brief accepts is exercised here.
         self.assertEqual(set(OPERATIONS), {operation["op"] for operation in operations})

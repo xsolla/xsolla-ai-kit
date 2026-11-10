@@ -136,6 +136,22 @@ def _text_id(block: dict, key: str) -> str | None:
     return text_id if isinstance(text_id, str) else None
 
 
+def _empty_texts(block_id: str, block: dict, loc: dict, languages: list) -> list[str]:
+    """One error when any of the block's `translations.<key>` has no saved text."""
+    translations = ((block.get("values") or {}).get("internalBlockValues") or {}).get(
+        "translations"
+    ) or {}
+    empty = []
+    for key in translations:
+        text_id = _text_id(block, key)
+        texts = [_localized_text(loc, text_id, locale) for locale in languages] if text_id else []
+        if not any(isinstance(text, str) and text for text in texts):
+            empty.append(key)
+    if not empty:
+        return []
+    return [f"block {block_id} has {len(empty)} texts with no saved text (first: {empty[0]})"]
+
+
 def verify_block_operations(
     plan: dict, structure: object, localization: object, refs: dict | None = None
 ) -> list[str]:
@@ -246,23 +262,9 @@ def verify_block_operations(
                 errors.append(f"new block {block_id} has useAsNativeBlock set")
             if block.get("devName") != QUESTS_DEV_NAME:
                 errors.append(f"new block {block_id} has devName {block.get('devName')!r}")
-            languages = current.get("languages") or []
-            translations = (values.get("internalBlockValues") or {}).get("translations") or {}
-            empty = [
-                key
-                for key in translations
-                if not any(
-                    isinstance(text := _localized_text(loc, text_id, locale), str) and text
-                    for text_id in [_text_id(block, key)]
-                    if text_id
-                    for locale in languages
-                )
-            ]
-            if empty:
-                errors.append(
-                    f"new block {block_id} has {len(empty)} texts with no saved text "
-                    f"(first: {empty[0]})"
-                )
+            errors += _empty_texts(block_id, block, loc, current.get("languages") or [])
+        elif kind == "block_seed_texts":
+            errors += _empty_texts(block_id, block, loc, current.get("languages") or [])
         elif kind == "block_values":
             for patch in item["patches"]:
                 got = _read(block, patch["path"])
