@@ -20,7 +20,6 @@ if SCRIPTS_DIR not in sys.path:
     sys.path.insert(0, SCRIPTS_DIR)
 
 from block_ops import (
-    QUESTS_CANDIDATE_VERSIONS,
     QUESTS_VERSION,
     block_fingerprints,
     plan_block_operations,
@@ -871,19 +870,6 @@ def build_block_operations_plan(brief: dict, current_structure: object | None) -
         for item in items
         if item["type"] == "block_card_text"
     ]
-    for target, version in versions.items():
-        if version not in QUESTS_CANDIDATE_VERSIONS:
-            continue
-        target_label = (
-            f"add operation {target.removeprefix('op:')}"
-            if target.startswith("op:")
-            else f"block {target}"
-        )
-        warnings.append(
-            f"{target_label} uses Quests candidate build {version}; review this "
-            "version before approving the plan."
-        )
-
     plan = {
         "version": 2,
         "mode": "block_operations",

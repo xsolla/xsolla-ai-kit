@@ -89,8 +89,8 @@ from `values.resources.localizedValues[<overrides.<questId>.titleRef>].texts.id`
   (CDN-verified), `useAsNativeBlock: false`. The npm name `@quest-platform/quests-block`
   is stored with `@` and `/` replaced by `_`.
 - Creation uses `federated_patch` with CDN `default-data.json`, not a palette template
-  (template-name add returns HTTP 500). Version pins/defaults are below. New releases
-  require changing `QUESTS_LATEST_VERSION` and the caller's version catalogue together.
+  (template-name add returns HTTP 500). The version is below. A block release
+  requires changing `QUESTS_VERSION` and quest-setup `block-versions.md` together.
 - Patchable leaves, all under `["values","internalBlockValues", ...]`: `questIds`,
   `maxQuests`, `overrides.<questId>.{title,description,imageUrl,imageRef}`,
   `layout.{showHeading,showDescription,showImage,cardAlign,imageFit,buttonStyle,blockBackground,cardBackground}`
@@ -110,21 +110,12 @@ from `values.resources.localizedValues[<overrides.<questId>.titleRef>].texts.id`
 
 ## Appearance capability
 
-Adds accept exactly `0.2.22` (latest stable, `QUESTS_LATEST_VERSION`, target for every
-new block), `0.2.22-qp-3256.0` (same-release candidate), `0.2.21`, `0.2.10`,
-`0.2.10-qp-3256.0` (earlier releases, same appearance settings), `0.2.7-qp-3256.0` (legacy
-appearance candidate) and `0.1.5` (legacy, no appearance). Never propose candidates or
-legacy pins for a new block. An omitted version uses gate `QUESTS_VERSION` default
-`0.1.5`; a themed add must provide a version explicitly. The themed pins have
-identical appearance settings and verified release/CDN artifacts (2026-11-04; 0.2.21 and
-0.2.22 on 2026-11-10).
-
-Appearance update/reset requires the target's exact saved `values.version` to match
-one of those themed pins. No inference from ordering: `0.2.8`, `0.2.9`, `0.1.12`
-are refused for appearance. Candidate plans warn to review the build before approval.
-No operation changes an existing block's version; duplicate preserves it. On an older
-block, offer a new latest-stable block with the same quests and hide the old one under
-its own plan/yes, or a version change by the Site Builder team/editor before rechecking.
+The gate writes and accepts one Quests version, `QUESTS_VERSION` (`0.2.22`). Every add
+uses it, with or without an explicit `version`. Appearance update/reset requires the
+target's saved `values.version` to be that version; any other saved version is refused
+for appearance. No operation changes an existing block's version; duplicate preserves it.
+On an older block, offer a new block with the same quests and hide the old one under its
+own plan/yes, or a version switch in the Site Builder editor before rechecking.
 
 The verified artifacts default `themeId` to `site-builder` and use an
 optional open `themeAppearance` map. The operation paths below it are leaf patches under

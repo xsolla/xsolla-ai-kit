@@ -1,87 +1,47 @@
-# Quests block versions
+# Quests block version
 
-This file owns version pins and capability checks. Snapshot refreshed 2026-11-10 from
-release 0.2.22 (CDN `default-data.json`, settings identical to 0.2.21); 0.2.10 snapshot
-`b1f12425fb` (2026-11-04); earlier contract sources: `0b1586eb59` (0.2.7),
-`87d7aaf4f7` (0.1.12), `7c251007b6` (0.2.8), `f0ec907f69` (0.2.1 candidate).
+This file owns the block version. Checked 2026-11-10 against the CDN `default-data.json`.
 
 ## Pinned versions
 
-| Version | Capability and write boundary |
+| Version | Use |
 |---|---|
-| `0.2.22` | Latest stable, explicit target for EVERY new block, themed or not. Theme writes supported. |
-| `0.2.22-qp-3256.0` | Same-release candidate, same settings; accepted by gate, never proposed as target. Theme writes supported. |
-| `0.2.21`, `0.2.10`, `0.2.10-qp-3256.0` | Earlier releases with the same theme and layout settings; accepted on saved blocks, never proposed for new ones. Theme writes supported. |
-| `0.2.7-qp-3256.0` | Legacy appearance candidate; accepted on saved blocks, never proposed for new ones. Theme writes supported. |
-| `0.1.5` | Legacy stable; accepted on saved blocks, no theme keys, never proposed for new ones. Gate's omitted-version default only. |
-| `0.1.12` | Plain creation/edits only, no theme keys (`themeId`, `themeAppearance`); supported for writes without theme. Not an accepted gate add pin. |
-| `0.2.7` | Adds `themeId`, `themeAppearance`, `autoEvents`, `loginEventName`, but plain stable is not pinned for theme writes: ask once or stop. |
-| `0.2.8-qp-3256.0` to `0.2.8-qp-3256.4` | Same settings as 0.2.7, including event fields. Known, gate cannot create. |
-| `0.2.8-qp-3256.5`, `0.2.8` | `autoEvents` and `loginEventName` removed; fixed built-in events. Known, gate cannot create. |
-| `0.2.9-qp-3256.0`, `0.2.9` | Event fields restored, same candidate/stable settings. Known, gate cannot create. |
-| `0.2.1` candidate | Only claim for `backpackAction`; never a write target or pinned version. |
-| Shop Builder CLI `1.9.4` | Minimum; newer supported. Historical PR #87 also mentions 1.4.0; use the actual reported version. |
+| `0.2.22` | The only version. Every new block is added on it, themed or not, and theme writes need a block saved on it. |
+| Shop Builder CLI `1.9.4` | Minimum; newer supported. |
 
-## Version facts (snapshot of the block contract)
+A block release means bumping this table and the gate's `QUESTS_VERSION` together.
 
-- Candidate channels are `x.y.z-qp-3256.N`; stable releases are `x.y.z`.
-- Settings, `themeId` and `themeAppearance` are identical between 0.2.7 and 0.2.10.
-  Event fields return in 0.2.9/0.2.10: `autoEvents` rows are `name:period`, with
-  `once`, `day`, `week`, `session`, deduplicated per period; legacy `loginEventName` is `name:once`.
-- Never write `autoEvents` or `loginEventName`: absent from `QUESTS_PATCHABLE_LEAVES`.
-  The block sends events once the player is authorized; quest trigger names must match
-  exactly. Whether the name must also exist as `dynamic_event` is unknown.
-- 0.2.21 and 0.2.22 drop `autoEvents` and `loginEventName` and add `gameSlug` (bound to the
-  page's game on Xsolla Pages) and `visibleGameSlugs` (the Xsolla Pages games the block shows
-  on, set by Xsolla). Both are internal: never write, mention or explain them.
-- 0.2.10 and later drop `backpackAction` on parse. Backpack Overlay is blocked on upstream v2;
-  preserve obsolete saved action-looking data as opaque, never retarget it.
-- CDN `remoteEntry.js` artifacts for 0.1.5, 0.1.12, 0.2.7-qp-3256.0, 0.2.8, 0.2.9,
-  0.2.10 and 0.2.10-qp-3256.0 were served in 2026-11-04 probes. This is not write support.
-- Unknown: whether production Quests config accepts event fields on 0.2.9 or later.
+## Block facts
 
-## Write pins (what the gate creates)
-
-Gate adds accept the pins in the table that have theme writes, plus `0.1.5`.
-Only latest stable is added. The gate's own omitted-version default remains `0.1.5`; this
-skill always supplies explicit `version: 0.2.22`. New releases require updating this file
-and gate `QUESTS_LATEST_VERSION` together.
+- Never write `autoEvents` or `loginEventName`: they were removed from the block, and the
+  block sends its built-in events once the player is authorized. Quest trigger names must
+  match them exactly.
+- Never write `gameSlug` or `visibleGameSlugs`. They are set by Xsolla for Xsolla Pages.
+- `backpackAction` is dropped by the block. Backpack Overlay is blocked on upstream v2;
+  keep any saved action-looking data as it is.
 
 ## Runtime check
 
-The agent never trusts memory for a version. Before any block write it reads the block
-version (and the CLI version) that Shop Builder or the CLI reports, then compares it with the
-table above.
+Before any block write, read the block version (and the CLI version) that Shop Builder or the
+CLI reports, and compare it with the table above.
 
 - The CLI is **supported** when it is the pinned version or newer.
-- A block version listed in the capability table is **supported** for the capabilities
-  in its row. A write that needs a capability the version lacks (for example a theme on
-  0.1.5 or 0.1.12) is **unsupported**.
-- Any other reported block version is **unsupported** for writes that need a pinned
-  capability.
-- An unknown or unreported version: ask the user or stop. Do not guess, and do not infer
-  support from version ordering or package metadata.
-- For an unsupported version, say that the block's version cannot take the change, make no
-  write, and offer only a path the gate supports (below).
+- Settings, quests, cards, move, duplicate, hide and show work on any saved block.
+- A theme or appearance write is **supported** only on a block saved on `0.2.22`. On any
+  other version it is **unsupported**.
+- An unknown or unreported version: ask the user or stop. Do not guess.
 
 ## Theme request on an older block
 
-The gate can choose a supported version only on `add`. No operation changes an
-existing block's version; `update` writes values/translations, and `duplicate` copies
-without retargeting. Theme updates/resets require the exact supported saved version.
+No operation changes an existing block's version. For a theme or appearance request on a
+block that is not on `0.2.22`, the reply:
 
-So for a theme or appearance request on a block whose version has no theme keys (for example
-`0.1.5`), the reply:
+- says in plain words that this block can't take theme settings;
+- offers only these, one at a time with one `Next:`: (1) a new Quests block with the same
+  quests, and the old block hidden, never deleted, as its own plan with its own yes; or
+  (2) switching the block in the Site Builder editor, then applying the theme.
 
-- says in plain words that this block's version has no theme settings;
-- says this toolkit cannot change the version of an existing block;
-- offers only these, one at a time with one `Next:`: (1) a new Quests block added at the
-  latest version (the table above), with the same quests, and the old block hidden, never deleted, as
-  its own plan with its own yes; or (2) the version change is done by the Site Builder team or
-  in the editor, and the theme is applied afterwards once the block reports a theme-capable
-  version.
-
-Never offer to upgrade, migrate or change the version of the existing block.
+Never offer to upgrade, migrate or change the version of the existing block yourself.
 
 ## Versions stay internal
 

@@ -80,7 +80,7 @@ def add_op(**overrides: object) -> dict:
 
 def candidate_quests_block(
     internal: dict | None = None,
-    version: str = block_ops.QUESTS_CANDIDATE_VERSION,
+    version: str = block_ops.QUESTS_VERSION,
 ) -> dict:
     block = quests_block("q1", internal or {"themeId": "site-builder", "backpackAction": "external"})
     block["values"].update(
@@ -92,7 +92,7 @@ def candidate_quests_block(
 
 def candidate_structure(
     internal: dict | None = None,
-    version: str = block_ops.QUESTS_CANDIDATE_VERSION,
+    version: str = block_ops.QUESTS_VERSION,
 ) -> dict:
     structure = make_structure()
     page = structure["pages"][0]
@@ -116,38 +116,14 @@ class BlockOpsTests(unittest.TestCase):
         )
         self.assertEqual(2, sum("not a patchable leaf" in e for e in errors), errors)
 
-    def test_candidate_capability_is_explicit_and_keeps_stable_creation_pin(self) -> None:
-        self.assertEqual("0.1.5", block_ops.QUESTS_VERSION)
-        self.assertTrue(self.errors(add_op(values={"themeId": "custom"})))
-        candidate_version = block_ops.QUESTS_CANDIDATE_VERSION
-        errors = self.errors(
-            add_op(version=candidate_version, values={"themeId": "custom"})
+    def test_one_version_is_written_and_accepted(self) -> None:
+        self.assertEqual({block_ops.QUESTS_VERSION}, set(block_ops.QUESTS_CAPABILITIES))
+        self.assertEqual([], self.errors(add_op(values={"themeId": "custom"})))
+        plan = block_ops.plan_block_operations(
+            ops_brief([add_op(values={"themeId": "custom"})]), make_structure()
         )
-        self.assertEqual([], errors, errors)
-        candidate_plan = block_ops.plan_block_operations(
-            ops_brief([add_op(version=candidate_version, values={"themeId": "custom"})]),
-            make_structure(),
-        )
-        self.assertEqual(candidate_version, candidate_plan[0]["version"])
-        rendered = render_plan.build_plan(
-            ops_brief([add_op(version=candidate_version, values={"themeId": "custom"})]),
-            make_structure(),
-        )
-        self.assertTrue(
-            any(
-                "candidate build" in warning
-                and candidate_version in warning
-                for warning in rendered["warnings"]
-            ),
-            rendered["warnings"],
-        )
-        stable_rendered = render_plan.build_plan(
-            ops_brief([add_op()]), make_structure()
-        )
-        self.assertFalse(
-            any("candidate build" in warning for warning in stable_rendered["warnings"]),
-            stable_rendered["warnings"],
-        )
+        self.assertEqual(block_ops.QUESTS_VERSION, plan[0]["version"])
+        self.assertTrue(self.errors(add_op(version="0.2.10", values={"themeId": "custom"})))
         for unsupported in (
             "0.2.5-qp-3256.0",
             "0.2.4-qp-3256.0",

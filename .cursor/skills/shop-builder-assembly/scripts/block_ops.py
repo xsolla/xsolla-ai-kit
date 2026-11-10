@@ -22,32 +22,10 @@ QUESTS_MODULE = "_quest-platform_quests-block"
 OPS_BLOCK_MODULES = frozenset({QUESTS_MODULE})
 # add-block --block federated, then one update-block retargeting the wrapper.
 QUESTS_ADD_STRATEGY = "federated_patch"
-# Latest stable release: the version of every NEW Quests block, themed or not. A new
-# release means updating this constant and quest-setup block-versions.md together.
-QUESTS_LATEST_VERSION = "0.2.22"
-# Gate default for an add operation without an explicit version (kept at the old
-# stable pin). quest-setup never relies on it: it always passes the latest version.
-QUESTS_VERSION = "0.1.5"
-# Candidate of the latest release (accepted, never proposed as a target).
-QUESTS_LATEST_CANDIDATE_VERSION = "0.2.22-qp-3256.0"
-# Legacy accepted pins: blocks already saved on them must still pass exact-version
-# checks. The agent never proposes them as a target for a new block.
-QUESTS_LEGACY_PLAIN_VERSION = "0.1.5"
-QUESTS_CANDIDATE_VERSION = "0.2.7-qp-3256.0"
-# Earlier stable releases with the same appearance settings: accepted on saved blocks.
-QUESTS_PREVIOUS_THEMED_VERSIONS = ("0.2.21", "0.2.10", "0.2.10-qp-3256.0")
-# Capabilities are keyed by exact artifact pins, never inferred by semver. These
-# releases and their CDN artifacts have been verified (served, probed 2026-11-04;
-# 0.2.21 and 0.2.22 on 2026-11-10).
-QUESTS_CAPABILITIES = {
-    QUESTS_LATEST_VERSION: {"appearance": True},
-    **{version: {"appearance": True} for version in QUESTS_PREVIOUS_THEMED_VERSIONS},
-    QUESTS_LATEST_CANDIDATE_VERSION: {"appearance": True},
-    QUESTS_CANDIDATE_VERSION: {"appearance": True},
-    QUESTS_LEGACY_PLAIN_VERSION: {"appearance": False},
-}
-# Pins that are candidate (prerelease) builds and need review before approval.
-QUESTS_CANDIDATE_VERSIONS = (QUESTS_CANDIDATE_VERSION, QUESTS_LATEST_CANDIDATE_VERSION)
+# The one Quests block version the gate writes and accepts for appearance writes.
+# A block release means bumping this constant (quest-setup block-versions.md too).
+QUESTS_VERSION = "0.2.22"
+QUESTS_CAPABILITIES = {QUESTS_VERSION: {"appearance": True}}
 QUESTS_CDN_ROOT = "https://cdn.xsolla.net/site-builder-modules/"
 # Editor layer label that UI-added federated blocks carry (top-level `devName`).
 QUESTS_DEV_NAME = "Quests"
@@ -584,8 +562,7 @@ def _check_capability_and_custom_contract(
         version = operation.get("version", QUESTS_VERSION)
         if not isinstance(version, str) or version not in QUESTS_CAPABILITIES:
             errors.append(
-                f"{prefix}.version must use a recognized Quests source pin: "
-                + ", ".join(QUESTS_CAPABILITIES)
+                f"{prefix}.version must be {QUESTS_VERSION}"
             )
         internal = None
     else:
@@ -612,8 +589,7 @@ def _check_capability_and_custom_contract(
         ):
             errors.append(
                 f"{prefix}.{key}: unsupported Quests version {version or 'unknown'} "
-                f"for {capability}; configured candidate source pin is "
-                f"{QUESTS_CANDIDATE_VERSION}"
+                f"for {capability}; supported version is {QUESTS_VERSION}"
             )
 
     custom_keys = [
@@ -847,8 +823,7 @@ def validate_block_operations(brief: dict, structure: dict | None = None) -> lis
             or operation["version"] not in QUESTS_CAPABILITIES
         ):
             errors.append(
-                f"{prefix}.version must use a verified Quests artifact version: "
-                + ", ".join(QUESTS_CAPABILITIES)
+                f"{prefix}.version must be {QUESTS_VERSION}"
             )
         if "page" in operation:
             page = operation["page"]
