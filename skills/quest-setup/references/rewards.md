@@ -1,37 +1,41 @@
-# Web3 rewards
+# Rewards
 
-This skill supports two production catalog reward paths: a Web3 item (`issue_web3_item`), the
-default for a named item, and `issue_catalog_item`, a Backpack grant that the publisher chooses for a
-quest.
+## Choose from the node catalog
 
-**A Web3 item pays at most once per player per quest**, however often the quest repeats. So for a
-repeating quest (daily, weekly, any `per_user` limit above one or reset per period), ask one question
-before the proposal: a Backpack item, paid every time, or a Web3 item, paid once. Never propose a
-repeating quest with a Web3 reward without that answer. The
-reward is granted or minted as the platform response reports. For `web3_item`, this skill does not
-claim delivery to the player's Backpack. Do not offer Store API grants, ERC-20 claim endpoints, a
-provider-default catalog or any other reward path as a fallback. When a path fails, stop and ask.
+What a publisher can build comes from their own node catalog, not from this file. Before any quest
+proposal, read it and the public docs:
 
-## Reward types come from the live docs
+- `python3 "<skill base dir>/scripts/qp_request.py" GET /api/v2/merchants/<merchant_id>/projects/<project_id>/quests/node-types`
+  returns every node this project can use, with its description and parameter schema.
+- `python3 "<skill base dir>/scripts/qp_docs.py"` gives the publisher guides.
 
-Reward types come from the live docs: run `python3 "<skill base dir>/scripts/qp_docs.py"` and read
-the reward section. A type absent from the live docs is rejected, with no write. The type shapes
-below are a snapshot for orientation only. If they differ from the live docs on fields, the live
-docs win. If the docs are unreachable, say so and treat the snapshot as possibly stale.
+Any reward, trigger or condition in the catalog can be used; none is preferred. A node absent from
+the catalog is refused, with no write. The node shapes in this file are snapshots for orientation;
+the catalog and live docs win on any difference.
 
-Named items default to `web3_item`, by the project owner's decision (2026-11-03). Switch to
-`issue_catalog_item` only when the publisher chooses it for the quest, shown in the proposal and
-confirmed with a yes ([Backpack grants](#backpack-grants-issue_catalog_item)). The public live docs
-may describe only
-an in-game item reward (`issue_game_item`, which needs a `gamer_id` and a user validation webhook).
-That reward node is not used for rewards: do not switch to it, do not stop or ask for a revised plan
-because of the difference, and proceed with the planned reward type. Never mention the docs difference to the
-publisher.
+**Offer the options, the publisher picks.** When the publisher hasn't said exactly what they want,
+ask one question with short bullets built from the catalog, one per option, each with its real
+constraint from the node description. For a reward, for example:
+
+- Backpack item: a catalog item, every time the quest completes; needs `xsolla_id`
+- Item in the game: delivered by your game; needs `gamer_id`
+- Web3 item: at most once per player per quest; needs `xsolla_id` and a wallet
+- plus every other reward node the catalog lists (lootbox, loyalty points, currencies, Web3 token)
+
+Name real catalog items where the option needs one (name and SKU). Do the same for the trigger (a
+player event or a schedule) and conditions when the request leaves them open. Then show the exact
+proposal, then create after its yes.
+
+**Constraints first.** When a constraint does not fit the request, say so before the proposal: a
+Web3 item on a daily quest pays only once per player, so ask whether that is what they want.
+
+**Parameters the publisher supplies** (a loyalty program, a CRM segment, a currency SKU, a webhook
+URL): read them where an API exists (the store catalog), otherwise ask. Never guess one.
 
 Only a real catalog item is rewardable. When the publisher asks for something the catalog does not
-have (for example "coins"), say the catalog has no such item and ask which catalog item to use. Never
-substitute silently. When the publisher names no reward at all, read the catalog and offer the valid
-items (name and SKU) as one question, with one `Next:`.
+have (for example "coins"), say so and offer what it has. Never substitute silently. The reward is
+granted or minted as the platform response reports; this skill does not claim delivery beyond it, and when a reward
+path fails, stop and ask rather than switching to another one.
 
 ## Card rewards on the Quests block
 
@@ -40,14 +44,15 @@ that array itself, one entry per reward node, and only when the quest has no `pu
 `{}`). The skill never writes `view.rewards` directly: `public_view` takes no arrays, so a literal
 rewards list is refused.
 
-- **Web3 quest, default view.** Leave `public_view` out when the card must show its reward. Each
+- **Web3 item, default view.** Leave `public_view` out when the card must show its reward. Each
   entry carries `type` (`web3_item`), `quantity` (default 1), and the catalog `name`, `description`
   and `image_url` of the SKU. Title and description come from the quest.
-- **Backpack-item quest.** The server fills the name and image only for Web3 rewards: an
-  `issue_catalog_item` entry has `name` and `image_url` null, so with no `public_view` the card shows
-  no reward. Always write the [catalog-item view](quests-block-flow.md#quest-public-view), with the
-  reward name and image as static values taken from the catalog read (`reward_name`,
-  `reward_image_url`, `reward_type: inventory_item`). Never promise a card reward you did not put there.
+- **Every other reward.** The server fills the name and image only for Web3 items: any other reward
+  entry has `name` and `image_url` null, so with no `public_view` the card shows no reward. Always
+  write the [static-reward view](quests-block-flow.md#quest-public-view), with the reward name and
+  image as static values from the catalog read (`reward_name`, `reward_image_url`, and `reward_type`
+  as the reward's type, `inventory_item` for a Backpack item). Never promise a card reward you did
+  not put there.
 - **Custom view.** A `public_view` replaces the default view. For a Web3 quest, set it only in full, with
   the reward references from [Quest public view](quests-block-flow.md#quest-public-view), or the card
   loses its reward row and its See in Backpack button.
@@ -156,34 +161,21 @@ confirmed payout already exists for the same user and quest, a repeat event
 must not mint a second item. If the earlier payout is unresolved, stop and
 escalate rather than resend the event.
 
-## `web3_token`
+## `issue_web3_token`
 
-Production runs have ERC-20 payouts disabled. A production quest with a
-`web3_token` action fails at payout. When a production request asks for a
-token payout, stop before any Quest Platform write, say that token payouts are
-not available for the project yet, and offer a named item reward instead. Do not ask the publisher for a token
-binding or decimals, because no production binding can make the payout work.
-Use the shape below only when the Quest Platform owner has confirmed that
-ERC-20 payouts are enabled for the project.
-
-An ERC-20 payout, only when the token binding and runtime contract are
-confirmed:
+Offer a Web3 token only when the node catalog lists `issue_web3_token`. It sends `amount` whole
+tokens of `item_sku` to the player's wallet; the event needs `xsolla_id`, and the project and SKU
+pair must be configured for Web3 token payouts. Take the token SKU and amount from the publisher,
+never guess them, and follow the catalog's limits (today: amount above 0, at most 10000):
 
 ```json
 {
-  "type": "web3_token",
   "purpose": "quest_completion",
-  "body": {
-    "project": "<token project>",
-    "item_sku": "<bound token SKU>",
-    "amount": 1
-  }
+  "project": "<token project, or empty for the configured one>",
+  "item_sku": "<token SKU>",
+  "amount": 1
 }
 ```
-
-`amount` must be a positive decimal amount in whole-token units (for
-example `1` means one token and `0.01` means one hundredth of a token) and within the selected target's contract limit. Confirm the token decimals and binding with
-the owner of that target. Never guess them.
 
 The [project-mismatch stop](#project-mismatch) applies to tokens too.
 
@@ -199,13 +191,13 @@ Show three bounds in the publication proposal:
 
 - **Per event and user:** a Web3 item is `quantity × selected SKU count`;
   for a once-per-user named item at quantity one this is one NFT.
-  `web3_token` is `amount`.
+  a Web3 token is `amount`; any other reward is its quantity per event.
 - **Per user for the quest:** apply the effective activation limit to the
   per-event quantity. A Web3 item is paid at most once per player and quest whatever the
   limit. A `per_user` day limit resets per UTC calendar day, so a 7×24h window that starts
   mid-day spans 8 calendar days: count 8, not 7. For a confirmed once-per-user named item this is one NFT
   per user and quest; for quantity greater than one or multiple SKUs, multiply
-  by `quantity × selected SKU count`. For `web3_token`, multiply `amount` by
+  by `quantity × selected SKU count`. For a Web3 token, multiply `amount` by
   the maximum qualifying events for that user.
 - **Total quest exposure:** multiply the per-user bound by the maximum number
   of eligible users. If the user population, event count, activation limit or

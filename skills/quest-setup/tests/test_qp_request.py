@@ -165,6 +165,16 @@ class TargetTests(CliTestCase):
             with self.subTest(case=case):
                 self.assert_refused(argv, "target_not_allowed")
 
+    def test_node_catalog_is_get_only(self) -> None:
+        catalog = "/api/v2/merchants/7/projects/42/quests/node-types"
+        code, out, _ = self.run_cli(["GET", catalog], environ=dict(ENV_FULL))
+        self.assertEqual(code, 0, out)
+        self.assertEqual("https://quests-platform.xsolla.com" + catalog,
+                         self.urlopen.call_args.args[0].full_url)
+        for method in ("PUT", "DELETE", "POST"):
+            with self.subTest(method=method):
+                self.assert_refused([method, catalog], "target_not_allowed")
+
     def test_public_quest_list_is_get_only_and_sends_no_credential(self) -> None:
         public = "/api/v2/public/merchants/7/projects/42/quests"
         code, out, _ = self.run_cli(["GET", public, "--public"], environ=dict(ENV_FULL))

@@ -188,8 +188,9 @@ without the reward references, the card loses its reward row and its See in Back
 {"name": {"$ref": "quest.name"}, "description": {"$ref": "quest.description"}, "image_url": "https://...", "rewards": {"$ref": "reward.<node id>.items"}, "reward_type": {"$ref": "reward.<node id>.type"}}
 ```
 
-An `issue_catalog_item` quest always needs a view: the server gives its reward no name or image, so
-without one the card shows no reward. Put the name and image from the catalog read as static values:
+A quest whose reward is anything but a Web3 item always needs a view: the server gives that reward
+no name or image, so without one the card shows no reward. Put the name and image from the catalog
+read as static values, with `reward_type` the reward's type (`inventory_item` for a Backpack item):
 
 ```json
 {"name": {"$ref": "quest.name"}, "description": {"$ref": "quest.description"}, "rewards": {"$ref": "reward.<node id>.items"}, "reward_name": "<catalog item name>", "reward_image_url": "<catalog image https URL>", "reward_type": "inventory_item"}
@@ -201,7 +202,8 @@ without one the card shows no reward. Put the name and image from the catalog re
   `reward.<node id>.<field>`. An `issue_web3_item` node exposes quantity, name, description, image_url
   and `type`. The public-quests guide lists no `items` field for a Web3 node, so check the `rewards`
   reference in the template on the read-back. An `issue_catalog_item` node exposes only `quantity`
-  through `items`, so its name and image go in as static `reward_name` and `reward_image_url`.
+  through `items`, so its name and image go in as static `reward_name` and `reward_image_url`, as for
+  every reward that is not a Web3 item.
 - A reference that no longer resolves, such as a removed reward node, is left out of the card.
 When it is added, `image_url` must be an absolute `https` URL (an `http` URL is refused, see
 [Rules for every operation](quests-block-brief.md#rules-for-every-operation)). Never invent an

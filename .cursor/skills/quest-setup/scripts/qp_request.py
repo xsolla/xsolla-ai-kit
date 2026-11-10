@@ -48,7 +48,7 @@ ID_PATTERN = re.compile(r"[0-9]+")
 # the configured ids in build_url. Methods are fixed per route kind.
 QP_PATH_PATTERN = re.compile(
     r"/api/v2/merchants/([0-9]+)/projects/([0-9]+)"
-    r"(?:/(quests|events|onboard|custom-blocks)|/quests/([A-Za-z0-9_-]+))?"
+    r"(?:/(quests/node-types|quests|events|onboard|custom-blocks)|/quests/([A-Za-z0-9_-]+))?"
 )
 # The public quest list a card reads, as an anonymous visitor sees it. GET only, and no
 # credential is ever sent on it.
@@ -56,6 +56,9 @@ PUBLIC_PATH_PATTERN = re.compile(r"/api/v2/public/merchants/([0-9]+)/projects/([
 QP_ROUTE_METHODS = {
     "project": ("GET",),
     "quests": ("GET", "POST"),
+    # The publisher's node catalog: every node they can build, with its description and
+    # parameter schema. Read before any quest proposal.
+    "quests/node-types": ("GET",),
     "quest": ("GET", "PUT", "DELETE"),
     "events": ("POST",),  # the docs define POST only
     "onboard": ("POST",),

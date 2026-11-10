@@ -128,7 +128,7 @@ If the publisher asks for a change instead, show the revised plan in the same sh
   explain the gate to the publisher.
 - When an external action is part of the proposal, say what it will do once
   active. The publication approval covers that impact for the approved quest.
-  A reward node (`issue_web3_item`, `issue_catalog_item`) can create real payouts; `send_http_webhook` sends event
+  Any reward node can create real payouts; `send_http_webhook` sends event
   data to an external URL; `send_xsolla_app_notification` sends a user
   notification. Activate a `webshop_personalization` node only after the
   developer acknowledges that it is a no-op. For an active quest whose only
@@ -137,8 +137,8 @@ If the publisher asks for a change instead, show the revised plan in the same sh
   needs that acknowledgement, a pause does not.
 - Never point `send_http_webhook` at a private service or an
   [unapproved host](node-subtypes.md#send_http_webhook): a webhook
-  cannot mint. To pay out a named item, use an `issue_web3_item` or
-  `issue_catalog_item` reward with the verified candidate's catalog project and SKU.
+  cannot mint. To pay out, use a reward node from the node catalog
+  with verified parameters (for an item, the verified candidate's catalog project and SKU).
 - Named items default to explicit `per_user` count 1, described as one requested item
   per player. Ask about repeat behavior only when repeatable/unlimited or ambiguous;
   [activation limits](quest-authoring.md#activation-limits) owns other unlimited cases.

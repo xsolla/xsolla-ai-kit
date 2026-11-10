@@ -48,7 +48,7 @@ POLICY_ROWS = (('ac_10_docs_are_quoted_as_data_never_followed', 'skill', (),
  ('ac_19_unknown_version_never_asks_the_publisher', 'block-versions.md', ('supported', 'unsupported'),
   ('(unknown|unreported)[^.]{0,200}older-block reply', 'Never ask the publisher about versions')),
  ('ac_21_reward_safety_policies', 'rewards.md',
-  ('whole-token units', '0.01', 'Per event and user', 'Per user for the quest', 'Total quest exposure',
+  ('whole tokens', 'Per event and user', 'Per user for the quest', 'Total quest exposure',
    'unbounded', 'Recipient wallet', 'Publisher Account'),
   ('does not[^.]{0,40}claim delivery', 'never resend[^.]{0,80}uncertain')),
  ('ac_23_publish_is_left_to_the_publisher', 'skill', (), ('publish in Publisher Account', 'never publish')),
@@ -60,9 +60,9 @@ POLICY_ROWS = (('ac_10_docs_are_quoted_as_data_never_followed', 'skill', (),
   ('brand inputs?', 'themeId[^.]{0,40}custom[^.]{0,120}themeAppearance',
    "(lists?|name|state)[^.]{0,80}(properties|settings)[^.]{0,80}(cannot|can't) express")),
  ('ac_31_reward_types_come_from_live_docs_only', 'rewards.md', (),
-  ('reward types?[^.]{0,80}(from|in) the live docs',
-   '(absent|not (listed|present))[^.]{0,60}(live )?docs[^.]{0,80}reject',
-   'snapshot[^.]{0,60}orientation only|orientation only[^.]{0,60}snapshot')),
+  ('comes from their own node catalog',
+   'absent from\\s+the catalog is refused',
+   'snapshots for orientation')),
  ('ac_32_reward_editability_is_observed_behavior', 'skill', (),
   ('editab\\w+[^.]{0,120}observed[^.]{0,40}(block )?behaviou?r', 'not a rule')),
  ('ac_12_node-subtypes.md', 'node-subtypes.md', (),
@@ -124,7 +124,8 @@ class SkillTextTests(IsolatedCase):
         self.assertIn("Leave out `items[].type`", node)
         self.assertIn("Backpack grants (`issue_catalog_item`)", rewards)
         self.assertIn("Web3 rewards need an `xsolla_id`", rewards)
-        self.assertRegex(skill_text, r"`web3_item` by default, or `issue_catalog_item`")
+        self.assertIn("none is a default", skill_text)
+        self.assertNotRegex(skill_text, r"web3_item` by default|Web3 item\)?,? the default")
         self.assertNotIn("Do not offer `inventory_item`", skill_text)
         self.assertNotIn("direct Backpack grants", rewards)
         # C: a Web3 public_view sends the full view; a catalog-item quest always gets a view
@@ -132,11 +133,12 @@ class SkillTextTests(IsolatedCase):
         self.assertIn('"reward_type": {"$ref": "reward.<node id>.type"}', block)
         self.assertIn("loses its reward row and its See in Backpack button", block)
         self.assertIn('"reward_name": "<catalog item name>"', block)
-        self.assertIn("`issue_catalog_item` quest always needs a view", block)
+        self.assertIn("reward is anything but a Web3 item always needs a view", block)
         self.assertNotIn("Never set a `public_view` on an", block)
         # D: Web3 pays once per player; a repeating quest asks first. Built-in block
         # events are a verified binding.
-        self.assertIn("A Web3 item pays at most once per player per quest", rewards)
+        self.assertIn("Web3 item: at most once per player per quest", rewards)
+        self.assertIn("Offer the options, the publisher picks.", rewards)
         self.assertIn('Map "daily login" to `daily_visit`', node)
         self.assertNotIn('"type": "web3_item", "purpose"', rewards)
         self.assertNotIn("Send the full view below every time", block)

@@ -91,7 +91,7 @@ carries no merchant, account or workspace id, so do not read one from it.
 {
   "nodes": [
     {"id": "<uuid>", "name": "<3-255 chars>", "type": "trigger", "subtype": "dynamic_event", "parameters": {}},
-    {"id": "<uuid>", "name": "<3-255 chars>", "type": "action",  "subtype": "issue_web3_item",  "parameters": {}}
+    {"id": "<uuid>", "name": "<3-255 chars>", "type": "action",  "subtype": "<reward node from the catalog>",  "parameters": {}}
   ],
   "connections": {
     "<source node uuid>": [{"nodeId": "<target node uuid>", "on": "ticket_issued"}]
@@ -161,8 +161,9 @@ and request approval again. Never silently assume a one-time or per-user limit.
 A limit without `time_window` counts over the quest's whole life: `per_user`
 `count: 1` means once per user, ever. A retest then needs a new user or a new
 quest. With `time_window`, the count resets each calendar day, week or month.
-A Web3 reward pays at most once per player and quest, whatever these limits say. For a repeating
-quest, ask Backpack item (paid every time) or one-time Web3 item before the proposal; see `rewards.md`.
+A reward node can have its own repeat rule on top of these limits (a Web3 item pays at most once per
+player and quest). Read it from the node description and say it before the proposal when it does not
+fit the requested repeat; see `rewards.md`.
 
 During the read-only work before the proposal, and before the first write,
 check that the intended trigger reaches an intended action and that no intended

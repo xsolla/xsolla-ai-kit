@@ -1,6 +1,9 @@
 # Node subtypes
 
-The live docs are the source of truth; this snapshot is for orientation only.
+The publisher's node catalog (`GET .../quests/node-types`, see
+[rewards.md](rewards.md#choose-from-the-node-catalog)) and the live docs are the source of truth:
+any node the catalog lists can be used. This snapshot lists only the nodes this file has notes on,
+for orientation.
 Use [SKILL docs refresh](../SKILL.md#live-docs-and-rewards) and
 [Source of truth](qp-api-contract.md#source-of-truth) for conflicts/unavailability.
 Read back the saved quest before using an optional subtype.
@@ -43,7 +46,7 @@ identifiers. Never treat an arbitrary URL as a harmless placeholder.
   a separate post-approval gate).
 - Never point it at a private platform service or the minting service. A
   webhook cannot pay out and must never carry credentials. To pay out, use an
-  `issue_web3_item` or `issue_catalog_item` reward with the values listed in `rewards.md`.
+  reward node from the node catalog, as in `rewards.md`.
 - A reserved host such as `https://e2e-sink.invalid/hook` is never written and
   must never appear in a publication proposal. Replace it with the developer's
   approved endpoint before showing the proposal.

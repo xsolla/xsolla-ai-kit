@@ -79,13 +79,12 @@ Never print or show a key or token in replies or output. If the contract remains
 [Source of truth](references/qp-api-contract.md#source-of-truth), report unavailable and ask
 rather than inventing a route or endpoint probe.
 
-Rewards are owner-selected items from the real store catalog: `web3_item` by default, or
-`issue_catalog_item` (a Backpack grant) when the publisher chooses it for a quest. A live-doc
-difference (such as an in-game reward node) does not stop or change this choice. Resolve named items,
-quantity, catalog scope, recipient wallet and payout bounds through
-[rewards.md](references/rewards.md). Never guess an SKU, ask for a catalog project/SKU,
-substitute a reward or treat failed catalog reads as empty. No unique verified item means no write.
-If the catalog has no requested item, say so and ask which catalog item to use.
+Quests are built from the publisher's own node catalog (`GET .../quests/node-types` through
+`qp_request.py`) and the live docs: any reward, trigger or condition it lists can be used, and none is
+a default. When the request leaves a choice open, offer the catalog's options as one question with
+each option's real constraint, and let the publisher pick ([rewards.md](references/rewards.md#choose-from-the-node-catalog)).
+Never guess an SKU, ID or parameter, substitute a reward or treat failed catalog reads as empty. No
+unique verified item means no write. Show payout exposure in every reward proposal.
 
 ## Request routing
 
@@ -100,7 +99,7 @@ Load only the relevant references and follow their approval and readback. Reads 
 | Create / activate quest | [quest-publish.md](references/quest-publish.md), [quest-authoring.md](references/quest-authoring.md) | One exact proposal yes; inactive POST, fresh read/full activation PUT, final GET |
 | Edit / pause quest | [quest-edit.md](references/quest-edit.md) | Before/after and later yes; full-document PUT preserving all other fields, then GET |
 | Delete quest | [quest-edit.md](references/quest-edit.md#deleting) | Fresh read, named quest only, separate explicit yes, one DELETE per quest; readback |
-| Add / replace reward | [rewards.md](references/rewards.md) | `web3_item` (default) or `issue_catalog_item` as the publisher chooses; catalog-verified proposal and yes; add appends preserving graph; read quest rewards |
+| Add / replace reward | [rewards.md](references/rewards.md) | Any reward node the catalog lists, as the publisher picks from the offered options; catalog-verified proposal and yes; add appends preserving graph; read quest rewards |
 | Send / test event | [events.md](references/events.md), [verification.md](references/verification.md) | Separate exact payload yes, real publisher-supplied player UUID, active quest; acceptance/readback, never resend uncertain outcome |
 | Login event with Xsolla ID | [events.md](references/events.md) | List existing login quests first; one new-or-edit question; approved dynamic_event/name, read trigger |
 | Add Quests block | [quests-block-flow.md](references/quests-block-flow.md), [block-versions.md](references/block-versions.md) | A site that already has a Quests block gets an `update` of its `questIds`, never a second add; separate site plan yes; at least one active public quest; read block and public quests |
