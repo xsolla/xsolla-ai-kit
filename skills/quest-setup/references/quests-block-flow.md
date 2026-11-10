@@ -62,7 +62,10 @@ a quest) never trigger it.
    on with step 2 using the `sites` names; the site list is already read.
 1. Always run the read-only list, `xsolla shopbuilder list-websites --json`, before
    replying. Never say the list is unavailable without running it.
-2. If the command succeeds, reply in the Which shop shape: the bold question, one bullet
+2. If the publisher already named a site that is in the list, use it and skip the
+   question. The list has only each site's `domain` (its slug), so the slug counts as the
+   site's name: match it as written, and show it as the site's name.
+   Otherwise, if the command succeeds, reply in the Which shop shape: the bold question, one bullet
    per site name from the list, a bullet for a headless storefront codebase, then
    `Next:`. No capability or explanation sentence comes before the question.
 3. Only if the command itself fails, use the Discovery failure shape in
@@ -136,7 +139,7 @@ and a `Next:` asking the publisher to log in to the Xsolla CLI if needed.
 If the site is not yet known, resolve it first in [Which shop](#which-shop).
 
 Ask in one message, in the question shape from [reply-format.md](reply-format.md) (a
-bold question, up to four bullets, then `Next:`), and only for what you cannot read
+bold question, up to four bullets (an option menu from the node catalog may have more), then `Next:`), and only for what you cannot read
 yourself:
 
 - **Which quests** to show, and in what order. List the existing quests (read-only).
@@ -220,6 +223,17 @@ or description to work around its read-only block behavior.
 
 ## Flow
 
+**Quest + site in one request.** When the publisher asks for a new quest and for it on the
+site, the order is: quest proposal and its yes; create, activate and read back the quest; then,
+in the same turn, run the gate's preflight, backup and render for the block change; then the
+combined reply ([reply-format](reply-format.md#examples)) with the quest result and the site plan,
+and one `Next:` for the site plan. A quest driven by the block's built-in events needs no event
+offer; for any other trigger, the event offer comes after the site plan is applied.
+
+**A broken card met on the way.** When the block summary or public read shows a card with no
+reward name or image (an older quest whose reward is not a Web3 item and has no static view),
+mention it in one bullet and offer the fix as its own quest edit, after the current request.
+
 1. **Choose quests.** List the existing quests (read-only) and agree the set, order
    and count with the publisher. A missing quest goes through the normal create flow
    in [`SKILL.md`](../SKILL.md), created only after a yes to that exact proposal. Say a quest is missing only after the list read
@@ -266,9 +280,9 @@ or description to work around its read-only block behavior.
    overrides, which then win over later quest edits. So when the summary shows overrides
    the plan did not write, the editor made them; say a quest's new text shows on the card
    only after that card's override is reset.
-   **Card text:** a quest with no description gets no card description: propose the quest
-   name as the title and leave the description empty rather than inventing one; offer one
-   optional line the publisher can give. With several
+   **Card text:** the card shows the quest's name and description. A quest the publisher
+   did not name, or gave no description, gets a proposed name and one-line description
+   inside the quest proposal, so the publisher's yes covers them. With several
    Quests blocks on the site, "the Quests block" is the only visible one; target a
    hidden block only when the publisher points at it ("the copy", "the hidden one", a
    position), and ask which one only when several are visible. Check
@@ -287,7 +301,12 @@ or description to work around its read-only block behavior.
    heading of each touched block, block order of each touched page, every other block
    unchanged, and each chosen quest reads back as public. In a partial quest lookup,
    only returned quests have known public status; an unresolved card is unknown and
-   cannot satisfy the public readback check.
+   cannot satisfy the public readback check. `verified` covers settings, order and
+   untouched blocks; for public status and the final card list, rerun the block summary
+   after apply.
+   The backup folder is the undo: keep it for the rest of the conversation and never
+   delete it. Mention it to the publisher only when they ask how to undo or a change
+   went wrong.
 7. **Hand off.** Report what changed. Say the site
    is **not published**: the publisher previews and publishes it in Publisher Account.
    Anonymous visitors see the cards. Do not promise signed-in progress on a production

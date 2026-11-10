@@ -21,8 +21,8 @@ Read back the saved quest before using an optional subtype.
 | `send_http_webhook` | action | `url`, see below |
 | `webshop_personalization` | action | configuration may be accepted without producing a personalization effect |
 
-Do not offer any additional subtype until its production contract and runtime
-support are confirmed. Configuration acceptance is not runtime support.
+Any node the project's `node-types` catalog returns may be offered and used; this table only
+holds notes on some of them.
 
 ## Action parameters
 
@@ -113,11 +113,6 @@ while an active quest of the project allows it: this flag, or an event operand w
 `include_client_events: true`. Otherwise it answers 403. Say in the proposal that the browser or
 game client can send this event, and which one. Never set it on an event only the backend sends.
 
-## Accepted, but not yet production-confirmed
-
-Do not offer `scheduled_event` or `crm_send_email` until the live production contract
-and runtime support are confirmed. Configuration acceptance alone is insufficient.
-
 ## Rejected, despite existing
 
 `event_check` is not a supported subtype unless the live production contract
@@ -140,7 +135,11 @@ The Quests block (0.2.22) sends three built-in events itself for a signed-in pla
 count as a verified binding on a site with the block: `login_xsolla_id` once per session,
 `daily_visit` once per UTC day and `weekly_visit` once per ISO week. Map "daily login" to
 `daily_visit`, "weekly login" to `weekly_visit` and "first sign-in" to `login_xsolla_id`, with
-`client_sendable: true` on the trigger. For a login sent from elsewhere, follow the
+`client_sendable: true` on the trigger. These events carry only the signed-in player's
+`xsolla_id` (from their Xsolla Login token), never a `gamer_id`, so a reward node whose
+description needs `gamer_id` (an item delivered into the game, a currency or points paid by
+game account) cannot pay from a block-driven quest: say so in the menu next to that option.
+For a login sent from elsewhere, follow the
 [login flow](events.md#login-event-with-xsolla-id).
 Every active quest in the selected project with the same trigger name may run, so a
 test quest needs a unique name.

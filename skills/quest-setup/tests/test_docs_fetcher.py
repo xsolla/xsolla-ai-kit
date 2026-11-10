@@ -79,6 +79,23 @@ class DocsFetcherTests(IsolatedCase):
         iso = datetime.datetime.fromtimestamp(NOW, datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M")
         self.assertTrue(str(NOW) in blob or iso in blob, "fetch timestamp not stored in cache")
 
+    def test_page_cut_inside_an_html_block_is_partial(self) -> None:
+        class CutGuide(FakeDocs):
+            def __call__(self, url):
+                status, text = super().__call__(url)
+                if url.endswith("/api/quests/node-dynamic-event.md"):
+                    return 200, "# Guide\n\nFirst paragraph.\n\n{% html %}\n"
+                return status, text
+
+        result = self.fetch(CutGuide())
+        self.assertEqual("partial", result["status"])
+        self.assertEqual(1, len(result["truncated"]))
+        self.assertTrue(result["truncated"][0].endswith("/api/quests/node-dynamic-event.md"))
+        code, out, _ = self.capture(qp_docs.main, [], transport=CutGuide(), home=str(self.home))
+        self.assertEqual(0, code)
+        self.assertIn("PARTIAL: 1 page(s) arrived cut short", out)
+        self.assertFalse(qp_docs._truncated("{% html %}x{% /html %}"))
+
     def test_ac_04_main_prints_cache_path(self) -> None:
         code, out, _ = self.capture(qp_docs.main, [], transport=FakeDocs(), home=str(self.home))
         self.assertEqual(code, 0)

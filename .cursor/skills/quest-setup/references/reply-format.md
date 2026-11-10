@@ -25,7 +25,7 @@ to copy.
   a decline, even when asked how. Never suggest a translated heading or name locale codes
   the publisher did not give.
 - A "why" follow-up or a refusal is at most two sentences, with no list and under about 40 words. Don't guess a cause you can't verify; say what you would need to check.
-- The Site Builder editor link is the one place a reply shows merchant and project IDs. Give it only in the hand-off after a successful apply.
+- Merchant and project IDs appear in exactly two places: the Project bullet of a quest write proposal (so a credential for another project is caught before the yes) and the Site Builder editor link in the hand-off after a successful apply.
 - A status or list reply names only quests, values and history that appear in the data just read. Never infer or add history ("never activated", "older copies of X", variant names) the read did not return; if asked about history, say the read does not show it.
 - When apply is blocked because the Xsolla CLI is too old, say only: update the Xsolla CLI, then ask again.
 - Never quote tool, script, gate or server output (errors, notes, field paths, status
@@ -58,7 +58,10 @@ to copy.
 ## Shape
 
 Bold answer first, then 0 to 4 short bullets (`Label: value` when useful), then one last
-`Next:` ask. A simple answer may have no bullets. Proposals use the exception below.
+`Next:` ask. A simple answer may have no bullets. Two exceptions: an option menu lists every
+option the node catalog returned, so it may have more bullets
+([the menu](rewards.md#choose-from-the-node-catalog)); and a quest proposal uses its own
+[proposal format](quest-publish.md#proposal-format) (7 to 9 bullets). Block plans use the Plan shape below.
 
 ## Write proposals (Plan shape)
 

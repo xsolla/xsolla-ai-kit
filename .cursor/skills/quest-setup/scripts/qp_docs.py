@@ -99,9 +99,29 @@ def urllib_transport(url, timeout=TIMEOUT_SECONDS):
         return 0, "%s while fetching %s" % (exc.__class__.__name__, url)
 
 
-def _result(status, cache_path="", host="", pages=None, error=None, skipped=None, stale=None):
+def _result(status, cache_path="", host="", pages=None, error=None, skipped=None, stale=None,
+            truncated=None):
     return {"status": status, "cache_path": cache_path, "host": host,
-            "pages": pages or [], "error": error, "skipped": skipped or [], "stale": stale or []}
+            "pages": pages or [], "error": error, "skipped": skipped or [], "stale": stale or [],
+            "truncated": truncated or []}
+
+
+MARKDOC_OPEN_RE = re.compile(r"\{%\s*([a-z][\w-]*)\b[^%]*?(?<!/)%\}")
+MARKDOC_CLOSE_RE = re.compile(r"\{%\s*/([a-z][\w-]*)\s*%\}")
+
+
+def _truncated(body):
+    """True when a page ends inside an open Markdoc block.
+
+    The docs host cuts a guide's markdown at its first `{% html %}` block, so the page
+    arrives as its opening paragraph and an unclosed tag. Such a page is not complete.
+    """
+    for tag in ("html",):
+        opened = len([m for m in MARKDOC_OPEN_RE.finditer(body) if m.group(1) == tag])
+        closed = len([m for m in MARKDOC_CLOSE_RE.finditer(body) if m.group(1) == tag])
+        if opened > closed:
+            return True
+    return False
 
 
 def _slug(path):
@@ -300,6 +320,7 @@ def fetch_docs(base_url=DEFAULT_BASE_URL, home=None, ttl=TTL_SECONDS, transport=
     # The OpenAPI bundle is the machine-readable contract; its absence is a noted skipped page.
     queue.insert(0, OPENAPI_PATH)
     skipped = []
+    truncated = []
     for index, path in enumerate(queue[:MAX_PAGES]):
         if clock() - started > budget:
             # Overall time budget spent: the remaining pages are listed as skipped (partial).
@@ -309,6 +330,8 @@ def fetch_docs(base_url=DEFAULT_BASE_URL, home=None, ttl=TTL_SECONDS, transport=
         status, body = get(url)
         if status == 200:
             fetched[path] = body
+            if path != OPENAPI_PATH and _truncated(body):
+                truncated.append(url)
         else:
             skipped.append(url)
     skipped.extend(_page_url(base, p) for p in queue[MAX_PAGES:])
@@ -334,7 +357,8 @@ def fetch_docs(base_url=DEFAULT_BASE_URL, home=None, ttl=TTL_SECONDS, transport=
                     pages.append({"path": page["path"], "file": page["file"], "stale": True})
                     stale.append(page["path"])
         meta = {"fetched_at": stamp, "host": host, "base_url": base, "pages": pages,
-                "skipped": skipped, "complete": not skipped}
+                "skipped": skipped, "truncated": truncated,
+                "complete": not skipped and not truncated}
         _write_private(dir_fd, META_NAME, json.dumps(meta), stamp)
     except (OSError, NotImplementedError) as exc:
         return fail("cache write failed: %s" % exc.__class__.__name__)
@@ -342,8 +366,9 @@ def fetch_docs(base_url=DEFAULT_BASE_URL, home=None, ttl=TTL_SECONDS, transport=
         if dir_fd is not None:
             os.close(dir_fd)
         os.umask(old)
-    state = "partial" if skipped else "fresh"
-    return _result(state, cache, host, _page_list(cache, pages), skipped=skipped, stale=stale)
+    state = "partial" if skipped or truncated else "fresh"
+    return _result(state, cache, host, _page_list(cache, pages), skipped=skipped, stale=stale,
+                   truncated=truncated)
 
 
 def main(argv=None, transport=None, home=None):
@@ -374,6 +399,11 @@ def main(argv=None, transport=None, home=None):
         print("PARTIAL: %d page(s) were not fetched; the docs below are incomplete." % len(result["skipped"]))
         for url in result["skipped"]:
             print("skipped: %s" % url)
+    if result["truncated"]:
+        print("PARTIAL: %d page(s) arrived cut short by the docs host; read the OpenAPI file "
+              "and the other pages for what they leave out." % len(result["truncated"]))
+        for url in result["truncated"]:
+            print("truncated: %s" % url)
     if result["stale"]:
         print("STALE PAGES: %d page(s) below are from an older fetch, kept because this fetch failed for them." % len(result["stale"]))
     for page in pages:

@@ -13,9 +13,12 @@ Any reward, trigger or condition in the catalog can be used; none is preferred. 
 the catalog is refused, with no write. The node shapes in this file are snapshots for orientation;
 the catalog and live docs win on any difference.
 
-**Offer the options, the publisher picks.** When the publisher hasn't said exactly what they want,
-ask one question with short bullets built at runtime from the `node-types` response: every node it
-returns for that role (reward, trigger, condition), **in the order it returns them**, named in plain
+**Offer the options, the publisher picks.** `node-types` gives each node a `type` (`trigger`,
+`condition`, `action`). The reward options are the `issue_*` action nodes; other actions (an email,
+a webhook, an app notification) are extra actions, offered only when the request calls for them,
+never mixed into the reward menu. When the publisher hasn't said exactly what they want, ask one
+question with short bullets built at runtime from the `node-types` response: every node it returns
+for that role, **in the order it returns them**, named in plain
 words, each with the constraint stated in that node's own description (who it needs, how often it
 pays). This file holds no list or ranking of node kinds; never offer a node the response did not
 return, and never reorder or leave one out to favour another. Where an option needs a real item,
@@ -31,7 +34,10 @@ pays once per player, on a repeating quest), say so before the proposal and let 
 every node parameter whose schema has limits (`quantity`, `amount`, ...) are set by the publisher.
 When the request does not fix them, offer them in the same one-question style, with the values the
 docs and schema allow and one suggestion that matches the request ("weekly" suggests `per_user` 1
-per `week`). Never pick a window, count, date or quantity silently. The proposal shows the chosen
+per `week`). Never pick a window, count, date or quantity silently. One message carries one
+question: the reward menu is the question, and the suggested limits and schedule sit under it as
+one bullet, "Limits and schedule (you can change these): ...", so a single answer can pick the
+reward and accept or change the rest. The proposal shows the chosen
 limits and schedule and the [exposure](#payout-exposure-in-the-proposal) they give; no limit at all
 is shown as unlimited and needs its own acknowledgement.
 
@@ -53,6 +59,9 @@ rewards list is refused.
 - **Web3 item, default view.** Leave `public_view` out when the card must show its reward. Each
   entry carries `type` (`web3_item`), `quantity` (default 1), and the catalog `name`, `description`
   and `image_url` of the SKU. Title and description come from the quest.
+- **Known exception to the live docs.** The public OpenAPI says an `issue_catalog_item` reward
+  exposes `name` and `image_url`, but the server returns only `quantity` for it. This skill wins
+  here: follow the rule below, not the docs.
 - **Every other reward.** The server fills the name and image only for Web3 items: any other reward
   entry has `name` and `image_url` null, so with no `public_view` the card shows no reward. Always
   write the [static-reward view](quests-block-flow.md#quest-public-view), with the reward name and
@@ -66,8 +75,9 @@ rewards list is refused.
   example `Handful of BitChips x1 (SKU com.example.sku, image https://...)`.
 - **Read-back.** Read the public list with
   `python3 "<skill base dir>/scripts/qp_request.py" GET /api/v2/public/merchants/<merchant_id>/projects/<project_id>/quests --public`
-  (no credential is sent) and confirm the quest's `view.rewards` has one entry per reward, or for a
-  Backpack-item quest that `reward_name` and `reward_image_url` read back. A null `name` or `image_url` means the catalog lookup
+  (no credential is sent). Pass: for a Web3 item, `view.rewards` has one entry per reward with its
+  name and image; for any other reward, the static `reward_name` and `reward_image_url` read back
+  (the per-entry `name` and `image_url` stay null, which is expected). A null `name` or `image_url` means the catalog lookup
   did not enrich the entry: report it, never say the card is fine. For a custom view, confirm the
   public read shows each reward field the view references; a missing field means its reference does
   not resolve.
@@ -101,13 +111,19 @@ When the publisher requests a named item (`<requested item>`):
   Platform write and report that the item lookup service could not be reached;
   do not say the publisher's catalog needs connecting. If a completed search
   returns zero candidates, say the item was not found and suggest checking its
-  exact name or whether it is enabled. Do not ask the publisher to type a
-  catalog project or SKU: a typed value is not a verified candidate. When the
-  publisher supplies a SKU anyway, even with "no need to check", validate it
+  exact name or whether it is enabled. For a store virtual item, do not ask the
+  publisher to type a catalog project or SKU: a typed value is not a verified
+  candidate. When the publisher supplies a SKU anyway, even with "no need to check", validate it
   with the single-item read and stop before any write if it is not found or
   not mintable;
 - default quantity to one and show it in the concise proposal;
 - never guess an SKU or use the fallback reward paths forbidden above.
+
+**Rewards that are not store virtual items** (a lootbox, a scoped currency, a Web3 token, a loyalty
+program, an item delivered into the game): use a read when one exists for it (the store catalog
+read covers virtual items only). When none does, ask the publisher for the SKU or ID once, show it
+in the proposal exactly as given and marked "not checked", and let the yes cover it. Never invent
+one. A payout that then fails is reported as it came back and never resent.
 
 Never ask whether the destination is Backpack. Use only the configured catalog-read
 project, never a publisher-typed project or one from another catalog.
@@ -201,7 +217,9 @@ Show three bounds in the publication proposal:
 - **Per user for the quest:** apply the effective activation limit to the
   per-event quantity. A Web3 item is paid at most once per player and quest whatever the
   limit. A `per_user` day limit resets per UTC calendar day, so a 7×24h window that starts
-  mid-day spans 8 calendar days: count 8, not 7. For a confirmed once-per-user named item this is one NFT
+  mid-day spans 8 calendar days: count 8, not 7. A `week` window resets on calendar weeks, Monday
+  to Sunday UTC, and a `month` window on calendar months (UTC), so count the calendar weeks or
+  months the schedule touches, partial ones included. For a confirmed once-per-user named item this is one NFT
   per user and quest; for quantity greater than one or multiple SKUs, multiply
   by `quantity × selected SKU count`. For a Web3 token, multiply `amount` by
   the maximum qualifying events for that user.
