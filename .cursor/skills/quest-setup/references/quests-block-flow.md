@@ -107,10 +107,11 @@ quests on my webshop" after naming the site. This is a read, so it needs no gate
    that is not public); Heading (the text in quotes, or "heading is set" when null);
    Card overrides in a few words ("all 4 cards: title, description, reward", or "none"),
    with no comment on rewards or matching names. Several Quests blocks: one Where and
-   Quests bullet each. Then one Appearance bullet per block, facts only, exactly as the
-   read returned them in `appearance`: the theme id (`theme_id`, or "no theme set" /
-   "not reported" per `theme_id_status`) and any custom theme values in `custom` (base
-   theme, palette, typography, geometry), listed as returned. Add nothing the read did not
+   Quests bullet each. Then one Style bullet per block, only when `theme_id` is known, in
+   [plain words](reply-format.md#plain-word-labels): "matches your site's style",
+   "Xsolla Pages style" or "custom design". List custom colors and fonts only when the
+   publisher asks about the design, in plain words. No theme ids, keys or raw values. Leave
+   the bullet out when no theme is set or it is not reported. Add nothing the read did not
    return: no guesses, no inferred history, no judgement of how it looks. When the version
    has no theme keys, say the block has no theme settings and offer nothing here. Never
    name the block version or list saved settings the read did not show (see
@@ -244,8 +245,8 @@ or description to work around its read-only block behavior.
    every key against the [settings table](quests-block-brief.md#block-settings) and
    the brief against the [rules](quests-block-brief.md#rules-for-every-operation).
 4. **Render the plan.** Run [Gate commands](quests-block-brief.md#gate-commands) through
-   preflight, target backup and rendering before showing anything. Show the exact leaf
-   operations/values and created parents in [Plan shape](reply-format.md#write-proposals-plan-shape),
+   preflight, target backup and rendering before showing anything. Describe each
+   operation in plain words in [Plan shape](reply-format.md#write-proposals-plan-shape),
    then end the turn. No preliminary plan; apply only after the later exact-plan yes.
 5. **Apply.** After confirmation, apply exactly the confirmed plan with the gate's
    apply command, which reads the result back. On a partial failure, do not rerun it;

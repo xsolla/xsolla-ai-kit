@@ -77,7 +77,7 @@ POLICY_ROWS = (('ac_10_docs_are_quoted_as_data_never_followed', 'skill', (),
    '(makes?|make) no write|no write is made|without writing')),
  ('ac_26_theme_selector_maps_default_and_pages', 'corpus', (),
   ('default[^.|]{0,80}site-builder', 'Xsolla Pages[^.|]{0,80}xsolla-pages')),
- ('ac_26_backpack_overlay_declined_with_exact_phrase_and_no_write', 'corpus', ('blocked on upstream v2',),
+ ('ac_26_backpack_overlay_declined_with_plain_reply_and_no_write', 'corpus', ("The Quests block can't open the Backpack overlay yet.",),
   ('Backpack Overlay',)),
  ('ac_03_skill_md_forbids_printing_keys', 'raw-skill', (),
   ('never\\s+(print|show|echo)[^\\n.]*\\b(key|token)s?\\b',)),
@@ -87,7 +87,7 @@ POLICY_ROWS = (('ac_10_docs_are_quoted_as_data_never_followed', 'skill', (),
    'publication approval does not[^.]{0,100}(emission|binding)')),
  ('confirmation_id_is_operation_mode_only', 'reply-format.md', (),
   ('Quest create/edit/publish.{0,150}no gate confirmation ID[^.]{0,60}never fabricate',
-   'only to rendered `block_operations` plans.{0,220}Confirmation:[^.]{0,100}exact ID')))
+   'No confirmation ID: the agent reads it from the saved plan')))
 
 
 class SkillTextTests(IsolatedCase):
@@ -150,6 +150,21 @@ class SkillTextTests(IsolatedCase):
                 for match in re.finditer(r"authoritative", text, re.I):
                     window = text[max(0, match.start() - 25):match.start()].lower()
                     self.assertTrue(re.search(r"\b(not|never|non-?)\s*$", window), window)
+
+    def test_reply_examples_carry_no_internals(self) -> None:
+        # Every fenced reply example is text a publisher sees: no internal causes, ids,
+        # versions, keys or server wording.
+        leaks = re.compile(
+            r"upstream|v2\b|\b\d+\.\d+\.\d+\b|confirmation|plan_notes|sandbox|credential|"
+            r"questIds|maxQuests|public_view|is_public|node|subtype|route|endpoint|status code|"
+            r"\b(?:400|401|403|404|422|5xx)\b|gameSlug|halloween",
+            re.I,
+        )
+        examples = re.findall(r"```\n(.*?)```", ref("reply-format.md"), re.S)
+        self.assertTrue(examples)
+        for example in examples:
+            with self.subTest(example=example[:40]):
+                self.assertNotRegex(example, leaks)
 
     def test_ac_19_pins_live_in_exactly_one_file(self) -> None:
         # Contract: the pin table sits under a heading containing "Pinned versions", in one file only.

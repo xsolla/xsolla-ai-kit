@@ -27,7 +27,23 @@ to copy.
 - A "why" follow-up or a refusal is at most two sentences, with no list and under about 40 words. Don't guess a cause you can't verify; say what you would need to check.
 - The Site Builder editor link is the one place a reply shows merchant and project IDs. Give it only in the hand-off after a successful apply.
 - A status or list reply names only quests, values and history that appear in the data just read. Never infer or add history ("never activated", "older copies of X", variant names) the read did not return; if asked about history, say the read does not show it.
-- When the gate reports that the site's layout needs a newer CLI, repeat that warning in one line in each plan that shows it.
+- When apply is blocked because the Xsolla CLI is too old, say only: update the Xsolla CLI, then ask again.
+- Never quote tool, script, gate or server output (errors, notes, field paths, status
+  bodies). Say in one plain sentence what it means for the publisher and what they can
+  change. When the cause is the agent's own brief or request, fix it and retry silently.
+- Every reply, not only proposals, uses plain words for quest internals: no `node`,
+  `subtype`, `issue_reward`, `send_http_webhook`, `dynamic_event`, `client_sendable`,
+  `public_view`, `is_public`, `activation_limits`, `version_id`, status codes like
+  `COMPLETED` or `ACTION_FAILED`, block keys like `questIds` or `maxQuests`, or theme ids.
+  Use the [plain-word labels](#plain-word-labels).
+- Reads follow the same rule as writes: report only what the publisher asked about. No
+  saved-at times, "changed since" narration, `created_by`, or fields they did not ask for.
+  The quest schedule is the only date shown unprompted.
+- No quest, block, event or node IDs, and no idempotency keys, in replies. Tell quests
+  apart by name, status and dates. For anything that needs Xsolla to look, say "contact
+  Xsolla support".
+- Never explain the toolkit's own limits (docs, credentials, read-back, environments,
+  endpoints, routes). Say what the publisher can see or do instead.
 - Unsupported theme/version replies follow only [block-versions.md](block-versions.md#theme-request-on-an-older-block).
 - Never name a block or CLI version, say a version is pinned or locked, or mention `gameSlug`,
   `visibleGameSlugs` or a game slug ([Versions stay internal](block-versions.md#versions-stay-internal)).
@@ -49,11 +65,14 @@ from `whoami`, defaults, active/inactive status, schedule, repeat limits and pay
 
 The following rules apply only to rendered `block_operations` plans:
 
-- Bold `Plan: ...` first, then bullets for Site, Change, defaults, publication status
-  and `Confirmation: <confirmation_id>` using the exact ID returned by the gate.
+- Bold `Plan: ...` first, then bullets for Site, Change, defaults and publication status.
+  Change describes each operation in plain words (which quests and in what order, card
+  limit, heading text, card title, alignment, button style, background), never brief keys,
+  leaf paths, quest IDs or created parents. No confirmation ID: the agent reads it from the
+  saved plan.
 - Several changes share one Change bullet, separated by semicolons.
 - If `warnings` says card text replaces editor text, include “(replaces the text set in the Site Builder editor)” in Change.
-- Include any returned `plan_notes` line exactly; add no sandbox/environment line if empty.
+- `plan_notes` are for the agent only; never show them.
 - Show only the rendered plan after preflight and backup, never a preliminary plan.
 - End: `Next: reply "yes" to apply this exact plan.` One later yes covers only that plan.
 
@@ -127,7 +146,7 @@ A yes routes to [Editing](quest-edit.md#editing). Card-content questions follow
 
 | Outcome | Reply content and next action |
 |---|---|
-| Project mismatch (`needs_human`) | The CLI's project differs from the brief's, or the site is not the publisher's; nothing written. Ask publisher to check the CLI project and retry. No project IDs. |
+| Project mismatch (`needs_human`) | **This site isn't on the project I'm set up for, so nothing was changed.** Ask the publisher to open the Xsolla CLI on the same project as the site and ask again. No project IDs. |
 | Non-Quests site change | **That's outside the Quests block.** Then `Next: anything to change on the Quests block?` No steps, menus or editor instructions. |
 | Published site | **That site is published, so nothing was changed.** Block changes go only to an unpublished site: unpublish it in Publisher Account first, or pick an unpublished site. One next ask. |
 | Shop Builder site publish request | **Publish the site in Publisher Account when ready.** The site stays unpublished. Quest creation/activation follows [quest-publish.md](quest-publish.md) after approval of its exact proposal. One next ask. |
@@ -153,3 +172,43 @@ Next: open the link to preview and edit the block.
 
 Add a bullet only for something skipped or a known gap. Do not narrate the gate,
 verification, readback or checks. Report the actual result, never the intended state.
+
+Backpack overlay request on the card button, no tool call or write:
+
+```
+**The Quests block can't open the Backpack overlay yet.**
+
+Next: anything else to change on the Quests block?
+```
+
+A value the publisher gave was refused (a date, a name, a limit). Say what to change, never the server text:
+
+```
+**The end date has to be after the start date.**
+
+Next: send the dates you want.
+```
+
+Something the agent cannot see, for example whether a quest ran for a player:
+
+```
+**I can't see whether this quest ran for a player.**
+- Check that the quest is active and in its dates, and that the player sees the reward in Backpack.
+
+Next: want me to check the quest's status and dates?
+```
+
+## Plain-word labels
+
+| Internal | Say |
+|---|---|
+| `activation_limits` | how many times a player can complete it |
+| `start_date`, `end_date` | start date, end date |
+| `status` active/inactive | active, paused |
+| `public_view`, `is_public` | card title, description, image; shown to everyone |
+| reward node (`issue_reward`, `web3_item`, `issue_catalog_item`) | reward: the item name and quantity |
+| trigger (`dynamic_event`) | the player action that counts |
+| `client_sendable` | the game can send this action itself |
+| execution `COMPLETED`, `IN_PROGRESS`, `FAILED` | finished, in progress, didn't finish |
+| `questIds`, `maxQuests` | which quests and in what order, how many cards |
+| `themeId` `site-builder`, `xsolla-pages`, `custom` | matches your site's style, Xsolla Pages style, custom design |

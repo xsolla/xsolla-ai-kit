@@ -66,7 +66,8 @@ Source: the block contract at commit 0b1586eb59. Version pins live only in
 - `overrides` images are https only; reward overrides are ignored.
 - Versions and event-field capabilities belong to [block-versions.md](block-versions.md).
   Never write `autoEvents` or `loginEventName`; match the trigger name exactly.
-  Backpack Overlay is blocked on upstream v2: decline it and make no write.
+  Backpack Overlay is not supported yet (agent-only reason: upstream v2): decline it with
+  the [overlay decline](reply-format.md#examples) and make no write.
 - Custom-block creation 403: account lacks permission to create custom blocks;
   Xsolla support is next. Do not retry or create a file.
 
@@ -165,9 +166,8 @@ step 3. `G` is `<skill base dir>/../shop-builder-assembly/scripts`.
    If it stops with "CLI sandbox mode is on", do not switch it yet: this needs its own
    yes, separate from the plan's. Reply with the exact command,
    `xsolla config set sandbox false`, and the folder it runs from (the one that holds
-   the config `xsolla config list` reads). Say that the CLI config keeps the change, so
-   every later `xsolla` command reaches the live project, payments and refunds included,
-   and give the undo: `xsolla config set sandbox true`. End the turn. Only after a yes
+   the config `xsolla config list` reads), and one clause: the CLI stays on the live
+   project until it is switched back with `xsolla config set sandbox true`. End the turn. Only after a yes
    to that exact command and folder, run it there and rerun preflight. That yes covers
    the switch only; nothing is written to the site before the plan's own yes.
    When preflight returns `cli_environment`, add `--environment <name>` to read-only
@@ -175,14 +175,15 @@ step 3. `G` is `<skill base dir>/../shop-builder-assembly/scripts`.
 4. `python3 "G/backup_shop.py" --brief "W/brief.json" --slug <slug> --output-dir "W/backup"`
 5. Render and save the target-bound plan:
    `python3 "G/render_plan.py" "W/brief.json" --structure "W/backup/structure.json" > "W/approved-plan.json"`.
-   Show its exact operations, `confirmation_id` and any returned `plan_notes` in the
-   one plan (Plan shape in [reply-format.md](reply-format.md)), then end the turn.
+   Show the plan in plain words (Plan shape in [reply-format.md](reply-format.md)), never
+   its keys, `confirmation_id` or `plan_notes`, then end the turn.
 6. After a later "yes":
-   `python3 "G/apply_plan.py" "W/brief.json" --approved-plan "W/approved-plan.json" --confirmation-id <id> --backup-dir "W/backup"`.
+   `python3 "G/apply_plan.py" "W/brief.json" --approved-plan "W/approved-plan.json" --confirmation-id <id> --backup-dir "W/backup"`,
+   with `<id>` read from `confirmation_id` in `W/approved-plan.json`.
    This is one confirmed operations run: do not pass `--run-report`. Apply verifies
    saved leaves and block preservation, then prints `editor_url`.
 7. The sandbox switch from step 3, if you made one, stays on the CLI config. Nothing
-   switches it back: in the final reply, say the CLI is still live and repeat the undo.
+   switches it back: end the final reply's bullets with the undo command only.
 
 If apply says the target structure changed after backup, someone edited the site
 meanwhile and nothing was written: run steps 4 and 5 again with a new backup folder, say
@@ -196,8 +197,10 @@ the site changed in the meantime, and show the new plan for a new "yes".
   entry, every `overrides.<questId>` key and every `reset` path. Never use a quest name,
   slug or position.
 - `maxQuests` below 1 or above 24 gets one refusal line that names only the range, 1 to 24. Never offer to hide the block instead.
-- Ask for all missing inputs in one message. If the gate rejects the brief, relay its
-  full error list in one reply, fix the brief and render again.
+- Ask for all missing inputs in one message. If the gate rejects the brief, fix the brief
+  and render again without telling the publisher. Only a rejection of the publisher's own
+  value (out of range, a non-https image, a language the site lacks) gets one plain
+  sentence on what to change. Never quote gate output.
 - Rejected values use [the rejected-value reply](reply-format.md#examples), without
   repeating the value.
 - Image URLs (`imageUrl`, `image_url`) must be `https`

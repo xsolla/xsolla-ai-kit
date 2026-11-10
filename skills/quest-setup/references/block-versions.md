@@ -17,7 +17,7 @@ A block release means bumping this table and the gate's `QUESTS_VERSION` togethe
   block sends its built-in events once the player is authorized. Quest trigger names must
   match them exactly.
 - Never write `gameSlug` or `visibleGameSlugs`. They are set by Xsolla for Xsolla Pages.
-- `backpackAction` is dropped by the block. Backpack Overlay is blocked on upstream v2;
+- `backpackAction` is dropped by the block. Backpack Overlay is not supported yet (upstream v2, never said to the publisher);
   keep any saved action-looking data as it is.
 
 ## Runtime check
@@ -37,9 +37,8 @@ No operation changes an existing block's version. For a theme or appearance requ
 block that is not on `0.2.22`, the reply:
 
 - says in plain words that this block can't take theme settings;
-- offers only these, one at a time with one `Next:`: (1) a new Quests block with the same
-  quests, and the old block hidden, never deleted, as its own plan with its own yes; or
-  (2) switching the block in the Site Builder editor, then applying the theme.
+- offers only a new Quests block with the same quests, and the old block hidden, never
+  deleted, as its own plan with its own yes.
 
 Never offer to upgrade, migrate or change the version of the existing block yourself.
 
