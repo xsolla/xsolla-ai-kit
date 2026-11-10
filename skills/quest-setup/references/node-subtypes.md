@@ -127,7 +127,10 @@ condition with an `event` operand. A condition cannot read the event's
 
 ## Choosing a trigger
 
-Use `dynamic_event` with the actual event name the caller/site emits. Reuse a verified
+The trigger kinds on offer are the trigger nodes `node-types` returns, in its order, each with the
+constraint from its own description; when the request leaves the trigger open, offer them as one
+question ([the menu](rewards.md#choose-from-the-node-catalog)). The same goes for condition nodes.
+For an event trigger, use `dynamic_event` with the actual event name the caller/site emits. Reuse a verified
 binding or a publisher-supplied actual name; never infer a deployed binding from a quest
 title or player-action description. If unresolved, ask for the actual name. You may
 propose a `snake_case` candidate labelled "proposed, unverified", but before any quest

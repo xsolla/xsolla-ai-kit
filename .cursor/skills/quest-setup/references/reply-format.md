@@ -193,7 +193,8 @@ Next: send the dates you want.
 ```
 
 A quest request that also needs the site: after the quest's read-back, report the quest and
-show the site plan in the same reply, with one `Next:` for the site plan:
+show the site plan in the same reply, with one `Next:` for the site plan. Illustrative only: the
+reward, limits and dates are whatever the publisher chose from the catalog:
 
 ```
 **Daily login is live and shown to everyone.**

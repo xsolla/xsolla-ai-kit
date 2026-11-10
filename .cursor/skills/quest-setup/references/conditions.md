@@ -3,7 +3,9 @@
 For production evaluation use [SKILL docs refresh](../SKILL.md#live-docs-and-rewards)
 and [Source of truth](qp-api-contract.md#source-of-truth), including unavailable contracts.
 
-These are the `parameters` of a node with `type: condition` and
+Which condition nodes a project can use comes from `node-types`, offered in its order as one
+question ([the menu](rewards.md#choose-from-the-node-catalog)). This file has notes on one of them:
+the `parameters` of a node with `type: condition` and
 `subtype: custom_attributes_check`. The OpenAPI document does not describe
 them at all.
 

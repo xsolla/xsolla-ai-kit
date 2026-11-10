@@ -14,20 +14,26 @@ the catalog is refused, with no write. The node shapes in this file are snapshot
 the catalog and live docs win on any difference.
 
 **Offer the options, the publisher picks.** When the publisher hasn't said exactly what they want,
-ask one question with short bullets built from the catalog, one per option, each with its real
-constraint from the node description. For a reward, for example:
+ask one question with short bullets built at runtime from the `node-types` response: every node it
+returns for that role (reward, trigger, condition), **in the order it returns them**, named in plain
+words, each with the constraint stated in that node's own description (who it needs, how often it
+pays). This file holds no list or ranking of node kinds; never offer a node the response did not
+return, and never reorder or leave one out to favour another. Where an option needs a real item,
+name it from the store catalog (name and SKU). For a quest on a Shop Builder site, the trigger menu
+also lists the Quests block's [built-in events](node-subtypes.md#choosing-a-trigger). Then show the
+exact proposal, then create after its yes.
 
-- Backpack item: a catalog item, every time the quest completes; needs `xsolla_id`
-- Item in the game: delivered by your game; needs `gamer_id`
-- Web3 item: at most once per player per quest; needs `xsolla_id` and a wallet
-- plus every other reward node the catalog lists (lootbox, loyalty points, currencies, Web3 token)
+**Constraints first.** When an option's constraint does not fit the request (for example a node that
+pays once per player, on a repeating quest), say so before the proposal and let the publisher choose.
 
-Name real catalog items where the option needs one (name and SKU). Do the same for the trigger (a
-player event or a schedule) and conditions when the request leaves them open. Then show the exact
-proposal, then create after its yes.
-
-**Constraints first.** When a constraint does not fit the request, say so before the proposal: a
-Web3 item on a daily quest pays only once per player, so ask whether that is what they want.
+**Limits and schedule are the publisher's choice.** Activation limits (`per_user` and/or `global`,
+`count`, an optional `time_window` of `day`, `week` or `month`, or none), the start and end dates, and
+every node parameter whose schema has limits (`quantity`, `amount`, ...) are set by the publisher.
+When the request does not fix them, offer them in the same one-question style, with the values the
+docs and schema allow and one suggestion that matches the request ("weekly" suggests `per_user` 1
+per `week`). Never pick a window, count, date or quantity silently. The proposal shows the chosen
+limits and schedule and the [exposure](#payout-exposure-in-the-proposal) they give; no limit at all
+is shown as unlimited and needs its own acknowledgement.
 
 **Parameters the publisher supplies** (a loyalty program, a CRM segment, a currency SKU, a webhook
 URL): read them where an API exists (the store catalog), otherwise ask. Never guess one.
@@ -80,14 +86,14 @@ comes from the publisher and a verified lookup (see below). Send the full `PUT` 
 When the publisher requests a named item (`<requested item>`):
 
 - resolve it only through an available supported reward capability (catalog or
-  type-specific provider read). For production `web3_item`, the supported
+  type-specific provider read). For a store catalog item, the supported
   capability is the read-only Store admin catalog lookup documented in
   [Store admin catalog](#store-admin-catalog). Page
   through the whole catalog and match the requested name against the mintable
   items. Never use public web search for catalog lookup;
 - when the capability is available and returns exactly one verified candidate,
   use that candidate's SKU and the catalog project the read was scoped to in
-  the `web3_item` body, and show the item's name, SKU and image URL (when it
+  the reward node's parameters, and show the item's name, SKU and image URL (when it
   has one) in the proposal. The image URL is item content, not a service host;
 - when it returns multiple plausible candidates, ask the publisher to choose
   before any Quest Platform write;

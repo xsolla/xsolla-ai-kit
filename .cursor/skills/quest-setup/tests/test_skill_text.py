@@ -137,7 +137,13 @@ class SkillTextTests(IsolatedCase):
         self.assertNotIn("Never set a `public_view` on an", block)
         # D: Web3 pays once per player; a repeating quest asks first. Built-in block
         # events are a verified binding.
-        self.assertIn("Web3 item: at most once per player per quest", rewards)
+        self.assertIn("in the order it returns them", rewards)
+        self.assertIn("This file holds no list or ranking of node kinds", rewards)
+        self.assertIn("Never pick a window, count, date or quantity silently", rewards)
+        corpus = flat(skill()) + " ".join(flat(ref(n)) for n in ("rewards.md", "quest-publish.md", "quest-authoring.md", "reply-format.md"))
+        for fixed in ("Backpack item: a catalog item", "Item in the game:", "default to 7 days",
+                      "else 7 days after the start", "Named items default to explicit"):
+            self.assertNotIn(fixed, corpus)
         self.assertIn("Offer the options, the publisher picks.", rewards)
         self.assertIn('Map "daily login" to `daily_visit`', node)
         self.assertNotIn('"type": "web3_item", "purpose"', rewards)

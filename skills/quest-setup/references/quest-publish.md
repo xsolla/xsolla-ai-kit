@@ -69,12 +69,13 @@ the active quest and approved configuration read back.
   for every quest reply: status, debug, edit and delete use
   [plain-word labels](reply-format.md#plain-word-labels) too. Ask only for
   approval of this proposal.
-- Propose defaults instead of asking for implementation fields. A gameplay quest uses
-  `liveops` internally but is described as a gameplay quest. For an item reward:
-  quantity one, purpose `quest_completion`, one payout per player. `created_by` is
-  the developer's name, otherwise `AI Toolkit`. Start is the publisher's start or
-  activation time; end is the publisher's end, else the requested duration after the
-  start, else 7 days after the start. Do not ask for missing dates.
+- Never ask for implementation fields: a gameplay quest uses `liveops` internally but is
+  described as a gameplay quest; `purpose` is `quest_completion`; `created_by` is the
+  developer's name, otherwise `AI Toolkit`. What the publisher decides (the reward,
+  trigger and conditions, activation limits, start and end dates, quantity or amount) comes
+  from their request or from the [one-question menu](rewards.md#choose-from-the-node-catalog)
+  with a suggestion that matches the request; never filled in silently. A relative duration
+  the publisher gave counts from the start, as below.
 - Resolve the actual event binding through [Choosing a trigger](node-subtypes.md#choosing-a-trigger),
   including its unverified-candidate and login rules. An action-derived candidate is
   never evidence that the site emits it.
@@ -110,7 +111,8 @@ Next: reply "yes" to apply this exact plan.
 The `Status after your yes` bullet is always present: the one approval covers create, activate
 and read-back, so the plan says plainly that the quest goes live. If the publisher wants it left
 inactive, the bullet says `Status after your yes: INACTIVE (not live)` and the activation step is
-skipped. Label publisher-unsupplied schedule/default values "my default, change it if you like".
+skipped. Schedule, limits and quantities are never unsupplied: the publisher gave them or picked them from
+the [menu](rewards.md#choose-from-the-node-catalog) before this proposal.
 Event names follow [Choosing a trigger](node-subtypes.md#choosing-a-trigger): a proposed,
 unverified candidate is never a configured default. Labels may sit next to values but
 never replace the required status bullet.
@@ -139,7 +141,6 @@ If the publisher asks for a change instead, show the revised plan in the same sh
   [unapproved host](node-subtypes.md#send_http_webhook): a webhook
   cannot mint. To pay out, use a reward node from the node catalog
   with verified parameters (for an item, the verified candidate's catalog project and SKU).
-- Named items default to explicit `per_user` count 1, described as one requested item
-  per player. Ask about repeat behavior only when repeatable/unlimited or ambiguous;
-  [activation limits](quest-authoring.md#activation-limits) owns other unlimited cases.
-  Never ask Backpack versus regular/Web3 delivery.
+- Repeat behavior is the publisher's choice ([limits and schedule](rewards.md#choose-from-the-node-catalog)):
+  show the chosen activation limits in the proposal; [activation limits](quest-authoring.md#activation-limits)
+  owns the unlimited cases.

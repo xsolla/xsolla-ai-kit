@@ -22,7 +22,7 @@ Its [preflight](qp-api-contract.md#service-preflight) and
 | `publisher_id` | string | server-set | set by the server from the selected production route. Never ask for it or invent it; on a `PUT`, send it back as the last read returned it |
 | `project_id` | string | server-set | set by the server from the selected production route. On a `PUT`, send it exactly as the last read returned it. See Scope in the auth reference |
 | `start_date` | RFC3339 | **only when `active`** | not earlier than exactly 24 hours before the server's now; see below |
-| `end_date` | RFC3339 | **only when `active`** | not in the past, and at or after `start_date`. For a new quest without a requested end or duration, default to 7 days after the selected start; show this in the proposal without asking for a date |
+| `end_date` | RFC3339 | **only when `active`** | not in the past, and at or after `start_date`. For a new quest without a requested end or duration, offer the end as a choice with a suggestion that matches the request; never pick one silently |
 | `nodes` | array | **at least 2 when `active`** | optional and may be empty when `inactive` |
 | `connections` | object | required unless `inactive` and empty | see below |
 | `activation_limits` | array | no | see below |
@@ -49,8 +49,8 @@ The `start_date` check runs on **every** write with `status: active`, including 
 that changes nothing else. A quest whose `start_date` is more than 24 hours old
 cannot be saved as active without moving `start_date` forward. For such an edit,
 show a proposed start at edit activation time in the before/after diff; if the
-old `end_date` has passed, propose an end 7 days later. Ask for approval of the
-revised edit, not a date. Both dates must be valid when the `PUT` is sent.
+old `end_date` has passed, ask for the new end, suggesting the quest's previous duration.
+Show both dates in the revised edit for its approval. Both dates must be valid when the `PUT` is sent.
 
 A quest runs only while `active` and `start_date <= now <= end_date` at event
 time. A future `start_date` is accepted, but events before it do not run the
