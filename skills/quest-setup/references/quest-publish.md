@@ -18,7 +18,9 @@ Use [SKILL body-file rules](../SKILL.md#access-and-authority); never loop-retry 
 2. `GET` the created quest by id and confirm scope, graph, and reward.
 3. Activate with the Editing recipe below (fresh `GET`, full `PUT`): set
    `status` to `active`, apply the approved `start_date`, `end_date`, and
-   `activation_limits`. Everything else goes back verbatim. Do not ask a second
+   `activation_limits`. Everything else goes back verbatim, the server-set fields
+   included (`id`, `created_at`, `updated_at`, `version_id`, `has_personalization`): the
+   server ignores them on `PUT`, so sending them as read is safe. Do not ask a second
    approval for this activation `PUT`.
 4. `GET` again and report active status, reward, dates and limits in plain words. Do not claim publication complete until this read-back matches
    the approved proposal.
@@ -126,7 +128,7 @@ If the publisher asks for a change instead, show the revised plan in the same sh
   explain the gate to the publisher.
 - When an external action is part of the proposal, say what it will do once
   active. The publication approval covers that impact for the approved quest.
-  An `issue_reward` can create real payouts; `send_http_webhook` sends event
+  A reward node (`issue_web3_item`, `issue_catalog_item`) can create real payouts; `send_http_webhook` sends event
   data to an external URL; `send_xsolla_app_notification` sends a user
   notification. Activate a `webshop_personalization` node only after the
   developer acknowledges that it is a no-op. For an active quest whose only
@@ -135,8 +137,8 @@ If the publisher asks for a change instead, show the revised plan in the same sh
   needs that acknowledgement, a pause does not.
 - Never point `send_http_webhook` at a private service or an
   [unapproved host](node-subtypes.md#send_http_webhook): a webhook
-  cannot mint. To pay out a named item, use an `issue_reward` Web3 reward with
-  the verified candidate's catalog project and SKU.
+  cannot mint. To pay out a named item, use an `issue_web3_item` or
+  `issue_catalog_item` reward with the verified candidate's catalog project and SKU.
 - Named items default to explicit `per_user` count 1, described as one requested item
   per player. Ask about repeat behavior only when repeatable/unlimited or ambiguous;
   [activation limits](quest-authoring.md#activation-limits) owns other unlimited cases.

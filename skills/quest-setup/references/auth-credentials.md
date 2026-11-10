@@ -87,8 +87,12 @@ One rule for a 404 on Get project: go to this section and stop for the publisher
 onboarding preflight is `python3 "<skill base dir>/scripts/qp_preflight.py"`, which uses the same
 credential lane as `qp_request.py` and never prints the key:
 
-- `qp_preflight.py check` runs Get project only. 200 means onboarded and nothing is written.
-- On a 404, ask the publisher once, showing the project name: "**This project isn't set up
+- **Order of first checks.** `qp_preflight.py check` runs first, before any quest list or
+  site read. It runs Get project only. 200 means onboarded and nothing is written. After it
+  returns 200, a quest list answering "Project not found" is not a second access check:
+  treat it as the same 404 and come back here.
+- On a 404, ask the publisher once (the project name may be unknown here: the project read
+  failed and the site list has no names, so ask without it): "**This project isn't set up
   for quests yet, or your Quest Platform access doesn't cover it.** Next: send the merchant
   name and the project name to set it up." Never offer onboarding as a fix before that question.
 - Onboarding goes only through `qp_preflight.py`, never through `qp_request.py` directly.
@@ -96,6 +100,19 @@ credential lane as `qp_request.py` and never prints the key:
   guesses them: the question to the publisher asks for both names, and the proposal shows both
   exactly as they will be sent. The proposal also states the side effect from the live docs:
   onboarding gives the merchant's publisher keys access to every project of the merchant.
+  Proposal reply (no merchant or project IDs; never `qp_preflight.py`'s own wording):
+
+  ```
+  **Set up quests for this project?**
+  - Merchant name: <name as sent>
+  - Project name: <name as sent>
+  - This lets your publisher keys manage quests on every project of this merchant.
+
+  Next: reply "yes" to set it up.
+  ```
+
+  After the run, report only "**Quests are set up for this project.**" when the readback
+  is 200, or that the setup did not finish.
 - `qp_preflight.py onboard --merchant-name N --project-name N` without `--yes` only prints the
   proposal and exits non-zero with no POST. After an explicit yes in the same conversation, rerun
   it with `--yes`: Get project, Onboard project (2xx is success), then Get project again as the

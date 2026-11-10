@@ -28,8 +28,9 @@ Loaded for a Quests block request on a Shop Builder site. Settings and the opera
 7. **Sandbox stop.** [Gate commands](quests-block-brief.md#gate-commands) owns the
    sandbox check: while the CLI has sandbox on, preflight stops and no site work begins.
 8. **Unpublished sites only.** The gate never writes to a published site: apply stops
-   before any write. When the publisher says the site is published, or apply stops on
-   it, render no plan and reply with the [published-site shape](reply-format.md#examples).
+   before any write. The block summary's `published` is the read that tells: when it is
+   `true`, when the publisher says the site is published, or when apply stops on it,
+   render no plan and reply with the [published-site shape](reply-format.md#examples).
 
 ## Prerequisites
 
@@ -181,12 +182,17 @@ check. Set `is_public` through the edit flow in [`quest-edit.md`](quest-edit.md#
 A `public_view` replaces the default view, and the card reads only from it. Add one only when the
 publisher wants custom card text or an image. For a Web3 quest, send the full view below every time:
 without the reward references, the card loses its reward row and its See in Backpack button
-([Card rewards](rewards.md#card-rewards-on-the-quests-block)). Never set a `public_view` on an
-`issue_catalog_item` quest: its items render as quantity only, so the card loses the reward name and
-image that the default view gives.
+([Card rewards](rewards.md#card-rewards-on-the-quests-block)).
 
 ```json
 {"name": {"$ref": "quest.name"}, "description": {"$ref": "quest.description"}, "image_url": "https://...", "rewards": {"$ref": "reward.<node id>.items"}, "reward_type": {"$ref": "reward.<node id>.type"}}
+```
+
+An `issue_catalog_item` quest always needs a view: the server gives its reward no name or image, so
+without one the card shows no reward. Put the name and image from the catalog read as static values:
+
+```json
+{"name": {"$ref": "quest.name"}, "description": {"$ref": "quest.description"}, "rewards": {"$ref": "reward.<node id>.items"}, "reward_name": "<catalog item name>", "reward_image_url": "<catalog image https URL>", "reward_type": "inventory_item"}
 ```
 
 - Values are text (at most 500 characters), a number, `true` or `false`, a `{"$ref": ...}` reference,
@@ -195,7 +201,7 @@ image that the default view gives.
   `reward.<node id>.<field>`. An `issue_web3_item` node exposes quantity, name, description, image_url
   and `type`. The public-quests guide lists no `items` field for a Web3 node, so check the `rewards`
   reference in the template on the read-back. An `issue_catalog_item` node exposes only `quantity`
-  through `items` in a public_view, so it takes no full view.
+  through `items`, so its name and image go in as static `reward_name` and `reward_image_url`.
 - A reference that no longer resolves, such as a removed reward node, is left out of the card.
 When it is added, `image_url` must be an absolute `https` URL (an `http` URL is refused, see
 [Rules for every operation](quests-block-brief.md#rules-for-every-operation)). Never invent an
@@ -237,7 +243,9 @@ or description to work around its read-only block behavior.
    first). Never plan an `add` with no quests; the gate refuses one.
 2. **Make them public.** For each chosen quest that is not public (`is_public` is not
    `true`), set `is_public` per [Quest public view](#quest-public-view): one proposal,
-   one approval. A missing `public_view` alone is not a reason to edit or stop. Stop if
+   one approval. A quest created in this flow is created public: send `is_public: true`
+   in its create body and show "Shown to everyone" in the create proposal, so no second
+   edit is needed. A missing `public_view` alone is not a reason to edit or stop. Stop if
    a quest is not found or the read-back does not show `is_public: true`. An `active`
    quest's `PUT` re-checks its dates ([dates on edit](quest-edit.md#editing)); put any
    date move in this same proposal, never a plan the server will reject.
@@ -245,7 +253,20 @@ or description to work around its read-only block behavior.
    [appearance](quests-block-appearance.md) and give the recommendation with its measured
    evidence. Turn only the agreed settings and defaults into `block_operations`.
    For an existing block, take its `block_id` and the `quest_id`s from the block
-   summary (see [Gate commands](quests-block-brief.md#gate-commands)). With several
+   summary (see [Gate commands](quests-block-brief.md#gate-commands)).
+   **The site already has a Quests block:** "add my quest to the shop" is an `update` of
+   that block's `questIds`, never a second `add`. Append the new quest to the existing
+   IDs in their order unless the publisher says replace (then send only the new list;
+   `[]` would empty the block, which the gate never plans for an add). Add a second block
+   only when the publisher asks for another block.
+   **Editor overrides:** the gate writes only the planned leaves. Opening the block in
+   the Site Builder editor seeds each card's title, description and buttons as card
+   overrides, which then win over later quest edits. So when the summary shows overrides
+   the plan did not write, the editor made them; say a quest's new text shows on the card
+   only after that card's override is reset.
+   **Card text:** a quest with no description gets no card description: propose the quest
+   name as the title and leave the description empty rather than inventing one; offer one
+   optional line the publisher can give. With several
    Quests blocks on the site, "the Quests block" is the only visible one; target a
    hidden block only when the publisher points at it ("the copy", "the hidden one", a
    position), and ask which one only when several are visible. Check
@@ -257,8 +278,10 @@ or description to work around its read-only block behavior.
    then end the turn. No preliminary plan; apply only after the later exact-plan yes.
 5. **Apply.** After confirmation, apply exactly the confirmed plan with the gate's
    apply command, which reads the result back. On a partial failure, do not rerun it;
-   take a fresh backup and plan first.
-6. **Read back.** Compare the gate's verification to the confirmed plan: settings and
+   take a fresh backup and plan first. The backup folder is the undo: it holds the
+   site's structure and texts as they were before the change.
+6. **Read back.** Compare the apply output's `verified` list (one entry per confirmed item:
+   what was checked and, for settings, which keys) to the confirmed plan: settings and
    heading of each touched block, block order of each touched page, every other block
    unchanged, and each chosen quest reads back as public. In a partial quest lookup,
    only returned quests have known public status; an unresolved card is unknown and

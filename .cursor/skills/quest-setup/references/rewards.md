@@ -1,7 +1,13 @@
 # Web3 rewards
 
-This skill supports two production catalog reward paths: `web3_item`, the default for a named
-item, and `issue_catalog_item`, a Backpack grant that the publisher chooses for a quest. The
+This skill supports two production catalog reward paths: a Web3 item (`issue_web3_item`), the
+default for a named item, and `issue_catalog_item`, a Backpack grant that the publisher chooses for a
+quest.
+
+**A Web3 item pays at most once per player per quest**, however often the quest repeats. So for a
+repeating quest (daily, weekly, any `per_user` limit above one or reset per period), ask one question
+before the proposal: a Backpack item, paid every time, or a Web3 item, paid once. Never propose a
+repeating quest with a Web3 reward without that answer. The
 reward is granted or minted as the platform response reports. For `web3_item`, this skill does not
 claim delivery to the player's Backpack. Do not offer Store API grants, ERC-20 claim endpoints, a
 provider-default catalog or any other reward path as a fallback. When a path fails, stop and ask.
@@ -24,7 +30,8 @@ publisher.
 
 Only a real catalog item is rewardable. When the publisher asks for something the catalog does not
 have (for example "coins"), say the catalog has no such item and ask which catalog item to use. Never
-substitute silently.
+substitute silently. When the publisher names no reward at all, read the catalog and offer the valid
+items (name and SKU) as one question, with one `Next:`.
 
 ## Card rewards on the Quests block
 
@@ -33,27 +40,31 @@ that array itself, one entry per reward node, and only when the quest has no `pu
 `{}`). The skill never writes `view.rewards` directly: `public_view` takes no arrays, so a literal
 rewards list is refused.
 
-- **Default view.** Leave `public_view` out when the card must show its reward. Each entry carries
-  `type` (`web3_item`), `quantity` (the body quantity, default 1), and the catalog `name`,
-  `description` and `image_url` of the SKU. Title and description come from the quest. For an
-  `issue_catalog_item` quest the entries carry the catalog name, `image_url` and type `inventory_item`,
-  so leave `public_view` out.
+- **Web3 quest, default view.** Leave `public_view` out when the card must show its reward. Each
+  entry carries `type` (`web3_item`), `quantity` (default 1), and the catalog `name`, `description`
+  and `image_url` of the SKU. Title and description come from the quest.
+- **Backpack-item quest.** The server fills the name and image only for Web3 rewards: an
+  `issue_catalog_item` entry has `name` and `image_url` null, so with no `public_view` the card shows
+  no reward. Always write the [catalog-item view](quests-block-flow.md#quest-public-view), with the
+  reward name and image as static values taken from the catalog read (`reward_name`,
+  `reward_image_url`, `reward_type: inventory_item`). Never promise a card reward you did not put there.
 - **Custom view.** A `public_view` replaces the default view. For a Web3 quest, set it only in full, with
   the reward references from [Quest public view](quests-block-flow.md#quest-public-view), or the card
-  loses its reward row and its See in Backpack button. Never set it on an `issue_catalog_item` quest: its
-  items render as quantity only, so the card loses the name and image.
+  loses its reward row and its See in Backpack button.
 - **Proposal.** Show the card rewards as "Card reward" lines: name, SKU, quantity and image URL, for
   example `Handful of BitChips x1 (SKU com.example.sku, image https://...)`.
-- **Read-back.** Read the public list (`GET` on the public quests route, no credential) and confirm the
-  quest's `view.rewards` has one entry per reward. A null `name` or `image_url` means the catalog lookup
+- **Read-back.** Read the public list with
+  `python3 "<skill base dir>/scripts/qp_request.py" GET /api/v2/public/merchants/<merchant_id>/projects/<project_id>/quests --public`
+  (no credential is sent) and confirm the quest's `view.rewards` has one entry per reward, or for a
+  Backpack-item quest that `reward_name` and `reward_image_url` read back. A null `name` or `image_url` means the catalog lookup
   did not enrich the entry: report it, never say the card is fine. For a custom view, confirm the
   public read shows each reward field the view references; a missing field means its reference does
   not resolve.
 
 ## Adding a reward
 
-"Add a reward to my quest" appends. Read the quest, add one `issue_reward` action node with a fresh
-UUID and connect it like the existing reward action, and keep every existing node and connection. The
+"Add a reward to my quest" appends. Read the quest, add one reward action node (`issue_web3_item` or
+`issue_catalog_item`) with a fresh UUID and connect it like the existing reward action, and keep every existing node and connection. The
 proposal shows the before/after list of reward actions: `before: Welcome Badge x10; after: Welcome Badge
 x10 and <new>`. Replace an existing reward only on an explicit "replace" request. The new item still
 comes from the publisher and a verified lookup (see below). Send the full `PUT` as in
@@ -113,28 +124,26 @@ and needs no wallet.
 - **Recipient.** Each event needs an `xsolla_id`. The wallet check in [Recipient wallet](#recipient-wallet)
   does not apply.
 - **Retries.** Never resend an event after an uncertain result, as for Web3.
-- **Card.** Set no `public_view`. The default view gives the card the reward name, image and type, which
-  is its reward row and its See in Backpack button. The card image fallback (the first reward's image) is
-  not confirmed on the block this skill adds. So a catalog quest has no card image
-  of its own unless the publisher gives one. An image needs a `public_view`, which drops the catalog name
-  and image: say so in the proposal and ask first.
+- **Card.** Always write the [catalog-item view](quests-block-flow.md#quest-public-view): the server
+  gives an `issue_catalog_item` reward no name or image, so the reward name and image go in as static
+  `reward_name` and `reward_image_url` from the catalog read, with `reward_type: inventory_item` (that
+  type keeps the See in Backpack button). A card image of its own (`image_url`) is added only when the
+  publisher gives one.
 
-## `web3_item`
+## `issue_web3_item`
 
-These are the parameters of an action node with `subtype: issue_reward`.
-The wrapper requires supported `type`, nonempty `purpose` and nonempty `body`.
-Use `quest_completion` for a named item unless the developer requests another reason.
-`web3_item` mints an NFT from a Store admin catalog item:
+A Web3 item is an action node with `subtype: issue_web3_item` (the older
+`issue_reward` with `type: web3_item` is deprecated; never write it). Its parameters
+need a nonempty `purpose`; use `quest_completion` for a named item unless the developer
+requests another reason. It mints an NFT from a Store admin catalog item, at most once
+per player and quest:
 
 ```json
 {
-  "type": "web3_item",
   "purpose": "quest_completion",
-  "body": {
-    "project": "<project id the catalog read was scoped to>",
-    "item_sku": "<string or array>",
-    "quantity": 1
-  }
+  "project": "<project id the catalog read was scoped to>",
+  "item_sku": "<string or array>",
+  "quantity": 1
 }
 ```
 
@@ -188,11 +197,13 @@ compatible wallet source and blockers.
 
 Show three bounds in the publication proposal:
 
-- **Per event and user:** `web3_item` is `quantity × selected SKU count`;
+- **Per event and user:** a Web3 item is `quantity × selected SKU count`;
   for a once-per-user named item at quantity one this is one NFT.
   `web3_token` is `amount`.
 - **Per user for the quest:** apply the effective activation limit to the
-  per-event quantity. For a confirmed once-per-user named item this is one NFT
+  per-event quantity. A Web3 item is paid at most once per player and quest whatever the
+  limit. A `per_user` day limit resets per UTC calendar day, so a 7×24h window that starts
+  mid-day spans 8 calendar days: count 8, not 7. For a confirmed once-per-user named item this is one NFT
   per user and quest; for quantity greater than one or multiple SKUs, multiply
   by `quantity × selected SKU count`. For `web3_token`, multiply `amount` by
   the maximum qualifying events for that user.

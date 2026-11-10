@@ -22,8 +22,8 @@ A block release means bumping this table and the gate's `QUESTS_VERSION` togethe
 
 ## Runtime check
 
-Before any block write, read the block version (and the CLI version) that Shop Builder or the
-CLI reports, and compare it with the table above.
+Before any block write, read the block version (from the block summary) and the CLI version
+(`xsolla --version`), and compare them with the table above.
 
 - The CLI is **supported** when it is the pinned version or newer.
 - Settings, quests, cards, move, duplicate, hide and show work on any saved block.

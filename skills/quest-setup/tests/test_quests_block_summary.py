@@ -289,6 +289,7 @@ class MainTest(unittest.TestCase):
         self.assertEqual(seen, [("1", "2")])
         self.assertEqual(result["quest_names"], "resolved")
         self.assertEqual((result["merchant_id"], result["project_id"]), ("1", "2"))
+        self.assertIs(False, result["published"])
         self.assertEqual(result["blocks"][0]["heading"], "Daily quests")
 
     def test_structure_failure(self) -> None:

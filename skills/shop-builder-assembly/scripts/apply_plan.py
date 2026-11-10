@@ -1000,6 +1000,40 @@ def apply_block_operation(item: dict, ctx: ApplyContext) -> dict:
     return {"type": kind, "op_index": item["op_index"], **done}
 
 
+_VERIFIED_CHECKS = {
+    "block_add": ["Quests module and version", "devName", "default texts saved", "page order"],
+    "block_values": ["each leaf reads back equal"],
+    "block_reset": ["each leaf removed"],
+    "block_move": ["page order"],
+    "block_duplicate": ["page order"],
+    "block_visibility": ["hidden flag"],
+    "block_localization": ["heading text per locale"],
+    "block_card_text": ["card text per locale"],
+    "block_seed_texts": ["default texts saved"],
+}
+
+
+def verification_summary(plan: dict, applied: list[dict]) -> list[dict]:
+    """What the readback checked for each confirmed item, for comparison with the plan.
+
+    Every other block on a touched page is also checked unchanged against its backup digest.
+    """
+    by_index = {item.get("op_index"): item for item in applied}
+    summary = []
+    for item in plan.get("block_operations") or []:
+        entry = {
+            "op_index": item["op_index"],
+            "type": item["type"],
+            "block_id": (by_index.get(item["op_index"]) or {}).get("block_id")
+            or item.get("block_id"),
+            "checked": list(_VERIFIED_CHECKS.get(item["type"], [])),
+        }
+        if item["type"] in ("block_values", "block_reset"):
+            entry["keys"] = [patch["key"] for patch in item.get("patches") or []]
+        summary.append(entry)
+    return summary
+
+
 def run_block_operations(
     slug: str, landing_id: str, plan: dict, refs: dict | None = None
 ) -> tuple[list[dict], dict]:
@@ -1934,6 +1968,7 @@ def _main() -> int:
                             expected["merchant_id"], expected["project_id"], slug
                         ),
                         "applied": applied,
+                        "verified": verification_summary(plan, applied),
                     },
                     indent=2,
                 )

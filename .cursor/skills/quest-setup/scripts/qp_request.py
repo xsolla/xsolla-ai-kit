@@ -50,6 +50,9 @@ QP_PATH_PATTERN = re.compile(
     r"/api/v2/merchants/([0-9]+)/projects/([0-9]+)"
     r"(?:/(quests|events|onboard|custom-blocks)|/quests/([A-Za-z0-9_-]+))?"
 )
+# The public quest list a card reads, as an anonymous visitor sees it. GET only, and no
+# credential is ever sent on it.
+PUBLIC_PATH_PATTERN = re.compile(r"/api/v2/public/merchants/([0-9]+)/projects/([0-9]+)/quests")
 QP_ROUTE_METHODS = {
     "project": ("GET",),
     "quests": ("GET", "POST"),
@@ -166,7 +169,9 @@ def route_kind(path: str) -> Optional[str]:
     return match.group(3) or "project"
 
 
-def check_shape(method: str, path: str, store: bool, preflight: bool = False) -> None:
+def check_shape(
+    method: str, path: str, store: bool, preflight: bool = False, public: bool = False
+) -> None:
     """Refuse anything that is not an allowed target, before credentials are read.
 
     Routes in PREFLIGHT_ONLY_ROUTES are allowed only when `preflight` is set.
@@ -179,6 +184,10 @@ def check_shape(method: str, path: str, store: bool, preflight: bool = False) ->
         raise Refusal("target_not_allowed")
     if store:
         if method != "GET" or not STORE_PATH_PATTERN.fullmatch(path):
+            raise Refusal("target_not_allowed")
+        return
+    if public:
+        if method != "GET" or not PUBLIC_PATH_PATTERN.fullmatch(path):
             raise Refusal("target_not_allowed")
         return
     kind = route_kind(path)
@@ -201,8 +210,16 @@ def check_onboard_body(data: bytes) -> None:
             raise Refusal("invalid_body")
 
 
-def build_url(path: str, store: bool, creds: Credentials) -> str:
+def build_url(path: str, store: bool, creds: Credentials, public: bool = False) -> str:
     """Build the target URL. Scope values in the path must equal the configured ids."""
+    if public:
+        match = PUBLIC_PATH_PATTERN.fullmatch(path)
+        if match is None:
+            raise Refusal("target_not_allowed")
+        if match.group(1) != creds.merchant_id or match.group(2) != creds.project_id:
+            raise Refusal("scope_mismatch")
+        return QP_BASE + path
+
     if store:
         match = STORE_PATH_PATTERN.fullmatch(path)
         if match is None:
@@ -271,8 +288,12 @@ def _parse_body(raw: bytes, creds: Credentials) -> Any:
         return text[:MAX_TEXT_CHARS]
 
 
-def send(method: str, url: str, creds: Credentials, body: Optional[bytes]) -> Dict[str, Any]:
-    headers = {"Authorization": "Basic " + creds.basic_token(), "Accept": "application/json"}
+def send(
+    method: str, url: str, creds: Credentials, body: Optional[bytes], anonymous: bool = False
+) -> Dict[str, Any]:
+    headers = {"Accept": "application/json"}
+    if not anonymous:
+        headers["Authorization"] = "Basic " + creds.basic_token()
     if body is not None:
         headers["Content-Type"] = "application/json"
     request = urllib.request.Request(url, data=body, method=method, headers=headers)
@@ -322,21 +343,27 @@ def main(argv: Optional[List[str]] = None, environ: Optional[Mapping[str, str]] 
         parser.add_argument("--body-file", default=None)
         parser.add_argument("--query", action="append", default=[], metavar="K=V")
         parser.add_argument("--store", action="store_true")
+        parser.add_argument(
+            "--public", action="store_true",
+            help="GET the public quest list as an anonymous visitor (no credential sent)",
+        )
         args = parser.parse_args(args_list)
 
         method = args.method.upper()
         body = None
         if args.body_file is not None:
-            if method == "GET" or args.store:
+            if method == "GET" or args.store or args.public:
                 raise Refusal("invalid_body")
             body = load_body(args.body_file)
-        check_shape(method, args.path, args.store)
+        if args.store and args.public:
+            raise Refusal("target_not_allowed")
+        check_shape(method, args.path, args.store, public=args.public)
         query = parse_query(args.query)
         creds = resolve_credentials(env, folder)
-        url = build_url(args.path, args.store, creds)
+        url = build_url(args.path, args.store, creds, public=args.public)
         if query:
             url += "?" + urllib.parse.urlencode(query)
-        result = send(method, url, creds, body)
+        result = send(method, url, creds, body, anonymous=args.public)
     except Refusal as refusal:
         _emit({"ok": False, "error": refusal.error})
         return 2

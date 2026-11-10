@@ -192,6 +192,17 @@ A value the publisher gave was refused (a date, a name, a limit). Say what to ch
 Next: send the dates you want.
 ```
 
+A quest request that also needs the site: after the quest's read-back, report the quest and
+show the site plan in the same reply, with one `Next:` for the site plan:
+
+```
+**Daily login is live and shown to everyone.**
+- Reward: Golden Mask x1, every day for 7 days
+- Plan for your site: add Daily login to the Quests block, after the existing cards
+
+Next: reply "yes" to apply this exact plan.
+```
+
 Something the agent cannot see, for example whether a quest ran for a player:
 
 ```

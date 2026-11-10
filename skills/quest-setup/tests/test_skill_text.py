@@ -127,15 +127,22 @@ class SkillTextTests(IsolatedCase):
         self.assertRegex(skill_text, r"`web3_item` by default, or `issue_catalog_item`")
         self.assertNotIn("Do not offer `inventory_item`", skill_text)
         self.assertNotIn("direct Backpack grants", rewards)
-        # C: a Web3 public_view sends the full view; catalog-item quests take no public_view.
+        # C: a Web3 public_view sends the full view; a catalog-item quest always gets a view
+        # with static reward_name and reward_image_url, since the server fills neither.
         self.assertIn('"reward_type": {"$ref": "reward.<node id>.type"}', block)
         self.assertIn("loses its reward row and its See in Backpack button", block)
-        self.assertIn("Never set a `public_view` on an", block)
+        self.assertIn('"reward_name": "<catalog item name>"', block)
+        self.assertIn("`issue_catalog_item` quest always needs a view", block)
+        self.assertNotIn("Never set a `public_view` on an", block)
+        # D: Web3 pays once per player; a repeating quest asks first. Built-in block
+        # events are a verified binding.
+        self.assertIn("A Web3 item pays at most once per player per quest", rewards)
+        self.assertIn('Map "daily login" to `daily_visit`', node)
+        self.assertNotIn('"type": "web3_item", "purpose"', rewards)
         self.assertNotIn("Send the full view below every time", block)
         self.assertNotIn("never the reward image", block)
-        self.assertIn("Set no `public_view`", rewards)
-        self.assertNotIn("shows no reward", block)
-        self.assertNotIn("shows no reward", rewards)
+        self.assertNotIn("Set no `public_view`", rewards)
+        self.assertIn("Always write the [catalog-item view]", rewards)
         # D: a full PUT keeps public_view.
         self.assertRegex(edit, r"resend the fresh `GET`'s `public_view` unchanged")
         for name, text in (("node-subtypes.md", node), ("rewards.md", rewards), ("quests-block-flow.md", block),

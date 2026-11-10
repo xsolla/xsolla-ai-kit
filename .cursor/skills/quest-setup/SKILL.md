@@ -54,7 +54,8 @@ returned, so a credential for another project is caught before the yes.
   and event readback. After completed quest/block changes on a Shop Builder site, tell the publisher
   to publish in Publisher Account. **Never publish a Shop Builder site:** no endpoint, script or call publishes the site.
 - Write only request bodies and the gate brief/backup/approved plan in one `mktemp -d`
-  folder, never the working folder. Parse command output in a pipe. Bodies use
+  folder, never the working folder. Quest bodies and gate files share that one folder (the
+  gate's own `mktemp -d` step is the same folder, not a second one). Parse command output in a pipe. Bodies use
   `--body-file <file>`, never `/dev/stdin` or a piped heredoc. Never loop-retry a failed write.
 - Facts only: list/status replies use only just-read quests, values and history. Say when
   history is absent. A partial lookup leaves unresolved existence/public status unknown.
@@ -102,7 +103,7 @@ Load only the relevant references and follow their approval and readback. Reads 
 | Add / replace reward | [rewards.md](references/rewards.md) | `web3_item` (default) or `issue_catalog_item` as the publisher chooses; catalog-verified proposal and yes; add appends preserving graph; read quest rewards |
 | Send / test event | [events.md](references/events.md), [verification.md](references/verification.md) | Separate exact payload yes, real publisher-supplied player UUID, active quest; acceptance/readback, never resend uncertain outcome |
 | Login event with Xsolla ID | [events.md](references/events.md) | List existing login quests first; one new-or-edit question; approved dynamic_event/name, read trigger |
-| Add Quests block | [quests-block-flow.md](references/quests-block-flow.md), [block-versions.md](references/block-versions.md) | Separate site plan yes; explicit latest stable version; read block and public quests |
+| Add Quests block | [quests-block-flow.md](references/quests-block-flow.md), [block-versions.md](references/block-versions.md) | A site that already has a Quests block gets an `update` of its `questIds`, never a second add; separate site plan yes; at least one active public quest; read block and public quests |
 | Update heading / cards / order / count / reset overrides | [quests-block-brief.md](references/quests-block-brief.md) | Gate-rendered plan yes; read saved leaves, order and unrelated blocks |
 | Theme / custom design / fit neighboring blocks | [quests-block-appearance.md](references/quests-block-appearance.md), [block-versions.md](references/block-versions.md) | Measure first, supported saved version, plan yes; saved state and responsive visual comparison |
 | Move / duplicate / hide / show block | [quests-block-brief.md](references/quests-block-brief.md), [quests-block-flow.md](references/quests-block-flow.md) | Separate exact plan yes; block position/both copies/hidden or shown state |

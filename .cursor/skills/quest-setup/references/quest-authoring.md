@@ -91,7 +91,7 @@ carries no merchant, account or workspace id, so do not read one from it.
 {
   "nodes": [
     {"id": "<uuid>", "name": "<3-255 chars>", "type": "trigger", "subtype": "dynamic_event", "parameters": {}},
-    {"id": "<uuid>", "name": "<3-255 chars>", "type": "action",  "subtype": "issue_reward",  "parameters": {}}
+    {"id": "<uuid>", "name": "<3-255 chars>", "type": "action",  "subtype": "issue_web3_item",  "parameters": {}}
   ],
   "connections": {
     "<source node uuid>": [{"nodeId": "<target node uuid>", "on": "ticket_issued"}]
@@ -104,7 +104,8 @@ carries no merchant, account or workspace id, so do not read one from it.
 - `on` is optional. An edge without it is always followed. With it, the
   runtime follows the edge only when the source action returns that outcome:
   `ticket_issued`, `no_ticket` or `daily_cap_reached`. Only an `issue_reward`
-  with `vc_wallet_ticket` `playtime` returns these outcomes today.
+  with `vc_wallet_ticket` `playtime` returns these outcomes today; never use `issue_reward` for a
+  new item reward.
 - Every edge must reference a node that exists in `nodes`, and the graph must
   be acyclic.
 
@@ -160,7 +161,8 @@ and request approval again. Never silently assume a one-time or per-user limit.
 A limit without `time_window` counts over the quest's whole life: `per_user`
 `count: 1` means once per user, ever. A retest then needs a new user or a new
 quest. With `time_window`, the count resets each calendar day, week or month.
-A Web3 reward has its own repeat rule on top; see `rewards.md`.
+A Web3 reward pays at most once per player and quest, whatever these limits say. For a repeating
+quest, ask Backpack item (paid every time) or one-time Web3 item before the proposal; see `rewards.md`.
 
 During the read-only work before the proposal, and before the first write,
 check that the intended trigger reaches an intended action and that no intended

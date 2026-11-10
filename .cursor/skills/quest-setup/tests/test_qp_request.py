@@ -165,6 +165,23 @@ class TargetTests(CliTestCase):
             with self.subTest(case=case):
                 self.assert_refused(argv, "target_not_allowed")
 
+    def test_public_quest_list_is_get_only_and_sends_no_credential(self) -> None:
+        public = "/api/v2/public/merchants/7/projects/42/quests"
+        code, out, _ = self.run_cli(["GET", public, "--public"], environ=dict(ENV_FULL))
+        self.assertEqual(code, 0, out)
+        request = self.urlopen.call_args.args[0]
+        self.assertEqual("https://quests-platform.xsolla.com" + public, request.full_url)
+        self.assertIsNone(request.get_header("Authorization"))
+        for case, argv, error in (
+            ("post", ["POST", public, "--public"], "target_not_allowed"),
+            ("without_flag", ["GET", public], "target_not_allowed"),
+            ("other_public", ["GET", "/api/v2/public/accounts/x/quests", "--public"], "target_not_allowed"),
+            ("with_store", ["GET", public, "--public", "--store"], "target_not_allowed"),
+            ("other_project", ["GET", "/api/v2/public/merchants/7/projects/999/quests", "--public"], "scope_mismatch"),
+        ):
+            with self.subTest(case=case):
+                self.assert_refused(argv, error)
+
     def test_onboard_route_is_refused_outside_preflight(self) -> None:
         self.assert_refused(["POST", "/api/v2/merchants/7/projects/42/onboard"], "target_not_allowed")
 

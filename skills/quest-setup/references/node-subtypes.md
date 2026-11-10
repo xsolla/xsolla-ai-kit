@@ -12,7 +12,7 @@ Read back the saved quest before using an optional subtype.
 | `date_and_time` | trigger | accepted only when the production contract confirms scheduling |
 | `dynamic_event` | trigger | `{"event_name": "<non-empty string>"}`, optional `"client_sendable": true` |
 | `custom_attributes_check` | condition | see `conditions.md` |
-| `issue_reward` | action | see `rewards.md` |
+| `issue_web3_item` | action | `purpose`, `project`, `item_sku`, `quantity`; see `rewards.md` (the older `issue_reward` is deprecated) |
 | `issue_catalog_item` | action | `items` (one or more `{sku, quantity}`) and `purpose`, see below and `rewards.md` |
 | `send_xsolla_app_notification` | action | `topic`, `notification_type`, `title`, `message`; optional `data` |
 | `send_http_webhook` | action | `url`, see below |
@@ -43,7 +43,7 @@ identifiers. Never treat an arbitrary URL as a harmless placeholder.
   a separate post-approval gate).
 - Never point it at a private platform service or the minting service. A
   webhook cannot pay out and must never carry credentials. To pay out, use an
-  `issue_reward` Web3 reward with the values listed in `rewards.md`.
+  `issue_web3_item` or `issue_catalog_item` reward with the values listed in `rewards.md`.
 - A reserved host such as `https://e2e-sink.invalid/hook` is never written and
   must never appear in a publication proposal. Replace it with the developer's
   approved endpoint before showing the proposal.
@@ -130,7 +130,12 @@ title or player-action description. If unresolved, ask for the actual name. You 
 propose a `snake_case` candidate labelled "proposed, unverified", but before any quest
 write require a verified binding or the publisher's explicit confirmation of what the
 caller emits. General publication approval does not establish configured site emission.
-For login, no standard name is documented; follow the [login flow](events.md#login-event-with-xsolla-id).
+The Quests block (0.2.22) sends three built-in events itself for a signed-in player, and they
+count as a verified binding on a site with the block: `login_xsolla_id` once per session,
+`daily_visit` once per UTC day and `weekly_visit` once per ISO week. Map "daily login" to
+`daily_visit`, "weekly login" to `weekly_visit` and "first sign-in" to `login_xsolla_id`, with
+`client_sendable: true` on the trigger. For a login sent from elsewhere, follow the
+[login flow](events.md#login-event-with-xsolla-id).
 Every active quest in the selected project with the same trigger name may run, so a
 test quest needs a unique name.
 

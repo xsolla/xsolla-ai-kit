@@ -410,6 +410,8 @@ def site_summary(runner: Runner, fetcher: QuestFetcher, slug: str, env: List[str
         "site": slug,
         "merchant_id": str(site.get("merchantId")),
         "project_id": str(site.get("projectId")),
+        # get-structure's own flag, the same one the gate refuses block writes on.
+        "published": site.get("published") not in (None, False),
         "quest_names": (
             "unavailable" if lookup is None else "resolved" if lookup.complete else "partial"
         ),
