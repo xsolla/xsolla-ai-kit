@@ -10,9 +10,7 @@ values, but must preserve `sources` so the user can see where decisions came fro
   "version": 1,
   "project": {
     "merchant_id": 12345,
-    "project_id": 67890,
-    "environment": "test",
-    "test_project_acknowledged": true
+    "project_id": 67890
   },
   "game": {
     "name": "Space Legends",
@@ -40,32 +38,13 @@ values, but must preserve `sources` so the user can see where decisions came fro
 
 Allowed presets: `auto`, `mobile-single-page`, `pc-multi-page`, and
 `live-service-events`. Allowed catalog group types: `virtual_good`, `bundle`, and
-`virtual_currency`. `project.environment` must be `test`, and the `project`
-object must contain `"test_project_acknowledged": true`. Before a write,
-`preflight.py` and `apply_plan.py` additionally require a separate local allowlist:
-
-```json
-{
-  "version": 1,
-  "projects": [
-    {
-      "merchant_id": 12345,
-      "project_id": 67890,
-      "approved_by": "mentor or tech lead",
-      "approval_reference": "link or durable reference to the approval"
-    }
-  ]
-}
-```
-
-Keep the real allowlist outside the repository. This second artifact binds the exact
-project identity to approval evidence; a self-declared brief is not enough.
+`virtual_currency`.
 
 ## Field behavior
 
 | Field | Purpose |
 |---|---|
-| `project.*` | Hard safety boundary. IDs must match, CLI sandbox mode must be off, and a dedicated-test-project acknowledgement is required. |
+| `project.*` | The merchant and project IDs. They must match the CLI's, and CLI sandbox mode must be off. |
 | `game.platforms` | Any of `mobile`, `pc`, `console`, `web`; drives automatic preset selection. |
 | `game.lifecycle` | `launch`, `evergreen`, or `live-service`; drives event and offer defaults. |
 | `site.slug` | Existing target or requested new Xsolla domain slug. Never guess it for an existing site. |
@@ -98,8 +77,33 @@ is a non-empty array of complete page objects:
 ```
 
 Paths must be unique root-relative kebab-case paths. Blocks must be module names
-already verified on the dedicated test project; unverified modules are rejected
+already verified in Shop Builder; unverified modules are rejected
 before planning or writes.
+
+## Operation mode (`block_operations`, Quests block only)
+
+A brief with `block_operations` edits individual Quests blocks on an existing site and
+cannot be combined with `content.page_overrides`. Required: `version`, `project`
+(`merchant_id`, `project_id`), `site.slug` and
+`block_operations`. Nothing else is allowed: validation rejects any other top-level key
+(`game`, `catalog`, `content`, `brand`, `sources`), any other `site` key (`name`, `pages`)
+and any other `project` key, because the plan would silently ignore them. Operations write
+only after the CLI check in [CLI operations](cli-operations.md#sandbox-mode) passes, with
+sandbox mode off and the brief's IDs matching the CLI.
+
+```json
+"block_operations": [
+  {"op": "add", "module": "_quest-platform_quests-block", "page": "/", "index": 2,
+   "values": {"questIds": ["..."], "maxQuests": 6, "layout.cardAlign": "center"},
+   "translations": {"en-US": {"heading": "Quests"}}},
+  {"op": "update", "block_id": "<id>", "values": {"overrides.<questId>.title": "..."}},
+  {"op": "reset", "block_id": "<id>", "paths": ["overrides.<questId>.imageUrl"]}
+]
+```
+
+Other operations are `move`/`duplicate` with `block_id` and `index`, and `hide`/`show`
+with `block_id`. Full effects, leaf/parent rules, bounds, locale/index conflicts and
+`needs_human` delete handling are in [block-operations.md](block-operations.md).
 
 ## Handoff contract for other skills
 

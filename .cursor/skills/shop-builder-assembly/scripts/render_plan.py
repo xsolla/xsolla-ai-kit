@@ -11,12 +11,19 @@ import sys
 from collections.abc import Callable
 from pathlib import Path
 
+sys.dont_write_bytecode = True  # keep the installed skill folder clean
+
 # `python3 -I` (isolated mode) does not put the script's own folder on sys.path, so
 # the sibling imports below would fail. Add it explicitly.
 SCRIPTS_DIR = str(Path(__file__).resolve().parent)
 if SCRIPTS_DIR not in sys.path:
     sys.path.insert(0, SCRIPTS_DIR)
 
+from block_ops import (
+    QUESTS_VERSION,
+    block_fingerprints,
+    plan_block_operations,
+)
 from validate_shop_brief import load_brief, validate
 
 PRESET_PAGES = {
@@ -90,6 +97,10 @@ PRESET_PAGES = {
 CUSTOM_CODE_WARNING = (
     "The Custom code block is added empty and hidden; paste your code and make the "
     "block visible in the Site Builder editor."
+)
+LAYOUT_WARNING = (
+    "The common layout needs a newer Xsolla CLI, so the site is built without it. A "
+    "site without the common layout won't open in the Editor, Publish or private preview."
 )
 LIVEOPS_BLOCKS = {
     "promocodes": ("promo_codes", "no promo code promotion configured in the project"),
@@ -359,6 +370,13 @@ def adapt_to_template_page(modules: list[str], on_page: set) -> list[str]:
     return result
 
 
+def header_check_pages(plan: dict, structure: object) -> list[dict]:
+    """Pages to validate for an own header; Quests operations touch no page shell."""
+    if plan.get("mode") == "block_operations":
+        return []
+    return plan.get("pages", [])
+
+
 def custom_code_warnings(pages: list[dict]) -> list[str]:
     """Warn when the plan adds a Custom code block.
 
@@ -370,6 +388,26 @@ def custom_code_warnings(pages: list[dict]) -> list[str]:
         if "html" in page.get("blocks", []) and "html" not in current:
             return [CUSTOM_CODE_WARNING]
     return []
+
+
+def layout_warnings(
+    structure: object | None,
+    has_create_block: bool,
+    module_of: Callable[[str], object] | None = None,
+) -> list[str]:
+    """Warn when the site needs the common layout and the CLI cannot add it.
+
+    A new site always needs it; an existing site only when it has none. Without
+    ``create-block`` assembly skips the layout step.
+    """
+    if has_create_block:
+        return []
+    if (
+        structure is not None
+        and common_layout_id(structure_data(structure), module_of) is not None
+    ):
+        return []
+    return [LAYOUT_WARNING]
 
 
 def selected_pages(brief: dict, preset: str) -> list[dict]:
@@ -801,13 +839,88 @@ def drop_pages_without_content(
     return kept, warnings
 
 
+def build_block_operations_plan(brief: dict, current_structure: object | None) -> dict:
+    """Build a confirmed Quests-only operation plan for an existing site."""
+    if current_structure is None:
+        raise ValueError(
+            "Quests block settings need the backup structure (--structure) to resolve "
+            "the target block and exact schema version"
+        )
+    current = structure_data(current_structure)
+    items = plan_block_operations(brief, current)
+    digests, order = block_fingerprints(current)
+    versions: dict[str, str] = {}
+    for index, operation in enumerate(brief["block_operations"]):
+        block_id = operation.get("block_id")
+        if isinstance(block_id, str):
+            for page in current.get("pages", []):
+                for block in page.get("blocks", []):
+                    if isinstance(block, dict) and block.get("_id") == block_id:
+                        value = (block.get("values") or {}).get("version")
+                        if isinstance(value, str):
+                            versions[block_id] = value
+            continue
+        if operation.get("op") == "add":
+            versions[f"op:{index}"] = operation.get("version", QUESTS_VERSION)
+
+    warnings = [
+        f"block_operations[{item['op_index']}] "
+        + ", ".join(entry["key"] for entry in item["texts"])
+        + f": {item['note']}"
+        for item in items
+        if item["type"] == "block_card_text"
+    ]
+    plan = {
+        "version": 2,
+        "mode": "block_operations",
+        "operation_scope": "quests_block",
+        "target": {
+            "merchant_id": brief["project"]["merchant_id"],
+            "project_id": brief["project"]["project_id"],
+            "slug": brief["site"]["slug"],
+            "quests_versions": versions,
+        },
+        "requires_confirmation": True,
+        "publication": "forbidden",
+        "order": ["backup", "block_operations", "verify"],
+        "pages": [],
+        "navigation": [],
+        "locales": [],
+        "catalog_sections": [],
+        "block_operations": items,
+        "removals": [],
+        "omissions": [],
+        "current_state": {
+            "status": "captured",
+            "application_mode": "block-operations",
+            "landing_id": current.get("_id"),
+            "structure_sha256": structure_hash(current),
+            "block_sha256": digests,
+            "block_order": order,
+            "extra_pages": [],
+        },
+        "brief_sha256": canonical_hash(brief),
+        "implemented_phases": ["block_operations"],
+        "unsupported_phases": [],
+        "warnings": warnings,
+    }
+    plan["confirmation_id"] = "sha256:" + canonical_hash(plan)[:12]
+    return plan
+
+
 def build_plan(
     brief: dict,
     current_structure: object | None = None,
     created_block_ids: frozenset = frozenset(),
     base_dir: Path | None = None,
+    has_create_block: bool = True,
+    module_of: Callable[[str], object] | None = None,
 ) -> dict:
     """``base_dir`` is the brief's folder, where `brand.images` files are read from."""
+
+
+    if "block_operations" in brief:
+        return build_block_operations_plan(brief, current_structure)
     preset = choose_preset(brief)
     catalog_groups = catalog_sections(brief, preset)
     pages, omissions = omit_unwritable_blocks(selected_pages(brief, preset), brief)
@@ -831,15 +944,18 @@ def build_plan(
             "No event data supplied; omit event-specific copy and scarcity claims."
         )
     warnings.extend(custom_code_warnings(pages))
+    warnings.extend(layout_warnings(current_structure, has_create_block, module_of))
+    environment = brief["project"].get("environment")
+    if environment not in (None, "test"):
+        warnings.append(
+            f"The brief marks this project as {environment!r}. Assembly writes only to an "
+            "unpublished site, but catalog changes in this project reach players at once."
+        )
     plan = {
         "version": 2,
         "target": {
             "merchant_id": brief["project"]["merchant_id"],
             "project_id": brief["project"]["project_id"],
-            "environment": brief["project"]["environment"],
-            "test_project_acknowledged": brief["project"].get(
-                "test_project_acknowledged", False
-            ),
             "site_name": brief["site"]["name"],
             "slug": brief["site"]["slug"],
         },
@@ -1002,6 +1118,9 @@ def approval_changes(approved: dict, plan: dict, run_report: dict) -> list[str]:
 
 
 def main() -> int:
+    # preflight imports this module, so a top-level import would be circular.
+    from preflight import cli_has_command, site_block_module
+
     parser = argparse.ArgumentParser()
     parser.add_argument("brief", type=Path)
     parser.add_argument(
@@ -1038,15 +1157,18 @@ def main() -> int:
             print(f"- {error}", file=sys.stderr)
         return 1
     try:
+        slug = brief["site"]["slug"]
         plan = build_plan(
             brief,
             structure,
             created_block_ids(report) if report else frozenset(),
             args.brief.resolve().parent,
+            cli_has_command("shopbuilder", "create-block"),
+            lambda block_id: site_block_module(slug, block_id),
         )
         if structure is not None:
             require_header_source(plan["pages"], structure)
-    except ValueError as exc:
+    except (RuntimeError, ValueError) as exc:
         print(str(exc), file=sys.stderr)
         return 1
     print(json.dumps(plan, indent=2))

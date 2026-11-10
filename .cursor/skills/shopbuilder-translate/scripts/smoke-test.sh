@@ -68,32 +68,34 @@ chk "no call carries --sandbox at all"       "! grep -rq -- '--sandbox' $PD/"
 chk "asset URL never written"                "! grep -rq 'og-image' $PD/"
 chk "no catalog payload"                     "! ls $PD/catalog.* >/dev/null 2>&1"
 
-echo "== apply: a missing allowlist blocks the write =="
+echo "== apply: missing project ids block the write =="
 cp "$HERE/fixtures/translated.de-DE.json" l10n/work/de-DE/translated.json
 export XSOLLA_CLI="$HERE/fixtures/fake-xsolla.sh"
 export FAKE_STORE="$HERE/fixtures/baseline"
 set +e
-env -u XSOLLA_APPROVED_TEST_PROJECTS XSOLLA_MERCHANT_ID=1 XSOLLA_PROJECT_ID=2 \
-  bash "$HERE/apply.sh" voidwall-45e0 de-DE --commit > noallow.out 2>&1; nrc=$?
+env -u XSOLLA_PROJECT_ID XSOLLA_MERCHANT_ID=1 \
+  bash "$HERE/apply.sh" voidwall-45e0 de-DE --commit > noids.out 2>&1; nrc=$?
 set -e
-chk "commit without the allowlist is BLOCKED" "[ $nrc -ne 0 ]"
-chk "missing allowlist does not claim success" "! grep -q 'Copy was written' noallow.out"
-export XSOLLA_APPROVED_TEST_PROJECTS="$HERE/fixtures/approved-test-projects.json"
+chk "commit without the project id is BLOCKED" "[ $nrc -ne 0 ]"
+chk "missing project id does not claim success" "! grep -q 'Copy was written' noids.out"
 
-echo "== apply: the domain and the CLI project must match the allowlist =="
+echo "== apply: the domain and the CLI project must match the target =="
 set +e
 FAKE_CONFIG_PROJECT=99 XSOLLA_MERCHANT_ID=1 XSOLLA_PROJECT_ID=2 \
   bash "$HERE/apply.sh" voidwall-45e0 de-DE --commit > cfg.out 2>&1; crc=$?
 set -e
 chk "CLI pointed at another project is BLOCKED" "[ $crc -ne 0 ]"
 chk "CLI mismatch names the configured project" "grep -q 'configured merchant/project' cfg.out"
-jq 'del(.projects[0].approved_by)' "$HERE/fixtures/approved-test-projects.json" > "$TMP/no-approval.json"
+mkdir -p "$TMP/published-store"
+cp "$HERE/fixtures/baseline/"*.json "$TMP/published-store/"
+jq '.data.published = true' "$HERE/fixtures/baseline/structure.json" > "$TMP/published-store/structure.json"
 set +e
-XSOLLA_APPROVED_TEST_PROJECTS="$TMP/no-approval.json" XSOLLA_MERCHANT_ID=1 XSOLLA_PROJECT_ID=2 \
-  bash "$HERE/apply.sh" voidwall-45e0 de-DE --commit > approval.out 2>&1; arc=$?
+FAKE_STORE="$TMP/published-store" XSOLLA_MERCHANT_ID=1 XSOLLA_PROJECT_ID=2 \
+  bash "$HERE/apply.sh" voidwall-45e0 de-DE --commit > published.out 2>&1; prc=$?
 set -e
-chk "allowlist entry without approved_by is BLOCKED" "[ $arc -ne 0 ]"
-chk "missing approval field is named" "grep -q 'approved_by' approval.out"
+chk "a published site is BLOCKED" "[ $prc -ne 0 ]"
+chk "the block says the site is published" "grep -q 'is published' published.out"
+chk "a published site gets no language or copy" "! grep -q 'Copy was written' published.out"
 set +e
 XSOLLA_MERCHANT_ID=1 XSOLLA_PROJECT_ID=2 \
   bash "$HERE/apply.sh" other-shop de-DE --commit > domain.out 2>&1; domrc=$?
@@ -166,7 +168,7 @@ set -e
 chk "live edit after extract is BLOCKED" "[ $drc -ne 0 ]"
 chk "live edit names the string" "grep -q 'block:blk_hero:values.title' drift.out"
 chk "live edit does not claim success" "! grep -q 'Copy was written' drift.out"
-unset XSOLLA_CLI FAKE_STORE XSOLLA_APPROVED_TEST_PROJECTS
+unset XSOLLA_CLI FAKE_STORE
 
 echo "== add-language: only behind the --commit gate =="
 cp "$HERE/fixtures/translated.de-DE.json" l10n/work/de-DE/translated.json
@@ -174,14 +176,13 @@ echo '["en-US"]' > "$TMP/langs-enable.json"
 export XSOLLA_CLI="$HERE/fixtures/fake-xsolla.sh"
 export FAKE_STORE="$HERE/fixtures/baseline"
 set +e
-env -u XSOLLA_APPROVED_TEST_PROJECTS -u XSOLLA_PROJECT_ID XSOLLA_MERCHANT_ID=1 \
+env -u XSOLLA_PROJECT_ID XSOLLA_MERCHANT_ID=1 \
   FAKE_LANG_FILE="$TMP/langs-enable.json" \
   bash "$HERE/apply.sh" voidwall-45e0 de-DE --commit > enable-noallow.out 2>&1; narc=$?
 set -e
-chk "--commit refuses without the allowlist and project id" "[ $narc -ne 0 ]"
+chk "--commit refuses without the project id" "[ $narc -ne 0 ]"
 chk "refused run never called add-language" "jq -e '.==[\"en-US\"]' $TMP/langs-enable.json"
 chk "refused run does not claim the language" "! grep -q 'enabled de-DE' enable-noallow.out"
-export XSOLLA_APPROVED_TEST_PROJECTS="$HERE/fixtures/approved-test-projects.json"
 FAKE_LANG_FILE="$TMP/langs-enable.json" XSOLLA_MERCHANT_ID=1 XSOLLA_PROJECT_ID=2 \
   bash "$HERE/apply.sh" voidwall-45e0 de-DE --commit > enable.out 2>&1
 chk "add-language enables a new locale" "grep -q 'enabled de-DE' enable.out && jq -e 'index(\"de-DE\")!=null' $TMP/langs-enable.json"
@@ -205,7 +206,7 @@ set -e
 chk "any other add-language failure still fails" "[ $lrc -ne 0 ]"
 chk "a failed add-language writes no copy" \
   "[ ! -f l10n/work/de-DE/payloads/localization.response.json ] && ! grep -q 'Copy was written' reject.out"
-unset XSOLLA_CLI FAKE_STORE XSOLLA_APPROVED_TEST_PROJECTS
+unset XSOLLA_CLI FAKE_STORE
 cp "$HERE/fixtures/translated.de-DE.json" l10n/work/de-DE/translated.json
 
 echo "== verify: reads the STORE back, not the file =="

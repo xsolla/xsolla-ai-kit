@@ -52,15 +52,18 @@ built.
    can't tell (it has reported "not published") and the CLI came from Homebrew, run
    `brew upgrade xsolla`. Refresh the kit with
    `xsolla skills install --global --source ai-kit`. Name both versions in the first
-   message. The checks below are read-only.
+   message. The checks below are read-only, except the CLI switch in check 2.
 2. **The project and sandbox mode.** Take the merchant and project from the Publisher
-   Account link in the request, else from `xsolla config list --json`; with neither, ask
-   for the project link in the batch. Shop Builder needs CLI sandbox mode off. When the
-   CLI points at another project or has sandbox on, put the switch in the batch as the
-   recommended answer, naming the commands (`xsolla config set merchant-id <id>`,
-   `xsolla config set project-id <id>`, `xsolla config set sandbox false`) and saying
-   that every later `xsolla` command then reaches the live project, payments and refunds
-   included. Never switch it without that yes.
+   Account link in the request, else from `xsolla config list --json`, and don't ask to
+   confirm it: the plan names the project. With neither, ask for the project link in the
+   batch. Shop Builder needs CLI sandbox mode off, and the backup and preflight refuse
+   sandbox mode, so this can't wait for the plan. When the CLI points at another project
+   or has sandbox on, switch it yourself (`xsolla config set merchant-id <id>`,
+   `xsolla config set project-id <id>`, `xsolla config set sandbox false`). Say in the
+   first message that the CLI config keeps it, so every later `xsolla` command, in this
+   session and others, reaches the live project, payments and refunds included, and give
+   the undo: `xsolla config set sandbox true` and the previous merchant and project, by
+   ID. Nothing is written to the project before the plan's yes.
 3. **The CLI can make a site that opens.** A new store site gets its common layout only
    from a CLI with `xsolla shopbuilder create-block`. Run
    `xsolla shopbuilder create-block --help`. If the usage line doesn't name
@@ -71,23 +74,13 @@ built.
    it, with more pages when the preset has them, and it opens in the Editor and preview.
    The other answers: build the structure anyway, or wait. A game home is built on the
    partner's template site; see **Store or game home**.
-4. **The project is an approved test project.** Shop Builder writes need the project on
-   the approved test-project allowlist, with its approver and approval reference. The
-   format is in [shop brief](../shop-builder-assembly/references/shop-brief.md); the
-   file lives outside the repository, at `$XSOLLA_APPROVED_TEST_PROJECTS`, by default
-   `~/.config/xsolla/approved-test-projects.json`. If this project isn't listed, ask in
-   the batch who approved it as a dedicated test project (a mentor or tech lead) and a
-   link to that approval. When both answers arrive, add the entry to that file with
-   exactly what the user gave. Never fill in the approver or the reference yourself, and
-   never use this chat as the approval reference. Pass the file to the assembly scripts as
-   `--approved-test-projects`; `shopbuilder-translate` reads it only from the variable.
-5. **The game.** Read the user's store listing link, if they gave one: name, platforms,
+4. **The game.** Read the user's store listing link, if they gave one: name, platforms,
    developer, description, icon and screenshots.
-6. **The catalog, LiveOps and Login projects.** Read the project's catalog groups,
+5. **The catalog, LiveOps and Login projects.** Read the project's catalog groups,
    items, bundles and LiveOps with the read-only `xsolla catalog` and `xsolla liveops`
    list commands, and its Login projects. Draft `catalog-design`'s proposal now, so its
    questions go in the batch instead of a second round.
-7. **Browser and design tools in this session.** Find the browser that is signed in to
+6. **Browser and design tools in this session.** Find the browser that is signed in to
    Publisher Account (a built-in browser, Claude in Chrome, or another extension) and use
    it for every browser step; don't ask which one. Check that the mockup's design tool,
    such as Figma, is available in this session: a setup log from an earlier session is not
@@ -109,25 +102,33 @@ built.
 
 Do not write the answer to `.env`.
 
+## A Figma design
+
+When a Shop Builder site, new or existing, has to look like a Figma design, follow
+[Matching a Figma design in Shop Builder](references/figma-design.md): standard blocks
+first; a Custom Block (`xsolla shopbuilder create-custom-block`) for each section a
+standard block can't match one to one, named in the plan by its purpose with the reason;
+never custom code, and never touch custom code already on the site; prices, timers,
+items, cart and login stay live; never publish; check at 1440, 1024 and 390 px against
+the Figma frames, and list what neither can match.
+
 ## One batch of questions
 
 Ask everything still missing in **one** message, each question with a recommended
 answer, so a reply such as "all recommended" settles it:
 
 - which side, only when the rule above says to ask;
-- the project link, or switching the CLI to it with sandbox off, only when check 2 says;
+- the project link, only when neither the request nor the CLI names a project;
 - store or game home;
-- the test-project approver and approval link, only when the project isn't listed. This
-  question has **no** recommended answer: only the user can give it;
 - build without the common layout or wait, only when the CLI lacks `create-block`;
 - the storefront intake the listing didn't answer: game name, platforms, a short
-  description, whether the listing is theirs and its art and text may be used, the
-  site's address, and its languages (recommended: the primary language only; more go in
+  description, the site's address, and its languages (recommended: the primary language only; more go in
   later with `shopbuilder-translate`, which shows its own preview). The storefront
   skills read these answers and don't ask them again;
 - `catalog-design`'s questions: the archetype, what to do with test or demo entries
-  already in the project (recommended: disable them under the same yes), and any
-  commercial value it can't infer;
+  already in the project (recommended: leave them and show only the new groups on the
+  site; disabling one changes the live catalog at once), and any commercial value it
+  can't infer;
 - item delivery: whether a game server should receive paid orders. Recommended: not now;
   purchases still work, but items reach the game only once the developer deploys webhook
   handler code on their own server;
@@ -173,7 +174,9 @@ desktop and mobile mockup for a store (a game home shows `game-web-portal`'s pla
 ask for **one yes**. That yes lets `catalog-design` create
 the catalog and the storefront skill apply its plan, in that order. The storefront skill
 still runs its own preflight and backup, and asks again only for what its plan didn't
-show. When the catalog already exists, the plan alone is the message.
+show. When the catalog already exists, the plan alone is the message. When the proposal
+writes to the catalog, the plan says so: the project is live, and catalog changes reach
+the store and game clients at once, with no publish step.
 
 Before showing the proposal, check it against the limits in `catalog-design`'s LiveOps
 reference: each offer chain or reward chain step takes one item, and offer chain steps

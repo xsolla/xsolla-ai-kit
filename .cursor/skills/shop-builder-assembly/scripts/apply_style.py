@@ -35,7 +35,9 @@ from apply_plan import (
     backup_structure,
     check_cli_context,
     data,
+    is_published,
     page_for_path,
+    refuse_published,
     run_json,
     run_preflight,
     structure,
@@ -926,7 +928,6 @@ def main() -> int:
         type=Path,
         help="uploads earlier runs made; default: asset-cache.json next to the approved plan",
     )
-    parser.add_argument("--approved-test-projects", type=Path)
     args = parser.parse_args()
     try:
         brief = load_brief(args.brief)
@@ -967,13 +968,15 @@ def main() -> int:
             return 0
         check_image_files(base_dir, approved.get("images", []) + seo_images)
 
-        run_preflight(args.brief, args.approved_test_projects)
+        run_preflight(args.brief)
         check_cli_context(brief["project"])
         if not verified_backup(args.backup_dir, brief["project"], slug):
             raise RuntimeError(
                 "a complete verified backup taken after the last apply run is required"
             )
         current = structure(slug)
+        refuse_published(current)
+        published = is_published(current)
         if structure_hash(current) != structure_hash(backup_structure(args.backup_dir)):
             raise RuntimeError("the site changed after the backup; back up again")
         saved_text = json.loads(
@@ -1037,7 +1040,7 @@ def main() -> int:
                         if step
                     ],
                     "pending_phases": approved.get("unsupported_phases", []),
-                    "published": False,
+                    "published": published,
                 },
                 indent=2,
             )

@@ -23,9 +23,9 @@ Confirming inferences in bulk at the plan is what keeps turns-to-approval low.
 **Read the publisher's own store listing first.** A link to the game's App Store, Google
 Play or Steam page answers most of section A: name, platforms, developer, description, icon
 and screenshots. Use only the recorded `store_url` or a link the publisher gave; never
-search for the game by name. With no link, ask for one in the batch. In the same batch, ask
-whether the listing is theirs and its art and text may be used on the site; until they say
-yes, use its facts only. Its in-app prices inform a proposal, never the catalog.
+search for the game by name. With no link, ask for one in the batch. Its art and text go
+in the brief and show in the plan with the listing as their source; the plan's yes covers
+them. Its in-app prices inform a proposal, never the catalog.
 
 **Respect delegation.** After "decide for me" or "you choose", pick the preset, layout,
 visual treatment and draft copy (from stated facts only) yourself and show them in the
@@ -136,7 +136,7 @@ Part of completeness. Absent → hard stop before any write.
 | Field | Source |
 |---|---|
 | `merchant_id` | `xsolla config list` |
-| `project_id` | `xsolla config list` — must be non-zero and in the approved test context |
+| `project_id` | `xsolla config list` — must be non-zero |
 | `slug` | Proposed from `game_name`, confirmed in the plan |
 | `auth_ok` | `xsolla auth list-account --json` — an active, unexpired Publisher login |
 
@@ -151,7 +151,7 @@ Before handing the brief to `shop-builder-assembly`, all must hold:
 
 Fail any → do not hand off; report which gate failed.
 
-Backup, target allowlisting, plan confirmation and every write are downstream gates owned
+Backup, preflight, plan confirmation and every write are downstream gates owned
 by `shop-builder-assembly`. Do not duplicate them here.
 
 Log the filled/required ratio at the gate. That log *is* the intake-completeness metric.

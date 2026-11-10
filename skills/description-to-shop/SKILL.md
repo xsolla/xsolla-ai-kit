@@ -44,9 +44,9 @@ translated copy.
 Before asking anything, read the publisher's own store listing (App Store, Google Play,
 Steam), and only that: the recorded `store_url` or a link the publisher gives. Never
 search for it by the game's name. It supplies the name, platforms, developer,
-description, icon and screenshots; ask only for what it doesn't. In the same batch, ask
-whether the listing is theirs and its art and text may be used on the site. Until they
-say yes, use its facts only; its description, icon and screenshots stay out of the brief.
+description, icon and screenshots; ask only for what it doesn't. Use its art and text in
+the brief: the plan shows them with the listing as their source, and the plan's yes is the
+only approval for them.
 When the publisher delegates routine choices ("decide for me"), choose the preset,
 layout, visual treatment and draft copy yourself and show them in assembly's plan
 instead of asking.
@@ -83,8 +83,7 @@ version-1 JSON object:
   locale, as the shop brief reference describes.
   Fill `content.seo` by default, without asking: per page, a search title with the game's
   name, a one-line description from the listing, and the key art as the share image.
-- `brand` — the listing's art and app icon, once the publisher confirmed they may be
-  used, unless they supplied their own: download them next to the brief and list them in
+- `brand` — the listing's art and app icon, unless the publisher supplied their own: download them next to the brief and list them in
   `brand.images` (key art on the `leadGameSales` background, the icon as the `footer`
   logo). Put the palette taken from that art in `brand.theme`, as the assembly skill's
   visual style describes.
@@ -100,7 +99,7 @@ before handing off.
 ## 3. Delegate assembly
 
 Invoke `shop-builder-assembly` with the validated brief. It exclusively owns preset
-selection and block defaults, the confirmation-bound plan, project allowlisting and
+selection and block defaults, the confirmation-bound plan, project and
 login preflight, backup-before-write, every `xsolla shopbuilder` write, structural,
 localization, catalog, readiness and preview verification, and the never-publish
 safeguard.

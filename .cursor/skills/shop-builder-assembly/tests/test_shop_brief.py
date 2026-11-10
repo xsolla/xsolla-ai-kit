@@ -32,6 +32,11 @@ render_plan = load_module("render_plan", ROOT / "scripts" / "render_plan.py")
 preflight = load_module("preflight", ROOT / "scripts" / "preflight.py")
 backup_shop = load_module("backup_shop", ROOT / "scripts" / "backup_shop.py")
 
+LAYOUT_WARNING = (
+    "The common layout needs a newer Xsolla CLI, so the site is built without it. A "
+    "site without the common layout won't open in the Editor, Publish or private preview."
+)
+
 
 class ShopBriefTests(unittest.TestCase):
     def setUp(self) -> None:
@@ -109,6 +114,38 @@ class ShopBriefTests(unittest.TestCase):
         }
         self.assertNotIn(warning, render_plan.build_plan(brief, already_there)["warnings"])
 
+    def test_new_site_on_cli_without_create_block_warns_in_the_plan(self) -> None:
+        plan = render_plan.build_plan(self.brief, has_create_block=False)
+        self.assertIn(LAYOUT_WARNING, plan["warnings"])
+        self.assertNotEqual(
+            render_plan.build_plan(self.brief, has_create_block=True)["confirmation_id"],
+            plan["confirmation_id"],
+        )
+
+    def test_new_site_on_cli_with_create_block_has_no_layout_warning(self) -> None:
+        plan = render_plan.build_plan(self.brief, has_create_block=True)
+        self.assertNotIn(LAYOUT_WARNING, plan["warnings"])
+
+    def test_existing_site_with_common_layout_has_no_layout_warning(self) -> None:
+        site = {
+            "pages": [],
+            "layouts": ["side-id", "common-id"],
+            "blocks": ["side-id", "common-id"],
+        }
+        modules = {"side-id": "side-by-side-layout", "common-id": "common-layout"}
+        plan = render_plan.build_plan(
+            self.brief, site, has_create_block=False, module_of=modules.get
+        )
+        self.assertNotIn(LAYOUT_WARNING, plan["warnings"])
+
+    def test_existing_site_without_common_layout_warns_in_the_plan(self) -> None:
+        site = {"pages": [], "layouts": ["side-id"], "blocks": ["side-id"]}
+        modules = {"side-id": "side-by-side-layout"}
+        plan = render_plan.build_plan(
+            self.brief, site, has_create_block=False, module_of=modules.get
+        )
+        self.assertIn(LAYOUT_WARNING, plan["warnings"])
+
     def test_unmapped_subscription_module_is_rejected(self) -> None:
         brief = copy.deepcopy(self.brief)
         brief["content"]["page_overrides"] = [
@@ -144,23 +181,11 @@ class ShopBriefTests(unittest.TestCase):
         brief["game"]["platforms"] = ["pc"]
         self.assertEqual("pc-multi-page", render_plan.choose_preset(brief))
 
-    def test_non_test_environment_is_rejected(self) -> None:
+    def test_project_needs_only_its_ids(self) -> None:
         brief = copy.deepcopy(self.brief)
-        for environment in ("sandbox", "production"):
-            with self.subTest(environment=environment):
-                brief["project"]["environment"] = environment
-                self.assertIn(
-                    "project.environment must be test", validator.validate(brief)
-                )
-
-    def test_dedicated_test_project_requires_acknowledgement(self) -> None:
-        brief = copy.deepcopy(self.brief)
-        brief["project"]["test_project_acknowledged"] = False
-        self.assertIn(
-            "project.test_project_acknowledged must be true for a dedicated test project",
-            validator.validate(brief),
-        )
-        brief["project"]["test_project_acknowledged"] = True
+        brief["project"] = {"merchant_id": 12345, "project_id": 67890}
+        self.assertEqual([], validator.validate(brief))
+        brief["project"].update(environment="test", test_project_acknowledged=True)
         self.assertEqual([], validator.validate(brief))
 
     def test_credentials_are_rejected(self) -> None:
@@ -191,7 +216,6 @@ class ShopBriefTests(unittest.TestCase):
         cases = [
             ("platforms", ["mobile", []], "game.platforms must use:"),
             ("lifecycle", [], "game.lifecycle must use:"),
-            ("environment", [], "project.environment must be test"),
             ("preset", [], "site.preset must use:"),
             ("locales", 7, "site.locales must be a non-empty list"),
             ("group type", [], "catalog.groups[0].type must use:"),
@@ -205,8 +229,6 @@ class ShopBriefTests(unittest.TestCase):
                     brief["game"]["platforms"] = value
                 elif name == "lifecycle":
                     brief["game"]["lifecycle"] = value
-                elif name == "environment":
-                    brief["project"]["environment"] = value
                 elif name == "preset":
                     brief["site"]["preset"] = value
                 elif name == "locales":
@@ -291,44 +313,6 @@ class ShopBriefTests(unittest.TestCase):
             ),
         )
 
-    def test_test_project_requires_separate_allowlist_record(self) -> None:
-        expected = {
-            "merchant_id": 100,
-            "project_id": 200,
-            "environment": "test",
-        }
-        with self.assertRaisesRegex(RuntimeError, "approved-test-projects"):
-            preflight.approved_test_project(None, expected)
-        with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "approved-test-projects.json"
-            path.write_text(
-                json.dumps(
-                    {
-                        "version": 1,
-                        "projects": [
-                            {
-                                "merchant_id": 100,
-                                "project_id": 200,
-                                "approved_by": "test mentor",
-                                "approval_reference": "test approval",
-                            }
-                        ],
-                    }
-                ),
-                encoding="utf-8",
-            )
-            self.assertEqual(
-                "test approval",
-                preflight.approved_test_project(path, expected)[
-                    "approval_reference"
-                ],
-            )
-
-    def test_sandbox_project_cannot_skip_allowlist(self) -> None:
-        expected = {"merchant_id": 100, "project_id": 200, "environment": "sandbox"}
-        with self.assertRaisesRegex(RuntimeError, "dedicated test project"):
-            preflight.approved_test_project(None, expected)
-
     def test_read_scripts_refuse_force_before_running_cli(self) -> None:
         for module in (preflight, backup_shop):
             with self.subTest(module=module.__name__):
@@ -336,28 +320,6 @@ class ShopBriefTests(unittest.TestCase):
                     with self.assertRaisesRegex(RuntimeError, "--force is prohibited"):
                         module.run_json("shopbuilder", "delete-block", "--force")
                     run.assert_not_called()
-
-    def test_preflight_rejects_enabled_cli_sandbox_before_shopbuilder_reads(self) -> None:
-        brief = ROOT / "examples" / "mobile-single-page.json"
-        stderr = io.StringIO()
-        with (
-            mock.patch.object(sys, "argv", ["preflight.py", str(brief)]),
-            mock.patch.object(preflight.shutil, "which", return_value="xsolla"),
-            mock.patch.object(
-                preflight,
-                "approved_test_project",
-                return_value={"approval_reference": "test approval"},
-            ),
-            mock.patch.object(
-                preflight,
-                "run_json",
-                return_value={"merchant_id": 12345, "project_id": 67890, "sandbox": True},
-            ) as run_json,
-            contextlib.redirect_stderr(stderr),
-        ):
-            self.assertEqual(1, preflight.main())
-        self.assertIn("CLI sandbox must be disabled", stderr.getvalue())
-        run_json.assert_called_once_with("config", "list")
 
     def test_preflight_accepts_config_without_sandbox_key(self) -> None:
         brief = ROOT / "examples" / "mobile-single-page.json"
@@ -372,11 +334,6 @@ class ShopBriefTests(unittest.TestCase):
             mock.patch.object(sys, "argv", ["preflight.py", str(brief)]),
             mock.patch.object(preflight.shutil, "which", return_value="xsolla"),
             mock.patch.object(
-                preflight,
-                "approved_test_project",
-                return_value={"approval_reference": "test approval"},
-            ),
-            mock.patch.object(
                 preflight, "run_json", side_effect=[config, accounts, {}, {}]
             ) as run_json,
             mock.patch.object(preflight, "cli_has_command", return_value=True),
@@ -385,33 +342,6 @@ class ShopBriefTests(unittest.TestCase):
             self.assertEqual(0, preflight.main())
         self.assertFalse(json.loads(stdout.getvalue())["context"]["sandbox"])
         self.assertEqual(4, run_json.call_count)
-
-    def test_test_project_rejects_different_allowlisted_identity(self) -> None:
-        expected = {
-            "merchant_id": 100,
-            "project_id": 200,
-            "environment": "test",
-        }
-        with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "approved-test-projects.json"
-            path.write_text(
-                json.dumps(
-                    {
-                        "version": 1,
-                        "projects": [
-                            {
-                                "merchant_id": 100,
-                                "project_id": 201,
-                                "approved_by": "test mentor",
-                                "approval_reference": "test approval",
-                            }
-                        ],
-                    }
-                ),
-                encoding="utf-8",
-            )
-            with self.assertRaisesRegex(RuntimeError, "not in the approved"):
-                preflight.approved_test_project(path, expected)
 
     def test_backup_resolves_wrapped_landing_id(self) -> None:
         self.assertEqual(

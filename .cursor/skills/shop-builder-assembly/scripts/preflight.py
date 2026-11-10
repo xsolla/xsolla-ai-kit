@@ -10,19 +10,20 @@ import subprocess
 import sys
 from pathlib import Path
 
+sys.dont_write_bytecode = True  # keep the installed skill folder clean
+
 # `python3 -I` (isolated mode) does not put the script's own folder on sys.path, so
 # the sibling imports below would fail. Add it explicitly.
 SCRIPTS_DIR = str(Path(__file__).resolve().parent)
 if SCRIPTS_DIR not in sys.path:
     sys.path.insert(0, SCRIPTS_DIR)
 
-from render_plan import common_layout_id
+import cli_environment
+from render_plan import LAYOUT_WARNING, common_layout_id
 from validate_shop_brief import load_brief, validate
 
-LAYOUT_SKIPPED = (
-    "the common layout needs a newer Xsolla CLI; the site is built without it. A site "
-    "without the common layout won't open in the Editor, Publish or private preview"
-)
+# One text for preflight, verification and the plan's warning.
+LAYOUT_SKIPPED = LAYOUT_WARNING
 
 
 def run_json(*args: str) -> object:
@@ -31,7 +32,7 @@ def run_json(*args: str) -> object:
     # The CLI writes UTF-8; without an explicit encoding Windows decodes with the
     # ANSI code page and loses the output.
     result = subprocess.run(
-        ["xsolla", *args, "--json"],
+        cli_environment.command(*args, "--json"),
         capture_output=True,
         text=True,
         encoding="utf-8",
@@ -69,7 +70,7 @@ def cli_has_command(*command: str) -> bool:
 
     try:
         result = subprocess.run(
-            ["xsolla", *command, "--help"],
+            cli_environment.command(*command, "--help"),
             capture_output=True,
             text=True,
             encoding="utf-8",
@@ -137,62 +138,9 @@ def group_external_ids(value: object) -> set[str]:
     }
 
 
-def approved_test_project(path: Path | None, expected: dict) -> dict:
-    """Return the separate approval record for a dedicated test project."""
-    if expected["environment"] != "test":
-        raise RuntimeError("Shop Builder assembly requires a dedicated test project")
-    if path is None:
-        raise RuntimeError(
-            "--approved-test-projects is required for a dedicated test project"
-        )
-    try:
-        value = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
-        raise RuntimeError(f"cannot read approved test projects: {exc}") from exc
-    if not isinstance(value, dict) or value.get("version") != 1:
-        raise RuntimeError("approved test projects must be a version 1 object")
-    projects = value.get("projects")
-    if not isinstance(projects, list):
-        raise RuntimeError("approved test projects must contain a projects list")
-
-    target = (expected["merchant_id"], expected["project_id"])
-    for index, project in enumerate(projects):
-        if not isinstance(project, dict):
-            raise RuntimeError(f"approved test projects[{index}] must be an object")
-        merchant_id = project.get("merchant_id")
-        project_id = project.get("project_id")
-        if (
-            isinstance(merchant_id, bool)
-            or not isinstance(merchant_id, int)
-            or isinstance(project_id, bool)
-            or not isinstance(project_id, int)
-        ):
-            raise RuntimeError(
-                f"approved test projects[{index}] must contain integer IDs"
-            )
-        if not isinstance(project.get("approved_by"), str) or not project[
-            "approved_by"
-        ].strip():
-            raise RuntimeError(
-                f"approved test projects[{index}].approved_by is required"
-            )
-        if not isinstance(project.get("approval_reference"), str) or not project[
-            "approval_reference"
-        ].strip():
-            raise RuntimeError(
-                f"approved test projects[{index}].approval_reference is required"
-            )
-        if (merchant_id, project_id) == target:
-            return project
-    raise RuntimeError(
-        "configured merchant_id/project_id is not in the approved test-project allowlist"
-    )
-
-
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("brief", type=Path)
-    parser.add_argument("--approved-test-projects", type=Path)
     args = parser.parse_args()
 
     if shutil.which("xsolla") is None:
@@ -204,19 +152,11 @@ def main() -> int:
         if errors:
             raise RuntimeError("invalid shop brief: " + "; ".join(errors))
 
-        config = data(run_json("config", "list"))
-        if not isinstance(config, dict):
-            raise RuntimeError("xsolla config list returned an unexpected shape")
         expected = brief["project"]
-        test_project_approval = approved_test_project(
-            args.approved_test_projects, expected
-        )
-        if config.get("sandbox") is True:
-            raise RuntimeError("CLI sandbox must be disabled for Shop Builder")
-        if config.get("merchant_id") != expected["merchant_id"]:
-            raise RuntimeError("CLI merchant_id does not match the shop brief")
-        if config.get("project_id") != expected["project_id"]:
-            raise RuntimeError("CLI project_id does not match the shop brief")
+        # Shop Builder has no sandbox, so a Shop Builder request implies sandbox
+        # mode off. Preflight never switches it: when the CLI still has sandbox on,
+        # it stops here, and nocode-shop-setup switches it at its first check.
+        cli = cli_environment.select(expected, run_json)
 
         accounts = run_json("auth", "list-account")
         if not active_publisher_account(accounts):
@@ -233,6 +173,11 @@ def main() -> int:
             site = data(run_json("shopbuilder", "get-structure", "--slug", slug))
             if not isinstance(site, dict):
                 raise RuntimeError("get-structure returned an unexpected shape")
+            if site.get("published") not in (None, False):
+                raise RuntimeError(
+                    "the target site is published: assembly writes only to an unpublished "
+                    "site. Build on another slug, or unpublish it in Publisher Account first"
+                )
             layout_id = common_layout_id(
                 site, lambda block_id: site_block_module(slug, block_id)
             )
@@ -253,7 +198,7 @@ def main() -> int:
         available_group_ids = group_external_ids(groups)
         requested_groups = {
             (group["external_id"], group["type"])
-            for group in brief["catalog"]["groups"]
+            for group in brief.get("catalog", {}).get("groups", [])
             if group["external_id"] != "__all__"
         }
         missing_groups = sorted(
@@ -264,16 +209,13 @@ def main() -> int:
 
         result = {
             "ok": not missing_groups,
+            # Plan lines the agent shows as they are.
+            "plan_notes": cli_environment.plan_notes(cli),
             "context": {
                 "merchant_id": expected["merchant_id"],
                 "project_id": expected["project_id"],
-                "environment": expected["environment"],
                 "sandbox": False,
-                "test_project_acknowledged": expected.get(
-                    "test_project_acknowledged", False
-                ),
-                "test_project_allowlisted": True,
-                "approval_reference": test_project_approval["approval_reference"],
+                "cli_environment": cli["environment"],
             },
             "auth": {"publisher_account_active": True},
             "target": {

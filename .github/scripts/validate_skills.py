@@ -46,6 +46,8 @@ VALID_OWNERS = {
     "r.addoumie",
     "s.hossain",
     "s.sadruddin",
+    # Quest Platform skills (quest-setup)
+    "r.aliyev",
 }
 
 VALID_DOMAINS = {
@@ -57,6 +59,7 @@ VALID_DOMAINS = {
     "design",
     "orchestrator",
     "go-live",
+    "quests",
 }
 
 errors: list[str] = []
@@ -200,6 +203,11 @@ def check_registries(skill_names: list[str]) -> None:
             error(f"AGENTS.md: no entry for skill '{name}'")
 
 
+def _is_cache(path: Path) -> bool:
+    """Bytecode caches left by test runs are not part of a skill."""
+    return "__pycache__" in path.parts or path.suffix == ".pyc"
+
+
 def check_generated_files(skill_names: list[str]) -> None:
     """.cursor/skills and CLAUDE.md are generated — fail on drift, don't silently fix."""
     if (ROOT / "AGENTS.md").read_text(encoding="utf-8") != (ROOT / "CLAUDE.md").read_text(encoding="utf-8"):
@@ -215,13 +223,19 @@ def check_generated_files(skill_names: list[str]) -> None:
 
     for name in skill_names:
         for src in (SKILLS / name).rglob("*"):
-            if not src.is_file():
+            if not src.is_file() or _is_cache(src):
                 continue
             mirror = mirror_root / name / src.relative_to(SKILLS / name)
             if not mirror.is_file():
                 error(f".cursor/skills/{name}/{src.relative_to(SKILLS / name)} is missing — run the provider sync")
             elif mirror.read_bytes() != src.read_bytes():
                 error(f".cursor/skills/{name}/{src.relative_to(SKILLS / name)} differs from its source — run the provider sync")
+        for mirror_file in (mirror_root / name).rglob("*"):
+            if not mirror_file.is_file() or _is_cache(mirror_file):
+                continue
+            source = SKILLS / name / mirror_file.relative_to(mirror_root / name)
+            if not source.is_file():
+                error(f".cursor/skills/{name}/{mirror_file.relative_to(mirror_root / name)} has no source counterpart: run the provider sync")
 
 
 def check_secrets() -> None:

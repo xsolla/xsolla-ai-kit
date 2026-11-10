@@ -54,12 +54,16 @@
 # yet. Payments reviews it until then; replace the handle once access is granted.
 /skills/webhooks-impl/                           @y-klochikhin @JavadManashti
 
+# Quest Platform
+/skills/quest-setup/                             @raliyev-xsolla @JavadManashti @y-klochikhin
+
 # Shop Builder
 /skills/nocode-shop-setup/                       @apyanzin-xsolla @JavadManashti @y-klochikhin
 /skills/shop-builder-assembly/                   @apyanzin-xsolla @JavadManashti @y-klochikhin
 /skills/description-to-shop/                     @apyanzin-xsolla @JavadManashti @y-klochikhin
 /skills/shopbuilder-translate/                   @apyanzin-xsolla @JavadManashti @y-klochikhin
 /skills/game-web-portal/                         @apyanzin-xsolla @JavadManashti @y-klochikhin
+/docs/shop-builder-assembly/                      @apyanzin-xsolla @JavadManashti @y-klochikhin
 
 # Generated Cursor mirror follows the same owners as its source
 /.cursor/skills/catalog-design/                  @p-sanachev @JavadManashti @y-klochikhin
@@ -70,6 +74,7 @@
 /.cursor/skills/merchant-setup/                  @y-klochikhin @JavadManashti
 /.cursor/skills/production/                      @y-klochikhin @JavadManashti
 /.cursor/skills/webhooks-impl/                   @y-klochikhin @JavadManashti
+/.cursor/skills/quest-setup/                     @raliyev-xsolla @JavadManashti @y-klochikhin
 /.cursor/skills/nocode-shop-setup/               @apyanzin-xsolla @JavadManashti @y-klochikhin
 /.cursor/skills/shop-builder-assembly/           @apyanzin-xsolla @JavadManashti @y-klochikhin
 /.cursor/skills/description-to-shop/             @apyanzin-xsolla @JavadManashti @y-klochikhin

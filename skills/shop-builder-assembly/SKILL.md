@@ -17,7 +17,7 @@ metadata:
 # Shop Builder Assembly
 
 Build an unpublished Publisher Account **Shop Builder site**, not a custom frontend,
-in a dedicated non-partner test project through `xsolla shopbuilder`.
+in the developer's project through `xsolla shopbuilder`.
 
 A Game Web Portal is built by `game-web-portal`, not here. If the user asked for a
 game home, or the existing site has `/news`, `/rewards`, and `/store`, hand off to
@@ -28,6 +28,12 @@ game home, or the existing site has `/news`, `/rewards`, and `/store`, hand off 
 Normalize publisher answers, existing stores, descriptions, and designs into the
 [shop brief](references/shop-brief.md). Writes require that brief; callers own source
 extraction.
+
+For Quests block operations on an existing Shop Builder site, including settings and
+appearance changes, use a `block_operations` brief and follow
+[block operations](references/block-operations.md). This path plans and applies only
+confirmed block operations; it does not reconcile pages, navigation, site or page themes,
+or catalog sections.
 
 If `preset` is `auto`, choose in this order:
 
@@ -47,53 +53,48 @@ until [expert-review.md](references/expert-review.md) records approval.
 
 ## Non-negotiable safety gate
 
-1. Run `scripts/preflight.py <brief.json> --approved-test-projects <local-allowlist.json>`.
-   The allowlist is at `$XSOLLA_APPROVED_TEST_PROJECTS`, by default
-   `~/.config/xsolla/approved-test-projects.json`; `nocode-shop-setup` collects the
-   approver and approval link in its first batch, not at this step.
-   Read back the matched merchant ID, project ID, safety environment, approval
-   reference, active Publisher login, target site, and catalog groups.
+1. Run `scripts/preflight.py <brief.json>`. Read back the matched merchant ID, project
+   ID, active Publisher login, target site, and catalog groups.
    When `catalog-design`'s proposal is still waiting for the same yes, preflight's only
    allowed failure is the groups that proposal creates: render and show the plan with
    it. After the yes and the catalog's creation, run preflight again; it must pass in
    full before apply.
    When the site needs a common layout (a new site, or one without it) and the CLI has
-   no `shopbuilder create-block`, preflight prints "the common layout needs a newer
-   Xsolla CLI; the site is built without it". Tell the user in the plan, before any
-   write: a site without the common layout won't open in the Editor, Publish or
-   private preview.
-2. If the CLI points at another merchant or project, or has sandbox mode on, switch it only
-   after the developer's yes (`nocode-shop-setup` asks in its batch), then rerun
-   preflight; never override later commands.
+   no `shopbuilder create-block`, preflight and the rendered plan's `warnings` say the site
+   is built without it and won't open in the Editor, Publish or private preview; show that
+   with the plan, before any write. The plan depends on that CLI check, so a CLI upgrade
+   between render and apply changes its confirmation ID: render again and show it.
+2. If the CLI points at another merchant or project, or has sandbox mode on, switch it to
+   the brief's project with sandbox off (`nocode-shop-setup` does this at its first
+   check), then rerun preflight; never override later commands.
 3. If the target site exists, export it before the first write with
    `scripts/backup_shop.py --brief <brief.json> --slug <slug> --output-dir <dir>`.
 4. Render with `scripts/render_plan.py <brief.json> --structure
    <backup-dir>/structure.json`, save the output as `approved-plan.json`, and show one
-   plan in plain language: each page and its sections in order, the products and offers in
+   plan in plain language: the project by name and IDs (the name from `xsolla publisher
+   list-projects`), each page and its sections in order, the products and offers in
    each, the visual direction (palette, backgrounds, artwork and where it came from), each
    page's search title, description and share image, exact block removals, the template
    sections each new page comes with that are removed (`template_removals`), catalog
    mappings (for an `__all__` section, every enabled item it pulls in, with test or
-   leftover entries flagged; disabling them goes in the catalog proposal under the same
-   yes), existing pages the theme puts on the site colors, that a preview link anyone can
+   leftover entries flagged; recommend sections of the new groups only, since disabling
+   an entry changes the live catalog at once), existing pages the theme puts on the site colors, that a preview link anyone can
    open will be created for the visual review after the build, and what is still to
    connect, with a desktop and mobile
    [mockup](references/visual-style.md#mockup-for-the-approval). Call each section by its
    block name in the [block catalog](references/block-catalog.md), such as Offer chain or
    Reward system, never by a module ID such as `sb-offer-chain`. Don't show the developer
-   module IDs or the `confirmation_id`, not even labelled as audit details. Preserve
-   configured blocks lacking replacement data. Omit `--structure` only for a new slug's
+   module IDs or the `confirmation_id` on standalone build plans, even as audit details.
+   The `block_operations` mode instead follows its local [operation-plan confirmation](references/block-operations.md#operation-plan-confirmation)
+   exception. Preserve configured blocks lacking replacement data. Omit `--structure` only for a new slug's
    bootstrap-only plan; it still shows every page and section to be built.
 5. Ask for one explicit yes to that plan before the first remote write. When
    `nocode-shop-setup` shows it in one message with a pending catalog proposal, that yes
    covers creating the catalog too. Earlier permission to "build a shop" is not that
    yes. Apply with `--approved-plan approved-plan.json --confirmation-id <its
-   confirmation_id> --approved-test-projects <allowlist>`; the script refuses an edited
-   plan file, and every script that writes needs the allowlist flag.
+   confirmation_id>`; the script refuses an edited plan file.
 
-The brief must target an acknowledged dedicated test project and match a separate
-local allowlist with exact IDs, approver, and approval reference. Never use sandbox
-as a Shop Builder target or use a partner project. Never publish, attach a production
+Never use sandbox as a Shop Builder target. Never publish, attach a production
 domain, enable live payments, or apply a saved version. A human publishes in Publisher Account.
 
 **More than one run under the yes.** A new site is applied in two runs, a run that stops
@@ -179,13 +180,14 @@ If the CLI lacks an operation, stop it, record the gap, and file a CLI/API ticke
 - Report skips, interventions, and gaps; state that the site is **not published**.
 - If the plan adds the Custom code (`html`) block, tell the user it is added empty and
   hidden: they paste their code and make the block visible in the Site Builder editor.
-  Never write HTML, CSS, or JavaScript into it.
+  Never write HTML, CSS, or JavaScript into it. A site that must match a Figma design
+  uses no custom code, and Custom Blocks only as
+  [Matching a Figma design](../nocode-shop-setup/references/figma-design.md) allows.
 
 ## Stop conditions
 
 Stop before writes when project identity is ambiguous, backup fails, confirmation is
-missing, the target is not an acknowledged dedicated test project,
-catalog/project IDs do not match, or the plan requires an unverified block module.
+missing, catalog/project IDs do not match, or the plan requires an unverified block module.
 Preserve completed safe work and explain the smallest action needed to continue.
 
 ## Known limitations
@@ -194,6 +196,9 @@ Preserve completed safe work and explain the smallest action needed to continue.
   layout. Assembly builds on it with any preset: the template's hero and daily rewards
   block stay, demo blocks are exact removals, pages it adds drop their own header and
   footer, and the shared header's links are an Editor step that names each page.
+- Every write path, Quests block operations included, stops before any write when the
+  target site is published. Unpublish it in Publisher Account first, or build on another
+  slug.
 - When the requested slug is taken elsewhere in Shop Builder, `create-website` creates
   the site under another slug; `apply_plan.py` stops and names it. The new address needs
   a new yes, so propose a distinctive slug in the plan, not a generic `<game>-shop`.

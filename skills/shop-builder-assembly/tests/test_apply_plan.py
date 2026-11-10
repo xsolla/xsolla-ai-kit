@@ -6,6 +6,7 @@ import hashlib
 import importlib.util
 import io
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -15,6 +16,8 @@ from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
+
+from block_test_support import capture_main  # noqa: E402
 
 
 def load_apply_plan():
@@ -211,8 +214,8 @@ class ApplyPlanTests(unittest.TestCase):
             self.assertIsNone(apply_plan.ensure_common_layout("shop"))
         run_json.assert_not_called()
         self.assertIn(
-            "the common layout needs a newer Xsolla CLI; the site is built without it. A site "
-            "without the common layout won't open in the Editor, Publish or private preview",
+            "The common layout needs a newer Xsolla CLI, so the site is built without it. A "
+            "site without the common layout won't open in the Editor, Publish or private preview.",
             stderr.getvalue(),
         )
 
@@ -296,11 +299,7 @@ class ApplyPlanTests(unittest.TestCase):
                 apply_plan.ensure_common_layout("shop")
 
     def test_verified_backup_requires_identity_and_matching_checksums(self) -> None:
-        expected = {
-            "merchant_id": 100,
-            "project_id": 200,
-            "environment": "test",
-        }
+        expected = {"merchant_id": 100, "project_id": 200}
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             for name in apply_plan.BACKUP_FILE_NAMES:
@@ -322,7 +321,7 @@ class ApplyPlanTests(unittest.TestCase):
             self.assertFalse(apply_plan.verified_backup(root, expected, "test-shop"))
 
     def test_verified_backup_rejects_partial_digest_manifest(self) -> None:
-        expected = {"merchant_id": 100, "project_id": 200, "environment": "test"}
+        expected = {"merchant_id": 100, "project_id": 200}
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             for name in ("structure.json", "landing.json"):
@@ -543,7 +542,7 @@ class ApplyPlanTests(unittest.TestCase):
         )
         with mock.patch.object(apply_plan.subprocess, "run", return_value=failed):
             with self.assertRaisesRegex(RuntimeError, "wrong project"):
-                apply_plan.run_preflight(Path("brief.json"), None)
+                apply_plan.run_preflight(Path("brief.json"))
 
     def test_run_json_refuses_force_before_login_or_write(self) -> None:
         with mock.patch.object(apply_plan.subprocess, "run") as run:
@@ -1217,8 +1216,9 @@ class ApplyPlanTests(unittest.TestCase):
         self.assertTrue(skipped["ok"], skipped["errors"])
         self.assertEqual(
             [
-                "the common layout needs a newer Xsolla CLI; the site is built without it. A site "
-                "without the common layout won't open in the Editor, Publish or private preview"
+                "The common layout needs a newer Xsolla CLI, so the site is built without it. A "
+                "site without the common layout won't open in the Editor, Publish or private "
+                "preview."
             ],
             skipped["warnings"],
         )
@@ -1278,7 +1278,7 @@ class FakeShopBuilderCli:
                 "data": {
                     "merchant_id": self.project["merchant_id"],
                     "project_id": self.project["project_id"],
-                    "sandbox": self.project["environment"] == "sandbox",
+                    "sandbox": False,
                 },
             }
         command = args[1]
@@ -1333,6 +1333,180 @@ class FakeShopBuilderCli:
         raise AssertionError(f"unexpected CLI call: {args}")
 
 
+class NamedEnvironmentApplyBoundary:
+    """Keep apply_plan.main real while replacing only its subprocess boundary."""
+
+    def __init__(self, cli: FakeShopBuilderCli) -> None:
+        self.cli = cli
+        self.calls: list[dict] = []
+
+    def __call__(self, command: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+        if command and command[0] == sys.executable:
+            script = next(
+                (index for index, item in enumerate(command) if Path(item).name == "preflight.py"),
+                None,
+            )
+            if script is None:
+                raise AssertionError(f"unexpected Python subprocess: {command}")
+            stdout, stderr = io.StringIO(), io.StringIO()
+            child_argv = [command[script], *command[script + 1 :]]
+            with (
+                mock.patch.object(sys, "argv", child_argv),
+                contextlib.redirect_stdout(stdout),
+                contextlib.redirect_stderr(stderr),
+            ):
+                code = preflight.main()
+            return subprocess.CompletedProcess(command, code, stdout.getvalue(), stderr.getvalue())
+        if not command or command[0] != "xsolla":
+            raise AssertionError(f"unexpected subprocess: {command}")
+        argv = list(command[1:])
+        selected = None
+        if "--environment" in argv:
+            index = argv.index("--environment")
+            selected = argv[index + 1]
+            del argv[index : index + 2]
+        argv = [arg for arg in argv if arg != "--json"]
+        environment = selected or "dev"
+        self.calls.append({"environment": environment, "explicit": selected is not None, "args": tuple(argv)})
+        if argv == ["config", "list"]:
+            config = {
+                "merchant_id": self.cli.project["merchant_id"],
+                "project_id": self.cli.project["project_id"],
+                "sandbox": environment == "dev",
+            }
+            result = {"ok": True, "data": config}
+        elif argv == ["shopbuilder", "create-block", "--help"]:
+            return subprocess.CompletedProcess(
+                command, 0, "Usage:\n  xsolla shopbuilder create-block [flags]\n", ""
+            )
+        elif argv == ["auth", "list-account"]:
+            result = {"ok": True, "data": {"accounts": [{
+                "context": "publisher", "active": True, "expired": False
+            }]}}
+        elif argv[:2] == ["catalog", "list-item-groups"]:
+            result = {"ok": True, "data": {"groups": []}}
+        else:
+            result = self.cli(*argv)
+        return subprocess.CompletedProcess(command, 0, json.dumps(result), "")
+
+
+class NamedEnvironmentRunReportTests(unittest.TestCase):
+    """Check actual approved-plan/run-report flow with a sandbox-off named env."""
+
+    def setUp(self) -> None:
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name)
+        self.home = self.root / "home"
+        self.home.mkdir()
+        self.project_dir = self.root / "project"
+        self.project_dir.mkdir()
+        self.bin = self.root / "bin"
+        self.bin.mkdir()
+        executable = self.bin / "xsolla"
+        executable.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+        executable.chmod(0o755)
+        self.config_path = self.home / ".xsolla.json"
+        self.config_path.write_text(
+            json.dumps({
+                "version": "1",
+                "default_environment": "dev",
+                "environments": {
+                    "dev": {"merchant_id": 12345, "project_id": 67890, "sandbox": True},
+                    "test": {"merchant_id": 12345, "project_id": 67890, "sandbox": False},
+                },
+            }, indent=2),
+            encoding="utf-8",
+        )
+        self.config_before = self.config_path.read_bytes()
+        self.brief = json.loads(EXAMPLE_BRIEF.read_text(encoding="utf-8"))
+        self.brief["site"]["slug"] = "named-environment-report-test"
+        self.brief["pages"] = [
+            {"name": "Home", "path": "/", "blocks": ["header", "footer"]}
+        ]
+        self.brief["catalog"] = {"groups": [], "featured_skus": []}
+        self.brief_path = self.root / "brief.json"
+        self.brief_path.write_text(json.dumps(self.brief, indent=2), encoding="utf-8")
+        self.approved = apply_plan.build_plan(self.brief)
+        self.approved_path = self.root / "approved-plan.json"
+        self.approved_path.write_text(json.dumps(self.approved, indent=2), encoding="utf-8")
+        self.cli = FakeShopBuilderCli(self.brief)
+        self.boundary = NamedEnvironmentApplyBoundary(self.cli)
+
+    def invoke(self, extra: list[str]) -> tuple[int, str, str]:
+        argv = [
+            "apply_plan.py",
+            str(self.brief_path),
+            "--approved-plan",
+            str(self.approved_path),
+            "--confirmation-id",
+            self.approved["confirmation_id"],
+            *extra,
+        ]
+        with (
+            contextlib.chdir(self.project_dir),
+            mock.patch.dict(
+                os.environ,
+                {"HOME": str(self.home), "PATH": f"{self.bin}:{os.environ.get('PATH', '')}"},
+            ),
+            mock.patch("subprocess.run", side_effect=self.boundary),
+            mock.patch.dict(apply_plan.RUN_AUTH, {"logged_in": False, "context": None}),
+        ):
+            return capture_main(apply_plan.main, argv)
+
+    def test_bootstrap_run_report_preserves_and_checks_selected_environment(self) -> None:
+        code, output, error = self.invoke([])
+        self.assertEqual(0, code, error)
+        report = json.loads(output)
+        self.assertEqual("bootstrap-complete", report["status"])
+        self.assertEqual("test", report["context"]["cli_environment"])
+        report_path = self.root / "run-report.json"
+        report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
+        before = len(self.cli.calls)
+
+        code, _, error = self.invoke(["--run-report", str(report_path)])
+        self.assertEqual(1, code)
+        self.assertIn("--backup-dir is required", error)
+        self.assertEqual(("list-websites",), self.cli.calls[-1][1:2])
+        writes = {
+            "create-website", "create-block", "set-landing-type", "add-page",
+            "add-language", "add-block", "update-block", "move-block",
+        }
+        self.assertFalse(any(call[1] in writes for call in self.cli.calls[before:]))
+        targeted = [call for call in self.boundary.calls if call["args"] != ("config", "list")]
+        self.assertTrue(targeted)
+        self.assertTrue(all(call["environment"] == "test" for call in targeted), targeted)
+        self.assertTrue(all(
+            call["explicit"] or (
+                call["environment"] == "dev" and call["args"] == ("config", "list")
+            )
+            for call in self.boundary.calls
+        ))
+        self.assertEqual(self.config_before, self.config_path.read_bytes())
+
+    def test_tampered_run_report_context_stops_before_target_reads(self) -> None:
+        code, output, error = self.invoke([])
+        self.assertEqual(0, code, error)
+        report = json.loads(output)
+        report["context"]["cli_environment"] = "staging"
+        report_path = self.root / "tampered-run-report.json"
+        report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
+        cli_calls_before = len(self.cli.calls)
+        self.boundary.calls.clear()
+
+        code, _, error = self.invoke(["--run-report", str(report_path)])
+        self.assertEqual(1, code)
+        self.assertIn("differs from the earlier run report", error)
+        writes = {
+            "create-website", "create-block", "set-landing-type", "add-page",
+            "add-language", "add-block", "update-block", "move-block",
+        }
+        self.assertFalse(any(call[1] in writes for call in self.cli.calls[cli_calls_before:]))
+        self.assertTrue(self.boundary.calls)
+        self.assertFalse(any(call["args"][:2] == ("config", "set") for call in self.boundary.calls))
+        self.assertEqual(self.config_before, self.config_path.read_bytes())
+
+
 def reconciled_landing(landing: dict, plan: dict) -> dict:
     """Return the landing as block reconciliation leaves it, keeping object paths."""
     final = copy.deepcopy(landing)
@@ -1374,7 +1548,9 @@ class ObjectPagePathTests(unittest.TestCase):
     def setUp(self) -> None:
         self.brief = json.loads(EXAMPLE_BRIEF.read_text(encoding="utf-8"))
 
-    def run_apply(self, cli: FakeShopBuilderCli, plan: dict) -> tuple[int, str, str]:
+    def run_apply(
+        self, cli: FakeShopBuilderCli, plan: dict, has_create_block: bool = True
+    ) -> tuple[int, str, str]:
         stdout, stderr = io.StringIO(), io.StringIO()
         with tempfile.TemporaryDirectory() as directory:
             argv = [
@@ -1389,7 +1565,9 @@ class ObjectPagePathTests(unittest.TestCase):
                 mock.patch.dict(apply_plan.RUN_AUTH, {"logged_in": False, "context": None}),
                 mock.patch.object(sys, "argv", argv),
                 mock.patch.object(apply_plan, "run_preflight"),
-                mock.patch.object(apply_plan, "cli_has_command", return_value=True),
+                mock.patch.object(
+                    apply_plan, "cli_has_command", return_value=has_create_block
+                ),
                 mock.patch.object(apply_plan, "run_json", side_effect=cli),
                 contextlib.redirect_stdout(stdout),
                 contextlib.redirect_stderr(stderr),
@@ -1469,10 +1647,23 @@ class ObjectPagePathTests(unittest.TestCase):
             {
                 "merchant_id": project["merchant_id"],
                 "project_id": project["project_id"],
-                "sandbox": project["environment"] == "sandbox",
+                "sandbox": False,
             },
             self.recorded_context,
         )
+
+    def test_new_landing_on_cli_without_create_block_applies_the_warned_plan(self) -> None:
+        plan = apply_plan.build_plan(self.brief, has_create_block=False)
+        self.assertIn(render_plan.LAYOUT_WARNING, plan["warnings"])
+        cli = FakeShopBuilderCli(self.brief)
+        code, stdout, stderr = self.run_apply(
+            cli, plan, has_create_block=False
+        )
+        self.assertEqual(0, code, stderr)
+        report = json.loads(stdout)
+        self.assertEqual("bootstrap-complete", report["status"])
+        self.assertIsNone(report["layout_id"])
+        self.assertNotIn("create-block", [call[1] for call in cli.calls])
 
     def test_rerun_on_object_path_landing_passes_plan_and_verify(self) -> None:
         cli = FakeShopBuilderCli(self.brief)
@@ -1725,11 +1916,6 @@ class CommonLayoutPreflightTests(unittest.TestCase):
         with (
             mock.patch.object(sys, "argv", ["preflight.py", str(EXAMPLE_BRIEF)]),
             mock.patch.object(preflight.shutil, "which", return_value="xsolla"),
-            mock.patch.object(
-                preflight,
-                "approved_test_project",
-                return_value={"approval_reference": "test approval"},
-            ),
             mock.patch.object(preflight, "run_json", side_effect=cli),
             mock.patch.object(
                 preflight, "cli_has_command", return_value=has_create_block
@@ -1745,8 +1931,8 @@ class CommonLayoutPreflightTests(unittest.TestCase):
         code, stdout, stderr, has_command = self.run_preflight(cli, has_create_block=False)
         self.assertEqual(0, code, stderr)
         self.assertIn(
-            "the common layout needs a newer Xsolla CLI; the site is built without it. A site "
-            "without the common layout won't open in the Editor, Publish or private preview",
+            "The common layout needs a newer Xsolla CLI, so the site is built without it. A "
+            "site without the common layout won't open in the Editor, Publish or private preview.",
             stderr,
         )
         self.assertEqual("skip", json.loads(stdout)["target"]["layout_step"])
@@ -1764,11 +1950,6 @@ class CommonLayoutPreflightTests(unittest.TestCase):
             with (
                 mock.patch.object(sys, "argv", ["preflight.py", str(path)]),
                 mock.patch.object(preflight.shutil, "which", return_value="xsolla"),
-                mock.patch.object(
-                    preflight,
-                    "approved_test_project",
-                    return_value={"approval_reference": "test approval"},
-                ),
                 mock.patch.object(preflight, "run_json", side_effect=FakePreflightCli()),
                 mock.patch.object(preflight, "cli_has_command", return_value=True),
                 contextlib.redirect_stdout(stdout),
@@ -1794,6 +1975,37 @@ class CommonLayoutPreflightTests(unittest.TestCase):
         target = json.loads(stdout)["target"]
         self.assertIsNone(target["common_layout_id"])
         self.assertEqual("create", target["layout_step"])
+
+    def test_a_published_site_stops_before_the_catalog_read(self) -> None:
+        site = {"pages": [], "layouts": [], "blocks": [], "published": True}
+        cli = FakePreflightCli(site)
+        code, stdout, stderr, _ = self.run_preflight(cli, has_create_block=True)
+        self.assertEqual(1, code)
+        self.assertEqual("", stdout)
+        self.assertIn("the target site is published", stderr)
+        self.assertNotIn(("catalog", "list-item-groups", "--project-id", "67890"), cli.calls)
+
+    def test_a_non_test_environment_in_the_brief_is_a_plan_warning(self) -> None:
+        brief = json.loads(EXAMPLE_BRIEF.read_text(encoding="utf-8"))
+        self.assertFalse(
+            any("marks this project" in w for w in render_plan.build_plan(brief)["warnings"])
+        )
+        for environment in ("test", "production"):
+            brief["project"]["environment"] = environment
+            warnings = render_plan.build_plan(brief)["warnings"]
+            self.assertEqual(
+                environment == "production",
+                any("marks this project as 'production'" in w for w in warnings),
+                environment,
+            )
+
+    def test_published_state_is_read_from_the_site(self) -> None:
+        for value, published in ((None, False), (False, False), (True, True), (1, True)):
+            with self.subTest(value=value):
+                self.assertEqual(published, apply_plan.is_published({"published": value}))
+        apply_plan.refuse_published({"published": None})
+        with self.assertRaisesRegex(RuntimeError, "Nothing was written"):
+            apply_plan.refuse_published({"published": True})
 
     def test_existing_site_without_common_layout_skips_without_create_block(self) -> None:
         site = {"pages": [], "layouts": ["side-id"], "blocks": ["side-id"]}
@@ -1943,7 +2155,12 @@ class PublisherTemplateSiteTests(unittest.TestCase):
         cli.landing, cli.site_modules = publisher_template_site(self.brief, own_header)
         return cli
 
-    def run_render(self, site: dict) -> tuple[int, str, str]:
+    def run_render(
+        self,
+        site: dict,
+        has_create_block: bool = True,
+        cli: FakeShopBuilderCli | None = None,
+    ) -> tuple[int, str, str]:
         stdout, stderr = io.StringIO(), io.StringIO()
         with tempfile.TemporaryDirectory() as directory:
             structure_path = Path(directory) / "structure.json"
@@ -1951,8 +2168,14 @@ class PublisherTemplateSiteTests(unittest.TestCase):
                 json.dumps({"ok": True, "data": site}), encoding="utf-8"
             )
             argv = ["render_plan.py", str(EXAMPLE_BRIEF), "--structure", str(structure_path)]
+            # render_plan.main() imports its CLI helpers from preflight when it runs.
             with (
                 mock.patch.object(sys, "argv", argv),
+                mock.patch("preflight.cli_has_command", return_value=has_create_block),
+                mock.patch(
+                    "preflight.run_json",
+                    side_effect=cli or AssertionError("unexpected CLI call"),
+                ),
                 contextlib.redirect_stdout(stdout),
                 contextlib.redirect_stderr(stderr),
             ):
@@ -1988,6 +2211,7 @@ class PublisherTemplateSiteTests(unittest.TestCase):
                 mock.patch.dict(apply_plan.RUN_AUTH, {"logged_in": False, "context": None}),
                 mock.patch.object(sys, "argv", argv),
                 mock.patch.object(apply_plan, "run_preflight"),
+                mock.patch.object(apply_plan, "cli_has_command", return_value=True),
                 mock.patch.object(apply_plan, "run_json", side_effect=cli),
                 mock.patch.object(apply_plan, "verified_backup", return_value=True),
                 mock.patch.object(apply_plan, "backup_structure", return_value=saved),
@@ -2050,6 +2274,17 @@ class PublisherTemplateSiteTests(unittest.TestCase):
         self.assertEqual(0, code, stderr)
         self.assertEqual("implemented-phases-applied", json.loads(stdout)["status"])
         self.assertEqual(["/"], [call.args[2]["path"] for call in reconcile.call_args_list])
+
+    def test_render_on_cli_without_create_block_finds_the_layout_by_get_block(self) -> None:
+        cli = self.fake_cli(own_header=True)
+        code, stdout, stderr = self.run_render(cli.landing, has_create_block=False, cli=cli)
+        self.assertEqual(0, code, stderr)
+        self.assertNotIn(render_plan.LAYOUT_WARNING, json.loads(stdout)["warnings"])
+        slug = self.brief["site"]["slug"]
+        self.assertEqual(
+            [("shopbuilder", "get-block", "--slug", slug, "--block-id", "layout-1")],
+            cli.calls,
+        )
 
     def test_header_source_rules(self) -> None:
         site, _ = publisher_template_site(self.brief)
@@ -2466,6 +2701,8 @@ class OneApprovalTests(unittest.TestCase):
             stderr = io.StringIO()
             with (
                 mock.patch.object(sys, "argv", argv),
+                # render_plan.main() imports its CLI helpers from preflight when it runs.
+                mock.patch("preflight.cli_has_command", return_value=True),
                 contextlib.redirect_stdout(io.StringIO()),
                 contextlib.redirect_stderr(stderr),
             ):
