@@ -59,7 +59,7 @@ The plan runs against the backup structure and rejects these before confirmation
 
 | Op | Effect |
 |---|---|
-| `add` | Create a federated Quests wrapper from the selected pin's defaults, with its own default localized texts. Default index is 0; explicit index chooses the position. |
+| `add` | Create a federated Quests wrapper from the pinned version's defaults. Shop Builder gives each default text an `L:` id but saves no text, so apply then writes every default text (heading, statuses, buttons, pagination) for each enabled locale the defaults have, and fails the run if any reads back empty. Default index is 0; explicit index chooses the position. |
 | `update` values | Replace named leaves only. Create an absent parent object first, never overwrite an existing parent or whole values map. A leaf under a missing parent can return 200 while being ignored. |
 | `update` title/description | Update the plain field and any valid editor localization ref for every site locale; warn that editor text is replaced. |
 | `reset` | Remove selected leaves, skip absent ones; title/description reset also removes its matching ref. |

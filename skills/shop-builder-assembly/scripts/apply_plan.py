@@ -718,7 +718,87 @@ def add_quests_block(item: dict, ctx: ApplyContext) -> dict:
             "federated wrapper (empty blockId) in the Site Builder editor before "
             "retrying"
         ) from exc
+    seed_default_texts(ctx, block_id, page_id, defaults)
     return {"block_id": block_id}
+
+
+def default_texts(block: dict, defaults: dict) -> dict[str, dict[str, str]]:
+    """Default text per locale for every `translations.<key>` of a new block.
+
+    Shop Builder turns each CDN inline descriptor into an `L:` id but saves no text for
+    it, so the block's headings, statuses and buttons render empty until these are
+    written. Returns ``{text_id: {locale: text}}``.
+    """
+    translations = (
+        ((block.get("values") or {}).get("internalBlockValues") or {}).get("translations") or {}
+    )
+    descriptors = (defaults.get("resources") or {}).get("localizedValues") or {}
+    texts: dict[str, dict[str, str]] = {}
+    for key, short in translations.items():
+        descriptor = (descriptors.get(short) or {}).get("texts") or {}
+        strings = descriptor.get("localizedString") or {}
+        by_locale = {
+            locale: text for locale, text in strings.items() if isinstance(text, str) and text
+        }
+        if by_locale:
+            texts[text_localization_id(block, key)] = by_locale
+    return texts
+
+
+def seed_default_texts(ctx: ApplyContext, block_id: str, page_id: str, defaults: dict) -> None:
+    """Write the new block's default texts into the site localization, then read them back."""
+    current = structure(ctx.slug)
+    found = find_block(current, block_id)
+    if found is None:
+        raise RuntimeError(f"block {block_id} is no longer on the site")
+    texts = default_texts(found[2], defaults)
+    languages = current.get("languages") or []
+    locales = sorted({locale for by_locale in texts.values() for locale in by_locale} & set(languages))
+    if texts and not locales:
+        raise RuntimeError(
+            f"new block {block_id}: its default texts are in "
+            f"{sorted({l for b in texts.values() for l in b})}, none enabled on {ctx.slug}"
+        )
+    localization = run_json("shopbuilder", "get-localization", "--slug", ctx.slug)
+    for locale in locales:
+        per_scope: dict[str, dict] = {}
+        for text_id, by_locale in texts.items():
+            if locale in by_locale:
+                scope = localization_scope(localization, text_id, page_id)
+                per_scope.setdefault(scope, {})[text_id] = {"translation": by_locale[locale]}
+        payload = {"locale": locale, "perScopeValues": per_scope}
+        run_json(
+            "shopbuilder",
+            "update-many-localization",
+            "--slug",
+            ctx.slug,
+            "--data",
+            json.dumps(payload, sort_keys=True, separators=(",", ":")),
+        )
+    saved = data(run_json("shopbuilder", "get-localization", "--slug", ctx.slug))
+    missing = sorted(
+        text_id
+        for text_id, by_locale in texts.items()
+        for locale in locales
+        if locale in by_locale and not localized_text(saved, text_id, locale)
+    )
+    if missing:
+        raise RuntimeError(
+            f"new block {block_id}: {len(missing)} default texts did not save "
+            f"(first: {missing[0]}); its buttons and statuses would render empty"
+        )
+
+
+def localized_text(localization: object, text_id: str, locale: str) -> str:
+    """Saved text for ``text_id`` in ``locale``, or '' when there is none."""
+    value = localization if isinstance(localization, dict) else {}
+    namespaces = [value.get("common") or {}, *(value.get("pages") or {}).values()]
+    for namespace in namespaces:
+        entry = (namespace.get("texts") or {}).get(text_id)
+        if isinstance(entry, dict):
+            text = (entry.get("translations") or {}).get(locale)
+            return text if isinstance(text, str) else ""
+    return ""
 
 
 def apply_values(item: dict, ctx: ApplyContext) -> dict:

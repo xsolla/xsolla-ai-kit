@@ -259,8 +259,8 @@ class FakeSite:
         for key, descriptor in list(descriptors.items()):
             self.counter += 1
             text_id = f"L:minted-{self.counter}"
-            strings = descriptor["texts"].get("localizedString", {})
-            self.texts[text_id] = {"description": key, "translations": dict(strings)}
+            # Like Shop Builder: the descriptor becomes an id, but its text is not saved.
+            self.texts[text_id] = {"description": key, "translations": {}}
             descriptors[key] = {"texts": {"enable": True, "id": text_id}}
 
     def cmd_update_many_localization(self, options: dict) -> object:
@@ -1104,6 +1104,7 @@ class BlockAddTests(BlockOpsApplyBase):
                 "add-block",
                 "update-block",  # retarget the wrapper
                 "update-block",  # devName
+                "update-many-localization",  # default texts
                 "update-block",  # leaf values
                 "update-many-localization",
             ],
@@ -1126,6 +1127,19 @@ class BlockAddTests(BlockOpsApplyBase):
         self.assertEqual("Quests", self.site.find(new_id)["devName"])
         self.assertEqual(0, self.site.noop_patches)
         self.assertEqual([], self.verify(plan, refs))
+        heading_id = values["resources"]["localizedValues"]["L:short-heading"]["texts"]["id"]
+        self.assertTrue(self.site.texts[heading_id]["translations"]["en-US"])
+        self.site.texts[heading_id]["translations"] = {}
+        self.assertTrue(any("no saved text" in e for e in self.verify(plan, refs)))
+
+    def test_add_fails_loudly_when_default_texts_do_not_save(self) -> None:
+        original = self.site.cmd_update_many_localization
+        self.site.cmd_update_many_localization = lambda options: {"ok": True}
+        try:
+            with self.assertRaisesRegex(RuntimeError, "default texts did not save"):
+                self.apply([self.ADD])
+        finally:
+            self.site.cmd_update_many_localization = original
 
     def test_add_at_index_zero_omits_index_and_corrects_position(self) -> None:
         operations = [dict(self.ADD, index=0)]
