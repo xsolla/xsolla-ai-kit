@@ -4,6 +4,7 @@ from __future__ import annotations
 import io
 import json
 import sys
+import tempfile
 import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
@@ -163,10 +164,9 @@ class LookupCompletenessTests(unittest.TestCase):
         self.creds = mock.Mock(merchant_id="1", project_id="2")
         for name, replacement in (
             ("resolve_credentials", mock.Mock(return_value=self.creds)),
-            ("build_url", mock.Mock(return_value="https://example.invalid/quests")),
-            ("send", mock.Mock()),
+            ("get_quests_page", mock.Mock()),
         ):
-            patcher = mock.patch.object(qbs.qp_request, name, replacement)
+            patcher = mock.patch.object(qbs, name, replacement)
             setattr(self, name, patcher.start())
             self.addCleanup(patcher.stop)
 
@@ -187,10 +187,10 @@ class LookupCompletenessTests(unittest.TestCase):
             if page == 0:
                 records[0] = QUESTS["q-a"]
                 records[1] = QUESTS["q-b"]
-            pages.append({"ok": True, "body": {"data": records, "total": 300}})
-        self.send.side_effect = pages
+            pages.append({"data": records, "total": 300})
+        self.get_quests_page.side_effect = pages
         lookup = qbs.fetch_quests("1", "2")
-        self.assertEqual(self.send.call_count, 5)
+        self.assertEqual(self.get_quests_page.call_count, 5)
         result = self.summarize_lookup(lookup)
         self.assertEqual(result["quest_names"], "partial")
         self.assertFalse(lookup.complete)
@@ -204,14 +204,14 @@ class LookupCompletenessTests(unittest.TestCase):
         self.assertTrue(cards[0]["found"])
         self.assertFalse(cards[0]["public"])
         self.assertEqual(
-            [call.args[1].split("?")[1] for call in self.send.call_args_list],
-            [f"page={page}&limit=50" for page in range(1, 6)],
+            [call.args[1] for call in self.get_quests_page.call_args_list],
+            list(range(1, 6)),
         )
 
     def test_complete_empty_lookup_confirms_missing_cards(self) -> None:
-        self.send.return_value = {"ok": True, "body": {"data": [], "total": 0}}
+        self.get_quests_page.return_value = {"data": [], "total": 0}
         lookup = qbs.fetch_quests("1", "2")
-        self.assertEqual(self.send.call_count, 1)
+        self.assertEqual(self.get_quests_page.call_count, 1)
         self.assertTrue(lookup.complete)
         self.assertEqual(lookup.quests, {})
         result = self.summarize_lookup(lookup)
@@ -221,21 +221,18 @@ class LookupCompletenessTests(unittest.TestCase):
         self.assertFalse(missing["public"])
 
     def test_exact_budget_total_is_complete(self) -> None:
-        self.send.return_value = {"ok": True, "body": {"data": [], "total": 250}}
+        self.get_quests_page.return_value = {"data": [], "total": 250}
         lookup = qbs.fetch_quests("1", "2")
-        self.assertEqual(self.send.call_count, 5)
+        self.assertEqual(self.get_quests_page.call_count, 5)
         self.assertTrue(lookup.complete)
 
     def test_missing_or_mismatched_access_makes_no_requests(self) -> None:
         for missing in (True, False):
             with self.subTest(missing=missing):
-                self.resolve_credentials.side_effect = (
-                    qbs.qp_request.Refusal("access_not_configured") if missing else None
-                )
+                self.resolve_credentials.return_value = None if missing else self.creds
                 self.creds.project_id = "other-project"
                 self.assertIsNone(qbs.fetch_quests("1", "2"))
-                self.build_url.assert_not_called()
-                self.send.assert_not_called()
+                self.get_quests_page.assert_not_called()
         result = self.summarize_lookup(None)
         self.assertEqual(result["quest_names"], "unavailable")
         for card in result["blocks"][0]["quests"]:
@@ -245,10 +242,10 @@ class LookupCompletenessTests(unittest.TestCase):
     def test_non_numeric_total_is_unavailable(self) -> None:
         for total in ("many", [1], {"n": 1}):
             with self.subTest(total=total):
-                self.send.reset_mock()
-                self.send.return_value = {"ok": True, "body": {"data": [], "total": total}}
+                self.get_quests_page.reset_mock()
+                self.get_quests_page.return_value = {"data": [], "total": total}
                 self.assertIsNone(qbs.fetch_quests("1", "2"))
-                self.assertEqual(self.send.call_count, 1)
+                self.assertEqual(self.get_quests_page.call_count, 1)
 
     def test_cli_output_is_decoded_as_utf8(self) -> None:
         completed = qbs.subprocess.CompletedProcess([], 0, stdout='{"ok": true}', stderr="")
@@ -257,12 +254,12 @@ class LookupCompletenessTests(unittest.TestCase):
         self.assertEqual("utf-8", run.call_args.kwargs["encoding"])
 
     def test_failed_page_is_unavailable_without_retry(self) -> None:
-        self.send.side_effect = [
-            {"ok": True, "body": {"data": [QUESTS["q-a"]], "total": 300}},
-            {"ok": False, "status": 403},
+        self.get_quests_page.side_effect = [
+            {"data": [QUESTS["q-a"]], "total": 300},
+            None,
         ]
         self.assertIsNone(qbs.fetch_quests("1", "2"))
-        self.assertEqual(self.send.call_count, 2)
+        self.assertEqual(self.get_quests_page.call_count, 2)
 
 
 class MainTest(unittest.TestCase):
@@ -363,6 +360,36 @@ class FindSiteTest(unittest.TestCase):
         code, result, _ = self.run_find({}, listing_ok=False)
         self.assertEqual(code, 1)
         self.assertEqual(result, {"ok": False, "error": "site_list_failed"})
+
+
+
+class CredentialLoadingTests(unittest.TestCase):
+    COMPLETE = {"XSOLLA_MERCHANT_ID": "7", "XSOLLA_PROJECT_ID": "42", "XSOLLA_PROJECT_API_KEY": "k"}
+
+    def test_environment_wins_and_sets_are_never_mixed(self) -> None:
+        with tempfile.TemporaryDirectory() as folder:
+            Path(folder, ".env").write_text(
+                "XSOLLA_MERCHANT_ID=1\nexport XSOLLA_PROJECT_ID='2'\nXSOLLA_PROJECT_API_KEY=\"file\"\n",
+                encoding="utf-8",
+            )
+            from_env = qbs.resolve_credentials(self.COMPLETE, Path(folder))
+            self.assertEqual((from_env.merchant_id, from_env.project_id), ("7", "42"))
+            partial = {"XSOLLA_MERCHANT_ID": "7"}
+            from_file = qbs.resolve_credentials(partial, Path(folder))
+            self.assertEqual((from_file.merchant_id, from_file.project_id), ("1", "2"))
+
+    def test_incomplete_or_non_numeric_ids_are_not_access(self) -> None:
+        with tempfile.TemporaryDirectory() as folder:
+            self.assertIsNone(qbs.resolve_credentials({}, Path(folder)))
+            bad = dict(self.COMPLETE, XSOLLA_PROJECT_ID="42/../1")
+            self.assertIsNone(qbs.resolve_credentials(bad, Path(folder)))
+
+    def test_the_key_never_shows_in_repr(self) -> None:
+        creds = qbs.resolve_credentials(dict(self.COMPLETE, XSOLLA_PROJECT_API_KEY="SENTINEL"), Path("."))
+        self.assertNotIn("SENTINEL", repr(creds))
+
+    def test_a_redirect_is_not_followed(self) -> None:
+        self.assertIsNone(qbs._NoRedirect().redirect_request(None, None, 302, "Found", {}, "https://example.invalid/"))
 
 
 if __name__ == "__main__":

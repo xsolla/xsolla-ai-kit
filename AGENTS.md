@@ -105,7 +105,7 @@ Setup by `merchant-setup` skill.
 
 Each API's authentication format is specific to that API. Quest Platform
 publisher Basic authentication is documented in
-`skills/quest-setup/references/qp-api-contract.md`.
+`skills/quest-setup/references/auth-credentials.md`.
 
 ---
 

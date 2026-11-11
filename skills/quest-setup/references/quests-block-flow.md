@@ -40,7 +40,7 @@ Check each one and stop with the smallest missing action when it fails.
 - **Shop Builder site** exists in the publisher's project and is unpublished.
   Creating the site itself is the gate's flow.
 - **Scope.** The merchant and project for the Quest Platform calls come from the
-  same resolved credential as in
+  configured access in
   [`auth-credentials.md`](auth-credentials.md#credential). The block reads
   quests for the merchant and project of the site it sits on, so the Quest Platform
   project must be the one the site belongs to. If that mapping is unclear, follow
@@ -179,13 +179,13 @@ Cards read their content from each quest's public view:
 A quest appears to anonymous visitors only when it is public: `is_public: true`.
 `public_view` is optional. When it is empty, the card uses the quest's default view
 (quest name, description and rewards), so never add a `public_view` only to pass this
-check. Set `is_public` through the edit flow in [`quest-edit.md`](quest-edit.md#editing)
-(read, change, full `PUT`, before/after diff, one approval, read back).
+check. Set `is_public` as a quest change: read the quest, show before and after, one approval, save
+the whole quest, read it back.
 
 A `public_view` replaces the default view, and the card reads only from it. Add one only when the
 publisher wants custom card text or an image. For a Web3 quest, send the full view below every time:
 without the reward references, the card loses its reward row and its See in Backpack button
-([Card rewards](rewards.md#card-rewards-on-the-quests-block)).
+([Card rewards](#card-rewards-on-the-quests-block)).
 
 ```json
 {"name": {"$ref": "quest.name"}, "description": {"$ref": "quest.description"}, "image_url": "https://...", "rewards": {"$ref": "reward.<node id>.items"}, "reward_type": {"$ref": "reward.<node id>.type"}}
@@ -214,7 +214,7 @@ image. If the publisher has none, leave it empty and the card shows its neutral 
 
 A quest triggered by an event the Quests block sends (`login_xsolla_id`, `daily_visit`,
 `weekly_visit`) must set `client_sendable: true` on its trigger, or the block's event is refused
-with 403. See [node-subtypes](node-subtypes.md#dynamic_event-client_sendable).
+with 403. See [Events the Quests block sends](#events-the-quests-block-sends).
 
 If the read-back does not show `is_public: true` (and the `public_view` you set, if any), stop and report that.
 
@@ -262,9 +262,9 @@ mention it in one bullet and offer the fix as its own quest edit, after the curr
    one approval. A quest created in this flow is created public: send `is_public: true`
    in its create body and show "Shown to everyone" in the create proposal, so no second
    edit is needed. A missing `public_view` alone is not a reason to edit or stop. Stop if
-   a quest is not found or the read-back does not show `is_public: true`. An `active`
-   quest's `PUT` re-checks its dates ([dates on edit](quest-edit.md#editing)); put any
-   date move in this same proposal, never a plan the server will reject.
+   a quest is not found or the read-back does not show `is_public: true`. Sending a
+   running quest back with its stored start date is accepted; put a date change, if the
+   publisher wants one, in this same proposal.
 3. **Build the brief.** For an appearance request, first follow
    [appearance](quests-block-appearance.md) and give the recommendation with its measured
    evidence. Turn only the agreed settings and defaults into `block_operations`.
@@ -334,3 +334,46 @@ Stop on any failed prerequisite, public/readback check, unsupported setting or m
 confirmation. Keep completed safe work; state the smallest next action. Site creation,
 production sites, publishing/domains, other site changes and delivery claims remain out
 of scope. [Reply examples](reply-format.md#examples) own refusals and localized/delete outcomes.
+
+## Events the Quests block sends
+
+The Quests block (0.2.22) sends three events itself for a signed-in player, from the browser with
+the player's token. On a site with the block they are real events a quest can react to:
+
+| Event | When | A request for |
+|---|---|---|
+| `login_xsolla_id` | Once per session | "first sign-in", "login" |
+| `daily_visit` | Once per UTC day | "daily login" |
+| `weekly_visit` | Once per ISO week | "weekly login" |
+
+- The quest's trigger is a `dynamic_event` with that exact name and `client_sendable: true`.
+- These events name the player by the identifiers of their token. A reward that needs the game's
+  own player ID can only be paid when the token carries one: say so next to that option.
+- Never write `autoEvents` or `loginEventName` on the block: the gate cannot write them. The block
+  sends its events once the player is signed in.
+- "Add a login event" never changes an existing quest. List the quests first, say which already
+  react to a login event (name, event, status), and ask one question: a new quest, or edit that
+  one. Never rename the event of a running quest.
+- For an event sent from anywhere else, use the name the publisher's site or backend really sends.
+  Never infer one from a quest title.
+
+## Card rewards on the Quests block
+
+The card shows a reward only from `view.rewards` of the public quest. The server builds that list
+itself, one entry per reward, and only when the quest has no `public_view` (or it is `{}`). A
+`public_view` takes no arrays, so the skill never writes a rewards list.
+
+- **Web3 item, default view.** Leave `public_view` out when the card must show its reward. Each
+  entry has `type` (`web3_item`), `quantity`, and the item's `name`, `description` and `image_url`.
+  The card's title and description come from the quest.
+- **Every other reward.** Check what the public read returns: when an entry's `name` and
+  `image_url` are null, the card shows no reward without a `public_view`. Write the
+  [static-reward view](#quest-public-view) with the reward's name and image from the catalog read
+  (`reward_name`, `reward_image_url`, and `reward_type`, `inventory_item` for a Backpack item, which
+  keeps the See in Backpack button). Never promise a card reward you did not put there.
+- **Custom view.** A `public_view` replaces the default view. For a Web3 quest set it only in full,
+  with the reward references from [Quest public view](#quest-public-view), or the card loses its
+  reward row and its See in Backpack button.
+- **Proposal.** Show each card reward as a "Card reward" line: name, SKU, quantity and image.
+- **Read-back.** Read the project's public quest list (it needs no credential) and check each
+  reward's name and image there. A missing one is reported, never called fine.
