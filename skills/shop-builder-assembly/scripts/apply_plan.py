@@ -49,6 +49,7 @@ from block_ops import (
     QUESTS_DEV_NAME,
     QUESTS_MODULE,
     QUESTS_VERSION,
+    QUESTS_VERSION_RE,
     card_text_ref,
     find_block,
     has_leaf,
@@ -497,6 +498,7 @@ OPS_APPLY_SUPPORTED = {
     "block_move",
     "block_duplicate",
     "block_visibility",
+    "block_seed_texts",
     "block_localization",
     "block_card_text",
 }
@@ -718,7 +720,92 @@ def add_quests_block(item: dict, ctx: ApplyContext) -> dict:
             "federated wrapper (empty blockId) in the Site Builder editor before "
             "retrying"
         ) from exc
+    seed_default_texts(ctx, block_id, page_id, defaults)
     return {"block_id": block_id}
+
+
+def default_texts(block: dict, defaults: dict) -> dict[str, dict[str, str]]:
+    """Default text per locale for every `translations.<key>` of a new block.
+
+    Shop Builder turns each CDN inline descriptor into an `L:` id but saves no text for
+    it, so the block's headings, statuses and buttons render empty until these are
+    written. Returns ``{text_id: {locale: text}}``.
+    """
+    translations = (
+        ((block.get("values") or {}).get("internalBlockValues") or {}).get("translations") or {}
+    )
+    descriptors = (defaults.get("resources") or {}).get("localizedValues") or {}
+    texts: dict[str, dict[str, str]] = {}
+    for key, short in translations.items():
+        descriptor = (descriptors.get(short) or {}).get("texts") or {}
+        strings = descriptor.get("localizedString") or {}
+        by_locale = {
+            locale: text for locale, text in strings.items() if isinstance(text, str) and text
+        }
+        if by_locale:
+            texts[text_localization_id(block, key)] = by_locale
+    return texts
+
+
+def seed_default_texts(ctx: ApplyContext, block_id: str, page_id: str, defaults: dict) -> None:
+    """Write the new block's default texts into the site localization, then read them back."""
+    current = structure(ctx.slug)
+    found = find_block(current, block_id)
+    if found is None:
+        raise RuntimeError(f"block {block_id} is no longer on the site")
+    texts = default_texts(found[2], defaults)
+    languages = current.get("languages") or []
+    locales = sorted({locale for by_locale in texts.values() for locale in by_locale} & set(languages))
+    if texts and not locales:
+        raise RuntimeError(
+            f"new block {block_id}: its default texts are in "
+            f"{sorted({l for b in texts.values() for l in b})}, none enabled on {ctx.slug}"
+        )
+    localization = run_json("shopbuilder", "get-localization", "--slug", ctx.slug)
+    for locale in locales:
+        per_scope: dict[str, dict] = {}
+        for text_id, by_locale in texts.items():
+            # Never overwrite a text that is already saved (a publisher's own edit).
+            if locale in by_locale and not localized_text(data(localization), text_id, locale):
+                scope = localization_scope(localization, text_id, page_id)
+                per_scope.setdefault(scope, {})[text_id] = {"translation": by_locale[locale]}
+        if not per_scope:
+            continue
+        payload = {"locale": locale, "perScopeValues": per_scope}
+        run_json(
+            "shopbuilder",
+            "update-many-localization",
+            "--slug",
+            ctx.slug,
+            "--data",
+            json.dumps(payload, sort_keys=True, separators=(",", ":")),
+        )
+    saved = data(run_json("shopbuilder", "get-localization", "--slug", ctx.slug))
+    missing = sorted(
+        text_id
+        for text_id, by_locale in texts.items()
+        for locale in locales
+        if locale in by_locale and not localized_text(saved, text_id, locale)
+    )
+    if missing:
+        raise RuntimeError(
+            f"block {block_id}: {len(missing)} default texts did not save "
+            f"(first: {missing[0]}); its buttons and statuses would render empty. "
+            f"Retry only the texts with a plan holding "
+            f'{{"op": "seed_texts", "block_id": "{block_id}"}}; never add the block again'
+        )
+
+
+def localized_text(localization: object, text_id: str, locale: str) -> str:
+    """Saved text for ``text_id`` in ``locale``, or '' when there is none."""
+    value = localization if isinstance(localization, dict) else {}
+    namespaces = [value.get("common") or {}, *(value.get("pages") or {}).values()]
+    for namespace in namespaces:
+        entry = (namespace.get("texts") or {}).get(text_id)
+        if isinstance(entry, dict):
+            text = (entry.get("translations") or {}).get(locale)
+            return text if isinstance(text, str) else ""
+    return ""
 
 
 def apply_values(item: dict, ctx: ApplyContext) -> dict:
@@ -894,6 +981,16 @@ def apply_block_operation(item: dict, ctx: ApplyContext) -> dict:
         done = apply_move(item, ctx)
     elif kind == "block_duplicate":
         done = apply_duplicate(item, ctx)
+    elif kind == "block_seed_texts":
+        page, _, block = current_block(ctx, item["block_id"])
+        version = (block.get("values") or {}).get("version")
+        if not isinstance(version, str) or not QUESTS_VERSION_RE.fullmatch(version):
+            raise RuntimeError(
+                f"block {item['block_id']} reports version {version!r}, which is not a "
+                "Quests block version; its default texts were not fetched"
+            )
+        seed_default_texts(ctx, item["block_id"], page["_id"], fetch_quests_defaults(version))
+        done = {"block_id": item["block_id"]}
     elif kind == "block_visibility":
         current_block(ctx, item["block_id"])
         set_block_hidden(item["block_id"], item["hidden"], landing_id=ctx.landing_id)
@@ -905,6 +1002,45 @@ def apply_block_operation(item: dict, ctx: ApplyContext) -> dict:
     else:
         raise RuntimeError(f"unknown block operation {kind}")
     return {"type": kind, "op_index": item["op_index"], **done}
+
+
+_VERIFIED_CHECKS = {
+    "block_add": [
+        "Quests module and version",
+        "devName",
+        "default texts saved in at least one locale",
+        "page order",
+    ],
+    "block_values": ["each leaf reads back equal"],
+    "block_reset": ["each leaf removed"],
+    "block_move": ["page order"],
+    "block_duplicate": ["page order"],
+    "block_visibility": ["hidden flag"],
+    "block_localization": ["heading text per locale"],
+    "block_card_text": ["card text per locale"],
+    "block_seed_texts": ["default texts saved in at least one locale"],
+}
+
+
+def verification_summary(plan: dict, applied: list[dict]) -> list[dict]:
+    """What the readback checked for each confirmed item, for comparison with the plan.
+
+    Every other block on a touched page is also checked unchanged against its backup digest.
+    """
+    by_index = {item.get("op_index"): item for item in applied}
+    summary = []
+    for item in plan.get("block_operations") or []:
+        entry = {
+            "op_index": item["op_index"],
+            "type": item["type"],
+            "block_id": (by_index.get(item["op_index"]) or {}).get("block_id")
+            or item.get("block_id"),
+            "checked": list(_VERIFIED_CHECKS.get(item["type"], [])),
+        }
+        if item["type"] in ("block_values", "block_reset"):
+            entry["keys"] = [patch["key"] for patch in item.get("patches") or []]
+        summary.append(entry)
+    return summary
 
 
 def run_block_operations(
@@ -1841,6 +1977,7 @@ def _main() -> int:
                             expected["merchant_id"], expected["project_id"], slug
                         ),
                         "applied": applied,
+                        "verified": verification_summary(plan, applied),
                     },
                     indent=2,
                 )

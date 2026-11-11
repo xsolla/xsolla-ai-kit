@@ -232,6 +232,12 @@ class QuestsSettingsIntegrationTests(unittest.TestCase):
         self.assertEqual("block-operations-applied", report["status"])
         self.assertEqual(approved["confirmation_id"], report["approved_confirmation_id"])
         self.assertEqual(
+            [{"op_index": 0, "type": "block_values", "block_id": "quests-1",
+              "checked": ["each leaf reads back equal"],
+              "keys": ["themeAppearance.site-builder.cardAlign"]}],
+            report["verified"],
+        )
+        self.assertEqual(
             "https://publisher.xsolla.com/12/projects/34/site-builder/my-test-site/editor",
             report["editor_url"],
         )

@@ -83,7 +83,8 @@ brand inputs, bounds, limitations and the publisher's choice before a write.
 ## Operations
 
 Operations go in the brief's `block_operations` list and run in order. The brief
-needs `version`, `project` (`merchant_id`, `project_id`),
+needs `version`, `project` (`merchant_id`, `project_id`, integers; numeric strings are
+accepted and converted),
 `site.slug` and `block_operations`. Nothing else is
 allowed: the gate rejects any other top-level key (`game`, `catalog`, `content`,
 `brand`, `sources`), any other `project` key and any `site` key but `slug`. Fill real
@@ -107,6 +108,7 @@ acknowledgement flag.
 | Reposition the block on its page | `move` |
 | Copy a block | `duplicate` |
 | Hide or show a block | `hide`, `show` |
+| Fill a block's empty default texts after a failed add | `seed_texts` (never a second `add`) |
 | Remove or delete a block | none: `needs_human`, offer `hide` (see below) |
 
 Every new block, themed or not, is added with an explicit `version` equal to the one in
@@ -207,7 +209,7 @@ the site changed in the meantime, and show the new plan for a new "yes".
   and must not carry user credentials (`user:password@host`). If the publisher gives an
   `http` URL or one with credentials, stop with the rejected-value shape before any plan
   or brief. Never change http to https or otherwise modify a URL the publisher gave, and
-  never build a plan with it. The request script rejects it with "https only". Ask for an https image URL or a media library image instead.
+  never build a plan with it. Ask for an https image URL or a media library image instead.
 - `index` is a position on the page, counted from 0, against the page as it is when
   that operation runs: earlier `add` and `duplicate` ops on the same page count. `add`
   and `duplicate` take 0 to the current block count (the count is the end of the page);

@@ -28,8 +28,9 @@ Loaded for a Quests block request on a Shop Builder site. Settings and the opera
 7. **Sandbox stop.** [Gate commands](quests-block-brief.md#gate-commands) owns the
    sandbox check: while the CLI has sandbox on, preflight stops and no site work begins.
 8. **Unpublished sites only.** The gate never writes to a published site: apply stops
-   before any write. When the publisher says the site is published, or apply stops on
-   it, render no plan and reply with the [published-site shape](reply-format.md#examples).
+   before any write. The block summary's `published` is the read that tells: when it is
+   `true`, when the publisher says the site is published, or when apply stops on it,
+   render no plan and reply with the [published-site shape](reply-format.md#examples).
 
 ## Prerequisites
 
@@ -39,7 +40,7 @@ Check each one and stop with the smallest missing action when it fails.
 - **Shop Builder site** exists in the publisher's project and is unpublished.
   Creating the site itself is the gate's flow.
 - **Scope.** The merchant and project for the Quest Platform calls come from the
-  same resolved credential as in
+  configured access in
   [`auth-credentials.md`](auth-credentials.md#credential). The block reads
   quests for the merchant and project of the site it sits on, so the Quest Platform
   project must be the one the site belongs to. If that mapping is unclear, follow
@@ -61,7 +62,10 @@ a quest) never trigger it.
    on with step 2 using the `sites` names; the site list is already read.
 1. Always run the read-only list, `xsolla shopbuilder list-websites --json`, before
    replying. Never say the list is unavailable without running it.
-2. If the command succeeds, reply in the Which shop shape: the bold question, one bullet
+2. If the publisher already named a site that is in the list, use it and skip the
+   question. The list has only each site's `domain` (its slug), so the slug counts as the
+   site's name: match it as written, and show it as the site's name.
+   Otherwise, if the command succeeds, reply in the Which shop shape: the bold question, one bullet
    per site name from the list, a bullet for a headless storefront codebase, then
    `Next:`. No capability or explanation sentence comes before the question.
 3. Only if the command itself fails, use the Discovery failure shape in
@@ -135,7 +139,7 @@ and a `Next:` asking the publisher to log in to the Xsolla CLI if needed.
 If the site is not yet known, resolve it first in [Which shop](#which-shop).
 
 Ask in one message, in the question shape from [reply-format.md](reply-format.md) (a
-bold question, up to four bullets, then `Next:`), and only for what you cannot read
+bold question, up to four bullets (an option menu from the node catalog may have more), then `Next:`), and only for what you cannot read
 yourself:
 
 - **Which quests** to show, and in what order. List the existing quests (read-only).
@@ -173,20 +177,25 @@ Cards read their content from each quest's public view:
 | Image | `view.image_url` |
 
 A quest appears to anonymous visitors only when it is public: `is_public: true`.
-`public_view` is optional. When it is empty, the card uses the quest's default view
-(quest name, description and rewards), so never add a `public_view` only to pass this
-check. Set `is_public` through the edit flow in [`quest-edit.md`](quest-edit.md#editing)
-(read, change, full `PUT`, before/after diff, one approval, read back).
+A `public_view` is not needed to pass this check: whether a quest needs one depends on its
+reward, below. Set `is_public` as a quest change: read the quest, show before and after, one approval, save
+the whole quest, read it back.
 
-A `public_view` replaces the default view, and the card reads only from it. Add one only when the
-publisher wants custom card text or an image. For a Web3 quest, send the full view below every time:
+A `public_view` replaces the default view, and the card reads only from it. A Web3 quest needs one
+only for custom card text or an image, and then the full view below every time:
 without the reward references, the card loses its reward row and its See in Backpack button
-([Card rewards](rewards.md#card-rewards-on-the-quests-block)). Never set a `public_view` on an
-`issue_catalog_item` quest: its items render as quantity only, so the card loses the reward name and
-image that the default view gives.
+([Card rewards](#card-rewards-on-the-quests-block)).
 
 ```json
 {"name": {"$ref": "quest.name"}, "description": {"$ref": "quest.description"}, "image_url": "https://...", "rewards": {"$ref": "reward.<node id>.items"}, "reward_type": {"$ref": "reward.<node id>.type"}}
+```
+
+A quest whose reward is anything but a Web3 item always needs a view: the server gives that reward
+no name or image, so without one the card shows no reward. Put the name and image from the catalog
+read as static values, with `reward_type` the reward's type (`inventory_item` for a Backpack item):
+
+```json
+{"name": {"$ref": "quest.name"}, "description": {"$ref": "quest.description"}, "rewards": {"$ref": "reward.<node id>.items"}, "reward_name": "<catalog item name>", "reward_image_url": "<catalog image https URL>", "reward_type": "inventory_item"}
 ```
 
 - Values are text (at most 500 characters), a number, `true` or `false`, a `{"$ref": ...}` reference,
@@ -195,7 +204,8 @@ image that the default view gives.
   `reward.<node id>.<field>`. An `issue_web3_item` node exposes quantity, name, description, image_url
   and `type`. The public-quests guide lists no `items` field for a Web3 node, so check the `rewards`
   reference in the template on the read-back. An `issue_catalog_item` node exposes only `quantity`
-  through `items` in a public_view, so it takes no full view.
+  through `items`, so its name and image go in as static `reward_name` and `reward_image_url`, as for
+  every reward that is not a Web3 item.
 - A reference that no longer resolves, such as a removed reward node, is left out of the card.
 When it is added, `image_url` must be an absolute `https` URL (an `http` URL is refused, see
 [Rules for every operation](quests-block-brief.md#rules-for-every-operation)). Never invent an
@@ -203,7 +213,7 @@ image. If the publisher has none, leave it empty and the card shows its neutral 
 
 A quest triggered by an event the Quests block sends (`login_xsolla_id`, `daily_visit`,
 `weekly_visit`) must set `client_sendable: true` on its trigger, or the block's event is refused
-with 403. See [node-subtypes](node-subtypes.md#dynamic_event-client_sendable).
+with 403. See [Events the Quests block sends](#events-the-quests-block-sends).
 
 If the read-back does not show `is_public: true` (and the `public_view` you set, if any), stop and report that.
 
@@ -211,6 +221,17 @@ Reward content follows [card defaults](#ask-first); never put reward text in the
 or description to work around its read-only block behavior.
 
 ## Flow
+
+**Quest + site in one request.** When the publisher asks for a new quest and for it on the
+site, the order is: quest proposal and its yes; create, activate and read back the quest; then,
+in the same turn, run the gate's preflight, backup and render for the block change; then the
+combined reply ([reply-format](reply-format.md#examples)) with the quest result and the site plan,
+and one `Next:` for the site plan. A quest driven by the block's built-in events needs no event
+offer; for any other trigger, the event offer comes after the site plan is applied.
+
+**A broken card met on the way.** When the block summary or public read shows a card with no
+reward name or image (an older quest whose reward is not a Web3 item and has no static view),
+mention it in one bullet and offer the fix as its own quest edit, after the current request.
 
 1. **Choose quests.** List the existing quests (read-only) and agree the set, order
    and count with the publisher. A missing quest goes through the normal create flow
@@ -228,17 +249,39 @@ or description to work around its read-only block behavior.
    [`SKILL.md`](../SKILL.md) (API reference: https://developers.xsolla.com/api/quests),
    then come back here to add the block. Never say there are no quests when the read
    failed; say you cannot check yet.
+   **Project not on Quest Platform:** when the quest list answers "Project not found",
+   no block can show quests. Ask the [onboarding question](auth-credentials.md#onboarding)
+   and add no block before the project is set up.
+   **At least one shown quest:** outside the editor a block with no cards renders
+   nothing, so an `add` needs at least one chosen quest that is active and public (step
+   2 makes it public; a paused or out-of-date quest is activated through its own edit
+   first). Never plan an `add` with no quests; the gate refuses one.
 2. **Make them public.** For each chosen quest that is not public (`is_public` is not
    `true`), set `is_public` per [Quest public view](#quest-public-view): one proposal,
-   one approval. A missing `public_view` alone is not a reason to edit or stop. Stop if
-   a quest is not found or the read-back does not show `is_public: true`. An `active`
-   quest's `PUT` re-checks its dates ([dates on edit](quest-edit.md#editing)); put any
-   date move in this same proposal, never a plan the server will reject.
+   one approval. A quest created in this flow is created public: send `is_public: true`
+   in its create body and show "Shown to everyone" in the create proposal, so no second
+   edit is needed. A missing `public_view` alone is not a reason to edit or stop. Stop if
+   a quest is not found or the read-back does not show `is_public: true`. Sending a
+   running quest back with its stored start date is accepted; put a date change, if the
+   publisher wants one, in this same proposal.
 3. **Build the brief.** For an appearance request, first follow
    [appearance](quests-block-appearance.md) and give the recommendation with its measured
    evidence. Turn only the agreed settings and defaults into `block_operations`.
    For an existing block, take its `block_id` and the `quest_id`s from the block
-   summary (see [Gate commands](quests-block-brief.md#gate-commands)). With several
+   summary (see [Gate commands](quests-block-brief.md#gate-commands)).
+   **The site already has a Quests block:** "add my quest to the shop" is an `update` of
+   that block's `questIds`, never a second `add`. Append the new quest to the existing
+   IDs in their order unless the publisher says replace (then send only the new list;
+   `[]` would empty the block, which the gate never plans for an add). Add a second block
+   only when the publisher asks for another block.
+   **Editor overrides:** the gate writes only the planned leaves. Opening the block in
+   the Site Builder editor seeds each card's title, description and buttons as card
+   overrides, which then win over later quest edits. So when the summary shows overrides
+   the plan did not write, the editor made them; say a quest's new text shows on the card
+   only after that card's override is reset.
+   **Card text:** the card shows the quest's name and description. A quest the publisher
+   did not name, or gave no description, gets a proposed name and one-line description
+   inside the quest proposal, so the publisher's yes covers them. With several
    Quests blocks on the site, "the Quests block" is the only visible one; target a
    hidden block only when the publisher points at it ("the copy", "the hidden one", a
    position), and ask which one only when several are visible. Check
@@ -250,12 +293,19 @@ or description to work around its read-only block behavior.
    then end the turn. No preliminary plan; apply only after the later exact-plan yes.
 5. **Apply.** After confirmation, apply exactly the confirmed plan with the gate's
    apply command, which reads the result back. On a partial failure, do not rerun it;
-   take a fresh backup and plan first.
-6. **Read back.** Compare the gate's verification to the confirmed plan: settings and
+   take a fresh backup and plan first. The backup folder is the undo: it holds the
+   site's structure and texts as they were before the change.
+6. **Read back.** Compare the apply output's `verified` list (one entry per confirmed item:
+   what was checked and, for settings, which keys) to the confirmed plan: settings and
    heading of each touched block, block order of each touched page, every other block
    unchanged, and each chosen quest reads back as public. In a partial quest lookup,
    only returned quests have known public status; an unresolved card is unknown and
-   cannot satisfy the public readback check.
+   cannot satisfy the public readback check. `verified` covers settings, order and
+   untouched blocks; for public status and the final card list, rerun the block summary
+   after apply.
+   The backup folder is the undo: keep it for the rest of the conversation and never
+   delete it. Mention it to the publisher only when they ask how to undo or a change
+   went wrong.
 7. **Hand off.** Report what changed. Say the site
    is **not published**: the publisher previews and publishes it in Publisher Account.
    Anonymous visitors see the cards. Do not promise signed-in progress on a production
@@ -283,3 +333,46 @@ Stop on any failed prerequisite, public/readback check, unsupported setting or m
 confirmation. Keep completed safe work; state the smallest next action. Site creation,
 production sites, publishing/domains, other site changes and delivery claims remain out
 of scope. [Reply examples](reply-format.md#examples) own refusals and localized/delete outcomes.
+
+## Events the Quests block sends
+
+The Quests block (0.2.22) sends three events itself for a signed-in player, from the browser with
+the player's token. On a site with the block they are real events a quest can react to:
+
+| Event | When | A request for |
+|---|---|---|
+| `login_xsolla_id` | Once per session | "first sign-in", "login" |
+| `daily_visit` | Once per UTC day | "daily login" |
+| `weekly_visit` | Once per ISO week | "weekly login" |
+
+- The quest's trigger is a `dynamic_event` with that exact name and `client_sendable: true`.
+- These events name the player by the identifiers of their token. A reward that needs the game's
+  own player ID can only be paid when the token carries one: say so next to that option.
+- Never write `autoEvents` or `loginEventName` on the block: the gate cannot write them. The block
+  sends its events once the player is signed in.
+- "Add a login event" never changes an existing quest. List the quests first, say which already
+  react to a login event (name, event, status), and ask one question: a new quest, or edit that
+  one. Never rename the event of a running quest.
+- For an event sent from anywhere else, use the name the publisher's site or backend really sends.
+  Never infer one from a quest title.
+
+## Card rewards on the Quests block
+
+The card shows a reward only from `view.rewards` of the public quest. The server builds that list
+itself, one entry per reward, and only when the quest has no `public_view` (or it is `{}`). A
+`public_view` takes no arrays, so the skill never writes a rewards list.
+
+- **Web3 item, default view.** Leave `public_view` out when the card must show its reward. Each
+  entry has `type` (`web3_item`), `quantity`, and the item's `name`, `description` and `image_url`.
+  The card's title and description come from the quest.
+- **Every other reward.** Check what the public read returns: when an entry's `name` and
+  `image_url` are null, the card shows no reward without a `public_view`. Write the
+  [static-reward view](#quest-public-view) with the reward's name and image from the catalog read
+  (`reward_name`, `reward_image_url`, and `reward_type`, `inventory_item` for a Backpack item, which
+  keeps the See in Backpack button). Never promise a card reward you did not put there.
+- **Custom view.** A `public_view` replaces the default view. For a Web3 quest set it only in full,
+  with the reward references from [Quest public view](#quest-public-view), or the card loses its
+  reward row and its See in Backpack button.
+- **Proposal.** Show each card reward as a "Card reward" line: name, SKU, quantity and image.
+- **Read-back.** Read the project's public quest list (it needs no credential) and check each
+  reward's name and image there. A missing one is reported, never called fine.

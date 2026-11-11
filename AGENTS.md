@@ -8,7 +8,7 @@ This file is read automatically by most AI coding agents (Cursor, Codex CLI, Git
 
 `xsolla/xsolla-ai-kit` is the Xsolla agent skills toolkit — a collection of `SKILL.md` files (agentskills.io format) that teach AI coding agents how to execute Xsolla-specific workflows end-to-end.
 
-On the headless path, skills call **Xsolla REST APIs directly**. The Shop Builder path uses the Xsolla CLI 1.9.4 or later today (`brew install xsolla/xsolla-cli/xsolla`). A new Shop Builder store opens in the Editor and preview only when the CLI has `shopbuilder create-block`; `nocode-shop-setup` checks that before anything else.
+On the headless path, skills call **Xsolla REST APIs directly**. The Shop Builder path uses the Xsolla CLI 1.9.4 or later today (`brew install xsolla/xsolla-cli/xsolla`). A new Shop Builder store opens in the Editor and preview only when the CLI has `shopbuilder create-block`, which no released CLI has yet (1.9.4 is the latest); `nocode-shop-setup` checks that before anything else.
 
 ---
 
@@ -105,7 +105,7 @@ Setup by `merchant-setup` skill.
 
 Each API's authentication format is specific to that API. Quest Platform
 publisher Basic authentication is documented in
-`skills/quest-setup/references/qp-api-contract.md`.
+`skills/quest-setup/references/auth-credentials.md`.
 
 ---
 

@@ -22,20 +22,28 @@ Python 3.9+, standard library only.
 from __future__ import annotations
 
 import argparse
+import base64
 import html
+import http.client
 import json
 import math
+import os
 import re
 import subprocess
 import sys
+import urllib.error
+import urllib.request
 from pathlib import Path
-from typing import Any, Callable, Dict, List, NamedTuple, Optional
+from typing import Any, Callable, Dict, List, Mapping, NamedTuple, Optional
 from urllib.parse import urlparse
 
 sys.dont_write_bytecode = True  # keep the installed skill folder clean
-sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-import qp_request  # noqa: E402
+QP_BASE = "https://quests-platform.xsolla.com"
+TIMEOUT_SECONDS = 20
+MAX_RESPONSE_BYTES = 5 * 1024 * 1024
+CREDENTIAL_NAMES = ("XSOLLA_MERCHANT_ID", "XSOLLA_PROJECT_ID", "XSOLLA_PROJECT_API_KEY")
+ID_PATTERN = re.compile(r"[0-9]+")
 
 BLOCK_ID = "_quest-platform_quests-block"
 TAG = re.compile(r"<[^>]+>")
@@ -93,21 +101,96 @@ def run_cli(args: List[str]) -> Dict[str, Any]:
         return {"ok": False}
 
 
+class Credentials:
+    """Publisher credential set. repr() never shows the key."""
+
+    def __init__(self, merchant_id: str, project_id: str, api_key: str) -> None:
+        self.merchant_id = merchant_id
+        self.project_id = project_id
+        self._api_key = api_key
+
+    def basic_token(self) -> str:
+        return base64.b64encode(f"{self.merchant_id}:{self._api_key}".encode("utf-8")).decode("ascii")
+
+    def __repr__(self) -> str:
+        return "Credentials(<redacted>)"
+
+
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    """Never follow redirects: the Basic credential must not reach another host."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):  # type: ignore[override]
+        return None
+
+
+def read_dotenv(path: Path) -> Dict[str, str]:
+    """Parse KEY=VALUE lines as text. Never executed or sourced."""
+    try:
+        text = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return {}
+    values: Dict[str, str] = {}
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith("export "):
+            line = line[len("export "):].strip()
+        if "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        value = value.strip()
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in ("'", '"'):
+            value = value[1:-1]
+        values[key.strip()] = value
+    return values
+
+
+def _complete_set(values: Mapping[str, str]) -> Optional[Credentials]:
+    merchant, project, key = (str(values.get(name, "")).strip() for name in CREDENTIAL_NAMES)
+    if not key or not ID_PATTERN.fullmatch(merchant) or not ID_PATTERN.fullmatch(project):
+        return None
+    return Credentials(merchant, project, key)
+
+
+def resolve_credentials(environ: Mapping[str, str], cwd: Path) -> Optional[Credentials]:
+    """All-or-nothing: the process environment, else ./.env. Never mixed. None when not set up."""
+    return _complete_set(environ) or _complete_set(read_dotenv(cwd / ".env"))
+
+
+def get_quests_page(creds: Credentials, page: int) -> Optional[Dict[str, Any]]:
+    """One page of the configured project's quests, or None on any failure. Read-only."""
+    url = (
+        f"{QP_BASE}/api/v2/merchants/{creds.merchant_id}/projects/{creds.project_id}/quests"
+        f"?page={page}&limit={QUEST_PAGE_SIZE}"
+    )
+    request = urllib.request.Request(
+        url, method="GET",
+        headers={"Accept": "application/json", "Authorization": "Basic " + creds.basic_token()},
+    )
+    try:
+        response = urllib.request.build_opener(_NoRedirect).open(request, timeout=TIMEOUT_SECONDS)
+        try:
+            if int(response.status) != 200:
+                return None
+            raw = response.read(MAX_RESPONSE_BYTES)
+        finally:
+            response.close()
+        body = json.loads(raw.decode("utf-8", errors="replace"))
+    except (OSError, ValueError, http.client.HTTPException):
+        return None
+    return body if isinstance(body, dict) else None
+
+
 def fetch_quests(merchant: str, project: str) -> Optional[QuestLookup]:
     """Bounded quest lookup, or None when access is missing, mismatched or fails."""
-    try:
-        creds = qp_request.resolve_credentials(qp_request.os.environ, Path.cwd())
-    except qp_request.Refusal:
-        return None
-    if (creds.merchant_id, creds.project_id) != (str(merchant), str(project)):
+    creds = resolve_credentials(os.environ, Path.cwd())
+    if creds is None or (creds.merchant_id, creds.project_id) != (str(merchant), str(project)):
         return None
     quests: Dict[str, Dict[str, Any]] = {}
-    path = f"/api/v2/merchants/{merchant}/projects/{project}/quests"
     for page in range(1, QUEST_PAGES + 1):
-        url = qp_request.build_url(path, False, creds) + f"?page={page}&limit={QUEST_PAGE_SIZE}"
-        result = qp_request.send("GET", url, creds, None)
-        body = result.get("body")
-        if not result.get("ok") or not isinstance(body, dict):
+        body = get_quests_page(creds, page)
+        if body is None:
             return None
         for quest in body.get("data") or []:
             quests[str(quest.get("id"))] = quest
@@ -410,6 +493,8 @@ def site_summary(runner: Runner, fetcher: QuestFetcher, slug: str, env: List[str
         "site": slug,
         "merchant_id": str(site.get("merchantId")),
         "project_id": str(site.get("projectId")),
+        # get-structure's own flag, the same one the gate refuses block writes on.
+        "published": site.get("published") not in (None, False),
         "quest_names": (
             "unavailable" if lookup is None else "resolved" if lookup.complete else "partial"
         ),

@@ -1,0 +1,62 @@
+name: Sync Quest Platform docs
+
+# The quest-setup skill reads the Quest Platform's own assistant instructions and
+# documentation from two generated files. This job copies them from the published docs page
+# and opens a pull request when they changed, so a person sees every change before an
+# assistant reads it. It never pushes to main.
+on:
+  schedule:
+    - cron: '17 5 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: sync-quest-platform-docs
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    env:
+      BRANCH: chore/sync-quest-platform-docs
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Copy the published page
+        run: python3 .github/scripts/sync_quest_platform_docs.py
+
+      - name: Mirror for Cursor
+        run: |
+          set -euo pipefail
+          mkdir -p .cursor/skills/quest-setup/references
+          cp skills/quest-setup/references/quest-platform.md \
+             skills/quest-setup/references/quest-platform-docs.md \
+             .cursor/skills/quest-setup/references/
+
+      - name: Open or update the pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          paths="skills/quest-setup/references/quest-platform.md skills/quest-setup/references/quest-platform-docs.md .cursor/skills/quest-setup/references/quest-platform.md .cursor/skills/quest-setup/references/quest-platform-docs.md"
+          # shellcheck disable=SC2086
+          if git diff --quiet -- $paths; then
+            echo "The copy is up to date."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -C "$BRANCH"
+          # shellcheck disable=SC2086
+          git add -- $paths
+          git commit -m "chore(quest-setup): sync the Quest Platform docs copy"
+          git push --force origin "$BRANCH"
+          if [ -z "$(gh pr list --head "$BRANCH" --state open --json number --jq '.[].number')" ]; then
+            gh pr create --base main --head "$BRANCH" \
+              --title "chore(quest-setup): sync the Quest Platform docs copy" \
+              --body "The published Quest Platform AI skill page changed. This updates the two generated files the quest-setup skill reads. Review the diff: these files are instructions an assistant follows."
+          fi

@@ -259,8 +259,8 @@ class FakeSite:
         for key, descriptor in list(descriptors.items()):
             self.counter += 1
             text_id = f"L:minted-{self.counter}"
-            strings = descriptor["texts"].get("localizedString", {})
-            self.texts[text_id] = {"description": key, "translations": dict(strings)}
+            # Like Shop Builder: the descriptor becomes an id, but its text is not saved.
+            self.texts[text_id] = {"description": key, "translations": {}}
             descriptors[key] = {"texts": {"enable": True, "id": text_id}}
 
     def cmd_update_many_localization(self, options: dict) -> object:
@@ -1092,7 +1092,7 @@ class BlockAddTests(BlockOpsApplyBase):
         "module": QUESTS_MODULE,
         "page": "/",
         "index": 2,
-        "values": {"maxQuests": 4, "layout.cardAlign": "end"},
+        "values": {"questIds": [QUEST_A], "maxQuests": 4, "layout.cardAlign": "end"},
         "translations": {"en-US": {"heading": "Smoke quests"}},
     }
 
@@ -1104,6 +1104,7 @@ class BlockAddTests(BlockOpsApplyBase):
                 "add-block",
                 "update-block",  # retarget the wrapper
                 "update-block",  # devName
+                "update-many-localization",  # default texts
                 "update-block",  # leaf values
                 "update-many-localization",
             ],
@@ -1126,6 +1127,52 @@ class BlockAddTests(BlockOpsApplyBase):
         self.assertEqual("Quests", self.site.find(new_id)["devName"])
         self.assertEqual(0, self.site.noop_patches)
         self.assertEqual([], self.verify(plan, refs))
+        heading_id = values["resources"]["localizedValues"]["L:short-heading"]["texts"]["id"]
+        self.assertTrue(self.site.texts[heading_id]["translations"]["en-US"])
+        self.site.texts[heading_id]["translations"] = {}
+        self.assertTrue(any("no saved text" in e for e in self.verify(plan, refs)))
+
+    def test_seed_texts_fills_empty_texts_without_a_second_add(self) -> None:
+        original = self.site.cmd_update_many_localization
+        self.site.cmd_update_many_localization = lambda options: {"ok": True}
+        before = self.page_ids()
+        with self.assertRaisesRegex(RuntimeError, '"op": "seed_texts"'):
+            self.apply([self.ADD])
+        self.site.cmd_update_many_localization = original
+        (new_id,) = [block_id for block_id in self.page_ids() if block_id not in before]
+        block = self.site.find(new_id)
+        heading_id = block["values"]["resources"]["localizedValues"]["L:short-heading"]["texts"]["id"]
+        self.site.texts[heading_id]["translations"]["en-US"] = "Mine"
+        count = len(self.page_ids())
+        plan, refs = self.apply([{"op": "seed_texts", "block_id": new_id}])
+        self.assertEqual(count, len(self.page_ids()))
+        self.assertEqual("Mine", self.site.texts[heading_id]["translations"]["en-US"])
+        self.assertEqual([], self.verify(plan, refs))
+
+    def test_plan_says_what_the_default_texts_cover(self) -> None:
+        plan, _ = self.apply([self.ADD])
+        add = next(item for item in plan["block_operations"] if item["type"] == "block_add")
+        self.assertIn("en-US only", add["note"])
+        (new_id,) = [b for b in self.page_ids() if self.site.find(b).get("devName") and b != "q1"][-1:]
+        plan, _ = self.apply([{"op": "seed_texts", "block_id": new_id}])
+        seed = next(item for item in plan["block_operations"] if item["type"] == "block_seed_texts")
+        self.assertIn("cleared on purpose", seed["note"])
+
+    def test_seed_texts_refuses_a_version_that_is_not_a_block_version(self) -> None:
+        plan, _ = self.apply([self.ADD])
+        (new_id,) = [b for b in self.page_ids() if self.site.find(b).get("devName") and b != "q1"][-1:]
+        self.site.find(new_id)["values"]["version"] = "../../evil"
+        with self.assertRaisesRegex(RuntimeError, "not a Quests block version"):
+            self.apply([{"op": "seed_texts", "block_id": new_id}])
+
+    def test_add_fails_loudly_when_default_texts_do_not_save(self) -> None:
+        original = self.site.cmd_update_many_localization
+        self.site.cmd_update_many_localization = lambda options: {"ok": True}
+        try:
+            with self.assertRaisesRegex(RuntimeError, "default texts did not save"):
+                self.apply([self.ADD])
+        finally:
+            self.site.cmd_update_many_localization = original
 
     def test_add_at_index_zero_omits_index_and_corrects_position(self) -> None:
         operations = [dict(self.ADD, index=0)]
@@ -1247,6 +1294,7 @@ class RealRunJsonGuardTests(unittest.TestCase):
             {"op": "duplicate", "block_id": "q1", "index": 4},
             {"op": "hide", "block_id": "q1"},
             {"op": "show", "block_id": "q1"},
+            {"op": "seed_texts", "block_id": "q1"},
         ]
         # Every op the brief accepts is exercised here.
         self.assertEqual(set(OPERATIONS), {operation["op"] for operation in operations})
