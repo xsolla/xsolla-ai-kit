@@ -1,17 +1,11 @@
 ---
 name: xla-pages
 description: >-
-  Creates and updates XLA Pages on x.la in Shop Builder and keeps the current XLA Pages design:
-  the game page (/game/:slug), payment provider pages (/payment/{provider}) and combined
-  provider + game pages (/payment/{provider}/:slug), built only from the @xla-pages federated
-  blocks, pinned to the versions on the reference pages, and bound to the XLA Pages API through
-  Shop Builder data providers. Use for "create pages for x.la", "generate XLA game pages", "add a
-  Klarna payment page on x.la", "update the PayPal page on x.la", "check the x.la pages against
-  the manifest", or an XLA Pages batch file. It reports the /pub preflight from saved responses,
-  renders one plan per batch, asks for one yes, backs up the site structure, writes only to the
-  site's draft, and checks every page against the manifest afterwards. It never publishes, never
-  writes to the catalog or the XLA Pages API, and never puts standard Shop Builder blocks, Custom
-  Blocks or custom code on these pages. For any other Shop Builder site, use nocode-shop-setup.
+  Creates and updates XLA Pages on x.la in Shop Builder: game pages, payment provider pages and
+  combined pages, from @xla-pages blocks bound to the XLA Pages API. Use for "create pages for
+  x.la", "generate XLA game pages", "add a Klarna payment page on x.la", "update the PayPal page
+  on x.la" or an XLA Pages batch file. Never publishes. For any other Shop Builder site, use
+  nocode-shop-setup.
 metadata:
   owner: a.pyanzin
   domain: store
