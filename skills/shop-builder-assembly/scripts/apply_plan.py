@@ -635,6 +635,18 @@ def block_ids_on_page(ctx: ApplyContext, page_id: str) -> set:
     }
 
 
+def quests_block_values(default_data: dict) -> dict:
+    """The CDN defaults for a new block, without the Xsolla Pages game list.
+
+    `visibleGameSlugs` ships with an Xsolla demo game; an empty list shows the block on
+    every page, which is what a publisher's new block needs.
+    """
+    values = dict(default_data)
+    if "visibleGameSlugs" in values:
+        values["visibleGameSlugs"] = []
+    return values
+
+
 def add_quests_block(item: dict, ctx: ApplyContext) -> dict:
     """federated_patch: bare `federated` wrapper, then one update-block retarget."""
     page_id = item["page_id"]
@@ -670,7 +682,7 @@ def add_quests_block(item: dict, ctx: ApplyContext) -> dict:
                 {
                     "op": "replace",
                     "path": ["values", "internalBlockValues"],
-                    "value": defaults["defaultData"],
+                    "value": quests_block_values(defaults["defaultData"]),
                 },
                 {
                     "op": "replace",

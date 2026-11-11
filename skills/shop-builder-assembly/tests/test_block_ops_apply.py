@@ -27,7 +27,6 @@ import backup_shop  # noqa: E402
 import cli_environment  # noqa: E402
 from block_ops import (  # noqa: E402
     OPERATIONS,
-    QUESTS_CANDIDATE_VERSION,
     QUESTS_MODULE,
     QUESTS_VERSION,
 )
@@ -58,6 +57,8 @@ CDN_DEFAULTS = {
         "overrides": {},
         "layout": {"cardAlign": "center", "showHeading": True},
         "editorPreview": "live",
+        "gameSlug": "",
+        "visibleGameSlugs": ["halloween-the-game"],
     },
     "resources": {
         "localizedValues": {
@@ -316,7 +317,7 @@ class BlockOpsApplyTests(BlockOpsApplyBase):
     ) -> tuple[int, str, mock.Mock]:
         block = self.site.find("q1")
         if set_candidate_version:
-            block["values"]["version"] = QUESTS_CANDIDATE_VERSION
+            block["values"]["version"] = QUESTS_VERSION
         brief = ops_brief(operations)
         saved = self.site.structure_value()
         run_json = mock.Mock()
@@ -399,8 +400,8 @@ class BlockOpsApplyTests(BlockOpsApplyBase):
 
     def test_candidate_custom_patch_applies_and_reads_back_normalized_leaves(self) -> None:
         block = self.site.find("q1")
-        block["values"]["version"] = QUESTS_CANDIDATE_VERSION
-        block["values"]["host"] = f"https://cdn.xsolla.net/site-builder-modules/{QUESTS_MODULE}/{QUESTS_CANDIDATE_VERSION}/"
+        block["values"]["version"] = QUESTS_VERSION
+        block["values"]["host"] = f"https://cdn.xsolla.net/site-builder-modules/{QUESTS_MODULE}/{QUESTS_VERSION}/"
         block["values"]["internalBlockValues"].update({
             "themeId": "site-builder",
             "backpackAction": "overlay",
@@ -427,7 +428,7 @@ class BlockOpsApplyTests(BlockOpsApplyBase):
 
     def test_candidate_preset_leaves_apply_and_read_back_for_both_themes(self) -> None:
         block = self.site.find("q1")
-        block["values"]["version"] = QUESTS_CANDIDATE_VERSION
+        block["values"]["version"] = QUESTS_VERSION
         block["values"]["internalBlockValues"].update({
             "themeAppearance": {
                 "custom": {"version": 1, "baseThemeId": "site-builder"},
@@ -455,7 +456,7 @@ class BlockOpsApplyTests(BlockOpsApplyBase):
 
     def test_candidate_custom_reset_preserves_version_unknown_fields_and_other_themes(self) -> None:
         block = self.site.find("q1")
-        block["values"]["version"] = QUESTS_CANDIDATE_VERSION
+        block["values"]["version"] = QUESTS_VERSION
         block["values"]["internalBlockValues"].update({
             "themeId": "custom",
             "backpackAction": "overlay",
@@ -477,7 +478,7 @@ class BlockOpsApplyTests(BlockOpsApplyBase):
 
     def test_reset_of_absent_custom_leaf_is_a_noop(self) -> None:
         block = self.site.find("q1")
-        block["values"]["version"] = QUESTS_CANDIDATE_VERSION
+        block["values"]["version"] = QUESTS_VERSION
         plan, refs = self.apply([{
             "op": "reset", "block_id": "q1",
             "paths": ["themeAppearance.custom.palette.accent"],
@@ -820,10 +821,10 @@ class ApplyNamedEnvironmentIntegrationTests(unittest.TestCase):
         self.config_before = self.config_path.read_bytes()
         self.site = FakeSite()
         target = self.site.find("q1")
-        target["values"]["version"] = QUESTS_CANDIDATE_VERSION
+        target["values"]["version"] = QUESTS_VERSION
         target["values"]["host"] = (
             f"https://cdn.xsolla.net/site-builder-modules/{QUESTS_MODULE}/"
-            f"{QUESTS_CANDIDATE_VERSION}/"
+            f"{QUESTS_VERSION}/"
         )
         self.brief = ops_brief(
             [{
@@ -1120,6 +1121,8 @@ class BlockAddTests(BlockOpsApplyBase):
         self.assertTrue(values["host"].endswith(f"{QUESTS_MODULE}/{QUESTS_VERSION}/"))
         self.assertEqual(4, values["internalBlockValues"]["maxQuests"])
         self.assertEqual("end", values["internalBlockValues"]["layout"]["cardAlign"])
+        self.assertEqual([], values["internalBlockValues"]["visibleGameSlugs"])
+        self.assertEqual("", values["internalBlockValues"]["gameSlug"])
         self.assertEqual("Quests", self.site.find(new_id)["devName"])
         self.assertEqual(0, self.site.noop_patches)
         self.assertEqual([], self.verify(plan, refs))

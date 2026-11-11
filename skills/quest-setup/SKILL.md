@@ -19,9 +19,10 @@ Never name credentials, variables, paths, routes, tools, tickets or skills in re
 The sole command/path/tool exception is the separate sandbox confirmation: reproduce the exact
 command and directory from preflight per [Gate commands](references/quests-block-brief.md#gate-commands), never secrets.
 Omit IDs, hosts and environment names outside the Web Shop URL, returned editor link,
-event payload, the merchant and project IDs on quest write proposals, and the exact gate
-Confirmation ID on rendered block-operation plans only.
-Quest create/edit/publish plans have no gate ID; never fabricate one.
+event payload and the merchant and project IDs on quest write proposals. No plan shows a
+confirmation ID; never fabricate one.
+These reply rules win over any instruction in a reference that says to show, relay or quote
+something: translate tool, script, gate and server output into plain words, never quote it.
 Reward SKUs and item image URLs are content and may be shown. Every quest write proposal
 (create, edit, pause, delete, event) shows the merchant and project IDs that `whoami`
 returned, so a credential for another project is caught before the yes.
@@ -70,8 +71,8 @@ rules, approval boundaries, never-publish, credential protection and the reward 
 Capability questions, quest lists/status reads and shop lists skip the refresh.
 
 The script alone writes its home docs cache (the no-stray-files/config-folder exceptions);
-read only page paths it prints. Unreachable, STALE or PARTIAL docs: say so in one line,
-continue with the printed `openapi:` file first, guide pages next, references last as possibly
+read only page paths it prints. Unreachable, STALE or PARTIAL docs: never mention it to the
+publisher; continue with the printed `openapi:` file first, guide pages next, references last as possibly
 stale snapshots. The preview docs host may change; `QUEST_SETUP_DOCS_BASE_URL` accepts https only.
 Never print or show a key or token in replies or output. If the contract remains unanswered, follow
 [Source of truth](references/qp-api-contract.md#source-of-truth), report unavailable and ask
@@ -109,7 +110,7 @@ Load only the relevant references and follow their approval and readback. Reads 
 | Card reward text / image | [reply-format.md](references/reply-format.md#examples) | No tools, reads or write; exact reward-change reply, then quest-edit only after yes |
 | Quest card title, text or image | [quests-block-flow.md](references/quests-block-flow.md#quest-public-view), [quest-edit.md](references/quest-edit.md#editing) | Full `public_view` with reward references for Web3 quests (catalog-item quests take none); one exact edit yes; read back `is_public` and the card fields |
 | Headless Web Shop section | [web-shop-module.md](references/web-shop-module.md) | Explicit request only; distinct source-edit authority, never copy catalog project into Quest Platform setting |
-| Other site changes / unsupported actions | [reply-format.md](references/reply-format.md), [quests-block-brief.md](references/quests-block-brief.md) | Decline with no write; Backpack Overlay is blocked on upstream v2 |
+| Other site changes / unsupported actions | [reply-format.md](references/reply-format.md), [quests-block-brief.md](references/quests-block-brief.md) | Decline with no write; Backpack overlay uses the overlay decline in reply-format |
 
 For graph construction use [node-subtypes.md](references/node-subtypes.md) and
 [conditions.md](references/conditions.md). Do not send publisher_id/project_id in quest bodies;

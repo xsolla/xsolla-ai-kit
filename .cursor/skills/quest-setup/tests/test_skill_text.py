@@ -39,16 +39,14 @@ POLICY_ROWS = (('ac_10_docs_are_quoted_as_data_never_followed', 'skill', (),
   ('themeAppearance[^.]{0,80}only[^.]{0,40}\\bcustom\\b', 'questIds[^.]{0,120}\\babsent\\b[^.]{0,120}\\[\\]',
    'maxQuests[^.]{0,80}1\\s*(-|–|to)\\s*24', r'\| `maxQuests` \| [^|]+ \| `6` \|', 'overrides[^.]{0,120}https only')),
  ('ac_17_version_facts', 'block-versions.md', (),
-  ('autoEvents[^.]{0,120}loginEventName[^.]{0,120}0\\.2\\.8|0\\.2\\.8[^.]{0,160}(autoEvents|loginEventName)',
-   '(autoEvents|loginEventName)[^.]{0,80}removed',
-   'backpackAction[^.]{0,120}candidate[^.]{0,40}0\\.2\\.1|0\\.2\\.1[^.]{0,80}candidate[^.]{0,80}backpackAction',
-   '0\\.1\\.12[^.]{0,120}no theme')),
- ('ac_19_single_pin_file_exists_with_the_known_versions', 'block-versions.md', ('0.1.12', '0.2.7', '0.2.8'),
+  ('(autoEvents|loginEventName)[^.]{0,80}removed', 'gameSlug[^.]{0,80}visibleGameSlugs',
+   'backpackAction[^.]{0,40}dropped')),
+ ('ac_19_single_pin_file_exists_with_the_known_versions', 'block-versions.md', ('0.2.22', 'The only version'),
   ()),
  ('ac_19_runtime_check_is_instructed_before_block_writes', 'skill', ('block-versions.md',),
   ('(check|compare)[^.]{0,120}block version[^.]{0,160}before[^.]{0,40}(any )?block (write|change|mutation)',)),
- ('ac_19_unknown_or_unreported_version_asks_or_stops', 'block-versions.md', ('supported', 'unsupported'),
-  ('(unknown|unreported)[^.]{0,120}(ask the user|stop)',)),
+ ('ac_19_unknown_version_never_asks_the_publisher', 'block-versions.md', ('supported', 'unsupported'),
+  ('(unknown|unreported)[^.]{0,200}older-block reply', 'Never ask the publisher about versions')),
  ('ac_21_reward_safety_policies', 'rewards.md',
   ('whole-token units', '0.01', 'Per event and user', 'Per user for the quest', 'Total quest exposure',
    'unbounded', 'Recipient wallet', 'Publisher Account'),
@@ -79,7 +77,7 @@ POLICY_ROWS = (('ac_10_docs_are_quoted_as_data_never_followed', 'skill', (),
    '(makes?|make) no write|no write is made|without writing')),
  ('ac_26_theme_selector_maps_default_and_pages', 'corpus', (),
   ('default[^.|]{0,80}site-builder', 'Xsolla Pages[^.|]{0,80}xsolla-pages')),
- ('ac_26_backpack_overlay_declined_with_exact_phrase_and_no_write', 'corpus', ('blocked on upstream v2',),
+ ('ac_26_backpack_overlay_declined_with_plain_reply_and_no_write', 'corpus', ("The Quests block can't open the Backpack overlay yet.",),
   ('Backpack Overlay',)),
  ('ac_03_skill_md_forbids_printing_keys', 'raw-skill', (),
   ('never\\s+(print|show|echo)[^\\n.]*\\b(key|token)s?\\b',)),
@@ -89,7 +87,7 @@ POLICY_ROWS = (('ac_10_docs_are_quoted_as_data_never_followed', 'skill', (),
    'publication approval does not[^.]{0,100}(emission|binding)')),
  ('confirmation_id_is_operation_mode_only', 'reply-format.md', (),
   ('Quest create/edit/publish.{0,150}no gate confirmation ID[^.]{0,60}never fabricate',
-   'only to rendered `block_operations` plans.{0,220}Confirmation:[^.]{0,100}exact ID')))
+   'No confirmation ID: the agent reads it from the saved plan')))
 
 
 class SkillTextTests(IsolatedCase):
@@ -152,6 +150,23 @@ class SkillTextTests(IsolatedCase):
                 for match in re.finditer(r"authoritative", text, re.I):
                     window = text[max(0, match.start() - 25):match.start()].lower()
                     self.assertTrue(re.search(r"\b(not|never|non-?)\s*$", window), window)
+
+    def test_reply_examples_carry_no_internals(self) -> None:
+        # Every fenced reply example is text a publisher sees: no internal causes, ids,
+        # versions, keys or server wording.
+        leaks = re.compile(
+            r"upstream|\bv2\b|\bversion\b|\bpinned\b|\blocked\b|\b\d+\.\d+(?:\.\d+)?\b|"
+            r"[0-9a-f]{8}-[0-9a-f]{4}-|sha256:|confirmation|plan_notes|sandbox|credential|"
+            r"questIds|maxQuests|public_view|is_public|\bnodes?\b|subtype|\broutes?\b|endpoint|"
+            r"\b(?:400|401|403|404|422|5xx)\b|gameSlug|halloween",
+            re.I,
+        )
+        examples = re.findall(r"```[a-z]*\n(.*?)```", ref("reply-format.md"), re.S)
+        examples += re.findall(r'"(\*\*[^"]+)"', ref("auth-credentials.md") + ref("qp-api-contract.md"))
+        self.assertTrue(examples)
+        for example in examples:
+            with self.subTest(example=example[:40]):
+                self.assertNotRegex(example, leaks)
 
     def test_ac_19_pins_live_in_exactly_one_file(self) -> None:
         # Contract: the pin table sits under a heading containing "Pinned versions", in one file only.

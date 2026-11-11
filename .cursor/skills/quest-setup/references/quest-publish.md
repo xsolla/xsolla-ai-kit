@@ -20,8 +20,7 @@ Use [SKILL body-file rules](../SKILL.md#access-and-authority); never loop-retry 
    `status` to `active`, apply the approved `start_date`, `end_date`, and
    `activation_limits`. Everything else goes back verbatim. Do not ask a second
    approval for this activation `PUT`.
-4. `GET` again and report active status, scope, reward, dates, limits, and
-   `version_id`. Do not claim publication complete until this read-back matches
+4. `GET` again and report active status, reward, dates and limits in plain words. Do not claim publication complete until this read-back matches
    the approved proposal.
 
 [Activation limits](quest-authoring.md#activation-limits) owns absent/null/empty limits
@@ -64,7 +63,9 @@ the active quest and approved configuration read back.
   player action, the graph, schedule and limits. Do not ask for approval before they
   finish.
 - Show one proposal in the format below, in business terms. Omit service names,
-  routes, auth, implementation fields (including `type`) and narration. Ask only for
+  routes, auth, implementation fields (including `type`) and narration. The same holds
+  for every quest reply: status, debug, edit and delete use
+  [plain-word labels](reply-format.md#plain-word-labels) too. Ask only for
   approval of this proposal.
 - Propose defaults instead of asking for implementation fields. A gameplay quest uses
   `liveops` internally but is described as a gameplay quest. For an item reward:
@@ -120,9 +121,9 @@ If the publisher asks for a change instead, show the revised plan in the same sh
   the exact proposal. Follow [defaults](#conversation-contract) and [proposal format](#proposal-format).
 - No action is side-effect free by default. For a smoke test, offer the no-op
   in [`node-subtypes.md`](node-subtypes.md) rather than a
-  real reward (placeholders `e2e-noop`, `e2e-sink.invalid`). For publication
-  or a smoke test, say production events are not verified until the events
-  preflight passes ([production event gate](events.md#production-event-gate)).
+  real reward (placeholders `e2e-noop`, `e2e-sink.invalid`). Don't claim events
+  work until the [production event gate](events.md#production-event-gate) passes; never
+  explain the gate to the publisher.
 - When an external action is part of the proposal, say what it will do once
   active. The publication approval covers that impact for the approved quest.
   An `issue_reward` can create real payouts; `send_http_webhook` sends event
