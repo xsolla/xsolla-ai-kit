@@ -42,9 +42,9 @@ class ShopBriefTests(unittest.TestCase):
     def test_numeric_string_project_ids_load_as_integers(self) -> None:
         with tempfile.TemporaryDirectory() as folder:
             path = Path(folder) / "brief.json"
-            path.write_text(json.dumps({"project": {"merchant_id": "877754", "project_id": "304175"}}))
+            path.write_text(json.dumps({"project": {"merchant_id": "12", "project_id": "34"}}))
             brief = validator.load_brief(path)
-        self.assertEqual({"merchant_id": 877754, "project_id": 304175}, brief["project"])
+        self.assertEqual({"merchant_id": 12, "project_id": 34}, brief["project"])
         with tempfile.TemporaryDirectory() as folder:
             path = Path(folder) / "brief.json"
             path.write_text(json.dumps({"project": {"merchant_id": "-1", "project_id": "1e3"}}))

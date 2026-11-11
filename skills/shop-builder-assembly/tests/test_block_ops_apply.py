@@ -1149,6 +1149,22 @@ class BlockAddTests(BlockOpsApplyBase):
         self.assertEqual("Mine", self.site.texts[heading_id]["translations"]["en-US"])
         self.assertEqual([], self.verify(plan, refs))
 
+    def test_plan_says_what_the_default_texts_cover(self) -> None:
+        plan, _ = self.apply([self.ADD])
+        add = next(item for item in plan["block_operations"] if item["type"] == "block_add")
+        self.assertIn("en-US only", add["note"])
+        (new_id,) = [b for b in self.page_ids() if self.site.find(b).get("devName") and b != "q1"][-1:]
+        plan, _ = self.apply([{"op": "seed_texts", "block_id": new_id}])
+        seed = next(item for item in plan["block_operations"] if item["type"] == "block_seed_texts")
+        self.assertIn("cleared on purpose", seed["note"])
+
+    def test_seed_texts_refuses_a_version_that_is_not_a_block_version(self) -> None:
+        plan, _ = self.apply([self.ADD])
+        (new_id,) = [b for b in self.page_ids() if self.site.find(b).get("devName") and b != "q1"][-1:]
+        self.site.find(new_id)["values"]["version"] = "../../evil"
+        with self.assertRaisesRegex(RuntimeError, "not a Quests block version"):
+            self.apply([{"op": "seed_texts", "block_id": new_id}])
+
     def test_add_fails_loudly_when_default_texts_do_not_save(self) -> None:
         original = self.site.cmd_update_many_localization
         self.site.cmd_update_many_localization = lambda options: {"ok": True}

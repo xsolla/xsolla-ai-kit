@@ -79,6 +79,11 @@ class SkillTextTests(IsolatedCase):
         self.assertIn("loses its reward row and its See in Backpack button", block)
         self.assertIn('"reward_name": "<catalog item name>"', block)
         self.assertIn("Never promise a card reward you did not put there", block)
+        self.assertIn("anything but a Web3 item always needs a view", block)
+        # The old wording told the agent to skip the view a non-Web3 reward needs.
+        self.assertNotIn("Add one only when the publisher wants custom card text or an image", block)
+        self.assertNotIn("never add a `public_view` only to pass this", block)
+        self.assertNotIn("catalog-item quests take none", skill_text)
         for name in ("quests-block-flow.md", "reply-format.md", "auth-credentials.md", "store-catalog-lookup.md"):
             with self.subTest(file=name):
                 self.assertNotIn("\u2014", flat(ref(name)))

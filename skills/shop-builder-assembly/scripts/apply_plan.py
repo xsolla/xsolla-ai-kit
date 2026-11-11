@@ -49,6 +49,7 @@ from block_ops import (
     QUESTS_DEV_NAME,
     QUESTS_MODULE,
     QUESTS_VERSION,
+    QUESTS_VERSION_RE,
     card_text_ref,
     find_block,
     has_leaf,
@@ -983,8 +984,11 @@ def apply_block_operation(item: dict, ctx: ApplyContext) -> dict:
     elif kind == "block_seed_texts":
         page, _, block = current_block(ctx, item["block_id"])
         version = (block.get("values") or {}).get("version")
-        if not isinstance(version, str):
-            raise RuntimeError(f"block {item['block_id']} reports no version")
+        if not isinstance(version, str) or not QUESTS_VERSION_RE.fullmatch(version):
+            raise RuntimeError(
+                f"block {item['block_id']} reports version {version!r}, which is not a "
+                "Quests block version; its default texts were not fetched"
+            )
         seed_default_texts(ctx, item["block_id"], page["_id"], fetch_quests_defaults(version))
         done = {"block_id": item["block_id"]}
     elif kind == "block_visibility":
@@ -1001,7 +1005,12 @@ def apply_block_operation(item: dict, ctx: ApplyContext) -> dict:
 
 
 _VERIFIED_CHECKS = {
-    "block_add": ["Quests module and version", "devName", "default texts saved", "page order"],
+    "block_add": [
+        "Quests module and version",
+        "devName",
+        "default texts saved in at least one locale",
+        "page order",
+    ],
     "block_values": ["each leaf reads back equal"],
     "block_reset": ["each leaf removed"],
     "block_move": ["page order"],
@@ -1009,7 +1018,7 @@ _VERIFIED_CHECKS = {
     "block_visibility": ["hidden flag"],
     "block_localization": ["heading text per locale"],
     "block_card_text": ["card text per locale"],
-    "block_seed_texts": ["default texts saved"],
+    "block_seed_texts": ["default texts saved in at least one locale"],
 }
 
 

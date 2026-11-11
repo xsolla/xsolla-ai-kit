@@ -177,13 +177,12 @@ Cards read their content from each quest's public view:
 | Image | `view.image_url` |
 
 A quest appears to anonymous visitors only when it is public: `is_public: true`.
-`public_view` is optional. When it is empty, the card uses the quest's default view
-(quest name, description and rewards), so never add a `public_view` only to pass this
-check. Set `is_public` as a quest change: read the quest, show before and after, one approval, save
+A `public_view` is not needed to pass this check: whether a quest needs one depends on its
+reward, below. Set `is_public` as a quest change: read the quest, show before and after, one approval, save
 the whole quest, read it back.
 
-A `public_view` replaces the default view, and the card reads only from it. Add one only when the
-publisher wants custom card text or an image. For a Web3 quest, send the full view below every time:
+A `public_view` replaces the default view, and the card reads only from it. A Web3 quest needs one
+only for custom card text or an image, and then the full view below every time:
 without the reward references, the card loses its reward row and its See in Backpack button
 ([Card rewards](#card-rewards-on-the-quests-block)).
 

@@ -108,6 +108,7 @@ acknowledgement flag.
 | Reposition the block on its page | `move` |
 | Copy a block | `duplicate` |
 | Hide or show a block | `hide`, `show` |
+| Fill a block's empty default texts after a failed add | `seed_texts` (never a second `add`) |
 | Remove or delete a block | none: `needs_human`, offer `hide` (see below) |
 
 Every new block, themed or not, is added with an explicit `version` equal to the one in

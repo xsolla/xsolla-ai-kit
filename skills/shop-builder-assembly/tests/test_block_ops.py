@@ -128,6 +128,17 @@ class BlockOpsTests(unittest.TestCase):
                 errors = self.errors(operation)
                 self.assertTrue(any("needs at least one public, active quest" in e for e in errors), errors)
 
+    def test_add_is_refused_when_no_default_text_locale_is_enabled(self) -> None:
+        for languages in (["de-DE"], []):
+            with self.subTest(languages=languages):
+                site = make_structure()
+                site["languages"] = languages
+                errors = self.errors(add_op(), structure=site)
+                self.assertTrue(any("default texts are in en-US" in e for e in errors), errors)
+        both = make_structure()
+        both["languages"] = ["de-DE", "en-US"]
+        self.assertFalse(any("default texts" in e for e in self.errors(add_op(), structure=both)))
+
     def test_older_saved_block_takes_settings_but_not_theme(self) -> None:
         older = candidate_structure(version="0.2.10")
         theme = {"op": "update", "block_id": "q1", "values": {"themeId": "custom"}}

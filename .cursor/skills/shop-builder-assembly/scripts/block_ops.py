@@ -26,6 +26,21 @@ QUESTS_ADD_STRATEGY = "federated_patch"
 # A block release means bumping this constant (quest-setup block-versions.md too).
 QUESTS_VERSION = "0.2.22"
 QUESTS_CAPABILITIES = {QUESTS_VERSION: {"appearance": True}}
+# What a Quests block version looks like. A text retry reads the version from the saved
+# block and puts it into the defaults URL, so it is checked against this first.
+QUESTS_VERSION_RE = re.compile(r"[0-9]+\.[0-9]+\.[0-9]+")
+# Locales the block's default-data.json carries its default texts in. A site with none of
+# them enabled would get a block whose buttons and statuses are empty.
+QUESTS_DEFAULT_TEXT_LOCALES = ("en-US",)
+ADD_TEXTS_NOTE = (
+    "default texts are saved in " + ", ".join(QUESTS_DEFAULT_TEXT_LOCALES)
+    + " only; the block's texts in other site languages stay empty"
+)
+SEED_TEXTS_NOTE = (
+    "writes the default text into every empty text of this block in "
+    + ", ".join(QUESTS_DEFAULT_TEXT_LOCALES)
+    + ", including one that was cleared on purpose; other site languages stay empty"
+)
 QUESTS_CDN_ROOT = "https://cdn.xsolla.net/site-builder-modules/"
 # Editor layer label that UI-added federated blocks carry (top-level `devName`).
 QUESTS_DEV_NAME = "Quests"
@@ -830,6 +845,16 @@ def validate_block_operations(brief: dict, structure: dict | None = None) -> lis
                     f"{prefix}.values.questIds needs at least one public, active quest: "
                     "a Quests block with no cards shows nothing on the site"
                 )
+        if op == "add" and current is not None:
+            languages = current.get("languages") or []
+            if not set(QUESTS_DEFAULT_TEXT_LOCALES) & set(languages):
+                errors.append(
+                    f"{prefix}: the Quests block's default texts are in "
+                    + ", ".join(QUESTS_DEFAULT_TEXT_LOCALES)
+                    + ", which is not enabled on the site (enabled: "
+                    + (", ".join(languages) or "none")
+                    + "); its buttons and statuses would be empty"
+                )
         if op == "add" and "version" in operation and (
             not isinstance(operation["version"], str)
             or operation["version"] not in QUESTS_CAPABILITIES
@@ -1123,6 +1148,7 @@ def plan_block_operations(brief: dict, structure: dict) -> list[dict]:
                     "page": operation["page"],
                     "page_id": page.get("_id"),
                     "index": position,
+                    "note": ADD_TEXTS_NOTE,
                 }
             )
             if operation.get("values"):
@@ -1217,6 +1243,7 @@ def plan_block_operations(brief: dict, structure: dict) -> list[dict]:
                     "op_index": index,
                     "block_id": block_id,
                     "page_id": page_id,
+                    "note": SEED_TEXTS_NOTE,
                 }
             )
         else:
