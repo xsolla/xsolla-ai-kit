@@ -124,6 +124,14 @@ class ApplyAndVerifyTests(unittest.TestCase):
         # Site Builder fills :slug per game when it renders a dynamic page.
         self.assertEqual("https://x.la/payment/klarna/:slug", combined["seo"]["canonicalUrl"])
 
+    def test_the_canonical_url_rewrites_only_the_page_route_params(self) -> None:
+        import plan_model
+
+        spec = {"route": "/game/:slug", "seo": {"canonical": "https://x.la/{provider}/{slug}"}}
+        seo = plan_model.seo_model(self.manifest, spec, None, None)
+        # {slug} is this page's route param. An unfilled {provider} is not, so it stays as written.
+        self.assertEqual("https://x.la/{provider}/:slug", seo["canonical"]["value"])
+
     def test_a_version_the_server_falls_back_from_stops_the_run(self) -> None:
         plan, errors, plan_path, backup_dir = harness.prepare(self.dir, self.cli)
         self.assertEqual([], errors)

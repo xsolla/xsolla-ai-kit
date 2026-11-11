@@ -186,8 +186,10 @@ def seo_model(manifest: dict, spec: dict, row: dict | None, provider: str | None
             text = value.replace("{provider}", provider or "{provider}")
             if field == "canonical":
                 # The manifest writes a route param as {slug}; Site Builder fills :slug in a dynamic
-                # page's canonical URL with the page's value when it renders.
-                text = re.sub(r"\{([A-Za-z0-9_]+)\}", r":\1", text)
+                # page's canonical URL with the page's value when it renders. Only the page's own
+                # route params are rewritten: any other {name} stays as written.
+                for param in re.findall(r":([A-Za-z0-9_]+)", str(spec.get("route") or "")):
+                    text = text.replace("{" + param + "}", ":" + param)
             seo[field] = {"value": text}
         else:
             source, output = common.split_source(value)
