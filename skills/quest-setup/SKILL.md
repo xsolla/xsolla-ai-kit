@@ -48,7 +48,9 @@ This file wins on every row. Each row quotes quest-platform.md.
 Follow [reply-format.md](references/reply-format.md). Never name credentials, variables, paths,
 routes, tools, tickets or skills in a reply. Leave out IDs, hosts and environment names, except
 the Web Shop URL, a returned editor link, an event shown for approval, and the merchant and
-project IDs on a write proposal. Reward SKUs and item image URLs are content and may be shown.
+project IDs on a quest write proposal (never on a block plan). When the publisher asks to see a
+request, a route, a response or a quest's ID, show it, as quest-platform.md says: everything but
+the key and the authorization header. Reward SKUs and item image URLs are content and may be shown.
 Turn every tool, gate and server answer into plain words; never quote it.
 Never print or show a key or token.
 
@@ -64,6 +66,12 @@ Never print or show a key or token.
 - Delete only a quest named by its exact name or ID, never by a pattern or "all test quests"
   without showing the list first. Tell same-named quests apart by dates or status. One quest per
   call, stop at the first failure, then list again and show they are gone.
+- A plain instruction for one specific change, with its value ("push the end to 3 December",
+  "pause it"), is the yes: make it, read it back and report. Show a plan first only when the
+  change deletes something, switches a quest on, or does something they may not expect.
+- Switching a quest on: say once what it means and which setup steps you could not confirm. When
+  the publisher still asks for it, that is the yes; never refuse because a check is unanswered.
+- After every site change, run the block summary again and report what it shows.
 - A result you cannot read is a stop: say what is known, and hand off to the publisher's Xsolla
   account manager with the quest ID. Never resend to find out.
 
@@ -76,8 +84,23 @@ Never print or show a key or token.
 - Every reward proposal says what it can cost: what one completion gives, and the most it can
   give under the quest's limits. A quest with no limit pays every time without bound: say so and
   ask the publisher to confirm they want that.
+- Name a reward only from a catalog read or the quest's own reward, never from its name or
+  description.
 - Images must be https and carry no credentials. Refuse one that is not before any proposal, and
   do not repair or repeat it.
+
+## Facts that are easy to get wrong
+
+Check these against [quest-platform-docs.md](references/quest-platform-docs.md) before saying them:
+
+- An event whose name does not match the trigger never reaches the quest. Nothing runs.
+- A reward that fails leaves the quest in progress; the quest does not finish without it.
+- A reward that needs the player's Xsolla account can also be paid from the event's email.
+- A player named one way in some events and another way in others counts as two players.
+- What a card on the Quests block shows is in
+  [What players see](references/quests-block-flow.md#what-players-see-on-a-card). Do not
+  describe more than that section says.
+- Never suggest an event name, not even as an example: ask what the game really sends.
 
 ## Dates and wording
 
@@ -99,7 +122,8 @@ Never print or show a key or token.
 | Theme / custom design | [quests-block-appearance.md](references/quests-block-appearance.md), [block-versions.md](references/block-versions.md) | Measure first, supported saved version, plan yes |
 | Move / duplicate / hide / show block | [quests-block-brief.md](references/quests-block-brief.md), [quests-block-flow.md](references/quests-block-flow.md) | Separate exact plan yes |
 | Remove block | [quests-block-flow.md](references/quests-block-flow.md#removing-the-block) | No scripted delete; offer hide with its own plan yes |
-| Card reward text / image | [reply-format.md](references/reply-format.md#examples) | No call; the reward comes from the quest |
+| What players see / card states / signed in or out | [quests-block-flow.md](references/quests-block-flow.md#what-players-see-on-a-card) | Read only |
+| Card reward text / image | [quests-block-flow.md](references/quests-block-flow.md#card-rewards-on-the-quests-block) | What the player gets never changes on the block; how a non-Web3 reward is shown is a quest change, one yes |
 | Quest card title, text or image | [quests-block-flow.md](references/quests-block-flow.md#quest-public-view) | One exact proposal yes, then read back |
 | Headless Web Shop section | [web-shop-module.md](references/web-shop-module.md) | Explicit request only |
 | Other site changes | [reply-format.md](references/reply-format.md) | Decline in one sentence, no write |

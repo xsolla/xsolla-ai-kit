@@ -31,8 +31,11 @@ Read the whole catalog before deciding. Match the requested name case-insensitiv
 
 - **One exact match:** use its SKU, and show its name, SKU and image in the proposal.
 - **Several, or only partial matches:** show them and let the publisher choose. Never pick.
-- **None:** say the item was not found and suggest checking its exact name or whether it is
-  enabled. Never substitute another item.
+- **None:** these reads cover the store's virtual items only. Before saying the item was not
+  found, ask whether it is a bundle, a currency package or an item delivered into the game; if
+  so, follow [Rewards that are not Store virtual items](#rewards-that-are-not-store-virtual-items).
+  Otherwise say it was not found and suggest checking its exact name or whether it is enabled.
+  Never substitute another item.
 
 A SKU the publisher typed is not checked until the single-item read returns it; a 404 means it is
 not in the catalog. Do not ask the publisher to type a SKU for a Store item.
@@ -46,6 +49,6 @@ reward, and stop.
 
 ## Rewards that are not Store virtual items
 
-A loyalty program, a scoped currency, a Web3 token or an item delivered into the game has no
-catalog read here. Ask the publisher for its SKU or ID once, show it in the proposal exactly as
+A bundle, a currency package, a loyalty program, a scoped currency, a Web3 token or an item
+delivered into the game has no catalog read here. Ask the publisher for its SKU or ID once, show it in the proposal exactly as
 given and marked "not checked", and let the yes cover it. Never invent one.

@@ -373,6 +373,56 @@ itself, one entry per reward, and only when the quest has no `public_view` (or i
 - **Custom view.** A `public_view` replaces the default view. For a Web3 quest set it only in full,
   with the reward references from [Quest public view](#quest-public-view), or the card loses its
   reward row and its See in Backpack button.
+- **A card that will show no reward.** Say so, and in the same reply offer the fix: set the
+  reward's name and picture on the quest, from the catalog read, as a quest change with its own
+  yes. Never leave the publisher with a card that shows nothing they can earn and no next step.
 - **Proposal.** Show each card reward as a "Card reward" line: name, SKU, quantity and image.
 - **Read-back.** Read the project's public quest list (it needs no credential) and check each
   reward's name and image there. A missing one is reported, never called fine.
+
+## What players see on a card
+
+Read for any question about what a visitor or a player sees, how a card shows progress, or how
+to check it. These are the block's own built-in texts (the en-US defaults, which the publisher can
+change in the editor). Describe nothing beyond them; when asked more, say how to check it (below).
+
+**Each card shows** the quest's title, description and image (or the card's own, when set on the
+block), the reward ("Reward", and "and 1 more reward" / "and N more rewards" when there are
+several), and a status with a button.
+
+| Status on the card | When |
+|---|---|
+| Not started | The player has no progress on the quest yet |
+| In progress | Some progress. A quest with steps shows "2 of 3 steps"; a counter shows "3 of 5", and "+N more" when there are more counters |
+| Reward pending | "All steps are done." The quest is complete and the reward is still on its way |
+| Completed | Done. A "Quest completed!" message appears, and finished quests are listed under "Completed quests" |
+| Expired | The quest ended before the player finished it |
+| Error | The status could not be loaded ("Could not load status", with "Retry") |
+
+**Buttons.** "Check progress" on a quest in progress. A completed quest whose reward goes to the
+Backpack shows "See in Backpack". A card can also have its own button that opens a link (default
+text "Learn more"): only signed-in players see it, and the publisher chooses in the editor for
+which statuses it shows.
+
+**Signed out and signed in.** Progress and statuses belong to a player, so they appear only for a
+signed-in player. A signed-out visitor sees the cards, without their own progress. A player's
+progress comes from the events their game or the block sends for them (see
+[Events the Quests block sends](#events-the-quests-block-sends)).
+
+**Which quests appear.** Only quests that are public, switched on and inside their dates, up to
+the block's card limit. A quest that is paused, deleted, ended or not public does not appear on
+the site; in the editor its card is marked unavailable, with a hint to remove it from the block.
+If no chosen quest can be shown, the block shows nothing on the site.
+
+**How the publisher can check each state.** In the Site Builder editor, the block has a
+"Preview state" switch: "Signed out", or "Live" for the signed-in view with real data. "Editor
+simulation" shows example progress and statuses without sending anything; it is an editor setting
+only, and the published site always uses live data. To see real progress, sign in on the site's
+preview as a player and take the quest's action.
+
+**How to change what a card says.** The card's title, description and image, the heading, the
+order and the number of cards are changed on the block (see
+[Ask first](#ask-first)). How a reward is shown is changed on the quest (see
+[Card rewards](#card-rewards-on-the-quests-block)). The status and button texts above are the
+block's built-in texts, changed in the editor.
+
