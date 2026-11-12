@@ -40,6 +40,7 @@ Two ways to build a shop, for different goals. Before building, find out whether
 | `description-to-shop`           | Prose → shop brief for shop-builder-assembly — reached via nocode-shop-setup             |
 | `shopbuilder-translate`         | Translates Shop Builder page copy. Catalog and LiveOps text are out of scope             |
 | `game-web-portal`               | Builds a PC Game Web Portal (game home + shop) — handed off by nocode-shop-setup         |
+| `xla-pages`                     | XLA Pages on x.la: game, payment provider and combined pages from the XLA manifest      |
 
 ---
 
@@ -81,6 +82,10 @@ Translate the Shop Builder FAQ / add German to the storefront page
 
 Set up a Game Web Portal for my PC game — a game home with news, rewards and a shop
 → triggers: nocode-shop-setup, which hands off to game-web-portal
+
+Create the x.la pages for Klarna / update the PayPal page on x.la / generate XLA game pages
+→ triggers: xla-pages (XLA Pages only; its manifest overrides the general Shop Builder rules;
+  never publishes)
 
 Create a quest that rewards players
 → triggers: quest-setup

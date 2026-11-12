@@ -1,0 +1,550 @@
+{
+  "ok": true,
+  "data": {
+    "_id": "landing-x1",
+    "domain": "xla-test-site",
+    "merchantId": 100001,
+    "projectId": 200002,
+    "type": "store",
+    "published": true,
+    "languages": [
+      "en-US"
+    ],
+    "layouts": [
+      "site-layout-1"
+    ],
+    "blocks": [
+      "site-layout-1"
+    ],
+    "valuesSystem": {
+      "dataProviderConnections": {
+        "conn-route-params": {
+          "id": "conn-route-params",
+          "dataProviderId": "route-params-provider",
+          "input": {},
+          "usedBy": [
+            "page:page-game",
+            "page:page-psc-game"
+          ]
+        },
+        "c-paths": {
+          "id": "c-paths",
+          "dataProviderId": "ugc-d-paths-games-provider-v2",
+          "input": {
+            "publisherProjectId": "200002",
+            "locale": "en-US"
+          },
+          "usedBy": [
+            "page:page-game",
+            "page:page-psc-game"
+          ]
+        },
+        "c-game-data": {
+          "id": "c-game-data",
+          "dataProviderId": "ugc-d-data-game-provider-v2",
+          "input": {
+            "slug": "#VC:conn-route-params:slug",
+            "publisherProjectId": "200002"
+          },
+          "usedBy": [
+            "page:page-game",
+            "block:g-hero",
+            "block:g-about"
+          ]
+        },
+        "c-psc-game-data": {
+          "id": "c-psc-game-data",
+          "dataProviderId": "ugc-d-data-game-provider-v2",
+          "input": {
+            "slug": "#VC:conn-route-params:slug",
+            "publisherProjectId": "200002"
+          },
+          "usedBy": [
+            "page:page-psc-game",
+            "block:c-hero",
+            "block:c-packages",
+            "block:c-about",
+            "block:c-faq"
+          ]
+        },
+        "c-buy": {
+          "id": "c-buy",
+          "dataProviderId": "ugc-d-catalog-games-provider-v2",
+          "input": {
+            "publisherProjectId": "200002",
+            "mode": "buy"
+          },
+          "usedBy": [
+            "page:page-game",
+            "block:g-games",
+            "page:page-psc",
+            "block:p-games"
+          ]
+        },
+        "c-top": {
+          "id": "c-top",
+          "dataProviderId": "ugc-d-catalog-games-provider-v2",
+          "input": {
+            "publisherProjectId": "200002",
+            "mode": "top_up"
+          },
+          "usedBy": [
+            "page:page-game",
+            "block:g-topup",
+            "page:page-psc",
+            "block:p-topup"
+          ]
+        }
+      }
+    },
+    "pages": [
+      {
+        "_id": "page-home",
+        "name": "Home",
+        "path": {
+          "type": "static",
+          "pathSegment": "/"
+        },
+        "theme": {
+          "enabled": false,
+          "input": {
+            "bg": "#141d1f"
+          }
+        },
+        "blocks": [
+          {
+            "_id": "h-nav",
+            "module": "federated",
+            "hidden": false,
+            "values": {
+              "host": "https://blocks.example.invalid/",
+              "blockId": "@xla-pages/top-navigation",
+              "version": "0.1.0",
+              "internalBlockValues": {},
+              "resources": {
+                "localizedValues": {},
+                "media": {}
+              }
+            }
+          }
+        ],
+        "seo": {
+          "title": "L:page-home-seo-title",
+          "description": "L:page-home-seo-description",
+          "ogImage": "L:page-home-seo-ogImage"
+        }
+      },
+      {
+        "_id": "page-game",
+        "name": "Game",
+        "path": {
+          "type": "dynamic",
+          "pathSegment": "/game/:slug",
+          "connectionId": "c-paths"
+        },
+        "dataConnectionId": "c-game-data",
+        "theme": {
+          "enabled": false,
+          "input": {
+            "bg": "#141d1f"
+          }
+        },
+        "blocks": [
+          {
+            "_id": "g-nav",
+            "module": "federated",
+            "hidden": false,
+            "values": {
+              "host": "https://blocks.example.invalid/",
+              "blockId": "@xla-pages/top-navigation",
+              "version": "0.1.0",
+              "internalBlockValues": {},
+              "resources": {
+                "localizedValues": {},
+                "media": {}
+              }
+            }
+          },
+          {
+            "_id": "g-hero",
+            "module": "federated",
+            "hidden": false,
+            "values": {
+              "host": "https://blocks.example.invalid/",
+              "blockId": "@xla-pages/hero",
+              "version": "0.4.1-next.3",
+              "internalBlockValues": {
+                "title": "#VC:c-game-data:title",
+                "description": "#VC:c-game-data:shortDescription",
+                "image": "#VC:c-game-data:cover",
+                "tagGameTitle": "#VC:c-game-data:title",
+                "purchaseSku": "#VC:c-game-data:sku",
+                "co_brand": false,
+                "partnerName": "",
+                "partnerLogoUrl": ""
+              },
+              "resources": {
+                "localizedValues": {},
+                "media": {}
+              }
+            }
+          },
+          {
+            "_id": "g-topup",
+            "module": "federated",
+            "hidden": false,
+            "values": {
+              "host": "https://blocks.example.invalid/",
+              "blockId": "@xla-pages/top-up",
+              "version": "0.0.9",
+              "internalBlockValues": {
+                "gamesJson": "#VC:c-top:gamesJson",
+                "providerId": ""
+              },
+              "resources": {
+                "localizedValues": {},
+                "media": {}
+              }
+            }
+          },
+          {
+            "_id": "g-games",
+            "module": "federated",
+            "hidden": false,
+            "values": {
+              "host": "https://blocks.example.invalid/",
+              "blockId": "@xla-pages/games",
+              "version": "0.0.6",
+              "internalBlockValues": {
+                "gamesJson": "#VC:c-buy:gamesJson",
+                "providerId": ""
+              },
+              "resources": {
+                "localizedValues": {},
+                "media": {}
+              }
+            }
+          },
+          {
+            "_id": "g-about",
+            "module": "federated",
+            "hidden": false,
+            "values": {
+              "host": "https://blocks.example.invalid/",
+              "blockId": "@xla-pages/about-game-carousel",
+              "version": "0.0.4",
+              "internalBlockValues": {
+                "mediaJson": "#VC:c-game-data:mediaJson",
+                "genresJson": "#VC:c-game-data:genresJson",
+                "platformsJson": "#VC:c-game-data:platformsJson"
+              },
+              "resources": {
+                "localizedValues": {},
+                "media": {}
+              }
+            }
+          },
+          {
+            "_id": "g-footer",
+            "module": "federated",
+            "hidden": false,
+            "values": {
+              "host": "https://blocks.example.invalid/",
+              "blockId": "@xla-pages/footer",
+              "version": "0.0.5",
+              "internalBlockValues": {},
+              "resources": {
+                "localizedValues": {},
+                "media": {}
+              }
+            }
+          }
+        ],
+        "seo": {
+          "title": "L:page-game-seo-title",
+          "description": "L:page-game-seo-description",
+          "ogImage": "L:page-game-seo-ogImage",
+          "canonicalUrl": "https://x.la/game/:slug"
+        }
+      },
+      {
+        "_id": "page-psc",
+        "name": "Payment: Paysafecard",
+        "path": {
+          "type": "static",
+          "pathSegment": "/payment/paysafecard"
+        },
+        "theme": {
+          "enabled": false,
+          "input": {
+            "bg": "#141d1f"
+          }
+        },
+        "blocks": [
+          {
+            "_id": "p-nav",
+            "module": "federated",
+            "hidden": false,
+            "values": {
+              "host": "https://blocks.example.invalid/",
+              "blockId": "@xla-pages/top-navigation",
+              "version": "0.1.0",
+              "internalBlockValues": {},
+              "resources": {
+                "localizedValues": {},
+                "media": {}
+              }
+            }
+          },
+          {
+            "_id": "p-hero",
+            "module": "federated",
+            "hidden": false,
+            "values": {
+              "host": "https://blocks.example.invalid/",
+              "blockId": "@xla-pages/hero",
+              "version": "0.4.1-next.3",
+              "internalBlockValues": {
+                "title": "Top up with Paysafecard",
+                "description": "Synthetic reference copy.",
+                "image": "https://cdn.example.invalid/psc.jpg",
+                "tagGameTitle": "",
+                "purchaseSku": "",
+                "co_brand": true,
+                "partnerName": "Paysafecard",
+                "partnerLogoUrl": ""
+              },
+              "resources": {
+                "localizedValues": {},
+                "media": {}
+              }
+            }
+          },
+          {
+            "_id": "p-topup",
+            "module": "federated",
+            "hidden": false,
+            "values": {
+              "host": "https://blocks.example.invalid/",
+              "blockId": "@xla-pages/top-up",
+              "version": "0.0.9",
+              "internalBlockValues": {
+                "gamesJson": "#VC:c-top:gamesJson",
+                "providerId": "paysafecard"
+              },
+              "resources": {
+                "localizedValues": {},
+                "media": {}
+              }
+            }
+          },
+          {
+            "_id": "p-games",
+            "module": "federated",
+            "hidden": false,
+            "values": {
+              "host": "https://blocks.example.invalid/",
+              "blockId": "@xla-pages/games",
+              "version": "0.0.6",
+              "internalBlockValues": {
+                "gamesJson": "#VC:c-buy:gamesJson",
+                "providerId": "paysafecard"
+              },
+              "resources": {
+                "localizedValues": {},
+                "media": {}
+              }
+            }
+          },
+          {
+            "_id": "p-offers",
+            "module": "federated",
+            "hidden": false,
+            "values": {
+              "host": "https://blocks.example.invalid/",
+              "blockId": "@xla-pages/special-offers",
+              "version": "0.0.3",
+              "internalBlockValues": {
+                "offersJson": "[]"
+              },
+              "resources": {
+                "localizedValues": {},
+                "media": {}
+              }
+            }
+          },
+          {
+            "_id": "p-faq",
+            "module": "federated",
+            "hidden": false,
+            "values": {
+              "host": "https://blocks.example.invalid/",
+              "blockId": "@xla-pages/faq",
+              "version": "0.0.2",
+              "internalBlockValues": {
+                "faqJson": "[]"
+              },
+              "resources": {
+                "localizedValues": {},
+                "media": {}
+              }
+            }
+          },
+          {
+            "_id": "p-footer",
+            "module": "federated",
+            "hidden": false,
+            "values": {
+              "host": "https://blocks.example.invalid/",
+              "blockId": "@xla-pages/footer",
+              "version": "0.0.5",
+              "internalBlockValues": {},
+              "resources": {
+                "localizedValues": {},
+                "media": {}
+              }
+            }
+          }
+        ],
+        "seo": {
+          "title": "L:page-psc-seo-title",
+          "description": "L:page-psc-seo-description",
+          "ogImage": "L:page-psc-seo-ogImage",
+          "canonicalUrl": "https://x.la/payment/paysafecard"
+        }
+      },
+      {
+        "_id": "page-psc-game",
+        "name": "Payment: Paysafecard games",
+        "path": {
+          "type": "dynamic",
+          "pathSegment": "/payment/paysafecard/:slug",
+          "connectionId": "c-paths"
+        },
+        "dataConnectionId": "c-psc-game-data",
+        "theme": {
+          "enabled": false,
+          "input": {
+            "bg": "#141d1f"
+          }
+        },
+        "blocks": [
+          {
+            "_id": "c-nav",
+            "module": "federated",
+            "hidden": false,
+            "values": {
+              "host": "https://blocks.example.invalid/",
+              "blockId": "@xla-pages/top-navigation",
+              "version": "0.1.0",
+              "internalBlockValues": {},
+              "resources": {
+                "localizedValues": {},
+                "media": {}
+              }
+            }
+          },
+          {
+            "_id": "c-hero",
+            "module": "federated",
+            "hidden": false,
+            "values": {
+              "host": "https://blocks.example.invalid/",
+              "blockId": "@xla-pages/hero",
+              "version": "0.4.1-next.3",
+              "internalBlockValues": {
+                "title": "#VC:c-psc-game-data:title",
+                "description": "#VC:c-psc-game-data:shortDescription",
+                "image": "#VC:c-psc-game-data:cover",
+                "tagGameTitle": "#VC:c-psc-game-data:title",
+                "purchaseSku": "#VC:c-psc-game-data:sku",
+                "co_brand": true,
+                "partnerName": "Paysafecard",
+                "partnerLogoUrl": ""
+              },
+              "resources": {
+                "localizedValues": {},
+                "media": {}
+              }
+            }
+          },
+          {
+            "_id": "c-packages",
+            "module": "federated",
+            "hidden": false,
+            "values": {
+              "host": "https://blocks.example.invalid/",
+              "blockId": "@xla-pages/top-up-packages",
+              "version": "0.0.2",
+              "internalBlockValues": {
+                "storeGroupId": "#VC:c-psc-game-data:storeGroupId",
+                "currencyName": "#VC:c-psc-game-data:currencyName"
+              },
+              "resources": {
+                "localizedValues": {},
+                "media": {}
+              }
+            }
+          },
+          {
+            "_id": "c-about",
+            "module": "federated",
+            "hidden": false,
+            "values": {
+              "host": "https://blocks.example.invalid/",
+              "blockId": "@xla-pages/about-game-carousel",
+              "version": "0.0.4",
+              "internalBlockValues": {
+                "mediaJson": "#VC:c-psc-game-data:mediaJson",
+                "genresJson": "#VC:c-psc-game-data:genresJson",
+                "platformsJson": "#VC:c-psc-game-data:platformsJson"
+              },
+              "resources": {
+                "localizedValues": {},
+                "media": {}
+              }
+            }
+          },
+          {
+            "_id": "c-faq",
+            "module": "federated",
+            "hidden": false,
+            "values": {
+              "host": "https://blocks.example.invalid/",
+              "blockId": "@xla-pages/faq",
+              "version": "0.0.2",
+              "internalBlockValues": {
+                "faqJson": "#VC:c-psc-game-data:faqJson"
+              },
+              "resources": {
+                "localizedValues": {},
+                "media": {}
+              }
+            }
+          },
+          {
+            "_id": "c-footer",
+            "module": "federated",
+            "hidden": false,
+            "values": {
+              "host": "https://blocks.example.invalid/",
+              "blockId": "@xla-pages/footer",
+              "version": "0.0.5",
+              "internalBlockValues": {},
+              "resources": {
+                "localizedValues": {},
+                "media": {}
+              }
+            }
+          }
+        ],
+        "seo": {
+          "title": "L:page-psc-game-seo-title",
+          "description": "L:page-psc-game-seo-description",
+          "ogImage": "L:page-psc-game-seo-ogImage",
+          "canonicalUrl": "https://x.la/payment/paysafecard/:slug"
+        }
+      }
+    ]
+  }
+}

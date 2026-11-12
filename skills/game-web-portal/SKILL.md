@@ -13,6 +13,7 @@ description: >-
   key — those are handed to the human in Publisher Account. Steam, App Store and Google Play
   titles; a Launcher only for PC. For a store without a game home, use nocode-shop-setup.
   For a shop the user codes and deploys, use shop-setup.
+  Not for XLA Pages on x.la; use `xla-pages`.
 metadata:
   owner: a.pyanzin
   domain: orchestrator

@@ -9,6 +9,7 @@ description: >-
   mobile single-page, PC multi-page and live-service presets. Prefer this skill over
   creating isolated Shop Builder blocks. Do not use it for a custom headless storefront;
   use shop-setup for that architecture.
+  Not for XLA Pages on x.la; use `xla-pages`.
 metadata:
   owner: k.shah
   domain: store

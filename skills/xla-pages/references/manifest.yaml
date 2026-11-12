@@ -1,0 +1,432 @@
+# XLA Pages: page-type manifest for AI Kit page generation
+#
+# Sources, read 2026-11-07: the XLA Pages API's public /pub surface, the Shop Builder data
+# providers, the XLA Pages design, and the block release log from 2026-10-14 to 2026-11-06.
+# Internal repositories and channels stay out of this public repository.
+#
+# The agent builds XLA pages only from what this file lists. Anything not listed is not allowed.
+#
+# This repository is public. Merchant, project and site values are placeholders: ${merchant_id},
+# ${project_id} and ${site_slug} are read from the user's local .xsolla/xla-pages.json, which is
+# never committed. scripts/manifest.json is the same content as JSON; the skill's scripts read it.
+
+manifest_version: 1
+
+# ---------------------------------------------------------------------------
+# Site and design (locked)
+# ---------------------------------------------------------------------------
+site:
+  public_domain: x.la
+  shop_builder:                       # the one site the agent writes to, in its draft only
+    merchant_id: "${merchant_id}"
+    project_id: "${project_id}"
+    site_slug: "${site_slug}"
+    published_address: "${site_slug}.xsolla.site"   # x.la serves it through a proxy
+  store_project_id: "${project_id}"   # XLA Pages Store project; input of every ugc-d data provider
+  default_locale: en-US               # the API resolves localized keys en-US first
+  design:
+    theme_locked: true                # blocks carry XUI dark-theme tokens; no theme, font, color, radius or spacing patches
+    page_look: only the reference page's values, read with get-structure   # background, width, spacing
+    page_background: "#141d1f"        # XUI background.secondary
+    max_content_width_px: 1640        # centered; side margins grow beyond this width
+    gutter_px: { mobile: 8, tablet: 16, desktop: 16 }
+    gap_between_blocks_px: 4
+    full_bleed_on_desktop: [top-up, top-up-packages]   # all other blocks sit inside the 1640 px column
+    footer: inside the 1640 px column
+
+# ---------------------------------------------------------------------------
+# XLA Pages API (read-only for the agent)
+# ---------------------------------------------------------------------------
+xla_pages_api:
+  base_url: https://xla-pages.xsolla.com
+  public_surface_auth: none           # /pub/* is anonymous
+  endpoints:
+    game:
+      request: GET /pub/games/{slug}/core-attributes?project_id={store_project_id}
+      response: "{ data: GameCoreAttributes }"
+      notes:
+        - project_id is optional; the lookup filters by game status only, not by project
+        - icon, cover and media[] are media UIDs, not URLs; resolve each through the media endpoint
+        - typed fields are the contract; attributes{} and extra_data{} repeat some of them and may disagree
+    catalog:
+      request: GET /pub/catalog/games?publisher_project_id={store_project_id}&mode={buy|top_up}&page={n}&size={1..50}
+      tile_fields: [slug, title, short_description, store_group_id, cover, key_price, currency_name]
+      notes:
+        - one tile per game; cover is a public URL here (a UID on the game endpoint)
+        - filters by project AND status; a slug that resolves on the game endpoint may be absent here
+        - mode=buy lists games sold as keys (key_price {amount, currency}); mode=top_up lists games with in-game currency (currency_name)
+        - a game without a storefront listing of that mode is absent under an explicit mode
+        - size above 50 is rejected with 400; the response has no total
+    media:
+      request: GET /pub/media/{id}/info
+      fields: [id, url, content_type, media_type, size, object_metadata]   # object_metadata: width/height for images, duration for video
+  write_surface: /integration/*       # Publisher Account admin token; game content is fixed there, never typed into a block
+
+  game_core_attributes:               # GET /pub/games/{slug}/core-attributes -> data
+    game_id: string
+    slug: string
+    project_id: string                # owning Store project of the game (not the XLA Pages project)
+    store_group_id: string
+    title: string
+    description: string
+    short_description: string
+    icon: media UID
+    cover: media UID
+    game_key_sku: string
+    game_key_price: string
+    game_key_price_ico: string        # currency code
+    publisher: string
+    developer: string
+    platforms: string[]
+    genres: string[]
+    tags: string[]
+    media: media UID[]                # ordered; NOT extra_data.media
+    faq: "{ question, answer }[]"
+    payment_methods: "{ id, payment_method_id, countries[] }[]"
+    attributes: object                # every publisher-owned key, values as stored
+    extra_data: object                # stored verbatim, incl. storefront
+  payment_methods_rules:
+    - empty list = not recorded = the game is payable with any provider
+    - id is the {provider} URL segment (paypal, toss, klarna, ...), case-sensitive as stored; lowercase both sides before matching
+    - payment_method_id is the Pay Station PID enabled in the GAME's Store project; a PID from another project fails with Pay Station error 3010
+    - countries empty = every country; ISO 3166-1 alpha-2 otherwise
+    - order matters; the first entry for a provider is the fallback when the viewer's country is unknown
+    - a provider may appear several times (one entry per country configuration)
+
+# ---------------------------------------------------------------------------
+# Shop Builder data providers (the only data sources a block may bind)
+# ---------------------------------------------------------------------------
+data_providers:
+  game_paths:
+    id: ugc-d-paths-games-provider-v2
+    kind: path
+    input: { publisherProjectId: "${project_id}", locale: en-US }
+    output: paths[]
+    behavior:
+      - slugs come from the catalog without a mode filter, so every catalog game gets a path
+      - slugs not matching ^[a-z0-9-]+$ are dropped
+      - slugs equal to an existing static page path are dropped
+      - "linked data provider is created automatically: ugc-d-data-game-provider-v2"
+  game_data:
+    id: ugc-d-data-game-provider-v2
+    kind: value
+    input: { slug: "{path}", publisherProjectId: "${project_id}" }
+    outputs:                          # output <- API field
+      id: game_id
+      slug: slug
+      projectId: project_id
+      title: title
+      description: description
+      shortDescription: short_description
+      cover: cover                    # resolved to a URL; "" when the lookup fails
+      icon: icon                      # resolved to a URL; "" when the lookup fails
+      sku: game_key_sku
+      price: game_key_price
+      currency: game_key_price_ico
+      currencyName: attributes.currency_name
+      storeGroupId: store_group_id
+      publisher: publisher
+      developer: developer
+      platforms: platforms
+      genres: genres
+      tags: tags
+      media: media                    # resolved URLs, first 20 only
+      faq: faq
+      faqJson: JSON string of faq     # for federated blocks (they bind only strings, numbers, booleans)
+      mediaJson: "JSON string of { url, content_type }[]"
+      genresJson: JSON string of genres
+      platformsJson: JSON string of platforms
+    not_exposed: [payment_methods, extra_data, attributes]   # cannot be bound; nothing from these is typed by the agent
+  catalog_buy:
+    id: ugc-d-catalog-games-provider-v2
+    kind: value
+    input: { publisherProjectId: "${project_id}", mode: buy }
+    outputs: { games: "{ slug, title, cover, currencyName, genres }[]", gamesJson: JSON string of games }
+  catalog_top_up:
+    id: ugc-d-catalog-games-provider-v2
+    kind: value
+    input: { publisherProjectId: "${project_id}", mode: top_up }
+    outputs: { games: "{ slug, title, cover, currencyName, genres }[]", gamesJson: JSON string of games }
+  limits:
+    rate_limit_per_minute: 300        # getData calls, shared by all ugc-d providers
+    api_calls_per_game_getData: "1 core-attributes + up to 22 media lookups (cover, icon, 20 media)"
+    request_timeout_s: 30
+    max_paths_per_dynamic_page: 2500  # 50 catalog pages x 50 games
+    max_games_in_catalog_list: 1000   # 20 catalog pages x 50 games
+
+# ---------------------------------------------------------------------------
+# Allowed blocks
+# ---------------------------------------------------------------------------
+blocks:
+  source: federated XLA blocks, package scope "@xla-pages/"
+  standard_shop_builder_blocks_allowed: none        # XLA pages use XLA blocks only
+  new_custom_blocks_allowed: false
+  pin_rule:
+    - pin every block to the exact version on the reference page of its page type (read with get-structure)
+    - never "latest", never the "latest stable" fallback
+    - pre-release builds are allowed only when the reference page already runs them
+  packages:
+    top-navigation:      { package: "@xla-pages/top-navigation",      stable_releases: ["0.1.0", "0.0.2"] }
+    hero:                { package: "@xla-pages/hero",                stable_releases: ["0.2.0", "0.0.2"],
+                           warning: "0.2.0 (published 2026-10-19) sorts above every newer build; a stable fallback would pick an older hero" }
+    top-up:              { package: "@xla-pages/top-up",              stable_releases: [] }
+    games:               { package: "@xla-pages/games",               stable_releases: [] }
+    top-up-packages:     { package: "@xla-pages/top-up-packages",     stable_releases: [] }
+    about-game:          { package: "@xla-pages/about-game",          stable_releases: ["0.0.2"] }
+    about-game-carousel: { package: "@xla-pages/about-game-carousel", stable_releases: ["0.0.4", "0.0.3"] }
+    special-offers:      { package: "@xla-pages/special-offers",      stable_releases: [] }
+    faq:                 { package: "@xla-pages/faq",                 stable_releases: ["0.0.2"] }
+    footer:              { package: "@xla-pages/footer",              stable_releases: [] }
+  no_block_exists:                    # in the design, but no XLA block yet: leave out, never substitute
+    - payment-methods
+    - community-partners
+    - promo-banner-how-it-works
+    - promo-banner-become-a-partner
+
+# ---------------------------------------------------------------------------
+# Page types
+# ---------------------------------------------------------------------------
+page_types:
+
+  game:
+    route: /game/:slug
+    public_url: https://x.la/game/{slug}
+    kind: dynamic                     # ONE page; one path per catalog game
+    reference_page: https://x.la/game/kind-heart-survivors
+    paths: game_paths
+    data: game_data
+    hand_typed_content: none          # every visible field is bound to data
+    blocks:
+      - block: top-navigation
+        required: true
+      - block: hero
+        required: true
+        settings: { co_brand: off }
+        bind:
+          title: game_data.title
+          description: game_data.shortDescription
+          image: game_data.cover
+          tagGameTitle: game_data.title
+          purchaseSku: game_data.sku
+      - block: top-up
+        required: true
+        bind: { gamesJson: catalog_top_up.gamesJson }
+      - block: games
+        required: true
+        bind: { gamesJson: catalog_buy.gamesJson }
+      - block: about-game | about-game-carousel   # use the variant on the reference page
+        required: true
+        bind_about_game:
+          title: game_data.title
+          description: game_data.description
+          image: game_data.cover
+          publisherName: game_data.publisher
+          developerName: game_data.developer
+          tagGameTitle: game_data.title
+        bind_about_game_carousel:
+          mediaJson: game_data.mediaJson
+          genresJson: game_data.genresJson
+          platformsJson: game_data.platformsJson
+      - block: footer
+        required: true
+    seo:
+      title: game_data.title
+      description: game_data.shortDescription
+      image: game_data.cover
+      canonical: https://x.la/game/{slug}
+
+  payment_provider:
+    route: /payment/{provider}
+    public_url: https://x.la/payment/{provider}
+    kind: static                      # one page per batch row
+    reference_page: https://x.la/payment/paysafecard
+    row_input:                        # partner data has no data source; it comes from the batch file
+      provider: lowercase id, the {provider} URL segment; must match payment_methods[].id
+      partner_name: string
+      partner_logo_url: URL, optional (a text badge is shown without it)
+      hero_title: string, max 60 characters
+      hero_description: string, max 150 characters
+      hero_image: URL
+      faq: "{ question, answer }[]"
+      offers: optional
+    blocks:
+      - block: top-navigation
+        required: true
+      - block: hero
+        required: true
+        settings: { co_brand: on }
+        content_from_row: [hero_title, hero_description, hero_image, partner_name, partner_logo_url]
+      - block: top-up
+        required: true
+        bind: { gamesJson: catalog_top_up.gamesJson }
+        settings: { providerId: row.provider }
+      - block: games
+        required: true
+        bind: { gamesJson: catalog_buy.gamesJson }
+        settings: { providerId: row.provider }
+      - block: special-offers
+        required: false               # no data source; hidden when the row has no offers
+        content_from_row: [offers]
+      - block: faq
+        required: true
+        content_from_row: { faqJson: JSON string of row.faq }
+      - block: footer
+        required: true
+    seo:                              # static text only
+      title: from row
+      description: from row
+      canonical: https://x.la/payment/{provider}
+      rule: no reference to any data provider; a static page whose SEO references a provider the page lacks is dropped from publishing without an error
+
+  combined:
+    route: /payment/{provider}/:slug
+    public_url: https://x.la/payment/{provider}/{slug}
+    kind: dynamic                     # ONE page per provider; one path per catalog game
+    reference_page: https://x.la/payment/paysafecard/{slug}
+    created_with: payment_provider    # one per payment_provider row
+    paths: game_paths
+    data: game_data
+    hand_typed_content: co-brand fields only, copied from the provider row
+    blocks:
+      - block: top-navigation
+        required: true
+      - block: hero
+        required: true
+        settings: { co_brand: on }
+        bind:
+          title: game_data.title
+          description: game_data.shortDescription
+          image: game_data.cover
+          tagGameTitle: game_data.title
+          purchaseSku: game_data.sku
+        content_from_row: [partner_name, partner_logo_url]
+      - block: top-up-packages
+        required: false               # only on the reference page for games with in-game currency
+        bind:
+          storeGroupId: game_data.storeGroupId
+          currencyName: game_data.currencyName
+      - block: about-game | about-game-carousel   # same variant as the game page
+        required: true
+      - block: faq
+        required: true
+        bind: { faqJson: game_data.faqJson }
+      - block: footer
+        required: true
+    pay_station_lock: >
+      PID = payment_methods[] entry with id == provider for the viewer's country, else the first entry
+      for that provider. payment_methods is not a data provider output: the agent neither binds nor
+      types it.
+    seo:
+      title: game_data.title
+      description: game_data.shortDescription
+      image: game_data.cover
+      canonical: https://x.la/payment/{provider}/{slug}
+
+# ---------------------------------------------------------------------------
+# Batch input
+# ---------------------------------------------------------------------------
+batch:
+  dynamic_pages: >
+    The agent creates each dynamic page once (game, and one combined page per provider).
+    The number of game paths equals the number of catalog games and is set by the XLA Pages API,
+    not by the batch. Per-game exclusions are not possible in the paths provider: a game is excluded
+    by removing it from the catalog or by a redirect, not by the agent.
+  static_pages: one row per payment provider page
+  row_example:
+    provider: klarna
+    partner_name: Klarna
+    partner_logo_url: https://cdn.example/klarna-logo.svg
+    hero_title: Top up with Klarna
+    hero_description: Buy your favorite games now and pay later with Klarna
+    hero_image: https://cdn.example/klarna-banner.jpg
+    faq:
+      - { question: "...", answer: "..." }
+
+# ---------------------------------------------------------------------------
+# Preflight report (per catalog game; read-only API calls; nothing is written)
+# ---------------------------------------------------------------------------
+preflight:
+  responses:
+    - the agent makes only GET requests, only to https://xla-pages.xsolla.com/pub/*
+    - each response is saved as is, with its URL, status and the time of the request
+    - scripts read the saved files and make no HTTP calls
+    - the report shows the request time of every response it used
+  max_age_hours_before_write: 24     # older responses are requested again before any write
+  per_game:
+    - { check: "slug matches ^[a-z0-9-]+$", on_fail: "no page is generated for this game" }
+    - { check: "slug is in catalog mode=buy or mode=top_up for ${project_id}", on_fail: "no page is generated for this game" }
+    - { check: "title is non-empty and at most 60 characters", on_fail: "fix in the API" }
+    - { check: "short_description is at most 150 characters", on_fail: "fix in the API" }
+    - { check: "cover resolves through /pub/media/{id}/info with content_type image/*", on_fail: "hero renders without an image; fix in the API" }
+    - { check: "buy games: game_key_sku is non-empty", on_fail: "hero cannot start a purchase; fix in the API" }
+    - { check: "buy games: catalog key_price or game_key_price is present", on_fail: "no price shown; fix in the API" }
+    - { check: "faq is non-empty", on_fail: "combined page FAQ is empty; fix in the API" }
+    - { check: "media has at most 20 items", on_fail: "items after the 20th are not shown" }
+  per_provider_and_game:
+    - check: "payment_methods is empty OR contains the provider (lowercased)"
+      on_fail: "the combined page still exists as a path; the game cannot be paid with this provider; list for a redirect"
+  output: one line per game with the failing checks and where to fix them
+
+# ---------------------------------------------------------------------------
+# Writes and validation
+# ---------------------------------------------------------------------------
+writes:
+  target: >
+    The draft of the one site in site.shop_builder, never a copy of it. Edits stay in the draft
+    until a person publishes. The site is live and the Pages team publishes it themselves: their
+    publication also ships the agent's draft, so nothing is written before the plan's yes.
+  published_site: >
+    The rule "never write to a published site" stays. The one exception is the site in
+    site.shop_builder (merchant, project and slug all equal); every other published site is refused.
+  allowed:
+    - add the blocks listed for the page type, in the listed order, at the pinned version
+    - set the listed bindings and settings
+    - write the listed row content into the listed fields
+    - "hide an optional block (required: false) when its content is empty"
+    - delete the blocks add-page seeded on a page created in the same run (delete, not hide; a hidden block stays in the structure)
+    - set a page's look (background, width, spacing) to the reference page's values, read with get-structure
+  forbidden:
+    - any block not listed for the page type, standard or custom
+    - Custom code (HTML) block, block scripts, style layers, partner customization bundles, external scripts, iframes, fonts or trackers
+    - theme, font, color, radius, spacing or block style patches, except a page look set to the reference page's values
+    - any page look value the reference page does not have
+    - deleting or moving a block that was on a page before the run, or hiding one other than an optional manifest block
+    - typing game data (titles, prices, SKUs, images, FAQ) into a block instead of binding it
+    - duplicating a block that has data bindings (add it fresh from the block package instead)
+    - publishing; a person publishes, all pages of the site at once
+    - writing to the XLA Pages API
+    - writing to the catalog or LiveOps
+  approval: one plan per batch listing every page, its type and its blocks, and every page that appears or changes; nothing is written before approval
+  backup: >
+    The agent's own get-structure snapshot, saved before the first write. Shop Builder's version
+    history is not a backup: restoring a version currently drops the data-provider connections.
+  cli_gate: >
+    Writes run only when `--help` lists every command and flag the plan needs
+    (scripts/cli_gate.py). The CLI version number is not checked.
+  updates:
+    verified: false
+    rule: >
+      Updates of existing pages write shapes no real site has confirmed yet (a federated block's
+      values.blockId, the hidden patch, the page look keys). They stay off until one run updates a
+      single test page and a person checks it in the Editor. For that run only, the local config
+      sets allow_unverified_updates: true, and the plan may update one page and create none. Once
+      the page checks out, set verified to true here.
+
+validation:
+  before_write:
+    - every block in the plan is listed for its page type, at its pinned version, in order
+    - no theme or style patch in the plan
+    - every static row passes the character limits
+    - the saved /pub responses are at most 24 hours old
+    - every command and flag the plan needs is in the CLI's --help
+    - any failure stops the batch with zero writes
+  after_write:
+    - read every page back with get-structure and compare with this manifest (blocks, order, versions, bindings)
+    - on update, the set of data bindings per page is identical before and after
+    - "report per page: pass, or the exact difference"
+  acceptance:
+    blocks_outside_manifest: 0
+    theme_or_style_patches: 0
+    custom_code_items: 0
+    hand_typed_game_data_fields: 0
+    pages_matching_manifest: 100%

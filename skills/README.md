@@ -20,6 +20,7 @@ Each subdirectory contains a `SKILL.md` — a structured workflow file for an Xs
 | [`quest-setup`](quest-setup/SKILL.md)                                     | Quests: CRUD, events, rewards, headless Web Shop module, Shop Builder Quests block operations | @r.aliyev           | Draft  |
 | [`production`](production/SKILL.md)                                       | Sandbox → live / go-live checklist      | @y.klochikhin       | Done   |
 | [`shopbuilder-translate`](shopbuilder-translate/SKILL.md)                 | Shop Builder page copy          | @s.hossain          | Draft  |
+| [`xla-pages`](xla-pages/SKILL.md)                                         | XLA Pages on x.la (Shop Builder)        | @a.pyanzin          | Draft  |
 
 ## Adding a skill
 
