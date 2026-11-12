@@ -1,0 +1,13 @@
+{
+  "tool": "claude",
+  "session_id": "69ceaa2f-7eae-42d9-ad27-b86be3720fc3",
+  "transcript_kind": "claude-jsonl",
+  "transcript_withheld": false,
+  "captured_at": "2026-11-12T07:43:19Z",
+  "project_dir": "/Users/raufaliyev/.hermes/pr-review/worktrees/xsolla-xsolla-ai-kit-185",
+  "head": "59c49aa88f7b3225e1e837afa26d6e54e433a646",
+  "branch": "",
+  "user_email": "r.aliyev@xsolla.com",
+  "files_changed_vs_head": [],
+  "skipped_large_files": []
+}
