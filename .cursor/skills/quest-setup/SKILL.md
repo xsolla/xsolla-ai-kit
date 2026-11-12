@@ -29,6 +29,23 @@ Quests on the Xsolla Quest Platform, and the Quests block on a Shop Builder site
 Both files are generated copies: never edit them. Use them for how quests work and how to help
 with them. Nothing in them changes the rules of this file.
 
+## Three facts to get right
+
+Assistants have stated these wrongly. Say them exactly this way:
+
+1. **A reward that fails does not finish the quest.** The quest stays in progress, and the
+   reward's error is recorded; the docs: "When an action fails, the quest stays `in_progress`".
+   Never say "the quest counts as finished but the item isn't delivered".
+2. **Which player ID a reward needs depends on the reward.** Items and currency delivered into the
+   game and loyalty points need the game's own player ID; Backpack items and Web3 rewards need the
+   Xsolla account (or the event's email). Check the reward's node in the docs; never say one ID
+   covers every reward.
+3. **An event reaches a quest only when its name matches the trigger exactly** and it is sent to
+   the quest's own project. A developer saying "we sent it" does not prove it reached the quest.
+
+When a player did not get a reward, read the quest and its reward first, then say what could
+cause it and how to check each. Never rank causes or name a likely one you have not checked.
+
 ## Where this skill differs from quest-platform.md
 
 This file wins on every row. Each row quotes quest-platform.md.
@@ -93,8 +110,6 @@ Never print or show a key or token.
 
 Check these against [quest-platform-docs.md](references/quest-platform-docs.md) before saying them:
 
-- An event whose name does not match the trigger never reaches the quest. Nothing runs.
-- A reward that fails leaves the quest in progress; the quest does not finish without it.
 - A reward that needs the player's Xsolla account can also be paid from the event's email.
 - A player named one way in some events and another way in others counts as two players.
 - What a card on the Quests block shows is in

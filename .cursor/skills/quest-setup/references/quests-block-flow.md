@@ -396,10 +396,11 @@ several), and a status with a button.
 | In progress | Some progress. A quest with steps shows "2 of 3 steps"; a counter shows "3 of 5", and "+N more" when there are more counters |
 | Reward pending | "All steps are done." The quest is complete and the reward is still on its way |
 | Completed | Done. A "Quest completed!" message appears, and finished quests are listed under "Completed quests" |
-| Expired | The quest ended before the player finished it |
+| Expired | The player's run ended unfinished. While the quest is still listed, this is what the card shows; once the quest itself has ended, it is no longer listed on the site at all (see Which quests appear) |
 | Error | The status could not be loaded ("Could not load status", with "Retry") |
 
-**Buttons.** "Check progress" on a quest in progress. A completed quest whose reward goes to the
+**Buttons.** "Check progress" on a quest in progress. What it does when pressed is not described
+here: say so once, and offer to check it together on the preview. A completed quest whose reward goes to the
 Backpack shows "See in Backpack". A card can also have its own button that opens a link (default
 text "Learn more"): only signed-in players see it, and the publisher chooses in the editor for
 which statuses it shows.
@@ -419,6 +420,11 @@ If no chosen quest can be shown, the block shows nothing on the site.
 simulation" shows example progress and statuses without sending anything; it is an editor setting
 only, and the published site always uses live data. To see real progress, sign in on the site's
 preview as a player and take the quest's action.
+
+**Doing it yourself in the editor.** Open the site in Site Builder, select the Quests block, and
+use its settings: the quest list (choose and order the quests), the card limit, each card's
+texts and image, and the layout and theme. The publisher can do any of it there instead of asking
+you; you still make changes only through the gate.
 
 **How to change what a card says.** The card's title, description and image, the heading, the
 order and the number of cards are changed on the block (see

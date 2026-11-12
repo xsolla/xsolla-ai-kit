@@ -3,15 +3,26 @@
 Read before proposing a reward that names a Store item. The Quest Platform does not look items up:
 this is how the skill finds the SKU, the name and the image itself.
 
-## The two reads
+## The reads
 
-Only these two reads of the Store admin catalog, on `https://store.xsolla.com`, for the configured
-project, with the publisher key ([auth-credentials.md](auth-credentials.md)):
+Only these reads of the Store admin catalog, on `https://store.xsolla.com`, for the configured
+project, with the publisher key ([auth-credentials.md](auth-credentials.md)). Each list pages the
+same way and returns items with the same fields (`sku`, `name`, `image_url`, `type`,
+`is_enabled`, `is_show_in_store`, `periods`):
 
 | Read | Use |
 |---|---|
-| `GET /api/v2/project/{project_id}/admin/items/virtual_items?limit=50&offset={offset}` | Page through the whole catalog |
-| `GET /api/v2/project/{project_id}/admin/items/virtual_items/sku/{sku}` | Check a SKU the publisher typed |
+| `GET /api/v2/project/{project_id}/admin/items/virtual_items?limit=50&offset={offset}` | Virtual items |
+| `GET /api/v2/project/{project_id}/admin/items/bundle?limit=50&offset={offset}` | Bundles |
+| `GET /api/v2/project/{project_id}/admin/items/virtual_currency?limit=50&offset={offset}` | Virtual currencies |
+| `GET /api/v2/project/{project_id}/admin/items/virtual_currency/package?limit=50&offset={offset}` | Currency packages |
+| `GET /api/v2/project/{project_id}/admin/items/virtual_items/sku/{sku}` | Check a SKU of a virtual item the publisher typed |
+
+Read all four lists before saying an item is not in the store. A SKU of another kind that the
+publisher typed is checked by finding it in its list.
+
+The item's **name** and its **SKU** are different values: show the name to the publisher, and put
+the SKU in the reward. Never call an item by its SKU or a SKU by the item's name.
 
 Never write to the Store, even when asked: creating or editing items is outside this skill. Never
 use web search to find an item.
@@ -31,11 +42,11 @@ Read the whole catalog before deciding. Match the requested name case-insensitiv
 
 - **One exact match:** use its SKU, and show its name, SKU and image in the proposal.
 - **Several, or only partial matches:** show them and let the publisher choose. Never pick.
-- **None:** these reads cover the store's virtual items only. Before saying the item was not
-  found, ask whether it is a bundle, a currency package or an item delivered into the game; if
-  so, follow [Rewards that are not Store virtual items](#rewards-that-are-not-store-virtual-items).
-  Otherwise say it was not found and suggest checking its exact name or whether it is enabled.
-  Never substitute another item.
+- **None, in all four lists:** say it was not found in the store, show the items that are there
+  by name, and ask whether it is delivered into the game instead (then follow
+  [Rewards that are not Store virtual items](#rewards-that-are-not-store-virtual-items)). Never
+  tell the publisher where to find a SKU in Publisher Account: this skill does not know. Never
+  substitute another item.
 
 A SKU the publisher typed is not checked until the single-item read returns it; a 404 means it is
 not in the catalog. Do not ask the publisher to type a SKU for a Store item.
@@ -49,6 +60,6 @@ reward, and stop.
 
 ## Rewards that are not Store virtual items
 
-A bundle, a currency package, a loyalty program, a scoped currency, a Web3 token or an item
-delivered into the game has no catalog read here. Ask the publisher for its SKU or ID once, show it in the proposal exactly as
+A loyalty program, a scoped currency, a Web3 token or an item delivered into the game has no
+catalog read here. Ask the publisher for its SKU or ID once, show it in the proposal exactly as
 given and marked "not checked", and let the yes cover it. Never invent one.

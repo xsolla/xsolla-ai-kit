@@ -50,6 +50,8 @@ POLICY_ROWS = (
    r'never on a block plan', r'show it, as quest-platform.md says', r'Never suggest an event name', r'never from its name or\s+description')),
  ('card_states_are_documented','quests-block-flow.md',('Not started','In progress','Reward pending','Completed','Expired','Check progress','See in Backpack','Preview state','Signed out','Editor simulation'),
   (r'Describe nothing beyond them', r'only for a\s+signed-in player')),
+ ('three_facts_up_front','skill',('Three facts to get right',),(r'does not finish the quest', r'never say one ID\s+covers every reward', r'Never rank causes')),
+ ('catalog_reads_every_kind','store-catalog-lookup.md',('admin/items/bundle','virtual_currency/package'),(r'Read all four lists', r'are different values')),
  ('proposal_says_who_sees_the_quest','reply-format.md',('Shown to players:',),(r'Several declines in one message',)),
  ('actual_event_name_before_write', 'quests-block-flow.md', ('login_xsolla_id', 'daily_visit', 'weekly_visit'), ('Never infer one from a quest title', 'Never rename the event of a running quest', 'client_sendable: true')),
 )

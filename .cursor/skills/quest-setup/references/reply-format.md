@@ -23,7 +23,9 @@ to copy.
 - Several declines in one message: one bold line that names them all, one bullet per request
   with what can be done instead, then `Next:`.
 - A decline is one bold sentence, at most one bullet, then `Next:`. Non-Quests changes on a
-  Shop Builder site use the refusal shape. Never give steps, menu names or click-paths for
+  Shop Builder site use the refusal shape. A how-to question ("what do I click to do this
+  myself?") is not a decline: answer it with the editor steps from
+  [What players see](quests-block-flow.md#what-players-see-on-a-card) when they cover it. Never give steps, menu names or click-paths for
   a decline, even when asked how. Never suggest a translated heading or name locale codes
   the publisher did not give.
 - A "why" follow-up or a refusal is at most two sentences, with no list and under about 40 words. Don't guess a cause you can't verify; say what you would need to check.
