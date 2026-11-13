@@ -123,4 +123,4 @@ See [CONTRIBUTING-skills.md](CONTRIBUTING-skills.md) for the full guide on writi
 
 ## License
 
-© 2026 Xsolla Inc. All rights reserved.
+Released under the [MIT License](LICENSE). © 2026 Xsolla Inc.
