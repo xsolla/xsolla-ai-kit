@@ -5,7 +5,7 @@ description: >-
   Rewards, Web Shop, Community and an optional Launcher, on a site made from the
   Multi-page web portal template. Reached through nocode-shop-setup. Use for "continue
   my Game Web Portal" or "add the Community section". Never publishes; that stays with
-  the human.
+  the human. Not for XLA Pages on x.la; use `xla-pages`.
 metadata:
   owner: a.pyanzin
   domain: orchestrator

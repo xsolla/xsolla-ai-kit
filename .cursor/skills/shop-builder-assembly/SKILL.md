@@ -5,7 +5,7 @@ description: >-
   navigation, standard blocks, localization, catalog links, theme and copy, with mobile,
   PC and live-service presets. Reached through nocode-shop-setup after
   description-to-shop; not an entry point. Prefer it over adding single blocks. Not for
-  a coded storefront (shop-setup).
+  a coded storefront (shop-setup). Not for XLA Pages on x.la; use `xla-pages`.
 metadata:
   owner: k.shah
   domain: store

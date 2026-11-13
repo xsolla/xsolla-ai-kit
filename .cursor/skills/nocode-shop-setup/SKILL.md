@@ -4,9 +4,8 @@ description: >-
   Builds a shop, web shop or storefront on Xsolla's side with Shop Builder: no code,
   servers or deploys. Use when the user says build me a shop or "create a web shop
   for my game", unless the user will code it, and for "I don't want to write code".
-  No local repo or
-  no coding means this path. Also installs the Xsolla CLI and signs the user in. If the
-  user will write and deploy code, open shop-setup.
+  No local repo or no coding means this path. Also installs the Xsolla CLI; the user
+  signs in. If the user will write and deploy code, open shop-setup.
 metadata:
   owner: a.pyanzin
   domain: store
@@ -191,5 +190,4 @@ When the batch said a game server receives paid orders, run `webhooks-impl`. It 
 handler code the developer deploys on their own server; say so. Otherwise skip it and
 list item delivery as not connected in the handoff.
 
-When the user wants real money, open `production`. The steps are the same for
-a shop hosted on Xsolla's side.
+Do not run `production` here. Leaving sandbox on a shop the user deploys is `shop-setup`.
