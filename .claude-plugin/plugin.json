@@ -5,6 +5,7 @@
   "homepage": "https://github.com/xsolla/xsolla-ai-kit",
   "repository": "https://github.com/xsolla/xsolla-ai-kit",
   "license": "MIT",
+  "privacyPolicyUrl": "https://xsolla.com/privacypolicy",
   "author": {
     "name": "Xsolla"
   },
