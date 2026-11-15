@@ -402,7 +402,8 @@ several), and a status with a button.
 
 **Buttons.** A signed-out visitor sees "Check progress" on every card; pressing it opens the
 Xsolla sign-in. A signed-in player sees the counter instead while the quest is not started or in
-progress, and "See in Backpack" once a quest whose reward goes to the Backpack is completed. A card can also have its own button that opens a link (default
+progress, and "See in Backpack" once a quest whose reward goes to the Backpack is completed; it opens the
+player's Backpack in a new window. A card can also have its own button that opens a link (default
 text "Learn more"): only signed-in players see it, and the publisher chooses in the editor for
 which statuses it shows.
 
