@@ -70,7 +70,7 @@ Your game tells the platform what players do by sending **events**: short messag
 
 > **You never count levels yourself**
 >
-> Each pass through the quest, from the trigger onwards, is a **run**. The platform keeps each player's **progress** on each quest (`not_started`, `in_progress`, `completed`, or `expired` for an unfinished run once the quest has ended), so your game can show it. A completed quest reads `not_started` again while the player's `per_user` limit still allows another completion. Without a `per_user` limit it stays `completed`.
+> Each pass through the quest, from the trigger onwards, is a **run**. The platform keeps each player's **progress** on each quest (`not_started`, `in_progress` or `completed`), so your game can show it. Once the quest has ended it is no longer returned, so read the progress before the end date. A completed quest reads `not_started` again while the player's `per_user` limit still allows another completion. Without a `per_user` limit it stays `completed`.
 
 #### Bigger quests are graphs
 
@@ -280,7 +280,7 @@ An event reaches only the quests of the project it is sent for.
 | **Player** | The person an event is about, resolved from its identifiers (`gamer_id`, `xsolla_id`, email). Progress and per-player limits belong to the player. |
 | **Run** | One pass of one quest for one event or one scheduled tick. |
 | **Activation limit** | A cap on completions, per player (`per_user`) or across all players (`global`), optionally per time window. |
-| **Progress** | A player's state on a quest: `not_started`, `in_progress`, `completed` or `expired`, with the count of completions. |
+| **Progress** | A player's state on a quest: `not_started`, `in_progress` or `completed`, with the count of completions. |
 | **Idempotency key** | A UUID per real-world occurrence of an event. Each quest processes a key once. |
 | [**Scope**](https://developers.xsolla.com/api/quests/publisher-events-guide#publisher-sending-scope) | Which later event counts can include an event: `private`, `global`, `within_publisher`, `within_project` or `within_quest`. |
 | **Backpack** | The player-facing inventory where item rewards appear. |
@@ -328,7 +328,7 @@ The steps a player sees on the way.
 | `name` | Required, 1 to 255 characters. |
 | `description` | Optional, 5 to 1000 characters. |
 | `type` | Required. Use `liveops`. |
-| `created_by` | Required, 1 to 255 characters, any identifier. |
+| `created_by` | Required, 1 to 255 characters, any identifier. It is stored in lower case with surrounding spaces removed, so it can read back differently from what you sent. An update replaces it with the value in that request. |
 | `metadata` | Free-form JSON, nested at most 5 levels (2 in a draft). |
 
 **Logic**
@@ -360,6 +360,10 @@ A draft skips the date, node-count and connection rules, so a quest can be saved
 | **active** | Between `start_date` and `end_date` | Fully validated on save; a schedule is registered when saved `active` |
 | **inactive** | Never | Kept with its progress. It can be set back to `active` with its stored `start_date`. A new `start_date` must be at most a day in the past, and can be set only while no player has progress (see [**Editing a live quest**](https://developers.xsolla.com/api/quests/quest-guide#quest-editing)) |
 | **deleted** | Never | No longer listed or run |
+
+> **A saved quest takes up to a minute to take effect**
+>
+> A new quest, or a change to one, can take up to a minute to reach incoming events. An event sent sooner may not count, so wait a minute after saving before you send the first one.
 
 ##### Editing a live quest
 
@@ -821,6 +825,8 @@ A literal (number, string, boolean or array), used as is. It must not be null.
 
 An event name: the number of events with that name sent under the same identifier as this event (its `xsolla_id`, else `gamer_id`, else `email`; `guest_id` is not counted) in the current calendar `day`, `week` or `month`. `time_window` is required. Only `numeric` operators, against a whole number.
 
+A check cannot read the event's `properties`: values sent with an event are not available to conditions.
+
 | Operator `type` | `operation` |
 | --- | --- |
 | **numeric** | `eq`, `neq`, `gt`, `lt`, `gte`, `lte`, `mod` (left is divisible by right; the divisor must be positive) |
@@ -890,7 +896,7 @@ Grants existing catalog items by SKU to the player's Backpack. The event needs `
 
 **Set up first:** items whose SKUs Backpack can resolve.
 
-**Backpack.** This node grants items to the player's Backpack, by `xsolla_id`. Guests cannot receive them.
+**Backpack.** This node grants items to the player's Backpack, by `xsolla_id`. Guests cannot receive them. The player needs an Xsolla account, not a Web3 wallet.
 
 * **Which catalogue**: the items are granted from the project the quest belongs to.
 * **Name and image**: this node sends only SKUs, and Backpack takes the name, type and image from its catalogue; a SKU it does not know fails with `not_found`. A public quest shows the same name and image.
@@ -1114,11 +1120,9 @@ Mints a Web3 item (NFT) to the player, at most once per player and quest. `item_
 
 The item is minted as an NFT to the player's Xsolla wallet, so the event needs `xsolla_id`; guests have no wallet.
 
-* **Which item**: `item_sku` names one SKU or a list of candidates, in `project` (empty: the default Web3 project).
+* **Which item**: `item_sku` names one SKU or a list of candidates, in `project` (empty: the default Web3 project). From a list, one SKU is chosen for each event: the player gets one item, not one of each, so a longer list does not raise the payout.
 * **How many**: `quantity`, 1 by default.
 * **Once per player**: a player receives it at most once per quest, however often they complete it.
-* **Only where Web3 rewards are available**: before paying, the Quest Platform checks that Web3 rewards are available to the player and to the merchant. If they are not, the node pays nothing and creates no wallet. It does not succeed, so the run stops there and an `on: "failed"` edge from the node runs, but it is not retried and sets no `last_error`. A legacy `issue_reward` of type `web3_item` is checked the same way.
-* **Who can save it**: if Web3 rewards are not available to the caller or to the merchant, creating or updating a quest with this node is refused with `422` and `node is not permitted for this caller` on the node, and the node types list leaves it out. When that cannot be checked, nothing is saved: send the request again. Deleting the quest, or saving it without this node, always works. On the project routes, such a caller does not see a quest with this node at all: the list leaves it out, and reading or updating it answers `404`.
 
 **Errors**: the codes this node can leave in the progress block's `last_error.code`:
 
@@ -1127,7 +1131,7 @@ The item is minted as an NFT to the player's Xsolla wallet, so the event needs `
 | `missing_xsolla_id` | The event has no `xsolla_id` and no `email` to find it from | Add `xsolla_id` to `user_ids`, or send the player's `email` |
 | `email_not_resolved` | The event had no `xsolla_id`, and its `email` belongs to no Xsolla account or is not a valid address | Send the player's `xsolla_id`, or the email of their Xsolla account |
 | `xsolla_id_lookup_unavailable` | The Xsolla account could not be looked up from the `email` at the moment | Nothing; the node is retried. If it still fails, resend the event under a new `idempotency_key` |
-| `reward_check_unavailable` | Whether Web3 rewards are available to the player could not be checked at the moment; nothing was paid | Nothing; the node is retried. If it still fails, send the event again with the same `idempotency_key` |
+| `reward_check_unavailable` | The reward could not be checked at the moment; nothing was paid | Nothing; the node is retried. If it still fails, send the event again with the same `idempotency_key` |
 | `web3_not_configured` | Web3 payouts are not enabled | Contact your Xsolla account manager |
 | `web3_claim_failed` | Xsolla Web3 refused the payout; nothing was paid | Check the SKU and project |
 | `web3_settlement_unavailable` | The payout could not be recorded safely at the moment, so nothing was sent; the node is retried | Nothing. If it still fails, resend the event under a new `idempotency_key` |
@@ -1174,8 +1178,6 @@ The tokens go to the player's Xsolla wallet, so the event needs `xsolla_id`; gue
 * **How many**: `amount` in whole tokens, more than 0 and at most 10,000.
 * **Every completion pays**, unlike [issue_web3_item](https://developers.xsolla.com/api/quests/node-issue-web3-item).
 * **Never paid twice**: when the outcome of a payout is unknown, it is not retried, so the player may wait while Xsolla checks it.
-* **Only where Web3 rewards are available**: before paying, the Quest Platform checks that Web3 rewards are available to the player and to the merchant. If they are not, the node pays nothing and creates no wallet. It does not succeed, so the run stops there and an `on: "failed"` edge from the node runs, but it is not retried and sets no `last_error`. A legacy `issue_reward` of type `web3_token` is checked the same way.
-* **Who can save it**: if Web3 rewards are not available to the caller or to the merchant, creating or updating a quest with this node is refused with `422` and `node is not permitted for this caller` on the node, and the node types list leaves it out. When that cannot be checked, nothing is saved: send the request again. Deleting the quest, or saving it without this node, always works. On the project routes, such a caller does not see a quest with this node at all: the list leaves it out, and reading or updating it answers `404`.
 
 **Errors**: the codes this node can leave in the progress block's `last_error.code`:
 
@@ -1184,7 +1186,7 @@ The tokens go to the player's Xsolla wallet, so the event needs `xsolla_id`; gue
 | `missing_xsolla_id` | The event has no `xsolla_id` and no `email` to find it from | Add `xsolla_id` to `user_ids`, or send the player's `email` |
 | `email_not_resolved` | The event had no `xsolla_id`, and its `email` belongs to no Xsolla account or is not a valid address | Send the player's `xsolla_id`, or the email of their Xsolla account |
 | `xsolla_id_lookup_unavailable` | The Xsolla account could not be looked up from the `email` at the moment | Nothing; the node is retried. If it still fails, resend the event under a new `idempotency_key` |
-| `reward_check_unavailable` | Whether Web3 rewards are available to the player could not be checked at the moment; nothing was paid | Nothing; the node is retried. If it still fails, send the event again with the same `idempotency_key` |
+| `reward_check_unavailable` | The reward could not be checked at the moment; nothing was paid | Nothing; the node is retried. If it still fails, send the event again with the same `idempotency_key` |
 | `web3_token_not_configured` | The project and SKU pair is not configured | Use a configured pair, or ask your Xsolla account manager to add it |
 | `web3_token_claim_failed` | Xsolla Web3 refused the payout; nothing was paid | Check the SKU and project |
 | `web3_settlement_unavailable` | The payout could not be recorded safely at the moment, so nothing was sent; the node is retried | Nothing. If it still fails, resend the event under a new `idempotency_key` |
@@ -1315,11 +1317,12 @@ So:
 * **Reward before email.** `trigger → reward → email` tells the player only about a reward that succeeded. Wiring the email to the trigger tells them even when the reward fails.
 * **Put the reward that matters most first.** With `trigger → [mint, Backpack]` the mint runs first and a Backpack failure cannot stop it; listed the other way round, it can. Chaining `mint → Backpack` behaves the same as listing the mint first.
 * **Email the player about a failure** with an `on: "failed"` edge from the reward; it runs once the reward has used up its retries.
+* **A reward already given stays given.** When a later node fails, the rewards before it are not taken back.
 * **A failed run resumes.** Nodes that succeeded are recorded as they finish, so resending the event with the **same** `idempotency_key` after a temporary failure continues from the failed node and does not run the earlier ones again.
 
 ## Activation limits
 
-***Activation limits cap how many times a quest is **completed**, by each player, by all players together, or both.*** A run that does not complete, for example because a condition is not met yet, uses up nothing.
+***Activation limits cap how many times a quest is **completed**, by each player, by all players together, or both.*** A run that does not complete, for example because a condition is not met yet, uses up nothing. A quest with no activation limits can be completed any number of times, and pays each time.
 
 #### Fields
 
@@ -1377,16 +1380,6 @@ A game client signed in as the player lists the same quests, each with that play
 Call [List quests with the caller's progress](https://developers.xsolla.com/api/quests/player-progress/list-me-quests).
 
 **Only some quests.** To show a few chosen quests, for example the cards of one page, repeat `ids` in the query of [List public quests](https://developers.xsolla.com/api/quests/public-quest-list/list-public-quests) or [List quests with the caller's progress](https://developers.xsolla.com/api/quests/player-progress/list-me-quests), up to 24 times. The quests among them that the list would show come back in one page, newest first, and `page` and `limit` are ignored. An id that is unknown, private, inactive or outside its dates is left out, never an error. An id that is not a UUID, or more than 24 ids, returns 422.
-
-#### Quests with Web3 rewards
-
-Web3 rewards are not available to every player. A public quest with a Web3 reward (an [issue_web3_item](https://developers.xsolla.com/api/quests/node-issue-web3-item) or [issue_web3_token](https://developers.xsolla.com/api/quests/node-issue-web3-token) node, or a legacy `issue_reward` of either Web3 type) is shown only to players Web3 rewards are available to, and only while they are available to the merchant whose quest it is. For anyone else it is left out, with or without the player's token:
-
-* Lists leave it out, and their `total` and pages count only the quests shown.
-* Getting it returns the same `404` as an unknown quest.
-* Nothing in the answer says that a quest was left out.
-
-Quests without a Web3 reward are shown to everyone. A player who sees the quest is checked again when the reward is paid; see [issue_web3_item](https://developers.xsolla.com/api/quests/node-issue-web3-item).
 
 #### Choose what players see
 
@@ -2043,7 +2036,7 @@ A player who makes 100 purchases within five years of the quest's start date rec
 
 #### Level completed event from a publisher
 
-A player finished level 12, reported by a publisher's backend to its project route. The body has no `publisher` block, since the merchant and project come from the path. The [**Publisher guide**](https://developers.xsolla.com/api/quests/publisher-guide) explains how to send it.
+A player finished level 12, reported by a publisher's backend. The [**Publisher guide**](https://developers.xsolla.com/api/quests/publisher-guide) explains how to send it.
 
 ```json
 {
@@ -2069,7 +2062,7 @@ A player finished level 12, reported by a publisher's backend to its project rou
 
 #### Level completed event from a game client
 
-The same occurrence sent by the game client for its signed-in player: only `idempotency_key`, `name`, `client_timestamp` and `properties`, because the player comes from the token and the merchant and project from the path. The [**Publisher events guide**](https://developers.xsolla.com/api/quests/publisher-events-guide) compares it with the backend event.
+The same occurrence sent by the game client for its signed-in player: only `idempotency_key`, `name`, `client_timestamp` and `properties`, because the player comes from the token. The [**Publisher events guide**](https://developers.xsolla.com/api/quests/publisher-events-guide) compares it with the backend event.
 
 ```json
 {
@@ -2206,7 +2199,9 @@ Each Publisher Account user gets their own access by calling it with their own t
 
 Send the quest with [Create a new quest (project scope)](https://developers.xsolla.com/api/quests/publisher-api/create-quest-in-project). [**Chest for three levels a week**](https://developers.xsolla.com/api/quests/examples-chest-quest) on the Examples page is a quest you can start from (set its `start_date` and `end_date` to your own dates first); the [**Quest guide**](https://developers.xsolla.com/api/quests/quest-guide) explains every part.
 
-The quest's `publisher_id` and `project_id` are taken from the path. Not every node is open to publishers: [**Quest nodes**](https://developers.xsolla.com/api/quests/quest-nodes) marks each one, and [List permitted quest node types](https://developers.xsolla.com/api/quests/publisher-api/get-quest-node-types-in-project) returns the nodes publishers may use, with their parameter schemas, for tools. The list is the same for every project, except that the Web3 reward nodes are left out where Web3 rewards are not available to you or to the merchant. [**Manage your quests**](https://developers.xsolla.com/api/quests/publisher-guide#publisher-manage-quests) lists the routes to read, update and delete it.
+Creating is not deduplicated: the same quest sent twice becomes two quests, and both run. If a create times out or you are not sure it went through, [list your quests](https://developers.xsolla.com/api/quests/publisher-api/list-quests-in-project) and look for it by name before you send it again.
+
+[**Quest nodes**](https://developers.xsolla.com/api/quests/quest-nodes) describes every node you can use, and [List permitted quest node types](https://developers.xsolla.com/api/quests/publisher-api/get-quest-node-types-in-project) returns the same nodes with their parameter schemas, for tools. [**Manage your quests**](https://developers.xsolla.com/api/quests/publisher-guide#publisher-manage-quests) lists the routes to read, update and delete it.
 
 #### 3. Send events
 
@@ -2216,7 +2211,7 @@ Send each real occurrence with a new `idempotency_key`, and resend the same key 
 
 ##### Check the result
 
-The chest is delivered to the player's `gamer_id` in your game, so check it there. To see what the quest did, read it as that player with [Get a quest with the caller's progress](https://developers.xsolla.com/api/quests/player-progress/get-me-quest): `completed` means every action succeeded. When a reward failed, the quest stays `in_progress`, and `last_error.code` names the reason; each node's **Errors** table on [**Quest nodes**](https://developers.xsolla.com/api/quests/quest-nodes) explains its codes. This works for public quests only, read with the player's token.
+The chest is delivered to the player's `gamer_id` in your game, so check it there. To see what the quest did, read it as that player with [Get a quest with the caller's progress](https://developers.xsolla.com/api/quests/player-progress/get-me-quest): `completed` means the Quest Platform's reward calls succeeded; it does not show that the item is visible in your game, so check that there. On a quest with a per-player limit that still has room, a successful run reads `not_started` again with `completion_count` one higher, not `completed`. When a reward failed, the quest stays `in_progress`, and `last_error.code` names the reason; each node's **Errors** table on [**Quest nodes**](https://developers.xsolla.com/api/quests/quest-nodes) explains its codes. This works for public quests only, read with the player's token, and only while the quest is active and inside its dates: a paused or ended quest answers `404`, even when the player has progress.
 
 #### 4. Show quests to players
 
@@ -2238,8 +2233,7 @@ All on your project's routes, with the same credentials as creating:
 | Delete | [Delete a quest (project scope)](https://developers.xsolla.com/api/quests/publisher-api/delete-quest-in-project) |
 | See which nodes you may use | [List permitted quest node types (project scope)](https://developers.xsolla.com/api/quests/publisher-api/get-quest-node-types-in-project) |
 
-* **Web3 rewards are not available to every caller.** Where they are not available to you or to the merchant, the list leaves out quests with a Web3 reward node, and reading or updating such a quest answers `404`, as for a quest that does not exist.
-* **Update replaces the quest**: send the whole body, as on create. Only `public_view`, `objectives` and `is_public` keep their stored values when left out. Every update gets a new `version_id`.
+* **Update replaces the quest**: send the whole body, as on create. Only `public_view`, `objectives` and `is_public` keep their stored values when left out. You can read a quest, change it and send it back as it is: the fields the server sets (`id`, `created_at`, `updated_at`, `version_id`) are ignored. Every update gets a new `version_id`, and it is not checked against the one you read, so when two updates overlap the last one wins.
 * **Some changes are refused** once players have progress (`409`); [**Editing a live quest**](https://developers.xsolla.com/api/quests/quest-guide#quest-editing) lists them.
 * **Delete** marks the quest `deleted` and stops its triggers, so it is no longer listed or run. Treat deletion as final: to run the quest again, create a new one rather than updating the deleted one.
 
@@ -2293,7 +2287,7 @@ The Authentication section of each operation lists its exact rules and errors.
 
 [**Send a publisher event**](https://developers.xsolla.com/api/quests/publisher-events/publisher-events)
 
-From your backend, with a Publisher Account token or a publisher key. The merchant and project come from the path.
+From your backend, with a Publisher Account token or a publisher key.
 
 [**Example event**](https://developers.xsolla.com/api/quests/examples-publisher-event)
 
@@ -2315,11 +2309,13 @@ Level completed event from a publisher, accepted by the API as shown.
 | **scope** | `"private"` | Optional: narrows which later event counts include it; see [**Scope**](https://developers.xsolla.com/api/quests/publisher-events-guide#publisher-sending-scope) |
 | **properties** | `{"level": "12"}` | Optional values sent with the event. Flat string to string, at most 20 entries from a game client |
 
-**The player's IP address.** Web3 rewards are not available to every player. When your backend sends an event for a player, it can pass on the IP address the player's device used to reach it, as `properties.qp_user_ip` (for example `"qp_user_ip": "203.0.113.7"`). The Quest Platform uses it to decide whether a Web3 reward can be paid to that player. It is kept with the event like any other property, so the quest's webhooks and notifications receive it too. It is optional; without it, that decision is made without the IP address. An empty value counts as not sent. Any other value that is not an IPv4 or IPv6 address, with no port, is refused with `422`.
+The body accepts only these fields. Any other field is refused with `422`.
+
+**The player's IP address.** When your backend sends an event for a player, it can pass on the IP address the player's device used to reach it, as `properties.qp_user_ip` (for example `"qp_user_ip": "203.0.113.7"`). Send it when the quest gives a Web3 reward. It is kept with the event like any other property. It is optional. An empty value counts as not sent. Any other value that is not an IPv4 or IPv6 address, with no port, is refused with `422`.
 
 #### Player identifiers
 
-Put every identifier you know for the player in `user_ids`, as a list of `identifier_type` and `value` pairs:
+Put every identifier you know for the player in `user_ids`, as a list of `identifier_type` and `value` pairs. The list needs at least one entry, and no `value` may be empty:
 
 ```json
 "user_ids": [
@@ -2385,7 +2381,7 @@ The same occurrence, sent both ways. **From your backend**, the body names the p
 }
 ```
 
-**From the game client**, the body has no player, because the token says who it is:
+**From the game client**, the body has no player, because the token says who it is. The event is recorded under the identifiers of that token, the same ones the player's progress is read under: `xsolla_id` for an Xsolla ID token, and the Login user ID for an Xsolla Login token.
 
 ```json
 {
@@ -2409,21 +2405,17 @@ An accepted event runs a quest only when all of these hold. None of them is an e
 
 1. **Same project**
 
-   The quest belongs to the project in the path; a quest of another project never sees the event.
+   The quest belongs to the project you send the event to; a quest of another project never sees the event.
 
 2. **Same name**
 
    A trigger's `event_name` equals the event's `name` exactly: no wildcards, and case and punctuation count (`app.onboarding_completed` is not `app.onboarding-completed`).
 
-3. **Same merchant and project**
-
-   The event reaches only quests with the `publisher_id` and `project_id` of the path; quests without them are skipped.
-
-4. **Active**
+3. **Active**
 
    The quest is `active`, and now (UTC) is between its `start_date` and `end_date`.
 
-5. **The quest asked for**
+4. **The quest asked for**
 
    With `quest_id`, only that quest is considered. It must be a UUID; any other value is rejected with `422`.
 

@@ -134,7 +134,7 @@ Send the requests yourself, over HTTPS, to the host above. Before each call:
 2. Check your body against its documented fields: no field it does not list, every required one set.
 3. For a write, confirm with the person first.
 
-Never retry a write that failed or timed out without first reading whether it took effect.
+Never retry a quest write (create, update, delete) that failed or timed out without first reading whether it took effect. An event is the exception, because it cannot be read back: resend it with the same `idempotency_key`, which never counts twice. After a create that timed out, list the quests and look for it by name before you create it again: creating twice makes two quests, and both run.
 
 ## What to ask
 
@@ -377,16 +377,23 @@ Do it only after a yes, because the test is real:
 
 1. **Say what trying means.** *"I'll run the quest once for a player you choose. That player gets
    its rewards, and it counts as their completion."* Ask which player to use.
-2. **Send each step's event as the real sender would:** the same name, the same identifier for the
+2. **Note where the player stands first**, when you can read their progress: its status and
+   `completion_count`. Afterwards a `completion_count` one higher means the run completed, even
+   when the status reads `not_started` again because the player may complete it once more.
+3. **Send each step's event as the real sender would:** the same name, the same identifier for the
    player, and a new idempotency key each. Send only the events the test needs.
-3. **Read that player's progress** a few seconds after the last event, and once more after a minute
+4. **Read that player's progress** a few seconds after the last event, and once more after a minute
    if the quest is not complete yet. Processing is not instant.
    Use Get a quest with the caller's progress. It needs that player's token and works only for a
-   public quest. Without them, ask the person to check the reward in their game.
-4. **Read the result.** `completed` means every action succeeded. If the quest stays `in_progress`,
-   `last_error` names the reason, and the Errors table of that node in Quest nodes explains the
-   code.
-5. **Tell the person the result in plain words:** *"Tried it: all three steps counted and the chest
+   public quest that is active: pausing the quest makes this read answer `404`, so do not pause
+   it before you have read the result. Without them, ask the person to check the reward in their
+   game.
+5. **Read the result.** `completed` means every action succeeded. If the quest stays `in_progress`,
+   look at `last_error`. When it is set, an action failed: it names the reason, and the Errors
+   table of that node in Quest nodes explains the code. When it is empty, nothing failed: the
+   quest is waiting for a condition to be met or for a step's event that has not arrived, so
+   check which step is still open.
+6. **Tell the person the result in plain words:** *"Tried it: all three steps counted and the chest
    was given."* If something failed and real players could be affected, offer to pause the quest.
 
 If the person later says the reward did not arrive and you could not read the result, list what the
