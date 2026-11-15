@@ -17,7 +17,6 @@ To use it today, install the Xsolla CLI 1.9.4 or later: `brew install xsolla/xso
 | `.github/copilot-instructions.md` | GitHub Copilot-specific context |
 | `.cursor/skills/` | Cursor-native skills (synced from `skills/`) |
 | `.cursor/rules/` | Short always-on Cursor pointer rule |
-| `docs/` | Architecture, distribution, and skill-gap guides |
 
 ## Quick start
 
@@ -86,6 +85,7 @@ XSOLLA_PROJECT_API_KEY=<your API key>
 | `shop-builder-assembly` | Shop Builder site assembly | @k.shah | Draft   |
 | `game-web-portal` | Game Web Portal — PC game home + shop | @a.pyanzin | Draft   |
 | `shopbuilder-translate` | Shop Builder page copy | @s.hossain | Draft   |
+| `xla-pages` | XLA Pages on x.la — game and payment provider pages | @a.pyanzin | Draft   |
 | `merchant-setup` | Merchant and Project setup  | @y.klochikhin | Done    |
 | `catalog-design` | Items, pricing, virtual currency, bundles | @p.sanachev | Planned |
 | `login-setup` | Login / NewID / auth | @mohammed_abujalala | Planned |
@@ -113,8 +113,9 @@ specific skill:
 and `production`. `nocode-shop-setup` is the entry for Shop Builder: a store goes to
 `description-to-shop` and `shop-builder-assembly`, and a PC game home goes to
 `game-web-portal`. `shopbuilder-translate` translates the page copy of a Shop Builder
-site. `quest-setup` creates and manages Quest Platform quests, events, rewards, Web Shop
-quest modules, and approved Shop Builder Quests block operations.
+site. `xla-pages` builds the XLA Pages on x.la from their own manifest. `quest-setup` creates
+and manages Quest Platform quests, events, rewards, Web Shop quest modules, and approved
+Shop Builder Quests block operations.
 
 ## Contributing
 

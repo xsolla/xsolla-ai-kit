@@ -1,13 +1,10 @@
 ---
 name: description-to-shop
 description: >-
-  Turn a plain-language game description or the publisher's store listing into the
-  normalized, source-attributed shop brief consumed by shop-builder-assembly. Reached
-  through nocode-shop-setup once the shop is on Xsolla's side. Not the entry point for
-  "build me a shop", a web shop, a storefront or a game home: open nocode-shop-setup for
-  those. This skill owns intake and inference; shop-builder-assembly
-  owns presets, confirmation, backups, CLI writes, verification, and preview. Do not use
-  this skill to implement a second assembly workflow.
+  Turns a game description or store listing (App Store, Google Play, Steam) into the
+  shop brief that shop-builder-assembly builds from. Reached through nocode-shop-setup;
+  not an entry point. Owns intake and inference only: presets, confirmation, CLI writes
+  and preview belong to shop-builder-assembly.
 metadata:
   owner: k.shah
   domain: store

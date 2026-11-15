@@ -11,10 +11,10 @@ Run the validator. It checks everything CI checks and takes about a second:
 python3 .github/scripts/validate_skills.py
 ```
 
-It verifies skill frontmatter, relative link targets, JSON validity, that every
-skill appears in both registries (`skills/README.md` and
-`AGENTS.md`), and that the generated files (`.cursor/skills/**`, `CLAUDE.md`) match
-their sources. It also scans for credentials.
+It verifies skill frontmatter, the required sections, relative link targets, JSON
+validity, that the skill tables in `AGENTS.md` and `.github/copilot-instructions.md`
+match the skills' frontmatter, and that the generated files (`.cursor/skills/**`,
+`CLAUDE.md`) match their sources. It also scans for credentials.
 
 Pre-existing violations are recorded in [.github/skills-baseline.json](.github/skills-baseline.json)
 so the check can be enforcing without blocking unrelated work. **Don't add to the
@@ -23,11 +23,14 @@ baseline to get a PR green** — fix the finding. Removing entries is always wel
 
 ## Generated files
 
-`.cursor/skills/**` and `CLAUDE.md` are generated from `skills/**` and `AGENTS.md`.
+The skill tables in `AGENTS.md` and `.github/copilot-instructions.md` are generated from
+each skill's `name` and `description`. `.cursor/skills/**` and `CLAUDE.md` are generated
+from `skills/**` and `AGENTS.md`.
 Commit them alongside your change — CI fails on drift. To regenerate locally, mirror
 what [.github/workflows/sync-providers.yml](.github/workflows/sync-providers.yml) does:
 
 ```bash
+python3 .github/scripts/skill_table.py
 rm -rf .cursor/skills && mkdir -p .cursor/skills
 for d in skills/*/; do [ -f "$d/SKILL.md" ] && cp -R "$d" ".cursor/skills/$(basename "$d")"; done
 cp AGENTS.md CLAUDE.md
@@ -58,3 +61,21 @@ Note that a SKILL.md is not documentation an agent reads for reference; it is an
 instruction payload an agent executes. We review changes to these files the way we'd
 review changes to code that runs with the reader's credentials, which is why the bar for
 provenance is higher here than in a typical docs repo.
+
+## Review and ownership
+
+Each team reviews its own skills; [.github/CODEOWNERS](.github/CODEOWNERS) says which team
+owns which skill directory. The domain owner reviews changes to their skills. The AI Kit
+maintainers are listed after them only as a fallback, for when the domain owner wrote
+the PR and can't approve it themselves. The AI Kit maintainers (Javad Manashti, Yaroslav Klochikhin)
+own the platform: CI, the validator, generated files, `AGENTS.md` and these guides.
+
+**Adding a skill:** add a CODEOWNERS line for your team in the same PR, for both
+`/skills/<name>/` and its `/.cursor/skills/<name>/` mirror. Every handle must be a GitHub
+user or team with write access, or GitHub silently ignores it. Push your branch, then
+check it (without `ref`, the check reads `main`, not your change):
+`gh api "repos/xsolla/xsolla-ai-kit/codeowners/errors?ref=<your-branch>"`.
+
+**Branch protection on `main`:** one approving review, and "Require review from Code
+Owners", so a change to a team's skill cannot merge without that team's approval.
+

@@ -1,0 +1,37 @@
+{
+  "providers": [
+    {
+      "provider": "klarna",
+      "partner_name": "Klarna",
+      "partner_logo_url": "https://cdn.example.invalid/klarna-logo.svg",
+      "hero_title": "Top up with Klarna",
+      "hero_description": "Buy your favorite games now and pay later with Klarna",
+      "hero_image": "https://cdn.example.invalid/klarna-banner.jpg",
+      "faq": [
+        {
+          "question": "Can I pay later?",
+          "answer": "Synthetic answer."
+        }
+      ],
+      "offers": [
+        {
+          "title": "Synthetic offer",
+          "url": "https://x.la/game/star-forge"
+        }
+      ]
+    },
+    {
+      "provider": "toss",
+      "partner_name": "Toss",
+      "hero_title": "Top up with Toss",
+      "hero_description": "Synthetic Toss copy",
+      "hero_image": "https://cdn.example.invalid/toss-banner.jpg",
+      "faq": [
+        {
+          "question": "Is Toss supported?",
+          "answer": "Synthetic answer."
+        }
+      ]
+    }
+  ]
+}

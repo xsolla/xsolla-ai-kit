@@ -16,6 +16,9 @@ import subprocess
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import skill_table  # noqa: E402  (sibling script; generates the AGENTS.md skill table)
+
 ROOT = Path(__file__).resolve().parents[2]
 SKILLS = ROOT / "skills"
 BASELINE = ROOT / ".github" / "skills-baseline.json"
@@ -23,10 +26,12 @@ BASELINE = ROOT / ".github" / "skills-baseline.json"
 # CONTRIBUTING-skills.md: soft target. Reported as a warning, never blocks a merge.
 SOFT_LINE_LIMIT = 500
 
-# Claude Code truncates the combined description + when_to_use text at 1,536
-# characters in the skill listing. Past that, trigger keywords are silently lost,
-# so the skill stops matching the requests it was written for.
-DESCRIPTION_LIMIT = 1536
+# Agents load every skill's description up front. Claude Code gives the whole
+# skill list about 1% of the context window (~8,000 characters on a 200k model)
+# and drops descriptions past that budget, so each skill gets a share, not the
+# 1,536-character per-skill cap. 400 keeps the full list inside the budget with
+# room for new skills. Put the key trigger phrase first.
+DESCRIPTION_LIMIT = 400
 
 # Internal LDAP-style owner ids currently in use, in whatever format that person's
 # SKILL.md already uses (the repo has never enforced one — see CODEOWNERS note).
@@ -128,15 +133,26 @@ def check_skill(skill_dir: Path) -> None:
     if fm.get("name") != name:
         error(f"{rel}: frontmatter name '{fm.get('name')}' does not match directory '{name}'")
 
-    description = fm.get("description")
+    # Measure the description the way agents read it: the YAML value, with a
+    # folded line break turned into a space.
+    description = skill_table.read_frontmatter(skill_md).get("description")
     if not isinstance(description, str) or not description.strip():
         error(f"{rel}: frontmatter is missing a non-empty 'description'")
     elif len(description) > DESCRIPTION_LIMIT:
         error(
             f"{rel}: description is {len(description)} chars, over the "
-            f"{DESCRIPTION_LIMIT}-char skill-listing cap — trailing trigger keywords "
-            f"will be truncated. Put the key use case first and trim."
+            f"{DESCRIPTION_LIMIT}-char limit. Agents share one small budget for every "
+            f"skill's description; put the key trigger phrase first and trim the rest "
+            f"(detail belongs in the SKILL.md body)."
         )
+    if isinstance(description, str):
+        # In a folded (>-) description a line break becomes a space, so a name
+        # wrapped after its hyphen reads as "nocode- shop-setup" and no longer matches.
+        for split in re.findall(r"\w+- \w+", description):
+            error(
+                f"{rel}: description contains '{split}': a hyphenated word was wrapped "
+                f"across lines and now has a space in it. Keep it on one line"
+            )
 
     if not re.fullmatch(r"[a-z0-9]+(-[a-z0-9]+)*", name):
         error(f"{rel}: directory name '{name}' must be lowercase kebab-case")
@@ -192,15 +208,33 @@ def check_json() -> None:
             error(f"{jf.relative_to(ROOT)}: invalid JSON — {exc}")
 
 
-def check_registries(skill_names: list[str]) -> None:
-    """Every skill must appear in both inventories, or agents cannot discover it."""
-    readme = (SKILLS / "README.md").read_text(encoding="utf-8")
-    agents = (ROOT / "AGENTS.md").read_text(encoding="utf-8")
-    for name in skill_names:
-        if f"`{name}`" not in readme:
-            error(f"skills/README.md: no row for skill '{name}'")
-        if f"`{name}`" not in agents:
-            error(f"AGENTS.md: no entry for skill '{name}'")
+def check_entry_phrases(skill_names: list[str]) -> None:
+    """A quoted phrase in a description is a trigger: the request that should open
+    that skill. If two skills quote the same phrase, agents can't tell which one to
+    open, so each trigger phrase must belong to exactly one skill."""
+    seen: dict[str, str] = {}
+    for name, description in skill_table.skills():
+        if name not in skill_names:
+            continue
+        for phrase in re.findall(r'"([^"]+)"', description):
+            key = " ".join(phrase.lower().split())
+            if key in seen and seen[key] != name:
+                error(
+                    f"skills/{name}/SKILL.md: trigger phrase \"{phrase}\" is also in "
+                    f"skills/{seen[key]}/SKILL.md. Give each request to one skill; "
+                    f"name the other skill instead of quoting its phrase"
+                )
+            seen.setdefault(key, name)
+
+
+def check_skill_table() -> None:
+    """AGENTS.md and copilot-instructions.md carry a skill table generated from the
+    skills' frontmatter, so agents always see every skill with its real description."""
+    for path in skill_table.stale_files():
+        error(
+            f"{path.relative_to(ROOT)}: skill table is out of date. "
+            f"Run `python3 .github/scripts/skill_table.py` and commit the result"
+        )
 
 
 def _is_cache(path: Path) -> bool:
@@ -276,7 +310,8 @@ def main() -> int:
 
     check_links()
     check_json()
-    check_registries(skill_names)
+    check_entry_phrases(skill_names)
+    check_skill_table()
     check_generated_files(skill_names)
     check_secrets()
 

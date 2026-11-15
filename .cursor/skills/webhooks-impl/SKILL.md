@@ -1,16 +1,12 @@
 ---
 name: webhooks-impl
 description: >-
-  Implements and validates the backend that receives Xsolla webhooks for a
-  headless web shop — server-to-server notifications for user_validation,
-  payment / order_paid, refund / order_canceled, and subscription events.
-  Covers SHA-1 signature verification, idempotency, retry/response handling,
-  IP allowlisting, payload shapes per delivery mode, and the common mistakes
-  that break go-live. Use when building, modifying, debugging, or reviewing a
-  webhook handler — including "implement Xsolla webhooks", "verify webhook
-  signature", "handle payment / order_paid / refund webhooks", "grant items
-  after purchase", "webhook returns INVALID_SIGNATURE", "webhook idempotency /
-  retries", or "headless webshop backend".
+  Builds and checks the backend a merchant or developer runs to receive Xsolla
+  webhooks. The payment UI only starts the flow and does not receive them.
+  Xsolla calls that backend: user_validation when the player starts paying, and
+  order_paid after payment so the merchant or developer grants the item. Also
+  refunds and cancellations. Use for "implement Xsolla webhooks" or
+  "grant items after purchase".
 metadata:
   owner: e.chernykh
   domain: webhooks
@@ -31,8 +27,11 @@ Detailed material lives in `references/`:
 ## When to use
 
 Use this skill when the developer wants to **receive and process Xsolla
-webhooks on their own backend** for a headless web shop (their storefront on the
-Xsolla catalog + Pay Station, without Site Builder). Trigger conditions:
+webhooks on their own backend**. The player pays in a payment UI such as
+Headless Checkout or Pay Station. That UI does not receive webhooks. Starting
+to pay makes Xsolla call the merchant or developer for `user_validation`. A
+completed payment makes Xsolla call again so the merchant or developer can
+grant the item. Trigger conditions:
 
 - Implementing a webhook endpoint that grants items / currency after purchase
 - Verifying the webhook signature or debugging `INVALID_SIGNATURE`
@@ -146,8 +145,8 @@ Also needed:
 
 ## Agent test
 
-Prompt: "Implement an Xsolla webhook handler for my headless shop that grants
-items after purchase. Use Node.js/Express."
+Prompt: "Implement an Xsolla webhook handler that grants items after purchase.
+Use Node.js/Express."
 
 Result: the agent discovered and applied this skill (read `SKILL.md` + references,
 including `testing.md` / fixtures), asked how goods are granted in the product,

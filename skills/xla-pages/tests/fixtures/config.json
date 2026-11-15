@@ -1,0 +1,6 @@
+{
+  "merchant_id": 100001,
+  "project_id": 200002,
+  "site_slug": "xla-test-site",
+  "write_to_published_site": true
+}

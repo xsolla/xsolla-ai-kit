@@ -7,6 +7,8 @@ This is the one spec for the Shop Builder path. Each pull request that works on 
 the **Status** column below in the same pull request. It stays the source of truth: when a
 skill and this file disagree, fix one of them; don't add a second spec.
 
+XLA Pages on x.la have their own path and spec: [`xla-pages/references/manifest.yaml`](../../xla-pages/references/manifest.yaml).
+
 ## Goal
 
 A first-time user who follows the guide gets a storefront as good as the team's reference

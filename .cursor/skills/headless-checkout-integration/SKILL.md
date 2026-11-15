@@ -2,16 +2,9 @@
 name: headless-checkout-integration
 description: >-
   Integrates Xsolla Headless Checkout — a fully customizable, client-controlled
-  payment UI built on the @xsolla/pay-station-sdk JavaScript SDK, where card data
-  stays isolated in secure iframes and payments run through Xsolla without the
-  standard Pay Station. Use when the developer wants to "integrate Headless Checkout",
-  "add @xsolla/pay-station-sdk", "accept a credit card payment in sandbox",
-  "add a payment method selector", "integrate PayPal / alternative payment methods",
-  "add Google Pay / Apple Pay", "render psdk-card-number / psdk-payment-form",
-  "handle onNextAction / NextAction", "do sandbox 3DS", "show payment status /
-  psdk-status", "add a payment country selector", "change payment country",
-  "getCountryList", "allow_modify", or "filter methods by country"
-  for a custom checkout.
+  payment UI built on the @xsolla/pay-station-sdk JavaScript SDK, where payment
+  data stays isolated in secure iframes and payments run through Xsolla without
+  the standard Pay Station.
 metadata:
   owner: y.klochikhin
   domain: payments

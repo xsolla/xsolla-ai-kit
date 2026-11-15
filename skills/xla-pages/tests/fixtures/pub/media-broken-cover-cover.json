@@ -1,0 +1,8 @@
+{
+  "method": "GET",
+  "url": "https://xla-pages.xsolla.com/pub/media/00000000-0000-4000-8000-000000000004/info",
+  "requested_at": "2026-11-07T09:00:00Z",
+  "status": 404,
+  "content_type": "application/problem+json",
+  "body": "{\"$schema\": \"https://xla-pages.xsolla.com/schemas/ErrorModel.json\", \"title\": \"Not Found\", \"status\": 404, \"detail\": \"media not found\"}"
+}

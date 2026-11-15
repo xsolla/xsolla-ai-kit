@@ -1,0 +1,8 @@
+{
+  "method": "GET",
+  "url": "https://xla-pages.xsolla.com/pub/games/star-forge/core-attributes?project_id=200002",
+  "requested_at": "2026-11-07T09:00:00Z",
+  "status": 200,
+  "content_type": "application/json",
+  "body": "{\"$schema\": \"https://xla-pages.xsolla.com/schemas/GetResponse.json\", \"data\": {\"game_id\": \"00000000-0000-4000-8000-000000000502\", \"slug\": \"star-forge\", \"project_id\": \"300003\", \"store_group_id\": \"\", \"title\": \"Star Forge\", \"description\": \"A synthetic space builder used only in tests. Longer synthetic description.\", \"short_description\": \"A synthetic space builder used only in tests.\", \"icon\": \"00000000-0000-4000-8000-000000000802\", \"cover\": \"00000000-0000-4000-8000-000000000001\", \"game_key_sku\": \"SF-KEY-STD\", \"game_key_price\": \"19.99\", \"game_key_price_ico\": \"USD\", \"publisher\": \"Synthetic Publisher\", \"developer\": \"Synthetic Studio\", \"platforms\": [\"windows\"], \"genres\": [\"Strategy\"], \"tags\": [], \"media\": [\"00000000-0000-4000-8000-000000001100\", \"00000000-0000-4000-8000-000000001101\", \"00000000-0000-4000-8000-000000001102\"], \"faq\": [{\"question\": \"Synthetic question 1?\", \"answer\": \"Synthetic answer 1.\"}, {\"question\": \"Synthetic question 2?\", \"answer\": \"Synthetic answer 2.\"}], \"payment_methods\": [], \"attributes\": {\"title\": \"Star Forge\", \"currency_name\": \"\"}, \"extra_data\": {\"note\": \"synthetic partner data\"}}}"
+}

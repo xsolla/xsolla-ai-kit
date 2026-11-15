@@ -1,11 +1,10 @@
 ---
 name: shopbuilder-translate
 description: >-
-  Translates Shop Builder page copy: hero, CTAs, FAQ, section titles, and page SEO.
-  Use when someone says "translate the FAQ", "add a language to Shop Builder",
-  "my store is only in English", "translate the hero", or hands over page-copy
-  translations. Catalog and LiveOps text are out of scope. Confirm before any
-  write. Not for creating the shop (shop-setup or nocode-shop-setup) or setting prices (catalog-design).
+  Translates Shop Builder page copy: hero, buttons, FAQ, section titles and page SEO.
+  Use for "translate the FAQ", "add a language to Shop Builder", "my store is only in
+  English". Catalog and LiveOps text are out of scope. Confirms before any write. Not
+  for building the shop or setting prices.
 metadata:
   owner: s.hossain
   domain: store

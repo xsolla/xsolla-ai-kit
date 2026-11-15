@@ -1,18 +1,11 @@
 ---
 name: login-styling
 description: >-
-  Applies a custom visual style / theme / brand to the Xsolla Login widget (Login Widget 2.0,
-  `@xsolla/login-sdk`) — the sign-in, sign-up, and password-reset screens. Primary path is
-  API-based: upload a CSS file to Xsolla storage, then attach its CDN URL to the login project
-  so the widget injects it server-side — honored under the project's default setting, which is
-  why it's the reliable path.
-  Also covers structured theming (colors, logo, roundness, background, social order via themeJSON)
-  and the SDK / Publisher Account alternatives. Use whenever a developer says "style the login",
-  "theme the Login widget", "customize the login UI", "brand the sign-in / sign-up screen",
-  "change the login colors / logo / fonts / background", "upload custom CSS for login", "deploy
-  login CSS via API", "make login match my game", "white-label login", "dark-mode login",
-  "restyle the Xsolla login page", or is integrating Login and needs the widget to look on-brand.
-  Pairs with `login-setup` — that skill wires the auth flow; this one makes it look right.
+  Styles the Xsolla Login widget (sign-in, sign-up, password reset): upload custom CSS
+  through the API and attach it to the login project, or set colors, logo, background
+  and social order through themeJSON. Use for "style the login", "brand the sign-in
+  screen", "upload login CSS", "dark-mode login". Pairs with login-setup, which wires
+  the auth flow.
 metadata:
   owner: elnur_khalilov
   domain: login

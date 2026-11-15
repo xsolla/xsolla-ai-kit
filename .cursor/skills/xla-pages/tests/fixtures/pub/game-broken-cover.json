@@ -1,0 +1,8 @@
+{
+  "method": "GET",
+  "url": "https://xla-pages.xsolla.com/pub/games/broken-cover/core-attributes?project_id=200002",
+  "requested_at": "2026-11-07T09:00:00Z",
+  "status": 200,
+  "content_type": "application/json",
+  "body": "{\"$schema\": \"https://xla-pages.xsolla.com/schemas/GetResponse.json\", \"data\": {\"game_id\": \"00000000-0000-4000-8000-000000000505\", \"slug\": \"broken-cover\", \"project_id\": \"300003\", \"store_group_id\": \"\", \"title\": \"Broken Cover\", \"description\": \"A synthetic game whose cover is gone. Longer synthetic description.\", \"short_description\": \"A synthetic game whose cover is gone.\", \"icon\": \"00000000-0000-4000-8000-000000000805\", \"cover\": \"00000000-0000-4000-8000-000000000004\", \"game_key_sku\": \"BC-KEY\", \"game_key_price\": \"2.99\", \"game_key_price_ico\": \"USD\", \"publisher\": \"Synthetic Publisher\", \"developer\": \"Synthetic Studio\", \"platforms\": [\"windows\"], \"genres\": [\"Strategy\"], \"tags\": [], \"media\": [\"00000000-0000-4000-8000-000000001250\"], \"faq\": [{\"question\": \"Synthetic question 1?\", \"answer\": \"Synthetic answer 1.\"}], \"payment_methods\": [], \"attributes\": {\"title\": \"Broken Cover\", \"currency_name\": \"\"}, \"extra_data\": {\"note\": \"synthetic partner data\"}}}"
+}

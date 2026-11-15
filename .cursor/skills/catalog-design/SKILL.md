@@ -1,15 +1,10 @@
 ---
 name: catalog-design
 description: >-
-  Configures the Xsolla catalog for a game and wires the full sell-side flow: virtual
-  items, virtual currency and its packages, bundles, game key packages, item groups,
-  regional pricing and regional sale restrictions, and LiveOps offers. Use when setting
-  up a game's item catalog, adding purchasable goods, configuring virtual currency,
-  creating starter packs or bundles, selling a game via keys, setting local prices per
-  country, building a store catalog on the client, implementing purchase, or confirming
-  purchases — including "set up my Xsolla catalog", "create virtual items / currency / bundles",
-  "sell game keys", "regional prices", "fast purchase by SKU", "cart purchase",
-  "buy for virtual currency", "track order status", "grant items after payment".
+  Sets up an Xsolla catalog: virtual items, virtual currency and its packages, bundles,
+  game keys, item groups, regional prices and LiveOps offers, plus the client purchase
+  flow (buy by SKU or cart, buy for virtual currency, order status). Use for "set up my
+  Xsolla catalog", "create virtual items", "sell game keys", "regional prices".
 metadata:
   owner: p.sanachev
   domain: catalog

@@ -1,0 +1,8 @@
+{
+  "method": "GET",
+  "url": "https://xla-pages.xsolla.com/pub/games/long-title-game/core-attributes?project_id=200002",
+  "requested_at": "2026-11-07T09:00:00Z",
+  "status": 200,
+  "content_type": "application/json",
+  "body": "{\"$schema\": \"https://xla-pages.xsolla.com/schemas/GetResponse.json\", \"data\": {\"game_id\": \"00000000-0000-4000-8000-000000000506\", \"slug\": \"long-title-game\", \"project_id\": \"300003\", \"store_group_id\": \"\", \"title\": \"The Extraordinarily Long Chronicles of an Unremarkable Lighthouse Keeper\", \"description\": \"SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS Longer synthetic description.\", \"short_description\": \"SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS\", \"icon\": \"00000000-0000-4000-8000-000000000806\", \"cover\": \"00000000-0000-4000-8000-000000000005\", \"game_key_sku\": \"LT-KEY\", \"game_key_price\": \"14.99\", \"game_key_price_ico\": \"USD\", \"publisher\": \"Synthetic Publisher\", \"developer\": \"Synthetic Studio\", \"platforms\": [\"windows\"], \"genres\": [\"Strategy\"], \"tags\": [], \"media\": [\"00000000-0000-4000-8000-000000001300\"], \"faq\": [{\"question\": \"Synthetic question 1?\", \"answer\": \"Synthetic answer 1.\"}], \"payment_methods\": [], \"attributes\": {\"title\": \"The Extraordinarily Long Chronicles of an Unremarkable Lighthouse Keeper\", \"currency_name\": \"\"}, \"extra_data\": {\"note\": \"synthetic partner data\"}}}"
+}
