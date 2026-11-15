@@ -213,7 +213,7 @@ The chest quest's nodes say *what* it does. Fields on the quest itself extend th
 | Field | What it adds | Read |
 | --- | --- | --- |
 | `status`, `start_date`, `end_date` | When the quest runs: drafts, pausing, and the lock once players have progress | [**Quest lifecycle**](https://developers.xsolla.com/api/quests/quest-guide#quest-lifecycle) |
-| `activation_limits` | How often it pays: per player, in total, per day, week or month | [**Activation limits**](https://developers.xsolla.com/api/quests/activation-limits) |
+| `activation_limits` | How often it pays: per player, in total, per day, week, month or period of up to five years | [**Activation limits**](https://developers.xsolla.com/api/quests/activation-limits) |
 | `objectives` | The steps players see on their way to completing it | [**Objectives**](https://developers.xsolla.com/api/quests/public-quests-guide#public-objectives) |
 | `is_public`, `public_view` | Who can see the quest, and what they see | [**Public quests guide**](https://developers.xsolla.com/api/quests/public-quests-guide) |
 | `client_sendable` on the trigger | Whether a game client can send the events that start it | [**Client events**](https://developers.xsolla.com/api/quests/publisher-events-guide#publisher-sending-client) |
@@ -367,11 +367,11 @@ Players' progress refers to node IDs, so the API refuses a **structural** edit t
 
 **Locked once players have progress**
 
-Nodes (IDs, types, `type_version`, parameters), connections, activation limits and `start_date`.
+Nodes (IDs, types, `type_version`, parameters), connections, activation limits (their `time_window` included) and `start_date`.
 
 **Can always change**
 
-Name, description, metadata, `end_date`, `status`, `is_public` and `public_view`, `objectives`, and node names.
+Name, description, metadata, `end_date`, `status`, `is_public` and `public_view`, `objectives`, node names. The `time_window` of an event count in a [custom_attributes_check](https://developers.xsolla.com/api/quests/node-custom-attributes-check) node can be made longer (day, week, month, then 1 to 5 years), not shorter; the new window applies from the next event.
 
 The order of edges and of activation limits is not checked, so a reorder is accepted on a quest with progress even though it can change which node runs first or which limit applies.
 
@@ -413,7 +413,7 @@ How nodes are wired into a graph, outcome edges, loops, and what happens when a 
 
 [**Activation limits**](https://developers.xsolla.com/api/quests/activation-limits)
 
-How often a quest may complete: per player, for everyone, per day, week or month.
+How often a quest may complete: per player, for everyone, per day, week, month or period of up to five years.
 
 [**Objectives**](https://developers.xsolla.com/api/quests/public-quests-guide#public-objectives)
 
@@ -733,8 +733,9 @@ Continues only if a boolean expression holds. Groups combine conditions with and
 | `conditions` | array of object | no | and / or only: the expressions to combine. Recursive: same fields as the top-level parameters. |
 | `left` | object | no | Comparison only: the first operand. |
 | `left.include_client_events` | boolean | no | Event operands only: also count events a game client sent. Off by default: only backend events count. |
-| `left.time_window` | object | no | Required for event operands: count only the events of the current calendar day, week (starting Monday) or month. |
-| `left.time_window.duration_unit` | string | yes | Calendar window: day, week or month. |
+| `left.time_window` | object | no | Required for event operands: count only the events of the current calendar day, week (starting Monday) or month, or of the current 1 to 5 year window counted from the quest's start date. |
+| `left.time_window.duration_unit` | string | yes | day, week (starting Monday) or month: the current calendar window, in UTC. year: windows as long as years, counted from the quest's start date. |
+| `left.time_window.years` | integer (int64) | no | Years in each window, for year only; 1 if omitted. Leave it out for day, week and month. Minimum: `1`. Maximum: `5`. |
 | `left.type` | string | yes | value: the literal in value. event: the number of the user's events named in value. One of: `value`, `event`. |
 | `left.value` | any | yes | The literal or the event name, depending on type. |
 | `operator` | object | no | Comparison only: how left and right are compared. |
@@ -742,8 +743,9 @@ Continues only if a boolean expression holds. Groups combine conditions with and
 | `operator.type` | string | yes | Type of the compared values: numeric, string, boolean or `string_array`. |
 | `right` | object | no | Comparison only: the second operand. |
 | `right.include_client_events` | boolean | no | Event operands only: also count events a game client sent. Off by default: only backend events count. |
-| `right.time_window` | object | no | Required for event operands: count only the events of the current calendar day, week (starting Monday) or month. |
-| `right.time_window.duration_unit` | string | yes | Calendar window: day, week or month. |
+| `right.time_window` | object | no | Required for event operands: count only the events of the current calendar day, week (starting Monday) or month, or of the current 1 to 5 year window counted from the quest's start date. |
+| `right.time_window.duration_unit` | string | yes | day, week (starting Monday) or month: the current calendar window, in UTC. year: windows as long as years, counted from the quest's start date. |
+| `right.time_window.years` | integer (int64) | no | Years in each window, for year only; 1 if omitted. Leave it out for day, week and month. Minimum: `1`. Maximum: `5`. |
 | `right.type` | string | yes | value: the literal in value. event: the number of the user's events named in value. One of: `value`, `event`. |
 | `right.value` | any | yes | The literal or the event name, depending on type. |
 | `type` | string | yes | and or or combines the expressions in conditions; comparison compares left with right using operator. One of: `and`, `or`, `comparison`. |
@@ -802,7 +804,7 @@ Continues only if a boolean expression holds. Groups combine conditions with and
 }
 ```
 
-The check looks at the player the event is about: how many events of a kind they sent this day, week or month, and fixed values, combined with `and` / `or`. When it fails, the run stops there for that player.
+The check looks at the player the event is about: how many events of a kind they sent this day, week or month or in a window of up to five years, and fixed values, combined with `and` / `or`. When it fails, the run stops there for that player.
 
 **Writing the expression.** The node holds one expression. An expression is either a **group** or a **comparison**:
 
@@ -891,7 +893,7 @@ Grants existing catalog items by SKU to the player's Backpack. The event needs `
 **Backpack.** This node grants items to the player's Backpack, by `xsolla_id`. Guests cannot receive them.
 
 * **Which catalogue**: the items are granted from the project the quest belongs to.
-* **Name and image**: this node sends only SKUs, and Backpack takes the name, type and image from its catalogue; a SKU it does not know fails with `not_found`.
+* **Name and image**: this node sends only SKUs, and Backpack takes the name, type and image from its catalogue; a SKU it does not know fails with `not_found`. A public quest shows the same name and image.
 * **Description**: items carry no description; set it on the catalogue item.
 * **Limits**: `quantity` is 1 to 100 per SKU, and Backpack takes up to 100 items per request; a larger grant is split into several requests.
 * Players see their items at [backpack.xsolla.com](https://backpack.xsolla.com/) and [wallet.xsolla.com/backpack](https://wallet.xsolla.com/backpack).
@@ -940,6 +942,8 @@ Delivers catalog items by SKU straight into the player's game through DDH, witho
 ```
 
 **Set up first:** the items (SKUs) in the project's catalogue, and the project's [user validation webhook](https://developers.xsolla.com/webhooks/user-validation/user-validation) enabled.
+
+**Name and image**: a public quest shows the item's name and image when your project's catalogue has the SKU; see [**Item names and images**](https://developers.xsolla.com/api/quests/public-quests-guide#public-item-names).
 
 **Limits**: `quantity` is 1 to 100 per SKU.
 
@@ -1325,7 +1329,8 @@ So:
 | --- | --- |
 | `type` | `per_user`: completions by one player. `global`: completions by all players together. |
 | `count` | Completions allowed in the window, at least 1. |
-| `time_window.duration_unit` | Optional: `day`, `week` (starting Monday) or `month`, calendar windows in UTC. Omitted: the limit covers the whole life of the quest. |
+| `time_window.duration_unit` | Optional: `day`, `week` (starting Monday) or `month`, calendar windows in UTC; or `year`, counted from the quest's `start_date`. Omitted: the limit covers the whole life of the quest. |
+| `time_window.years` | `year` only: the number of years in each window, 1 to 5. Omitted: 1. A longer window is rejected. Leave it out for `day`, `week` and `month`. |
 
 **"Per user" means per player identity.** The platform resolves the event's identifiers to one player, preferring `xsolla_id`, then `gamer_id`, `guest_id` and `email`. Send the same identifier for the same person every time: events that name one person with different identifiers can be counted as different players.
 
@@ -1333,9 +1338,11 @@ So:
 >
 > With two `per_user` limits (for example 1 a day and 5 a month) only the last one in the list is applied, and the quest is not rejected. To combine a daily and a monthly cap, use one `per_user` and one `global`, or two quests.
 
+**Year windows start on the quest's `start_date`**, at 00:00 UTC that day, not on 1 January and not on the day the quest was created. A quest starting on 10 April 2026 with a two-year window counts from 10 April 2026 to 10 April 2028, then from 10 April 2028 to 10 April 2030, and so on. A quest created in January and started in December therefore gets its full first year from December. Once players have progress the start date can no longer change, so the windows do not move. Pausing and reactivating a quest without changing its start date keeps the windows where they were.
+
 #### Worked examples
 
-[**Activation limits over a week**](https://developers.xsolla.com/api/quests/examples-limits-week) and [**Per-player and global limits together**](https://developers.xsolla.com/api/quests/examples-limits-global), on the Examples page, follow both kinds of limit event by event.
+[**Activation limits over a week**](https://developers.xsolla.com/api/quests/examples-limits-week) and [**Per-player and global limits together**](https://developers.xsolla.com/api/quests/examples-limits-global), on the Examples page, follow both kinds of limit event by event. [**Loyalty chest over five years**](https://developers.xsolla.com/api/quests/examples-five-year-loyalty) shows a five-year window.
 
 #### Changing limits and seeing rejections
 
@@ -1383,7 +1390,30 @@ Quests without a Web3 reward are shown to everyone. A player who sees the quest 
 
 #### Choose what players see
 
-Without anything else, a public quest shows its `name`, its `description` (when set) and its rewards. To decide yourself, add a `public_view`.
+Without a `public_view`, a public quest shows only its `name`, its `description` (when set) and a `rewards` list with one entry per reward node. An entry tells the kind of reward and how much, `type` and `quantity`. A reward that names items by SKU also has the `name`, `description` and `image_url` of its first item: [issue_game_item](https://developers.xsolla.com/api/quests/node-issue-game-item) and [issue_catalog_item](https://developers.xsolla.com/api/quests/node-issue-catalog-item) take them from your catalog, [issue_web3_item](https://developers.xsolla.com/api/quests/node-issue-web3-item) from the Web3 item. They are `null` for any other reward, such as loyalty points or virtual currency, and when the item is not found.
+
+For example, [**Chest for three levels a week**](https://developers.xsolla.com/api/quests/examples-chest-quest) from the Examples page, made public with no `public_view`, is returned as:
+
+```json
+{
+  "id": "0b1c2d3e-4f5a-4b6c-8d7e-9f0a1b2c3d4e",
+  "view": {
+    "name": "Weekly level grinder",
+    "description": "Reward players who finish three levels in a week with a chest in the game.",
+    "rewards": [
+      {
+        "name": "Weekly chest",
+        "description": "A chest for players who finish three levels in a week.",
+        "quantity": 1,
+        "type": "game_item",
+        "image_url": "https://x.la/nfts/image/weekly_chest?project=654321"
+      }
+    ]
+  }
+}
+```
+
+To decide yourself what players see, add a `public_view`.
 
 **Structure.** `public_view` is a JSON object. You choose its keys, and players get the same keys back, with every reference replaced by its value. Each value is one of:
 
@@ -1425,12 +1455,24 @@ Arrays and `null` are not allowed. This view, from [**Public chest quest with a 
 | Reward node | Fields you can show |
 | --- | --- |
 | **Any reward node** | `type`, the kind of reward (see below) |
-| **Items** ([issue_game_item](https://developers.xsolla.com/api/quests/node-issue-game-item), [issue_catalog_item](https://developers.xsolla.com/api/quests/node-issue-catalog-item)) | `items`, each with `quantity`, `name`, `image_url` |
-| **Virtual currency** ([issue_virtual_currency](https://developers.xsolla.com/api/quests/node-issue-virtual-currency)) | `items` |
+| **Items** ([issue_game_item](https://developers.xsolla.com/api/quests/node-issue-game-item), [issue_catalog_item](https://developers.xsolla.com/api/quests/node-issue-catalog-item)) | `items`, each with `quantity`, `name` and `image_url`. The name and image are taken from your catalog by the item's SKU. An item that is not found there has only its `quantity`. Also `name`, `description` and `image_url`: those of the first item |
+| **Virtual currency** ([issue_virtual_currency](https://developers.xsolla.com/api/quests/node-issue-virtual-currency)) | `items`, each with `quantity` only: currency has no name or image here |
 | **Web3 item** ([issue_web3_item](https://developers.xsolla.com/api/quests/node-issue-web3-item)) | `quantity`, `name`, `description`, `image_url` |
 | **Points, tokens and scoped currency** ([issue_loyalty_points](https://developers.xsolla.com/api/quests/node-issue-loyalty-points), [issue_web3_token](https://developers.xsolla.com/api/quests/node-issue-web3-token), [issue_scoped_currency](https://developers.xsolla.com/api/quests/node-issue-scoped-currency)) | `amount` |
 
 `type` reads `game_item` for [issue_game_item](https://developers.xsolla.com/api/quests/node-issue-game-item), `inventory_item` for [issue_catalog_item](https://developers.xsolla.com/api/quests/node-issue-catalog-item), and the node's name without `issue_` for the others, for example `loyalty_points`.
+
+##### Item names and images
+
+[issue_game_item](https://developers.xsolla.com/api/quests/node-issue-game-item) and [issue_catalog_item](https://developers.xsolla.com/api/quests/node-issue-catalog-item) name an item only by its SKU. For a public quest, the name, description and image of the item are read from your project's catalog, by that SKU.
+
+| Case | Players get |
+| --- | --- |
+| **The catalog has the SKU** | The item's `name` and `image_url`, and for the first item of the reward its `description` too |
+| **The catalog does not have it** | The item with its `quantity` only. The quest is still shown |
+| **Virtual currency** | `quantity` only; currency SKUs have no name or image here |
+
+The first item of every reward always gets its name and image. A reward's other items are read only when your `public_view` shows its `items`: ten per quest at most, in node order, so put the items players should see first, and fifty in one answer. An answer never waits long for the catalog: an item not read in time comes back with its `quantity` only.
 
 > **metadata is never shown**
 >
@@ -1497,7 +1539,7 @@ For the chest quest, one counter for the levels and one step for the chest:
 | **in_progress** | Evaluated, not reached yet |
 | **completed** | The node succeeded, or the comparison matched |
 
-A counter also carries `current` (never capped at the target), `target`, `unit`, and for an event count its `window` (`day`, `week` or `month`). A **pending** counter, including every counter of a quest the player has not started, reads `current` 0 and its `target`, so you can show "0/3" before anything happens. An event count covers the whole window, so events the player sent in it before the quest started count at the first evaluation and can move a counter straight past 0. When a new window starts, the counter reads 0 again unless the step is already completed.
+A counter also carries `current` (never capped at the target), `target`, `unit`, and for an event count its `window` (`day`, `week`, `month` or `year`; a `year` window is counted from the quest's `start_date` and can be up to five years long). A **pending** counter, including every counter of a quest the player has not started, reads `current` 0 and its `target`, so you can show "0/3" before anything happens. An event count covers the whole window, so events the player sent in it before the quest started count at the first evaluation and can move a counter straight past 0. When a new window starts, the counter reads 0 again unless the step is already completed.
 
 **Without objectives**, the progress read shows one check per reward node, with the node's `id` as its `key` and the reward type.
 
@@ -1899,6 +1941,98 @@ Every Monday at 09:00 UTC this quest gives each player in a CRM segment a crate 
     "6c3d4e5f-2222-4a7b-8c9d-0e1f2a3b4c5d": [
       {
         "nodeId": "6c3d4e5f-3333-4a7b-8c9d-0e1f2a3b4c5d"
+      }
+    ]
+  }
+}
+```
+
+#### Loyalty chest over five years
+
+A player who makes 100 purchases within five years of the quest's start date receives a loyalty chest, once in those five years. Both the event count and the activation limit use a `year` window with `years: 5`, counted from the quest's `start_date`. [**Activation limits**](https://developers.xsolla.com/api/quests/activation-limits) explains year windows.
+
+**Graph:** Purchase completed → 100 purchases in five years → Give the loyalty chest
+
+```json
+{
+  "name": "Loyalty chest for 100 purchases",
+  "description": "A player who makes 100 purchases within five years of the quest's start date receives a loyalty chest, once.",
+  "type": "liveops",
+  "publisher_id": "123456",
+  "project_id": "654321",
+  "status": "active",
+  "created_by": "liveops-team",
+  "start_date": "2026-11-02T00:00:00Z",
+  "end_date": "2031-11-01T23:59:59Z",
+  "activation_limits": [
+    {
+      "type": "per_user",
+      "count": 1,
+      "time_window": {
+        "duration_unit": "year",
+        "years": 5
+      }
+    }
+  ],
+  "nodes": [
+    {
+      "id": "7d4e5f60-1111-4b8c-9d0e-1f2a3b4c5d6e",
+      "name": "Purchase completed",
+      "type": "trigger",
+      "subtype": "dynamic_event",
+      "parameters": {
+        "event_name": "purchase_completed"
+      }
+    },
+    {
+      "id": "7d4e5f60-2222-4b8c-9d0e-1f2a3b4c5d6e",
+      "name": "100 purchases in five years",
+      "type": "condition",
+      "subtype": "custom_attributes_check",
+      "parameters": {
+        "type": "comparison",
+        "left": {
+          "type": "event",
+          "value": "purchase_completed",
+          "time_window": {
+            "duration_unit": "year",
+            "years": 5
+          }
+        },
+        "operator": {
+          "type": "numeric",
+          "operation": "gte"
+        },
+        "right": {
+          "type": "value",
+          "value": 100
+        }
+      }
+    },
+    {
+      "id": "7d4e5f60-3333-4b8c-9d0e-1f2a3b4c5d6e",
+      "name": "Give the loyalty chest",
+      "type": "action",
+      "subtype": "issue_catalog_item",
+      "parameters": {
+        "purpose": "loyalty_chest",
+        "items": [
+          {
+            "sku": "loyalty_chest"
+          }
+        ]
+      }
+    }
+  ],
+  "connections": {
+    "7d4e5f60-1111-4b8c-9d0e-1f2a3b4c5d6e": [
+      {
+        "nodeId": "7d4e5f60-2222-4b8c-9d0e-1f2a3b4c5d6e"
+      }
+    ],
+    "7d4e5f60-2222-4b8c-9d0e-1f2a3b4c5d6e": [
+      {
+        "nodeId": "7d4e5f60-3333-4b8c-9d0e-1f2a3b4c5d6e"
       }
     ]
   }
@@ -2319,9 +2453,9 @@ A goal like "finish 6 onboarding steps" can be built two ways:
 | Quest | Trigger → reward | Trigger → condition (event count `gte 6`) → reward |
 | Progress in the Quest Platform | None until the reward | Each step is recorded; the progress read can show 3 of 6 |
 | Changes | Need an app release | A new quest |
-| Windows | Your own | Calendar day, week or month only |
+| Windows | Your own | Calendar day, week or month, or 1 to 5 years from the quest's start date |
 
-Count in the Quest Platform when players should see progress, or when the goal may change; count in your app when the steps never reach your backend, or the rule needs more than a day, week or month window.
+Count in the Quest Platform when players should see progress, or when the goal may change; count in your app when the steps never reach your backend, or the rule needs a window the Quest Platform does not offer, such as a rolling 30 days or more than five years.
 
 #### Retries
 

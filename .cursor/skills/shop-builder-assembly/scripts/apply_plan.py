@@ -791,8 +791,9 @@ def seed_default_texts(ctx: ApplyContext, block_id: str, page_id: str, defaults:
         raise RuntimeError(
             f"block {block_id}: {len(missing)} default texts did not save "
             f"(first: {missing[0]}); its buttons and statuses would render empty. "
-            f"Retry only the texts with a plan holding "
-            f'{{"op": "seed_texts", "block_id": "{block_id}"}}; never add the block again'
+            f"The block was added but its settings were not: finish it with one plan holding "
+            f'{{"op": "seed_texts", "block_id": "{block_id}"}} and an update of block '
+            f"{block_id} with the add's values and translations; never add the block again"
         )
 
 

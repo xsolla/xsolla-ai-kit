@@ -103,7 +103,7 @@ sandbox mode off and the brief's IDs matching the CLI.
 
 Other operations are `move`/`duplicate` with `block_id` and `index`, and `hide`/`show`
 with `block_id`. `seed_texts` with `block_id` writes a block's empty default texts again
-after an `add` that failed while saving them; never add the block a second time. Full effects, leaf/parent rules, bounds, locale/index conflicts and
+after an `add` that failed while saving them; plan it with an `update` of the same block holding the add's `values` and `translations`, which were not saved either. Never add the block a second time. Full effects, leaf/parent rules, bounds, locale/index conflicts and
 `needs_human` delete handling are in [block-operations.md](block-operations.md).
 
 ## Handoff contract for other skills

@@ -911,6 +911,8 @@ def validate_block_operations(brief: dict, structure: dict | None = None) -> lis
                     errors.append(f"{prefix}.block_id {block_id} is not a Quests block")
                 else:
                     operation_block = found[2]
+                    if op == "seed_texts":
+                        _check_seed_texts(found[2], current, prefix, errors)
         # The brief-level validator runs before the saved structure is loaded. Defer
         # exact target-version and saved-Custom checks until the structure-aware plan.
         if current is not None or op == "add":
@@ -923,6 +925,22 @@ def validate_block_operations(brief: dict, structure: dict | None = None) -> lis
         _check_card_refs(operations, current, errors)
         _check_indices(operations, current, errors)
     return errors
+
+
+def _check_seed_texts(block: dict, current: dict, prefix: str, errors: list[str]) -> None:
+    """A text retry fetches defaults for the saved version and writes them in en-US: check both now."""
+    version = (block.get("values") or {}).get("version")
+    if not isinstance(version, str) or not QUESTS_VERSION_RE.fullmatch(version):
+        errors.append(f"{prefix}: the block reports version {version!r}, which is not a Quests block version")
+    languages = current.get("languages") or []
+    if not set(QUESTS_DEFAULT_TEXT_LOCALES) & set(languages):
+        errors.append(
+            f"{prefix}: the Quests block's default texts are in "
+            + ", ".join(QUESTS_DEFAULT_TEXT_LOCALES)
+            + ", which is not enabled on the site (enabled: "
+            + (", ".join(languages) or "none")
+            + ")"
+        )
 
 
 # Ops that change block order on a page; a duplicate's default index is stale after one.

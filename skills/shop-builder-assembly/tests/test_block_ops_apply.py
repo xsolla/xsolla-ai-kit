@@ -1136,7 +1136,7 @@ class BlockAddTests(BlockOpsApplyBase):
         original = self.site.cmd_update_many_localization
         self.site.cmd_update_many_localization = lambda options: {"ok": True}
         before = self.page_ids()
-        with self.assertRaisesRegex(RuntimeError, '"op": "seed_texts"'):
+        with self.assertRaisesRegex(RuntimeError, '"op": "seed_texts".*an update of block'):
             self.apply([self.ADD])
         self.site.cmd_update_many_localization = original
         (new_id,) = [block_id for block_id in self.page_ids() if block_id not in before]
@@ -1158,12 +1158,49 @@ class BlockAddTests(BlockOpsApplyBase):
         seed = next(item for item in plan["block_operations"] if item["type"] == "block_seed_texts")
         self.assertIn("cleared on purpose", seed["note"])
 
-    def test_seed_texts_refuses_a_version_that_is_not_a_block_version(self) -> None:
-        plan, _ = self.apply([self.ADD])
-        (new_id,) = [b for b in self.page_ids() if self.site.find(b).get("devName") and b != "q1"][-1:]
+    def new_block_after_failed_text_save(self) -> str:
+        original = self.site.cmd_update_many_localization
+        self.site.cmd_update_many_localization = lambda options: {"ok": True}
+        before = self.page_ids()
+        try:
+            with self.assertRaisesRegex(RuntimeError, "an update of block"):
+                self.apply([self.ADD])
+        finally:
+            self.site.cmd_update_many_localization = original
+        (new_id,) = [block_id for block_id in self.page_ids() if block_id not in before]
+        return new_id
+
+    def test_advised_retry_completes_the_block(self) -> None:
+        new_id = self.new_block_after_failed_text_save()
+        count = len(self.page_ids())
+        retry = [
+            {"op": "seed_texts", "block_id": new_id},
+            {"op": "update", "block_id": new_id, "values": self.ADD["values"],
+             "translations": self.ADD["translations"]},
+        ]
+        plan, refs = self.apply(retry)
+        self.assertEqual(count, len(self.page_ids()))
+        internal = self.site.find(new_id)["values"]["internalBlockValues"]
+        self.assertEqual([QUEST_A], internal["questIds"])
+        self.assertEqual(4, internal["maxQuests"])
+        self.assertEqual([], self.verify(plan, refs))
+
+    def test_seed_texts_with_a_bad_version_is_refused_before_any_write(self) -> None:
+        new_id = self.new_block_after_failed_text_save()
         self.site.find(new_id)["values"]["version"] = "../../evil"
-        with self.assertRaisesRegex(RuntimeError, "not a Quests block version"):
-            self.apply([{"op": "seed_texts", "block_id": new_id}])
+        writes = len(self.site.write_calls())
+        with self.assertRaisesRegex(ValueError, "not a Quests block version"):
+            self.plan_for([
+                {"op": "update", "block_id": "q1", "values": {"maxQuests": 3}},
+                {"op": "seed_texts", "block_id": new_id},
+            ])
+        self.assertEqual(writes, len(self.site.write_calls()))
+
+    def test_seed_texts_on_a_site_without_en_us_is_refused_at_plan_time(self) -> None:
+        new_id = self.new_block_after_failed_text_save()
+        self.site.languages = ["de-DE"]
+        with self.assertRaisesRegex(ValueError, "not enabled on the site"):
+            self.plan_for([{"op": "seed_texts", "block_id": new_id}])
 
     def test_add_fails_loudly_when_default_texts_do_not_save(self) -> None:
         original = self.site.cmd_update_many_localization

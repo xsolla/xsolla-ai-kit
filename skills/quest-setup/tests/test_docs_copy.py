@@ -33,6 +33,26 @@ class GeneratedFiles(unittest.TestCase):
             self.assertNotRegex(text, r"(?m)^ #")
 
 
+class Fetch(unittest.TestCase):
+    def test_retries_a_page_that_is_still_building(self):
+        answers = iter([(202, b""), (503, b""), (200, "ok".encode())])
+        original = sync.fetch_once
+        sync.fetch_once = lambda url: next(answers)
+        try:
+            self.assertEqual("ok", sync.fetch(sync.PAGE_URL, sleep=lambda s: None))
+        finally:
+            sync.fetch_once = original
+
+    def test_gives_up_on_a_page_that_is_gone(self):
+        original = sync.fetch_once
+        sync.fetch_once = lambda url: (404, b"")
+        try:
+            with self.assertRaises(sync.PageError):
+                sync.fetch(sync.PAGE_URL, sleep=lambda s: None)
+        finally:
+            sync.fetch_once = original
+
+
 class SplitPage(unittest.TestCase):
     SKILL = sync.SKILL_TITLE + "\n\n" + "x" * sync.MIN_SKILL_BYTES
     DOCS = " # Introduction\n\n" + "y" * sync.MIN_DOCS_BYTES

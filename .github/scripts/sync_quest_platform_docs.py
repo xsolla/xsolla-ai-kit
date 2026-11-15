@@ -16,6 +16,8 @@ from __future__ import annotations
 import argparse
 import re
 import sys
+import time
+import urllib.error
 import urllib.request
 from pathlib import Path
 from typing import List, Tuple
@@ -34,6 +36,10 @@ SKILL_TITLE = "# Quest Platform skill for publishers"
 MIN_SKILL_BYTES = 8_000
 MIN_DOCS_BYTES = 60_000
 MAX_PAGE_BYTES = 2_000_000
+# The docs site can answer 202 while it builds the page, or a transient 429/5xx.
+RETRY_STATUSES = {202, 429, 500, 502, 503, 504}
+ATTEMPTS = 5
+USER_AGENT = "xsolla-ai-kit-docs-sync (+https://github.com/xsolla/xsolla-ai-kit)"
 FENCE = re.compile(r"^(`{4,})markdown\s*$")
 
 
@@ -41,17 +47,30 @@ class PageError(Exception):
     pass
 
 
-def fetch(url: str) -> str:
-    request = urllib.request.Request(url, headers={"Accept": "text/markdown, text/plain"})
-    with urllib.request.urlopen(request, timeout=60) as response:  # noqa: S310 - fixed https URL
-        if response.status != 200:
-            raise PageError(f"the page answered {response.status}")
-        if response.geturl() != url:
-            raise PageError("the page redirected")
-        data = response.read(MAX_PAGE_BYTES + 1)
-    if len(data) > MAX_PAGE_BYTES:
-        raise PageError("the page is larger than expected")
-    return data.decode("utf-8")
+def fetch_once(url: str) -> tuple[int, bytes]:
+    request = urllib.request.Request(
+        url, headers={"Accept": "text/markdown, text/plain", "User-Agent": USER_AGENT}
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=60) as response:  # noqa: S310 - fixed https URL
+            if response.geturl() != url:
+                raise PageError("the page redirected")
+            return response.status, response.read(MAX_PAGE_BYTES + 1)
+    except urllib.error.HTTPError as exc:
+        return exc.code, b""
+
+
+def fetch(url: str, sleep=time.sleep) -> str:
+    for attempt in range(1, ATTEMPTS + 1):
+        status, data = fetch_once(url)
+        if status == 200:
+            if len(data) > MAX_PAGE_BYTES:
+                raise PageError("the page is larger than expected")
+            return data.decode("utf-8")
+        if status not in RETRY_STATUSES or attempt == ATTEMPTS:
+            raise PageError(f"the page answered {status}")
+        sleep(10 * attempt)
+    raise PageError("unreachable")
 
 
 def fenced_blocks(page: str) -> List[str]:
