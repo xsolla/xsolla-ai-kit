@@ -1,4 +1,4 @@
-<!-- Generated from https://developers.xsolla.com/api/quests/ai-skill.md by .github/scripts/sync_quest_platform_docs.py. Do not edit: the sync workflow replaces this file. -->
+<!-- Generated from https://developers.xsolla.com/api/quests/ai-skill.md by .github/scripts/sync_quest_platform_docs.py. Do not edit: run that script to update it. -->
 
 # Quest Platform skill for publishers
 

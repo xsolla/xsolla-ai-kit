@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """Copy the published Quest Platform AI skill page into the quest-setup skill.
 
+Run by hand from the repository root after the Quest Platform docs change (see AGENTS.md,
+"Quest Platform docs copy"), then commit both files and their .cursor mirror in one pull request.
+
 The page holds two fenced blocks: the assistant instructions and the whole documentation.
 Each becomes one generated file under skills/quest-setup/references/. Nothing is written
 unless the page looks complete, so a broken or truncated page never replaces a good copy.
@@ -27,10 +30,11 @@ PAGE_URL = SITE + "/api/quests/ai-skill.md"
 REFERENCES = Path("skills/quest-setup/references")
 SKILL_FILE = REFERENCES / "quest-platform.md"
 DOCS_FILE = REFERENCES / "quest-platform-docs.md"
+MIRROR = Path(".cursor") / REFERENCES
 
 HEADER = (
     "<!-- Generated from {url} by .github/scripts/sync_quest_platform_docs.py."
-    " Do not edit: the sync workflow replaces this file. -->\n\n"
+    " Do not edit: run that script to update it. -->\n\n"
 )
 SKILL_TITLE = "# Quest Platform skill for publishers"
 MIN_SKILL_BYTES = 8_000
@@ -140,8 +144,10 @@ def main(argv: List[str]) -> int:
         for path in changed:
             print(f"out of date: {path}")
         return 1 if changed else 0
+    MIRROR.mkdir(parents=True, exist_ok=True)
     for path, text in ((SKILL_FILE, skill), (DOCS_FILE, docs)):
         path.write_text(text, encoding="utf-8")
+        (MIRROR / path.name).write_text(text, encoding="utf-8")
     print("updated: " + ", ".join(str(p) for p in changed) if changed else "already up to date")
     return 0
 

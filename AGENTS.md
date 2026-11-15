@@ -39,3 +39,17 @@ Two ways to build a shop, for different goals. Before building, find out whether
 <!-- skill-table:end -->
 
 To add a skill, see [CONTRIBUTING-skills.md](CONTRIBUTING-skills.md).
+
+## Quest Platform docs copy
+
+`skills/quest-setup/references/quest-platform.md` and `quest-platform-docs.md` are copies of the published Quest Platform AI skill page (https://developers.xsolla.com/api/quests/ai-skill.md): the assistant instructions and the whole documentation that quest-setup follows. Nothing updates them on its own.
+
+When the Quest Platform docs change, update the copy in a pull request once the change is published:
+
+```sh
+python3 .github/scripts/sync_quest_platform_docs.py          # writes both files and their .cursor mirror
+python3 .github/scripts/sync_quest_platform_docs.py --check  # exits 1 while the copy is out of date
+```
+
+Never edit the two files by hand; `skills/quest-setup/tests/test_docs_copy.py` fails if their generated header is gone. Review the diff before merging: it is text an assistant follows as instructions.
+
