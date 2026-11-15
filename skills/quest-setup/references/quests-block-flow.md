@@ -402,9 +402,7 @@ several), and a status with a button.
 
 **Buttons.** A signed-out visitor sees "Check progress" on every card; pressing it opens the
 Xsolla sign-in. A signed-in player sees the counter instead while the quest is not started or in
-progress, and "See in Backpack" once a quest whose reward goes to the Backpack is completed. On a
-block saved on an older version that button does nothing (see
-[block-versions.md](block-versions.md)). A card can also have its own button that opens a link (default
+progress, and "See in Backpack" once a quest whose reward goes to the Backpack is completed. A card can also have its own button that opens a link (default
 text "Learn more"): only signed-in players see it, and the publisher chooses in the editor for
 which statuses it shows.
 
@@ -435,7 +433,7 @@ and take the quest's action: the card updates on the next page load.
 **Doing it yourself in the editor.** Open the site in Site Builder and select **Quests** in the
 block list. Its settings panel has **Selected quests** (search and switch quests on, drag to order
 them), the card limit, the **Layout** (heading, descriptions, images, alignment, button style,
-backgrounds), the block's **Version**, and **Preview state**. The publisher can do any of it there instead of asking
+backgrounds), and **Preview state**. The publisher can do any of it there instead of asking
 you; you still make changes only through the gate.
 
 **How to change what a card says.** The card's title, description and image, the heading, the

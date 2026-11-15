@@ -22,12 +22,10 @@ QUESTS_MODULE = "_quest-platform_quests-block"
 OPS_BLOCK_MODULES = frozenset({QUESTS_MODULE})
 # add-block --block federated, then one update-block retargeting the wrapper.
 QUESTS_ADD_STRATEGY = "federated_patch"
-# The Quests block version every new block is added on. A block release means bumping this
-# constant (quest-setup block-versions.md too). 0.2.24 fixes the See in Backpack button.
+# The one Quests block version the gate writes and accepts for appearance writes.
+# A block release means bumping this constant (quest-setup block-versions.md too).
 QUESTS_VERSION = "0.2.24"
-# Saved versions that take appearance writes: 0.2.22 has the same settings as 0.2.24
-# (checked against both default-data.json files, 2026-11-15).
-QUESTS_CAPABILITIES = {"0.2.22": {"appearance": True}, QUESTS_VERSION: {"appearance": True}}
+QUESTS_CAPABILITIES = {QUESTS_VERSION: {"appearance": True}}
 # What a Quests block version looks like. A text retry reads the version from the saved
 # block and puts it into the defaults URL, so it is checked against this first.
 QUESTS_VERSION_RE = re.compile(r"[0-9]+\.[0-9]+\.[0-9]+")
@@ -581,7 +579,7 @@ def _check_capability_and_custom_contract(
         version = operation.get("version", QUESTS_VERSION)
         if not isinstance(version, str) or version not in QUESTS_CAPABILITIES:
             errors.append(
-                f"{prefix}.version must be one of {', '.join(sorted(QUESTS_CAPABILITIES))}"
+                f"{prefix}.version must be {QUESTS_VERSION}"
             )
         internal = None
     else:
@@ -862,7 +860,7 @@ def validate_block_operations(brief: dict, structure: dict | None = None) -> lis
             or operation["version"] not in QUESTS_CAPABILITIES
         ):
             errors.append(
-                f"{prefix}.version must be one of {', '.join(sorted(QUESTS_CAPABILITIES))}"
+                f"{prefix}.version must be {QUESTS_VERSION}"
             )
         if "page" in operation:
             page = operation["page"]

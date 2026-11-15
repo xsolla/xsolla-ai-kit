@@ -27,7 +27,7 @@ POLICY_ROWS = (
  ('ac_17_block_guidance_states_the_contract', 'blocks', ('site-builder', 'xsolla-pages', 'custom', 'themeId', 'themeAppearance', 'questIds', 'maxQuests', 'overrides', 'showHeading', 'showDescription', 'showImage', 'cardAlign', 'imageFit', 'buttonStyle', 'blockBackground', 'cardBackground'), ()),
  ('ac_17_semantics', 'blocks', (), ('themeAppearance[^.]{0,80}only[^.]{0,40}\\bcustom\\b', 'questIds[^.]{0,120}\\babsent\\b[^.]{0,120}\\[\\]', 'maxQuests[^.]{0,80}1\\s*(-|–|to)\\s*24', '\\| `maxQuests` \\| [^|]+ \\| `6` \\|', 'overrides[^.]{0,120}https only')),
  ('ac_17_version_facts', 'block-versions.md', (), ('(autoEvents|loginEventName)[^.]{0,80}removed', 'gameSlug[^.]{0,80}visibleGameSlugs', 'backpackAction[^.]{0,40}dropped')),
- ('ac_19_single_pin_file_exists_with_the_known_versions', 'block-versions.md', ('0.2.24', '0.2.22', 'The latest'), ()),
+ ('ac_19_single_pin_file_exists_with_the_known_versions', 'block-versions.md', ('0.2.24', 'The only version'), ()),
  ('ac_19_runtime_check_is_instructed_before_block_writes', 'skill', ('block-versions.md',), ('(check|compare)[^.]{0,120}block version[^.]{0,160}before[^.]{0,40}(any )?block (write|change|mutation)',)),
  ('ac_19_unknown_version_never_asks_the_publisher', 'block-versions.md', ('supported', 'unsupported'), ('(unknown|unreported)[^.]{0,200}older-block reply', 'Never ask the publisher about versions')),
  ('ac_23_publish_is_left_to_the_publisher', 'skill', (), ('publish in Publisher Account', 'never publish')),

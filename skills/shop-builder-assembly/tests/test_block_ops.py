@@ -146,9 +146,9 @@ class BlockOpsTests(unittest.TestCase):
         self.assertTrue(self.errors(theme, structure=older))
         self.assertEqual([], self.errors(layout, structure=older))
 
-    def test_new_blocks_use_the_latest_version_and_both_known_versions_are_accepted(self) -> None:
+    def test_one_version_is_written_and_accepted(self) -> None:
         self.assertEqual("0.2.24", block_ops.QUESTS_VERSION)
-        self.assertEqual({"0.2.22", "0.2.24"}, set(block_ops.QUESTS_CAPABILITIES))
+        self.assertEqual({block_ops.QUESTS_VERSION}, set(block_ops.QUESTS_CAPABILITIES))
         self.assertEqual([], self.errors(add_op(values={"themeId": "custom"})))
         plan = block_ops.plan_block_operations(
             ops_brief([add_op(values={"themeId": "custom"})]), make_structure()

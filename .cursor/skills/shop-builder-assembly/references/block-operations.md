@@ -112,10 +112,10 @@ from `values.resources.localizedValues[<overrides.<questId>.titleRef>].texts.id`
 
 ## Appearance capability
 
-Every add uses `QUESTS_VERSION` (`0.2.24`), with or without an explicit `version`; an add may
-also name `0.2.22`. Appearance update/reset requires the target's saved `values.version` to be
-one of `QUESTS_CAPABILITIES` (`0.2.22`, `0.2.24`, which have the same settings); any other saved
-version is refused for appearance. No operation changes an existing block's version; duplicate preserves it.
+The gate writes and accepts one Quests version, `QUESTS_VERSION` (`0.2.24`). Every add
+uses it, with or without an explicit `version`. Appearance update/reset requires the
+target's saved `values.version` to be that version; any other saved version is refused
+for appearance. No operation changes an existing block's version; duplicate preserves it.
 On an older block, offer only a new block with the same quests and hide the old one under
 its own plan/yes. A new block gets `visibleGameSlugs: []` (the CDN default carries an
 Xsolla demo game); never write `gameSlug` or `visibleGameSlugs` otherwise.
