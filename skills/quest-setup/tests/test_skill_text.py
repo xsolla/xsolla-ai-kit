@@ -50,6 +50,8 @@ POLICY_ROWS = (
    r'never on a block plan', r'show it, as quest-platform.md says', r'Never suggest an event name', r'never from its name or\s+description')),
  ('card_states_are_documented','quests-block-flow.md',('Not started','In progress','Reward pending','Completed','Expired','Check progress','See in Backpack','Preview state','Signed out','Editor simulation'),
   (r'Describe nothing beyond them', r'only for a\s+signed-in player')),
+ ('round_four_rules','skill',(),(r'an event with only the\s+email still pays them', r'Never reinterpret a request', r'how event counts, keys, windows', r'name it and leave it out of the offer')),
+ ('block_plan_says_when_quests_run','quests-block-flow.md',(),(r'Every block plan that shows a quest\*\* says when each quest runs',)),
  ('walkthrough_rules','skill',(),(r'card follows the player who signed in there', r'Offer only what you can do here', r'When the site can.t be reached', r'never give one rule for all', r'names the event, the project and the player ID')),
  ('card_facts_from_the_walkthrough','quests-block-flow.md',('1/3 visits','opens the','Editor simulation','Selected quests'),(r'Login\s+user ID', r'card\s+stays at "Not started"')),
  ('round_three_rules','skill',(),(r'Change only what was asked', r'A question .{0,60} is answered, not fixed', r'Say only what you read in this turn', r"I can't tell from the documentation", r'never blocks saving and is never guessed')),

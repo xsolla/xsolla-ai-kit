@@ -222,6 +222,10 @@ or description to work around its read-only block behavior.
 
 ## Flow
 
+**Every block plan that shows a quest** says when each quest runs, from a read made now: "runs
+until 22 November", or "starts on 1 December". A quest that has ended, or has not started, does
+not show on the site; say so in the plan.
+
 **Quest + site in one request.** When the publisher asks for a new quest and for it on the
 site, the order is: quest proposal and its yes; create, activate and read back the quest; then,
 in the same turn, run the gate's preflight, backup and render for the block change; then the
