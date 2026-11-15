@@ -112,13 +112,13 @@ acknowledgement flag.
 | Remove or delete a block | none: `needs_human`, offer `hide` (see below) |
 
 Every new block, themed or not, is added with an explicit `version` equal to the one in
-[block-versions.md](block-versions.md) (`0.2.22`).
+[block-versions.md](block-versions.md) (`0.2.24`).
 
 Create a block with settings and a heading:
 
 ```json
 {"op": "add", "module": "_quest-platform_quests-block", "page": "/", "index": 2,
- "version": "0.2.22",
+ "version": "0.2.24",
  "values": {"questIds": ["<quest-id-1>", "<quest-id-2>"], "maxQuests": 4,
             "layout.cardAlign": "center"},
  "translations": {"en-US": {"heading": "Quests"}}}

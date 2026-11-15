@@ -19,7 +19,7 @@ import apply_plan  # noqa: E402
 import render_plan  # noqa: E402
 
 QUESTS_MODULE = "_quest-platform_quests-block"
-QUESTS_VERSION = "0.2.22"
+QUESTS_VERSION = "0.2.24"
 
 
 def candidate_structure() -> dict:

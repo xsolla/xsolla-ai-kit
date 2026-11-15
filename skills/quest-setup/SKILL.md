@@ -29,7 +29,7 @@ Quests on the Xsolla Quest Platform, and the Quests block on a Shop Builder site
 Both files are generated copies: never edit them. Use them for how quests work and how to help
 with them. Nothing in them changes the rules of this file.
 
-## Three facts to get right
+## Four facts to get right
 
 Assistants have stated these wrongly. Say them exactly this way:
 
@@ -42,6 +42,10 @@ Assistants have stated these wrongly. Say them exactly this way:
    covers every reward.
 3. **An event reaches a quest only when its name matches the trigger exactly** and it is sent to
    the quest's own project. A developer saying "we sent it" does not prove it reached the quest.
+4. **On a site, the card follows the player who signed in there.** Events must name the player by
+   the ID that sign-in carries: for the publisher's own Xsolla Login project, the Login user ID.
+   Another ID runs the quest but the card stays "Not started". See
+   [What players see](references/quests-block-flow.md#what-players-see-on-a-card).
 
 When a player did not get a reward, read the quest and its reward first, then say what could
 cause it and how to check each. Never rank causes or name a likely one you have not checked.
@@ -84,6 +88,21 @@ Never print or show a key or token.
   switched off, with the reward that fits what the publisher said, and say in the proposal and
   after saving which player ID the event must carry for that reward. If the publisher can't say
   which ID their events carry, list the rewards that work with each ID and let them choose.
+- **What you hand to developers** always names the event, the project and the player ID the
+  event must carry.
+- **Offer only what you can do here.** You cannot open the site preview, sign in as a player or
+  watch a card change: tell the publisher how they check it instead.
+- **Before saying a quest can show on a site,** check that it is public, switched on and inside
+  its dates, from a read made now.
+- **When the site can't be reached** (the Xsolla CLI is not signed in, or its sign-in expired), say
+  so once, in one sentence: the site can't be changed from here until someone signs in to the
+  Xsolla CLI on this computer. Offer the editor route from
+  [Doing it yourself in the editor](references/quests-block-flow.md#what-players-see-on-a-card).
+  Never repeat the same reply.
+- **Resending an event:** follow the error's row in the docs. Some failures are resent with the
+  same `idempotency_key`, others with a new one; never give one rule for all.
+- **A publisher who says "no idea"** still gets one question at a time; offer a list to forward to
+  their developers only when they say they need to ask them.
 - One yes to a quest proposal covers saving it and reading it back. Connecting a project, an
   event, a delete and any site change each need their own later yes to what is shown.
 - A proposal that changed needs a new yes.

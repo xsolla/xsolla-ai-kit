@@ -161,7 +161,7 @@ the position of the page's `footer` block (so the Quests block lands above the f
 or to the page's current block count when there is no footer. Read both from the gate's
 backup. Never omit `index`, because an `add` without it puts the block first. Always set
 the `add` operation's `version` field to the latest version in
-[block-versions.md](block-versions.md) (`0.2.22`), themed or not.
+[block-versions.md](block-versions.md) (`0.2.24`), themed or not.
 
 Do not ask for IDs, hosts or slugs you can read from the CLI. Existing block ids come
 from the block summary or the gate's backup, never from a guess.
@@ -336,7 +336,7 @@ of scope. [Reply examples](reply-format.md#examples) own refusals and localized/
 
 ## Events the Quests block sends
 
-The Quests block (0.2.22) sends three events itself for a signed-in player, from the browser with
+The Quests block sends three events itself for a signed-in player, from the browser with
 the player's token. On a site with the block they are real events a quest can react to:
 
 | Event | When | A request for |
@@ -383,8 +383,9 @@ itself, one entry per reward, and only when the quest has no `public_view` (or i
 ## What players see on a card
 
 Read for any question about what a visitor or a player sees, how a card shows progress, or how
-to check it. These are the block's own built-in texts (the en-US defaults, which the publisher can
-change in the editor). Describe nothing beyond them; when asked more, say how to check it (below).
+to check it. These come from the block's own built-in texts and from a walk-through on a real
+site (2026-11-15). Describe nothing beyond them; when asked more, say how the publisher can check
+it (below).
 
 **Each card shows** the quest's title, description and image (or the card's own, when set on the
 block), the reward ("Reward", and "and 1 more reward" / "and N more rewards" when there are
@@ -393,37 +394,48 @@ several), and a status with a button.
 | Status on the card | When |
 |---|---|
 | Not started | The player has no progress on the quest yet |
-| In progress | Some progress. A quest with steps shows "2 of 3 steps"; a counter shows "3 of 5", and "+N more" when there are more counters |
+| In progress | Some progress. A counter shows as a bar with its unit, for example "1/3 visits"; a quest with steps shows "2 of 3 steps", and "+N more" when there are more counters |
 | Reward pending | "All steps are done." The quest is complete and the reward is still on its way |
 | Completed | Done. A "Quest completed!" message appears, and finished quests are listed under "Completed quests" |
 | Expired | The player's run ended unfinished. While the quest is still listed, this is what the card shows; once the quest itself has ended, it is no longer listed on the site at all (see Which quests appear) |
 | Error | The status could not be loaded ("Could not load status", with "Retry") |
 
-**Buttons.** "Check progress" on a quest in progress. What it does when pressed is not described
-here: say so once, and offer to check it together on the preview. A completed quest whose reward goes to the
-Backpack shows "See in Backpack". A card can also have its own button that opens a link (default
+**Buttons.** A signed-out visitor sees "Check progress" on every card; pressing it opens the
+Xsolla sign-in. A signed-in player sees the counter instead while the quest is not started or in
+progress, and "See in Backpack" once a quest whose reward goes to the Backpack is completed. On a
+block saved on an older version that button does nothing (see
+[block-versions.md](block-versions.md)). A card can also have its own button that opens a link (default
 text "Learn more"): only signed-in players see it, and the publisher chooses in the editor for
 which statuses it shows.
 
 **Signed out and signed in.** Progress and statuses belong to a player, so they appear only for a
-signed-in player. A signed-out visitor sees the cards, without their own progress. A player's
-progress comes from the events their game or the block sends for them (see
+signed-in player. A signed-out visitor sees the cards with "Check progress" and no status. A
+player's progress comes from the events their game or the block sends for them (see
 [Events the Quests block sends](#events-the-quests-block-sends)).
+
+**The player ID must be the one the site's sign-in carries.** The card shows the progress of the
+player who signed in on the site, found by the identifiers of their sign-in. When the site signs
+players in through the publisher's own Xsolla Login project (the usual case), that is the Login
+user ID, sent as `xsolla_id` or `gamer_id`. Events the publisher's server sends under any other ID
+(for example the player's Xsolla account ID from another place) still run the quest, but the card
+stays at "Not started", with no error anywhere. Say this whenever a quest is meant to show progress
+on a site, and when a publisher reports a card that does not move.
 
 **Which quests appear.** Only quests that are public, switched on and inside their dates, up to
 the block's card limit. A quest that is paused, deleted, ended or not public does not appear on
 the site; in the editor its card is marked unavailable, with a hint to remove it from the block.
 If no chosen quest can be shown, the block shows nothing on the site.
 
-**How the publisher can check each state.** In the Site Builder editor, the block has a
-"Preview state" switch: "Signed out", or "Live" for the signed-in view with real data. "Editor
-simulation" shows example progress and statuses without sending anything; it is an editor setting
-only, and the published site always uses live data. To see real progress, sign in on the site's
-preview as a player and take the quest's action.
+**How the publisher can check each state.** In the Site Builder editor, select the Quests block:
+its settings end with a **Preview state** section with an **Editor simulation** choice (default
+"Live"). It changes only what the editor shows; the published site always uses live data. To see a
+real player's view, open **Preview** at the top of the editor, sign in on the preview as a player,
+and take the quest's action: the card updates on the next page load.
 
-**Doing it yourself in the editor.** Open the site in Site Builder, select the Quests block, and
-use its settings: the quest list (choose and order the quests), the card limit, each card's
-texts and image, and the layout and theme. The publisher can do any of it there instead of asking
+**Doing it yourself in the editor.** Open the site in Site Builder and select **Quests** in the
+block list. Its settings panel has **Selected quests** (search and switch quests on, drag to order
+them), the card limit, the **Layout** (heading, descriptions, images, alignment, button style,
+backgrounds), the block's **Version**, and **Preview state**. The publisher can do any of it there instead of asking
 you; you still make changes only through the gate.
 
 **How to change what a card says.** The card's title, description and image, the heading, the
