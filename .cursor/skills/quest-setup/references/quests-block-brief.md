@@ -66,8 +66,9 @@ Source: the block contract at commit 0b1586eb59. Version pins live only in
 - `overrides` images are https only; reward overrides are ignored.
 - Versions and event-field capabilities belong to [block-versions.md](block-versions.md).
   Never write `autoEvents` or `loginEventName`; match the trigger name exactly.
-  Backpack Overlay is not supported yet (agent-only reason: upstream v2): decline it with
-  the [overlay decline](reply-format.md#examples) and make no write.
+  Opening the Backpack inside the page (an overlay) is not supported: decline only that request
+  with the [overlay decline](reply-format.md#examples) and make no write. "See in Backpack"
+  itself works; it opens the Backpack in a new window.
 - Custom-block creation 403: account lacks permission to create custom blocks;
   Xsolla support is next. Do not retry or create a file.
 

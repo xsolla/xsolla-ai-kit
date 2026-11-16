@@ -17,8 +17,9 @@ A block release means bumping this table and the gate's `QUESTS_VERSION` togethe
   block sends its built-in events once the player is authorized. Quest trigger names must
   match them exactly.
 - Never write `gameSlug` or `visibleGameSlugs`. They are set by Xsolla for Xsolla Pages.
-- `backpackAction` is dropped by the block. Backpack Overlay is not supported yet (upstream v2, never said to the publisher);
-  keep any saved action-looking data as it is.
+- `backpackAction` is dropped by the block; keep any saved action-looking data as it is. "See in
+  Backpack" opens the player's Backpack in a new window. What is not supported is opening the
+  Backpack inside the page (an overlay): only a request for that gets the overlay decline.
 
 ## Runtime check
 
@@ -33,12 +34,13 @@ Before any block write, read the block version (from the block summary) and the 
   quests and cards go ahead; a theme or appearance write gets the older-block reply below.
   Never ask the publisher about versions.
 
-## Theme request on an older block
+## Theme request or a See in Backpack problem on an older block
 
 No operation changes an existing block's version. For a theme or appearance request on a
-block that is not on `0.2.24`, the reply:
+block that is not on `0.2.24`, or a "See in Backpack" button that does nothing there, the reply:
 
-- says in plain words that this block can't take theme settings;
+- says in plain words that this block can't take theme settings, or that its "See in Backpack"
+  button doesn't work and a new Quests block's does;
 - offers only a new Quests block with the same quests, and the old block hidden, never
   deleted, as its own plan with its own yes.
 

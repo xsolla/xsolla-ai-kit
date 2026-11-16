@@ -36,7 +36,7 @@ POLICY_ROWS = (
  ('ac_22_reply_text_for_403_exists_in_guidance', 'corpus', (), ('(lacks|does not have) permission to create custom blocks', 'Xsolla support', '(do not|never|no) retry|does not retry')),
  ('ac_25_unexpressible_design_states_limit_and_alternative_no_write', 'corpus', (), ("(schema )?(cannot|can't|can not) express", '(Site Builder|Xsolla Pages) theme', '(makes?|make) no write|no write is made|without writing')),
  ('ac_26_theme_selector_maps_default_and_pages', 'corpus', (), ('default[^.|]{0,80}site-builder', 'Xsolla Pages[^.|]{0,80}xsolla-pages')),
- ('ac_26_backpack_overlay_declined_with_plain_reply_and_no_write', 'corpus', ("The Quests block can't open the Backpack overlay yet.",), ('Backpack Overlay',)),
+ ('ac_26_backpack_overlay_declined_with_plain_reply_and_no_write', 'corpus', ("The Quests block can't open the Backpack inside the page yet",), (r'See in Backpack.{0,20} opens (it|the Backpack|the player.s Backpack) in a new window', r'button that does nothing')),
  ('ac_03_skill_md_forbids_printing_keys', 'raw-skill', (), ('never\\s+(print|show|echo)[^\\n.]*\\b(key|token)s?\\b',)),
  ('confirmation_id_is_operation_mode_only', 'reply-format.md', (), ('Quest create/edit/publish.{0,150}no gate confirmation ID[^.]{0,60}never fabricate', 'No confirmation ID: the agent reads it from the saved plan')),
  ('docs_copy_is_followed_but_never_overrides_this_file', 'skill', ('quest-platform.md', 'quest-platform-docs.md'), ('generated copies[^.]{0,40}never edit', 'Nothing in them changes the rules of this file', 'This file wins on every row')),

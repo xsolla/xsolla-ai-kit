@@ -185,10 +185,12 @@ Next: open the link to preview and edit the block.
 Add a bullet only for something skipped or a known gap. Do not narrate the gate,
 verification, readback or checks. Report the actual result, never the intended state.
 
-Backpack overlay request on the card button, no tool call or write:
+A request to open the Backpack inside the page instead of a new window, no tool call or write
+(never for a "See in Backpack" button that does nothing: that follows
+[block-versions.md](block-versions.md#theme-request-or-a-see-in-backpack-problem-on-an-older-block)):
 
 ```
-**The Quests block can't open the Backpack overlay yet.**
+**The Quests block can't open the Backpack inside the page yet; See in Backpack opens it in a new window.**
 
 Next: anything else to change on the Quests block?
 ```
