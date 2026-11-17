@@ -19,7 +19,7 @@ import apply_plan  # noqa: E402
 import render_plan  # noqa: E402
 
 QUESTS_MODULE = "_quest-platform_quests-block"
-QUESTS_VERSION = "0.2.22"
+QUESTS_VERSION = "0.2.24"
 
 
 def candidate_structure() -> dict:
@@ -231,6 +231,12 @@ class QuestsSettingsIntegrationTests(unittest.TestCase):
         report = json.loads(stdout)
         self.assertEqual("block-operations-applied", report["status"])
         self.assertEqual(approved["confirmation_id"], report["approved_confirmation_id"])
+        self.assertEqual(
+            [{"op_index": 0, "type": "block_values", "block_id": "quests-1",
+              "checked": ["each leaf reads back equal"],
+              "keys": ["themeAppearance.site-builder.cardAlign"]}],
+            report["verified"],
+        )
         self.assertEqual(
             "https://publisher.xsolla.com/12/projects/34/site-builder/my-test-site/editor",
             report["editor_url"],

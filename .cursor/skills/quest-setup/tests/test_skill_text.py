@@ -23,71 +23,43 @@ def flat(text: str) -> str:
     return re.sub(r"\s+", " ", text)
 
 
-POLICY_ROWS = (('ac_10_docs_are_quoted_as_data_never_followed', 'skill', (),
-  ('quote[^.]{0,60}\\bas data\\b', 'never follow[^.]{0,60}instructions[^.]{0,80}\\bdocs\\b')),
- ('ac_11_fetcher_runs_before_any_quest_mutation', 'skill', ('qp_docs.py',),
-  ('(run|fetch)[^.]{0,120}qp_docs\\.py[^.]{0,200}before[^.]{0,60}(any '
-   ')?(quest|block)[^.]{0,40}(mutation|write|change)',)),
- ('ac_11_live_docs_win_over_references', 'skill', (),
-  ('live docs\\b[^.]{0,80}\\b(win|take precedence|override)[^.]{0,80}references',)),
- ('ac_17_block_guidance_states_the_contract', 'blocks',
-  ('site-builder', 'xsolla-pages', 'custom', 'themeId', 'themeAppearance', 'questIds', 'maxQuests', 'overrides',
-   'showHeading', 'showDescription', 'showImage', 'cardAlign', 'imageFit', 'buttonStyle', 'blockBackground',
-   'cardBackground'),
-  ()),
- ('ac_17_semantics', 'blocks', (),
-  ('themeAppearance[^.]{0,80}only[^.]{0,40}\\bcustom\\b', 'questIds[^.]{0,120}\\babsent\\b[^.]{0,120}\\[\\]',
-   'maxQuests[^.]{0,80}1\\s*(-|–|to)\\s*24', r'\| `maxQuests` \| [^|]+ \| `6` \|', 'overrides[^.]{0,120}https only')),
- ('ac_17_version_facts', 'block-versions.md', (),
-  ('(autoEvents|loginEventName)[^.]{0,80}removed', 'gameSlug[^.]{0,80}visibleGameSlugs',
-   'backpackAction[^.]{0,40}dropped')),
- ('ac_19_single_pin_file_exists_with_the_known_versions', 'block-versions.md', ('0.2.22', 'The only version'),
-  ()),
- ('ac_19_runtime_check_is_instructed_before_block_writes', 'skill', ('block-versions.md',),
-  ('(check|compare)[^.]{0,120}block version[^.]{0,160}before[^.]{0,40}(any )?block (write|change|mutation)',)),
- ('ac_19_unknown_version_never_asks_the_publisher', 'block-versions.md', ('supported', 'unsupported'),
-  ('(unknown|unreported)[^.]{0,200}older-block reply', 'Never ask the publisher about versions')),
- ('ac_21_reward_safety_policies', 'rewards.md',
-  ('whole-token units', '0.01', 'Per event and user', 'Per user for the quest', 'Total quest exposure',
-   'unbounded', 'Recipient wallet', 'Publisher Account'),
-  ('does not[^.]{0,40}claim delivery', 'never resend[^.]{0,80}uncertain')),
+POLICY_ROWS = (
+ ('ac_17_block_guidance_states_the_contract', 'blocks', ('site-builder', 'xsolla-pages', 'custom', 'themeId', 'themeAppearance', 'questIds', 'maxQuests', 'overrides', 'showHeading', 'showDescription', 'showImage', 'cardAlign', 'imageFit', 'buttonStyle', 'blockBackground', 'cardBackground'), ()),
+ ('ac_17_semantics', 'blocks', (), ('themeAppearance[^.]{0,80}only[^.]{0,40}\\bcustom\\b', 'questIds[^.]{0,120}\\babsent\\b[^.]{0,120}\\[\\]', 'maxQuests[^.]{0,80}1\\s*(-|–|to)\\s*24', '\\| `maxQuests` \\| [^|]+ \\| `6` \\|', 'overrides[^.]{0,120}https only')),
+ ('ac_17_version_facts', 'block-versions.md', (), ('(autoEvents|loginEventName)[^.]{0,80}removed', 'gameSlug[^.]{0,80}visibleGameSlugs', 'backpackAction[^.]{0,40}dropped')),
+ ('ac_19_single_pin_file_exists_with_the_known_versions', 'block-versions.md', ('0.2.24', 'The only version'), ()),
+ ('ac_19_runtime_check_is_instructed_before_block_writes', 'skill', ('block-versions.md',), ('(check|compare)[^.]{0,120}block version[^.]{0,160}before[^.]{0,40}(any )?block (write|change|mutation)',)),
+ ('ac_19_unknown_version_never_asks_the_publisher', 'block-versions.md', ('supported', 'unsupported'), ('(unknown|unreported)[^.]{0,200}older-block reply', 'Never ask the publisher about versions')),
  ('ac_23_publish_is_left_to_the_publisher', 'skill', (), ('publish in Publisher Account', 'never publish')),
- ('ac_29_exact_change_and_yes_before_write', 'skill', (),
-  ('exact change', 'no write until[^.]{0,80}\\byes\\b[^.]{0,60}same conversation')),
- ('ac_30_readback_reports_state_not_request', 'skill', (),
-  ('read.?back', '(not|never)[^.]{0,40}the requested state')),
- ('ac_24_custom_design_flow_collects_brand_inputs_and_lists_gaps', 'blocks+skill', (),
-  ('brand inputs?', 'themeId[^.]{0,40}custom[^.]{0,120}themeAppearance',
-   "(lists?|name|state)[^.]{0,80}(properties|settings)[^.]{0,80}(cannot|can't) express")),
- ('ac_31_reward_types_come_from_live_docs_only', 'rewards.md', (),
-  ('reward types?[^.]{0,80}(from|in) the live docs',
-   '(absent|not (listed|present))[^.]{0,60}(live )?docs[^.]{0,80}reject',
-   'snapshot[^.]{0,60}orientation only|orientation only[^.]{0,60}snapshot')),
- ('ac_32_reward_editability_is_observed_behavior', 'skill', (),
-  ('editab\\w+[^.]{0,120}observed[^.]{0,40}(block )?behaviou?r', 'not a rule')),
- ('ac_12_node-subtypes.md', 'node-subtypes.md', (),
-  ('live docs[^.]{0,80}source of truth', 'snapshot', 'orientation only')),
- ('ac_12_qp-api-contract.md', 'qp-api-contract.md', (),
-  ('live docs[^.]{0,80}source of truth', 'snapshot', 'orientation only')),
- ('ac_22_reply_text_for_403_exists_in_guidance', 'corpus', (),
-  ('(lacks|does not have) permission to create custom blocks', 'Xsolla support',
-   '(do not|never|no) retry|does not retry')),
- ('ac_25_unexpressible_design_states_limit_and_alternative_no_write', 'corpus', (),
-  ("(schema )?(cannot|can't|can not) express", '(Site Builder|Xsolla Pages) theme',
-   '(makes?|make) no write|no write is made|without writing')),
- ('ac_26_theme_selector_maps_default_and_pages', 'corpus', (),
-  ('default[^.|]{0,80}site-builder', 'Xsolla Pages[^.|]{0,80}xsolla-pages')),
- ('ac_26_backpack_overlay_declined_with_plain_reply_and_no_write', 'corpus', ("The Quests block can't open the Backpack overlay yet.",),
-  ('Backpack Overlay',)),
- ('ac_03_skill_md_forbids_printing_keys', 'raw-skill', (),
-  ('never\\s+(print|show|echo)[^\\n.]*\\b(key|token)s?\\b',)),
- ('actual_event_binding_before_write', 'node-subtypes.md', ('proposed, unverified',),
-  ('never infer[^.]{0,100}binding[^.]{0,100}(title|description)',
-   'before any quest write[^.]{0,160}(verified binding|explicit confirmation)',
-   'publication approval does not[^.]{0,100}(emission|binding)')),
- ('confirmation_id_is_operation_mode_only', 'reply-format.md', (),
-  ('Quest create/edit/publish.{0,150}no gate confirmation ID[^.]{0,60}never fabricate',
-   'No confirmation ID: the agent reads it from the saved plan')))
+ ('ac_24_custom_design_flow_collects_brand_inputs_and_lists_gaps', 'blocks+skill', (), ('brand inputs?', 'themeId[^.]{0,40}custom[^.]{0,120}themeAppearance', "(lists?|name|state)[^.]{0,80}(properties|settings)[^.]{0,80}(cannot|can't) express")),
+ ('ac_32_reward_editability_is_observed_behavior', 'skill', (), ('editab\\w+[^.]{0,120}observed[^.]{0,40}(block )?behaviou?r', 'not a rule')),
+ ('ac_22_reply_text_for_403_exists_in_guidance', 'corpus', (), ('(lacks|does not have) permission to create custom blocks', 'Xsolla support', '(do not|never|no) retry|does not retry')),
+ ('ac_25_unexpressible_design_states_limit_and_alternative_no_write', 'corpus', (), ("(schema )?(cannot|can't|can not) express", '(Site Builder|Xsolla Pages) theme', '(makes?|make) no write|no write is made|without writing')),
+ ('ac_26_theme_selector_maps_default_and_pages', 'corpus', (), ('default[^.|]{0,80}site-builder', 'Xsolla Pages[^.|]{0,80}xsolla-pages')),
+ ('ac_26_backpack_overlay_declined_with_plain_reply_and_no_write', 'corpus', ("The Quests block can't open the Backpack inside the page yet",), (r'See in Backpack.{0,20} opens (it|the Backpack|the player.s Backpack) in a new window', r'button that does nothing')),
+ ('ac_03_skill_md_forbids_printing_keys', 'raw-skill', (), ('never\\s+(print|show|echo)[^\\n.]*\\b(key|token)s?\\b',)),
+ ('confirmation_id_is_operation_mode_only', 'reply-format.md', (), ('Quest create/edit/publish.{0,150}no gate confirmation ID[^.]{0,60}never fabricate', 'No confirmation ID: the agent reads it from the saved plan')),
+ ('docs_copy_is_followed_but_never_overrides_this_file', 'skill', ('quest-platform.md', 'quest-platform-docs.md'), ('generated copies[^.]{0,40}never edit', 'Nothing in them changes the rules of this file', 'This file wins on every row')),
+ ('reward_safety_policies', 'skill', ('without bound', 'Publisher Account', 'store-catalog-lookup.md'), ('Never guess an SKU', 'failed catalog read[^.]{0,40}empty catalog', 'what it can cost', 'Accepted, completed and delivered are three different things', 'Never resend to find out')),
+ ('yes_before_write', 'skill', (), ('One yes to a quest proposal covers saving it and reading it back', '(event|delete)[^.]{0,120}each need their own later yes', 'changed needs a new yes')),
+ ('readback_reports_state_not_request', 'skill', (), ('report what you read back, never what you asked for',)),
+ ('key_handling_is_instructed', 'auth-credentials.md', ('XSOLLA_PROJECT_API_KEY', '## Credential', '## Onboarding'), ('Never open, read or search the file', 'never print or list variables', 'No redirects', 'access-missing reply.{0,80}and stop', 'Never ask for a pasted secret')),
+ ('store_reads_never_write', 'store-catalog-lookup.md', (), ('Never write to the Store', 'not an empty\\s+catalog', 'Never pick', 'Never invent one')),
+ ('fixes_from_the_conversation_test','skill',('quests-block-flow.md#what-players-see-on-a-card',),
+  (r'it is not the yes', r'one\s+line, before and after', r'wait for a yes; then make it,\s+read it back', r'never refuse because a check is unanswered', r'run the block summary again',
+   r'never on a block plan', r'show it, as quest-platform.md says', r'Never suggest an event name', r'never from its name or\s+description')),
+ ('card_states_are_documented','quests-block-flow.md',('Not started','In progress','Reward pending','Completed','Expired','Check progress','See in Backpack','Preview state','Signed out','Editor simulation'),
+  (r'Describe nothing beyond them', r'only for a\s+signed-in player')),
+ ('round_four_rules','skill',(),(r'an event with only the\s+email still pays them', r'Never reinterpret a request', r'how event counts, keys, windows', r'name it and leave it out of the offer')),
+ ('block_plan_says_when_quests_run','quests-block-flow.md',(),(r'Every block plan that shows a quest\*\* says when each quest runs',)),
+ ('walkthrough_rules','skill',(),(r'card follows the player who signed in there', r'Offer only what you can do here', r'When the site can.t be reached', r'never give one rule for all', r'names the event, the project and the player ID')),
+ ('card_facts_from_the_walkthrough','quests-block-flow.md',('1/3 visits','opens the','Editor simulation','Selected quests'),(r'Login\s+user ID', r'card\s+stays at "Not started"')),
+ ('round_three_rules','skill',(),(r'Change only what was asked', r'A question .{0,60} is answered, not fixed', r'Say only what you read in this turn', r"I can't tell from the documentation", r'never blocks saving and is never guessed')),
+ ('three_facts_up_front','skill',('Four facts to get right',),(r"does not finish the quest", r'never say one ID\s+covers every reward', r'Never rank causes')),
+ ('catalog_reads_every_kind','store-catalog-lookup.md',('admin/items/bundle','virtual_currency/package'),(r'Read all four lists', r'are different values')),
+ ('proposal_says_who_sees_the_quest','reply-format.md',('Shown to players:',),(r'Several declines in one message',)),
+ ('actual_event_name_before_write', 'quests-block-flow.md', ('login_xsolla_id', 'daily_visit', 'weekly_visit'), ('Never infer one from a quest title', 'Never rename the event of a running quest', 'client_sendable: true')),
+)
 
 
 class SkillTextTests(IsolatedCase):
@@ -106,50 +78,46 @@ class SkillTextTests(IsolatedCase):
                 for pattern in patterns:
                     self.assertRegex(owners[owner], re.compile(pattern, re.I))
 
-    def test_client_events_public_view_and_catalog_rewards(self) -> None:
-        node = flat(ref("node-subtypes.md"))
-        rewards = flat(ref("rewards.md"))
+    def test_block_events_public_view_and_card_rewards(self) -> None:
         block = flat(ref("quests-block-flow.md"))
-        edit = flat(ref("quest-edit.md"))
-        events = flat(ref("events.md"))
         skill_text = flat(skill())
-        # A: block-sent events need client_sendable on the trigger, and a 403 without it.
-        self.assertIn("login_xsolla_id` (once), `daily_visit` and `weekly_visit`", node)
-        self.assertIn('must set `"client_sendable": true` on its trigger', node)
-        self.assertIn("only while an active quest of the project allows it", node)
-        self.assertIn("only `idempotency_key`, `name`, `client_timestamp` and `properties`", events)
+        # Block-sent events need client_sendable on the trigger, and a 403 without it.
         self.assertRegex(block, r"must set `client_sendable: true` on its trigger, or the block's event is refused")
-        # B: issue_catalog_item is a supported, explicitly chosen alternative to web3_item.
-        self.assertIn("### issue_catalog_item", node)
-        self.assertIn("Leave out `items[].type`", node)
-        self.assertIn("Backpack grants (`issue_catalog_item`)", rewards)
-        self.assertIn("Web3 rewards need an `xsolla_id`", rewards)
-        self.assertRegex(skill_text, r"`web3_item` by default, or `issue_catalog_item`")
-        self.assertNotIn("Do not offer `inventory_item`", skill_text)
-        self.assertNotIn("direct Backpack grants", rewards)
-        # C: a Web3 public_view sends the full view; catalog-item quests take no public_view.
+        self.assertIn("## Events the Quests block sends", ref("quests-block-flow.md"))
+        # No reward is a default, and the skill never writes a rewards list.
+        self.assertNotRegex(skill_text, r"web3_item` by default|Web3 item\)?,? the default")
+        self.assertIn("the skill never writes a rewards list", block)
+        # A Web3 public_view sends the full view; any other reward gets static name and image.
         self.assertIn('"reward_type": {"$ref": "reward.<node id>.type"}', block)
         self.assertIn("loses its reward row and its See in Backpack button", block)
-        self.assertIn("Never set a `public_view` on an", block)
-        self.assertNotIn("Send the full view below every time", block)
-        self.assertNotIn("never the reward image", block)
-        self.assertIn("Set no `public_view`", rewards)
-        self.assertNotIn("shows no reward", block)
-        self.assertNotIn("shows no reward", rewards)
-        # D: a full PUT keeps public_view.
-        self.assertRegex(edit, r"resend the fresh `GET`'s `public_view` unchanged")
-        for name, text in (("node-subtypes.md", node), ("rewards.md", rewards), ("quests-block-flow.md", block),
-                           ("quest-edit.md", edit), ("events.md", events), ("SKILL.md", skill_text)):
+        self.assertIn('"reward_name": "<catalog item name>"', block)
+        self.assertIn("Never promise a card reward you did not put there", block)
+        self.assertIn("anything but a Web3 item always needs a view", block)
+        # The old wording told the agent to skip the view a non-Web3 reward needs.
+        self.assertNotIn("Add one only when the publisher wants custom card text or an image", block)
+        self.assertNotIn("never add a `public_view` only to pass this", block)
+        self.assertNotIn("catalog-item quests take none", skill_text)
+        for name in ("quests-block-flow.md", "reply-format.md", "auth-credentials.md", "store-catalog-lookup.md"):
             with self.subTest(file=name):
-                self.assertNotIn("\u2014", text)
+                self.assertNotIn("\u2014", flat(ref(name)))
+        self.assertNotIn("\u2014", skill_text)
 
-    def test_ac_12_snapshots_cannot_claim_unqualified_authority(self) -> None:
-        for name in ("node-subtypes.md", "qp-api-contract.md"):
-            with self.subTest(file=name):
-                text = flat(ref(name))
-                for match in re.finditer(r"authoritative", text, re.I):
-                    window = text[max(0, match.start() - 25):match.start()].lower()
-                    self.assertTrue(re.search(r"\b(not|never|non-?)\s*$", window), window)
+    def test_removed_scripts_and_files_are_not_named(self) -> None:
+        gone = ("qp_request", "qp_docs", "qp_preflight", "whoami", "rewards.md", "node-subtypes.md", "events.md",
+                "quest-publish.md", "verification.md", "conditions.md", "qp-api-contract.md",
+                "quest-authoring.md", "quest-edit.md")
+        hand_written = {p.name: read_text(p) for p in sorted(REFS.glob("*.md")) if not p.name.startswith("quest-platform")}
+        hand_written["SKILL.md"] = skill()
+        for name, text in hand_written.items():
+            for term in gone:
+                with self.subTest(file=name, term=term):
+                    self.assertNotIn(term, text)
+
+    def test_relative_links_resolve(self) -> None:
+        for path in [SKILL_MD] + [p for p in sorted(REFS.glob("*.md")) if not p.name.startswith("quest-platform")]:
+            for target in re.findall(r"\]\(((?:references/|\.\./)?[A-Za-z0-9_.-]+\.md)(?:#[^)]*)?\)", read_text(path)):
+                with self.subTest(file=path.name, target=target):
+                    self.assertTrue((path.parent / target).is_file(), target)
 
     def test_reply_examples_carry_no_internals(self) -> None:
         # Every fenced reply example is text a publisher sees: no internal causes, ids,
@@ -162,7 +130,7 @@ class SkillTextTests(IsolatedCase):
             re.I,
         )
         examples = re.findall(r"```[a-z]*\n(.*?)```", ref("reply-format.md"), re.S)
-        examples += re.findall(r'"(\*\*[^"]+)"', ref("auth-credentials.md") + ref("qp-api-contract.md"))
+        examples += re.findall(r'"(\*\*[^"]+)"', ref("auth-credentials.md"))
         self.assertTrue(examples)
         for example in examples:
             with self.subTest(example=example[:40]):
@@ -186,22 +154,19 @@ class SkillTextTests(IsolatedCase):
         rows = [line for line in skill().splitlines() if line.startswith("|") and ".md](" in line]
         self.assertTrue(rows)
         routing = " ".join(rows)
-        for operation in ("Capabilities", "List shops", "describe block", "List quests", "quest status",
-                          "debug execution", "onboarding", "Create", "activate", "Edit", "pause", "Delete quest",
-                          "reward", "event", "Login", "Add Quests block", "heading", "cards", "order", "count",
-                          "reset", "Theme", "custom design", "Move", "duplicate", "hide", "show", "Remove",
-                          "Card reward", "Headless", "unsupported"):
+        for operation in ("about a quest or an event", "What can you do", "Access missing", "List shops",
+                          "describe block", "Add Quests block", "heading", "cards", "order", "count", "reset",
+                          "Theme", "custom design", "Move", "duplicate", "hide", "show", "Remove", "Card reward",
+                          "Headless", "Other site changes"):
             with self.subTest(operation=operation):
                 self.assertIn(operation.lower(), routing.lower())
         for row in rows:
             for name in re.findall(r"references/([A-Za-z0-9_-]+\.md)", row):
                 self.assertTrue((REFS / name).is_file(), name)
-        for action in ("Create / activate", "Edit / pause", "Delete quest", "Add / replace",
-                       "Send / test", "Add Quests block", "Update heading", "Theme / custom", "Move / duplicate"):
+        for action in ("Add Quests block", "Heading / cards", "Theme / custom", "Move / duplicate"):
             row = next(row for row in rows if action in row)
             with self.subTest(action=action):
                 self.assertIn("yes", row)
-                self.assertRegex(row.lower(), r"read|get|position|copies|state")
 
     def test_ac_38_description_is_at_most_1536_chars(self) -> None:
         text = skill()

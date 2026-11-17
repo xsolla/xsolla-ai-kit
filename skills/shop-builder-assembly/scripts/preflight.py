@@ -181,7 +181,11 @@ def main() -> int:
             layout_id = common_layout_id(
                 site, lambda block_id: site_block_module(slug, block_id)
             )
-        if layout_id is not None:
+        if "block_operations" in brief:
+            # Block operations edit one block on an existing site; the common
+            # layout is not theirs to add, so the CLI warning does not apply.
+            layout_step = "not_applicable"
+        elif layout_id is not None:
             layout_step = "present"
         elif cli_has_command("shopbuilder", "create-block"):
             layout_step = "create"

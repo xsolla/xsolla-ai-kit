@@ -8,7 +8,8 @@ and other blocks are out of scope.
 ## Inspect before recommending
 
 Read the selected site's current block summary and page structure. Inspect the actual
-rendered page or editor preview at 375, 768 and 1440px. Record evidence privately in the
+rendered page or editor preview at 375, 768 and 1440px. When you have no way to see the page,
+say in the plan, in one plain line, that the colours have not been checked on the page yet. Record evidence privately in the
 current run, not in extra files or the publisher reply:
 
 | Evidence | Record |

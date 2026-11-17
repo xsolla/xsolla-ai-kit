@@ -75,6 +75,10 @@ def add_op(**overrides: object) -> dict:
         "values": {"questIds": [QUEST_A, QUEST_B], "maxQuests": 6, "layout.cardAlign": "center"},
     }
     op.update(overrides)
+    values = op.get("values")
+    if isinstance(values, dict) and "questIds" not in values:
+        # Every add needs a quest; tests that override values keep one unless they set it.
+        op["values"] = {"questIds": [QUEST_A], **values}
     return op
 
 
@@ -116,6 +120,25 @@ class BlockOpsTests(unittest.TestCase):
         )
         self.assertEqual(2, sum("not a patchable leaf" in e for e in errors), errors)
 
+    def test_add_without_quests_is_refused(self) -> None:
+        for values in ({}, {"questIds": []}, {"maxQuests": 4}):
+            with self.subTest(values=values):
+                operation = add_op()
+                operation["values"] = values
+                errors = self.errors(operation)
+                self.assertTrue(any("needs at least one public, active quest" in e for e in errors), errors)
+
+    def test_add_is_refused_when_no_default_text_locale_is_enabled(self) -> None:
+        for languages in (["de-DE"], []):
+            with self.subTest(languages=languages):
+                site = make_structure()
+                site["languages"] = languages
+                errors = self.errors(add_op(), structure=site)
+                self.assertTrue(any("default texts are in en-US" in e for e in errors), errors)
+        both = make_structure()
+        both["languages"] = ["de-DE", "en-US"]
+        self.assertFalse(any("default texts" in e for e in self.errors(add_op(), structure=both)))
+
     def test_older_saved_block_takes_settings_but_not_theme(self) -> None:
         older = candidate_structure(version="0.2.10")
         theme = {"op": "update", "block_id": "q1", "values": {"themeId": "custom"}}
@@ -124,6 +147,7 @@ class BlockOpsTests(unittest.TestCase):
         self.assertEqual([], self.errors(layout, structure=older))
 
     def test_one_version_is_written_and_accepted(self) -> None:
+        self.assertEqual("0.2.24", block_ops.QUESTS_VERSION)
         self.assertEqual({block_ops.QUESTS_VERSION}, set(block_ops.QUESTS_CAPABILITIES))
         self.assertEqual([], self.errors(add_op(values={"themeId": "custom"})))
         plan = block_ops.plan_block_operations(

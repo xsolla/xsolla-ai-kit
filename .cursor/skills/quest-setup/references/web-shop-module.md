@@ -55,7 +55,7 @@ Production public base is `https://quests-platform.xsolla.com`. Form the public 
 from it and the resolved QP scope. A validated exact URL/base override takes precedence
 only if the shop already supports overrides or the developer supplied one. Never use
 an internal/private host for a public shop. This browser override never changes the
-agent's write host in [the publisher contract](qp-api-contract.md).
+agent's write host, which is the one in [auth-credentials.md](auth-credentials.md#credential).
 
 Expose only IDs/public URL in browser build config, using the shop's naming convention:
 

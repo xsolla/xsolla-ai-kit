@@ -59,7 +59,8 @@ The plan runs against the backup structure and rejects these before confirmation
 
 | Op | Effect |
 |---|---|
-| `add` | Create a federated Quests wrapper from the selected pin's defaults, with its own default localized texts. Default index is 0; explicit index chooses the position. |
+| `add` | Create a federated Quests wrapper from the pinned version's defaults. Shop Builder gives each default text an `L:` id but saves no text, so apply then writes every default text (heading, statuses, buttons, pagination) for each enabled locale the defaults have, and fails the run if any reads back empty. Needs at least one quest in `questIds`: a block with no cards renders nothing outside the editor. Default index is 0; explicit index chooses the position. |
+| `seed_texts` | Write a block's empty default texts again, for a block whose add failed while saving them. The add's own settings were not saved either, so the retry plan holds `seed_texts` and an `update` of the same block with the add's `values` and `translations`. Never adds a block and never overwrites a saved text; a text that was cleared on purpose gets its default back, and the plan says so. The default texts exist in en-US only, so the block's texts in other site languages stay empty; an `add` on a site without en-US is refused at plan time. |
 | `update` values | Replace named leaves only. Create an absent parent object first, never overwrite an existing parent or whole values map. A leaf under a missing parent can return 200 while being ignored. |
 | `update` title/description | Update the plain field and any valid editor localization ref for every site locale; warn that editor text is replaced. |
 | `reset` | Remove selected leaves, skip absent ones; title/description reset also removes its matching ref. |
@@ -111,7 +112,7 @@ from `values.resources.localizedValues[<overrides.<questId>.titleRef>].texts.id`
 
 ## Appearance capability
 
-The gate writes and accepts one Quests version, `QUESTS_VERSION` (`0.2.22`). Every add
+The gate writes and accepts one Quests version, `QUESTS_VERSION` (`0.2.24`). Every add
 uses it, with or without an explicit `version`. Appearance update/reset requires the
 target's saved `values.version` to be that version; any other saved version is refused
 for appearance. No operation changes an existing block's version; duplicate preserves it.

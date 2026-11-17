@@ -66,8 +66,9 @@ Source: the block contract at commit 0b1586eb59. Version pins live only in
 - `overrides` images are https only; reward overrides are ignored.
 - Versions and event-field capabilities belong to [block-versions.md](block-versions.md).
   Never write `autoEvents` or `loginEventName`; match the trigger name exactly.
-  Backpack Overlay is not supported yet (agent-only reason: upstream v2): decline it with
-  the [overlay decline](reply-format.md#examples) and make no write.
+  Opening the Backpack inside the page (an overlay) is not supported: decline only that request
+  with the [overlay decline](reply-format.md#examples) and make no write. "See in Backpack"
+  itself works; it opens the Backpack in a new window.
 - Custom-block creation 403: account lacks permission to create custom blocks;
   Xsolla support is next. Do not retry or create a file.
 
@@ -83,7 +84,8 @@ brand inputs, bounds, limitations and the publisher's choice before a write.
 ## Operations
 
 Operations go in the brief's `block_operations` list and run in order. The brief
-needs `version`, `project` (`merchant_id`, `project_id`),
+needs `version`, `project` (`merchant_id`, `project_id`, integers; numeric strings are
+accepted and converted),
 `site.slug` and `block_operations`. Nothing else is
 allowed: the gate rejects any other top-level key (`game`, `catalog`, `content`,
 `brand`, `sources`), any other `project` key and any `site` key but `slug`. Fill real
@@ -107,16 +109,17 @@ acknowledgement flag.
 | Reposition the block on its page | `move` |
 | Copy a block | `duplicate` |
 | Hide or show a block | `hide`, `show` |
+| Finish a block whose add failed while saving its texts | `seed_texts` plus an `update` of that block with the add's values and translations (never a second `add`) |
 | Remove or delete a block | none: `needs_human`, offer `hide` (see below) |
 
 Every new block, themed or not, is added with an explicit `version` equal to the one in
-[block-versions.md](block-versions.md) (`0.2.22`).
+[block-versions.md](block-versions.md) (`0.2.24`).
 
 Create a block with settings and a heading:
 
 ```json
 {"op": "add", "module": "_quest-platform_quests-block", "page": "/", "index": 2,
- "version": "0.2.22",
+ "version": "0.2.24",
  "values": {"questIds": ["<quest-id-1>", "<quest-id-2>"], "maxQuests": 4,
             "layout.cardAlign": "center"},
  "translations": {"en-US": {"heading": "Quests"}}}
@@ -207,7 +210,7 @@ the site changed in the meantime, and show the new plan for a new "yes".
   and must not carry user credentials (`user:password@host`). If the publisher gives an
   `http` URL or one with credentials, stop with the rejected-value shape before any plan
   or brief. Never change http to https or otherwise modify a URL the publisher gave, and
-  never build a plan with it. The request script rejects it with "https only". Ask for an https image URL or a media library image instead.
+  never build a plan with it. Ask for an https image URL or a media library image instead.
 - `index` is a position on the page, counted from 0, against the page as it is when
   that operation runs: earlier `add` and `duplicate` ops on the same page count. `add`
   and `duplicate` take 0 to the current block count (the count is the end of the page);
