@@ -46,7 +46,7 @@ POLICY_ROWS = (
  ('key_handling_is_instructed', 'auth-credentials.md', ('XSOLLA_PROJECT_API_KEY', '## Credential', '## Onboarding'), ('Never open, read or search the file', 'never print or list variables', 'No redirects', 'access-missing reply.{0,80}and stop', 'Never ask for a pasted secret')),
  ('store_reads_never_write', 'store-catalog-lookup.md', (), ('Never write to the Store', 'not an empty\\s+catalog', 'Never pick', 'Never invent one')),
  ('fixes_from_the_conversation_test','skill',('quests-block-flow.md#what-players-see-on-a-card',),
-  (r'is the yes: make it, read it back', r'never refuse because a check is unanswered', r'run the block summary again',
+  (r'it is not the yes', r'one\s+line, before and after', r'wait for a yes; then make it,\s+read it back', r'never refuse because a check is unanswered', r'run the block summary again',
    r'never on a block plan', r'show it, as quest-platform.md says', r'Never suggest an event name', r'never from its name or\s+description')),
  ('card_states_are_documented','quests-block-flow.md',('Not started','In progress','Reward pending','Completed','Expired','Check progress','See in Backpack','Preview state','Signed out','Editor simulation'),
   (r'Describe nothing beyond them', r'only for a\s+signed-in player')),

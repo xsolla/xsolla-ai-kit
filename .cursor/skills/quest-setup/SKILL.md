@@ -122,8 +122,10 @@ Never print or show a key or token.
   without showing the list first. Tell same-named quests apart by dates or status. One quest per
   call, stop at the first failure, then list again and show they are gone.
 - A plain instruction for one specific change, with its value ("push the end to 3 December",
-  "pause it"), is the yes: make it, read it back and report. Show a plan first only when the
-  change deletes something, switches a quest on, or does something they may not expect.
+  "pause it"), needs no full plan, but it is not the yes. Read the quest, show the change as one
+  line, before and after ("End date: 30 Nov → 3 Dec. Save?"), and wait for a yes; then make it,
+  read it back and report. Show a full plan when the change deletes something, switches a quest
+  on, or does something they may not expect.
 - Switching a quest on: say once what it means and which setup steps you could not confirm. When
   the publisher still asks for it, that is the yes; never refuse because a check is unanswered.
   Before offering to switch quests on, read each one: one with no trigger, no reward or dates in
