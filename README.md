@@ -50,7 +50,10 @@ For an end-to-end shop, start with `shop-setup`. A short always-on rule in `.cur
 
 ```bash
 codex plugin marketplace add xsolla/xsolla-ai-kit
+codex plugin add xsolla-ai-kit@xsolla-ai-kit
 ```
+
+Needs a recent Codex CLI; older versions have no `plugin` command.
 
 ### Gemini CLI
 
@@ -123,4 +126,4 @@ See [CONTRIBUTING-skills.md](CONTRIBUTING-skills.md) for the full guide on writi
 
 ## License
 
-© 2026 Xsolla Inc. All rights reserved.
+Released under the [MIT License](LICENSE). © 2026 Xsolla Inc.
