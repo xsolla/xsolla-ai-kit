@@ -25,7 +25,9 @@ project overrides after preflight.
 | Preview | `enable-preview`, `preview-link` | Slug | Human-reviewable preview only |
 
 `apply_plan.py` and `backup_shop.py` handle expired sessions themselves (one re-login per
-run, then retry). The agent never runs `auth login` and never supplies a token. Block operations are in [block-operations.md](block-operations.md).
+run, then retry). A Publisher-session bootstrap failure is different: the scripts retry it
+with backoff and never start a login for it. If it keeps failing, the run stops, and the
+user runs `xsolla auth login` in their own terminal before a rerun. The agent never runs `auth login` and never supplies a token. Block operations are in [block-operations.md](block-operations.md).
 No script passes `--force`; an operation that requires it stops for review. That includes
 `delete-block`, so no script deletes a block.
 

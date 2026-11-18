@@ -47,9 +47,9 @@ from committed evidence.
   and unpublished status. The main demonstration shop was independently exported and
   verified after assembly as well.
 - The backup and apply scripts run `xsolla auth login` only after the CLI reports an
-  authentication or Publisher-session bootstrap failure, at most once per run, and
-  re-check the CLI merchant, project, and sandbox setting after that login. They retry
-  Publisher-session bootstrap rate limits and avoid redundant writes when pages,
+  authentication failure, at most once per run, and re-check the CLI merchant, project,
+  and sandbox setting after that login. They retry a Publisher-session bootstrap failure
+  with backoff and never start a login for it, and avoid redundant writes when pages,
   navigation, locales, or catalog links already match.
 
 ## CLI gaps found
@@ -58,8 +58,9 @@ from committed evidence.
    valid `xsolla auth login` token can stop yielding a cookie after one or more
    commands. `xsolla auth login` opens a browser tab every time it runs, even with a
    valid session, so logging in before every command opened dozens of tabs per run and
-   eventually caused HTTP 429; the scripts now log in only after such a failure, once
-   per run. A login can also write merchant and project claims from the token into
+   eventually caused HTTP 429; the scripts now retry such a failure with backoff and
+   never log in for it. They log in only after an authentication failure, once per
+   run. A login can also write merchant and project claims from the token into
    `.xsolla.json` in the working directory, so the scripts stop if the CLI context
    changes after a login. The CLI needs a secure cached Shop Builder session or
    another non-manual multi-command flow. Still open.

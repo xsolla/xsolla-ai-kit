@@ -30,10 +30,18 @@ LOGIN_TIMEOUT_SECONDS = 45
 LOGIN_RETRY_DELAY_SECONDS = 5
 # `xsolla` exits with 10 when the API answers HTTP 401 or 403.
 CLI_EXIT_AUTH = 10
-AUTH_FAILURE_MARKERS = (
-    "authentication required",
-    "publisher session bootstrap did not yield",
+AUTH_FAILURE_MARKERS = ("authentication required",)
+# The CLI starts a Publisher session before it sends the request, so a command that
+# fails there made no change. It is retried with backoff and never starts a login.
+BOOTSTRAP_FAILURE_MARKERS = (
+    "publisher session bootstrap",
     "auto-bootstrapping publisher session",
+)
+BOOTSTRAP_STOPPED = (
+    ". The Publisher session did not start after "
+    f"{len(SESSION_BOOTSTRAP_RETRY_DELAYS)} retries, and no login was started. The "
+    "failed command made no change, so it is safe to rerun once the user has run "
+    "`xsolla auth login` in their own terminal—never copy a browser PA token"
 )
 # A run logs in at most once, and only after the CLI reports an auth failure.
 # `context` is the merchant, project and sandbox setting that main() verified;
@@ -110,7 +118,10 @@ def login_once(detail: str) -> None:
             "authentication failed before the CLI context was verified: " + detail
         )
     RUN_AUTH["logged_in"] = True
-    refresh_supported_login()
+    try:
+        refresh_supported_login()
+    except RuntimeError as exc:
+        raise RuntimeError(f"{exc}. CLI error: {detail}") from None
     current = cli_context(run_json("config", "list"))
     changed = [
         f"{key} {approved[key]!r} -> {current[key]!r}"
@@ -131,7 +142,7 @@ def run_json(*args: str) -> object:
     if any(arg == "--force" or arg.startswith("--force=") for arg in args):
         raise RuntimeError("--force is prohibited in Shop Builder assembly")
     command = cli_environment.command(*args, "--json")
-    rate_limit_attempt = 0
+    bootstrap_attempt = 0
     while True:
         # The CLI writes UTF-8; without an explicit encoding Windows decodes with
         # the ANSI code page and loses the output.
@@ -145,23 +156,15 @@ def run_json(*args: str) -> object:
             or (result.stdout or "").strip()
             or f"exit code {result.returncode}"
         )
-        retryable_bootstrap_limit = (
-            "publisher session bootstrap" in detail and "HTTP 429" in detail
-        )
-        if retryable_bootstrap_limit and rate_limit_attempt < len(
-            SESSION_BOOTSTRAP_RETRY_DELAYS
-        ):
-            time.sleep(SESSION_BOOTSTRAP_RETRY_DELAYS[rate_limit_attempt])
-            rate_limit_attempt += 1
-            continue
+        if any(marker in detail for marker in BOOTSTRAP_FAILURE_MARKERS):
+            if bootstrap_attempt < len(SESSION_BOOTSTRAP_RETRY_DELAYS):
+                time.sleep(SESSION_BOOTSTRAP_RETRY_DELAYS[bootstrap_attempt])
+                bootstrap_attempt += 1
+                continue
+            raise RuntimeError(f"{' '.join(args)} failed: {detail}" + BOOTSTRAP_STOPPED)
         if auth_failure(result.returncode, detail):
             login_once(detail)
             continue
-        if "publisher session bootstrap" in detail:
-            detail += (
-                "; refresh the supported Publisher login with `xsolla auth login` "
-                "and rerun—never copy a browser PA token"
-            )
         raise RuntimeError(f"{' '.join(args)} failed: {detail}")
     stdout = result.stdout or ""
     stderr = (result.stderr or "").strip() or "no stderr output"
