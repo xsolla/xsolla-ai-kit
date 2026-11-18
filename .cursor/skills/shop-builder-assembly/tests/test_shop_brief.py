@@ -459,8 +459,92 @@ class ShopBriefTests(unittest.TestCase):
                     ):
                         backup_shop.run_json("shopbuilder", "get-landing", "--slug", "shop")
 
+    def test_backup_failed_login_keeps_the_cli_error_that_led_to_it(self) -> None:
+        unauthenticated = mock.Mock(
+            returncode=1, stderr="authentication required for this command.", stdout=""
+        )
+        for outcome in (
+            mock.Mock(returncode=1, stderr="", stdout=""),
+            subprocess.TimeoutExpired(["xsolla", "auth", "login"], 45),
+        ):
+            with self.subTest(outcome=type(outcome).__name__):
+                with (
+                    mock.patch.dict(
+                        backup_shop.RUN_AUTH, {"logged_in": False, "context": BACKUP_CONTEXT}
+                    ),
+                    mock.patch.object(
+                        backup_shop.subprocess,
+                        "run",
+                        side_effect=[unauthenticated, outcome, outcome],
+                    ),
+                    mock.patch.object(backup_shop.time, "sleep"),
+                ):
+                    with self.assertRaises(RuntimeError) as caught:
+                        backup_shop.run_json("shopbuilder", "get-landing", "--slug", "shop")
+                message = str(caught.exception)
+                self.assertIn("run `xsolla auth login` in their own terminal", message)
+                self.assertIn("authentication required for this command.", message)
+
+    def test_backup_retries_a_missing_bootstrap_cookie_without_a_login(self) -> None:
+        missing_cookie = mock.Mock(returncode=1, stderr=MISSING_COOKIE_ERROR, stdout="")
+        succeeded = mock.Mock(returncode=0, stderr="", stdout='{"ok":true}')
+        with (
+            mock.patch.dict(
+                backup_shop.RUN_AUTH, {"logged_in": False, "context": BACKUP_CONTEXT}
+            ),
+            mock.patch.object(
+                backup_shop.subprocess,
+                "run",
+                side_effect=[missing_cookie, missing_cookie, succeeded],
+            ) as run,
+            mock.patch.object(backup_shop.time, "sleep") as sleep,
+        ):
+            self.assertEqual(
+                {"ok": True},
+                backup_shop.run_json("shopbuilder", "get-landing", "--slug", "shop"),
+            )
+            self.assertFalse(backup_shop.RUN_AUTH["logged_in"])
+        self.assertEqual(3, run.call_count)
+        self.assertEqual([mock.call(5), mock.call(10)], sleep.call_args_list)
+
+    def test_backup_stops_without_a_login_when_the_bootstrap_keeps_failing(self) -> None:
+        # Exit code 10 alone would start a login; a bootstrap failure never does.
+        for returncode in (1, backup_shop.CLI_EXIT_AUTH):
+            failed = mock.Mock(returncode=returncode, stderr=MISSING_COOKIE_ERROR, stdout="")
+            with self.subTest(returncode=returncode):
+                with (
+                    mock.patch.dict(
+                        backup_shop.RUN_AUTH, {"logged_in": False, "context": BACKUP_CONTEXT}
+                    ),
+                    mock.patch.object(
+                        backup_shop.subprocess, "run", side_effect=[failed] * 4
+                    ) as run,
+                    mock.patch.object(backup_shop.time, "sleep") as sleep,
+                ):
+                    with self.assertRaises(RuntimeError) as caught:
+                        backup_shop.run_json("shopbuilder", "get-landing", "--slug", "shop")
+                    self.assertFalse(backup_shop.RUN_AUTH["logged_in"])
+                message = str(caught.exception)
+                self.assertIn(MISSING_COOKIE_ERROR, message)
+                self.assertIn("made no change, so it is safe to rerun", message)
+                self.assertIn("run `xsolla auth login` in their own terminal", message)
+                self.assertEqual(4, run.call_count)
+                self.assertNotIn(
+                    ["xsolla", "auth", "login"],
+                    [call.args[0] for call in run.call_args_list],
+                )
+                self.assertEqual(
+                    [mock.call(5), mock.call(10), mock.call(20)], sleep.call_args_list
+                )
+
 
 BACKUP_CONTEXT = {"merchant_id": 100, "project_id": 200, "sandbox": False}
+# The CLI error of issue #105, as the live run printed it.
+MISSING_COOKIE_ERROR = (
+    "auto-bootstrapping publisher session from stored token: publisher session "
+    "bootstrap did not yield a pa-v4-token or ps2[user_session] cookie "
+    "(final URL: https://publisher.xsolla.com/)"
+)
 
 
 

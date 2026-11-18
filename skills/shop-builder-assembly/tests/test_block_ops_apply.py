@@ -1352,6 +1352,52 @@ class RealRunJsonGuardTests(unittest.TestCase):
             )
         self.assertFalse(self.site.find("q1")["hidden"])
 
+    def hide_plan(self) -> dict:
+        return render_plan.build_plan(
+            ops_brief([{"op": "hide", "block_id": "q1"}]), self.site.structure_value()
+        )
+
+    def test_a_failure_before_the_first_write_says_nothing_was_written(self) -> None:
+        plan = self.hide_plan()
+        bootstrap = RuntimeError(
+            "auto-bootstrapping publisher session from stored token: publisher session "
+            "bootstrap did not yield a pa-v4-token or ps2[user_session] cookie"
+        )
+        with (
+            mock.patch.object(self.site, "cmd_get_structure", side_effect=bootstrap),
+            mock.patch.object(apply_plan.time, "sleep"),
+        ):
+            with self.assertRaises(RuntimeError) as caught:
+                apply_plan.run_block_operations(SLUG, LANDING, plan)
+        message = str(caught.exception)
+        self.assertIn("wrote nothing", message)
+        self.assertIn("made no change, so it is safe to rerun", message)
+        self.assertNotIn("do not rerun", message)
+        self.assertEqual([], self.site.write_calls())
+
+    def test_a_failure_after_a_write_still_says_do_not_rerun(self) -> None:
+        plan = self.hide_plan()
+        read_structure = self.site.cmd_get_structure
+
+        def structure_until_the_write(options: dict) -> object:
+            if self.site.write_calls():
+                raise RuntimeError("publisher session bootstrap did not yield a cookie")
+            return read_structure(options)
+
+        with (
+            mock.patch.object(
+                self.site, "cmd_get_structure", side_effect=structure_until_the_write
+            ),
+            mock.patch.object(apply_plan.time, "sleep"),
+        ):
+            with self.assertRaises(RuntimeError) as caught:
+                apply_plan.run_block_operations(SLUG, LANDING, plan)
+        message = str(caught.exception)
+        self.assertIn("do not rerun", message)
+        self.assertNotIn("safe to rerun", message)
+        self.assertNotIn("wrote nothing", message)
+        self.assertTrue(self.site.write_calls())
+
 
 NO_OWN_HEADER = (
     "Page / has no header block of its own. Sites created from a Publisher Account "
