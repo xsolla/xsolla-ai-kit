@@ -35,6 +35,16 @@ Or in a session:
 /plugin install xsolla-ai-kit@xsolla-ai-kit
 ```
 
+**Keep it up to date.** Claude Code doesn't auto-update plugins from this marketplace by default. Update by hand:
+
+```bash
+claude plugin update xsolla-ai-kit@xsolla-ai-kit
+```
+
+Or turn auto-update on once, in a session: `/plugin` → **Marketplaces** → `xsolla-ai-kit` → auto-update. A new version loads on the next launch, or after `/reload-plugins` in a running session.
+
+Install from this repository to get the current release. Other catalogs that list the kit can lag behind it.
+
 ### Cursor
 
 Add this repo as a workspace folder (or open it as the project), then use natural language — Cursor loads skills from `.cursor/skills/`.
