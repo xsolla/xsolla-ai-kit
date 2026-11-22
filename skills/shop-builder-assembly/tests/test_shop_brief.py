@@ -527,7 +527,7 @@ class ShopBriefTests(unittest.TestCase):
                 message = str(caught.exception)
                 self.assertIn(MISSING_COOKIE_ERROR, message)
                 self.assertIn("made no change, so it is safe to rerun", message)
-                self.assertIn("run `xsolla auth login` in their own terminal", message)
+                self.assertIn("runs `xsolla auth login` in their own terminal first", message)
                 self.assertEqual(4, run.call_count)
                 self.assertNotIn(
                     ["xsolla", "auth", "login"],

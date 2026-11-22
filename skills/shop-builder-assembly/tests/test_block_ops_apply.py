@@ -1277,6 +1277,23 @@ class AddFailureRecoveryTests(BlockOpsApplyBase):
         self.assertIn("do not rerun", str(caught.exception))
         self.assertNotIn("safe to rerun", str(caught.exception))
 
+    def test_partial_failure_after_login_keeps_the_login_advice_readable(self) -> None:
+        plan = self.plan_for([{"op": "hide", "block_id": "q1"}])
+        with mock.patch.dict(apply_plan.RUN_AUTH, {"logged_in": True}):
+            with self.assertRaises(RuntimeError) as second_failure:
+                apply_plan.login_once("HTTP 401")
+        with mock.patch.object(
+            apply_plan, "apply_block_operations", side_effect=second_failure.exception
+        ):
+            with self.assertRaises(RuntimeError) as caught:
+                apply_plan.run_block_operations(SLUG, LANDING, plan)
+        self.assertIn(
+            "made no change itself, but earlier steps of this run may have written. "
+            "The user runs `xsolla auth login` in their own terminal first. "
+            "CLI error: HTTP 401",
+            str(caught.exception),
+        )
+
 
 class RealRunJsonGuardTests(unittest.TestCase):
     """Every op goes through the real `run_json`; only the `xsolla` binary is faked.
@@ -1395,6 +1412,11 @@ class RealRunJsonGuardTests(unittest.TestCase):
         message = str(caught.exception)
         self.assertIn("do not rerun", message)
         self.assertNotIn("safe to rerun", message)
+        self.assertIn(
+            "made no change itself, but earlier steps of this run may have written. "
+            "The user runs `xsolla auth login` in their own terminal first",
+            message,
+        )
         self.assertNotIn("wrote nothing", message)
         self.assertTrue(self.site.write_calls())
 

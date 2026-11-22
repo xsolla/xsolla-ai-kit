@@ -614,7 +614,7 @@ class ApplyPlanTests(unittest.TestCase):
                 message = str(caught.exception)
                 self.assertIn(MISSING_COOKIE_ERROR, message)
                 self.assertIn("made no change, so it is safe to rerun", message)
-                self.assertIn("run `xsolla auth login` in their own terminal", message)
+                self.assertIn("runs `xsolla auth login` in their own terminal first", message)
                 self.assertEqual(
                     [["xsolla", "shopbuilder", "get-structure", "--json"]] * 4,
                     [call.args[0] for call in run.call_args_list],

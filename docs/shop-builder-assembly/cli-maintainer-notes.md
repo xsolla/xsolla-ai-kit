@@ -15,6 +15,9 @@ and do not retry ambiguous API operation failures. A Publisher-session bootstrap
 failure, HTTP 429 included, happens before the request is sent: it uses bounded
 backoff and never starts a login. If it keeps failing, the run stops with the CLI
 error, and the user runs `xsolla auth login` in their own terminal before a rerun.
+The scripts check for a bootstrap failure before an authentication failure. So a
+bootstrap error that comes with exit code 10 also gets the backoff and then the stop,
+not a login. This order is intended.
 ## Known gaps to track
 
 The official Blocks page is the authoritative product inventory, but the CLI does not

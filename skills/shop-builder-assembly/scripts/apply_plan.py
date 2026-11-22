@@ -83,8 +83,8 @@ BOOTSTRAP_FAILURE_MARKERS = (
 BOOTSTRAP_STOPPED = (
     ". The Publisher session did not start after "
     f"{len(SESSION_BOOTSTRAP_RETRY_DELAYS)} retries, and no login was started. The "
-    "failed command made no change, so it is safe to rerun once the user has run "
-    "`xsolla auth login` in their own terminal—never copy a browser PA token"
+    "failed command made no change, so it is safe to rerun. The user runs "
+    "`xsolla auth login` in their own terminal first—never copy a browser PA token"
 )
 # A run logs in at most once, and only after the CLI reports an auth failure.
 # `context` is the merchant, project and sandbox setting that main() verified;
@@ -166,8 +166,8 @@ def login_once(detail: str) -> None:
     if RUN_AUTH["logged_in"]:
         raise RuntimeError(
             "authentication still fails after this run's one `xsolla auth login`. "
-            "The failed command made no change, so it is safe to rerun once the user "
-            "has run `xsolla auth login` in their own terminal. CLI error: "
+            "The failed command made no change, so it is safe to rerun. The user "
+            "runs `xsolla auth login` in their own terminal first. CLI error: "
             + detail
         )
     approved = RUN_AUTH["context"]
