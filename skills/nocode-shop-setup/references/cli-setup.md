@@ -17,42 +17,26 @@ then install it. The person's terminal asks them to allow the command; that is t
 
 ## 2. Install
 
-**macOS or Linux with Homebrew** (`brew --version` answers):
+This file carries no install commands: take them from the CLI's own instructions. If
+you can't open that page, give the user the link and ask them to install.
 
-```bash
-brew install xsolla/xsolla-cli/xsolla
-```
+**macOS or Linux with Homebrew** (`brew --version` answers): follow the Install section
+of the CLI's Homebrew tap, <https://github.com/xsolla/homebrew-xsolla-cli#install>.
 
-**Windows** has no Homebrew, and the CLI's install scripts aren't published on the CDN
-yet. Install the release archive from the CDN in PowerShell. Save these lines as
-`install-xsolla.ps1` in a temporary folder and run
-`powershell -NoProfile -ExecutionPolicy Bypass -File install-xsolla.ps1`. From Git Bash,
-use the same command.
+**Windows** has no Homebrew, and the CLI has no published install script or install
+page for it yet. Install the release archive from the CDN in PowerShell; from Git Bash,
+run the same steps through `powershell`:
 
-```powershell
-$ErrorActionPreference = 'Stop'
-[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-$release = Invoke-RestMethod 'https://cdn.xsolla.net/xsolla-cli/latest/version.json'
-$platform = if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { 'windows_arm64' } else { 'windows_amd64' }
-$url = $release.assets.$platform
-$work = Join-Path $env:TEMP 'xsolla-cli-install'
-New-Item -ItemType Directory -Force -Path $work | Out-Null
-$zip = Join-Path $work (Split-Path $url -Leaf)
-Invoke-WebRequest $url -OutFile $zip -UseBasicParsing
-Invoke-WebRequest $release.checksums -OutFile (Join-Path $work 'checksums.txt') -UseBasicParsing
-$hash = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLower()
-$name = Split-Path $url -Leaf
-$line = Get-Content (Join-Path $work 'checksums.txt') |
-    Where-Object { $_.Trim() -match "^$hash\s+\*?$([regex]::Escape($name))$" }
-if (-not $line) { throw "Checksum mismatch for $name. Nothing was installed." }
-$dir = Join-Path $env:LOCALAPPDATA 'xsolla'
-Expand-Archive $zip -DestinationPath $dir -Force
-$userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
-if (($userPath -split ';') -notcontains $dir) {
-    [Environment]::SetEnvironmentVariable('Path', "$userPath;$dir", 'User')
-}
-& (Join-Path $dir 'xsolla.exe') --version
-```
+1. Read `https://cdn.xsolla.net/xsolla-cli/latest/version.json`. Its `assets` give the
+   archive URL for `windows_arm64` or `windows_amd64`, and `checksums` gives the URL of
+   the release's `checksums.txt`.
+2. Save the archive and `checksums.txt` to a temporary folder. Windows PowerShell 5.1
+   needs TLS 1.2 set for the session and `-UseBasicParsing` on each web request.
+3. Compare the archive's SHA-256 with the line for its file name in `checksums.txt`.
+   If they differ, stop.
+4. Unpack the archive to `%LOCALAPPDATA%\xsolla` and add that folder to the user `Path`
+   if it isn't there.
+5. Run `xsolla.exe --version` from that folder.
 
 A checksum mismatch stops before anything is installed: report it and don't retry with
 another source. The new `Path` reaches new terminals only. In the current session, call
@@ -64,8 +48,8 @@ the CLI by its full path (`$env:LOCALAPPDATA\xsolla\xsolla.exe`), or in Git Bash
 (`darwin_arm64`, `darwin_amd64`, `linux_amd64` or `linux_arm64`) listed in
 `latest/version.json`, check it against the release's `checksums.txt` with
 `shasum -a 256 -c checksums.txt --ignore-missing`, unpack it, and move `xsolla` to a
-folder on `PATH`, such as `~/.local/bin`. Or install Homebrew first and use the command
-above.
+folder on `PATH`, such as `~/.local/bin`. Or install Homebrew first and follow the tap's
+instructions.
 
 Then run `xsolla --version` and name the version in the first message.
 

@@ -27,11 +27,9 @@ UI differ enough that the abstract pattern transfers more cleanly.
 The repository is **not** directly readable by the agent over the network — it must live on disk next to the
 shop project.
 
-```bash
-# from your project root
-cd ..
-git clone https://github.com/xsolla/headless-checkout-demo.git
-```
+Clone <https://github.com/xsolla/headless-checkout-demo> into the folder above your project root, as the
+[Install](https://github.com/xsolla/headless-checkout-demo#install) section of its README shows. Reading the demo needs
+only the clone, not the dependency install that follows it there.
 
 This puts `headless-checkout-demo/` as a sibling of your project directory.
 
@@ -39,13 +37,10 @@ This puts `headless-checkout-demo/` as a sibling of your project directory.
 
 ## Step 2: Install & Run (optional)
 
-To run the demo locally as well as read it:
-
-```bash
-cd headless-checkout-demo
-npm install
-npm run dev          # Vite dev server
-```
+To run the demo locally as well as read it, follow the
+[Install](https://github.com/xsolla/headless-checkout-demo#install) and
+[Usage](https://github.com/xsolla/headless-checkout-demo#usage) sections of its README: they install the dependencies
+and start the Vite dev server.
 
 A sandbox payment token is still required to drive a live payment — see `initialization.md` (Method 3).
 
@@ -127,7 +122,7 @@ When a pattern in another reference points at an example, the demo usually has a
 ## Checklist
 
 - [ ] `headless-checkout-demo` cloned as a sibling of the project
-- [ ] (optional) `npm install && npm run dev` runs the demo locally
+- [ ] (optional) the demo runs locally, started as its README describes
 - [ ] Demo linked to the agent — Claude Code: user ran `/add-dir <abs-path>` (or `@` import / `--add-dir` for durable);
       Cursor: workspace folder added
 - [ ] Continued with the user's original request once the link is confirmed
