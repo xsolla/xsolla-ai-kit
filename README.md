@@ -6,7 +6,7 @@ Install the kit in your AI coding tool and your agent can integrate Xsolla's API
 
 On the Shop Builder path, in preview, the agent turns your game description into a validated shop brief and builds an unpublished Shop Builder site from it through the Xsolla CLI, in your own Publisher Account project. You review the site and publish it yourself in Publisher Account.
 
-To use it today, install the Xsolla CLI 1.9.4 or later: `brew install xsolla/xsolla-cli/xsolla`. A new store opens in the Shop Builder Editor and preview only with a CLI that has `shopbuilder create-block`, and no released CLI has it yet (1.9.4 is the latest); the agent checks this first and tells you.
+To use it today, install the Xsolla CLI 1.9.4 or later: see its [install instructions](https://github.com/xsolla/homebrew-xsolla-cli#install). A new store opens in the Shop Builder Editor and preview only with a CLI that has `shopbuilder create-block`, and no released CLI has it yet (1.9.4 is the latest); the agent checks this first and tells you.
 
 ## What's inside
 
@@ -73,12 +73,7 @@ gemini extensions install https://github.com/xsolla/xsolla-ai-kit
 
 ### Other tools (Windsurf, Roo Code, Augment, Amp, Copilot, …)
 
-For tools with no official plugin system, use the kit by copying `AGENTS.md` and the `skills/` directory into your project root. Any tool that follows the [AGENTS.md](https://agents.md) convention will pick the skills up automatically the next time you open the project:
-
-```bash
-git clone https://github.com/xsolla/xsolla-ai-kit
-cp -r xsolla-ai-kit/AGENTS.md xsolla-ai-kit/skills your-game-project/
-```
+For tools with no official plugin system, use the kit by copying `AGENTS.md` and the `skills/` directory into your project root. Any tool that follows the [AGENTS.md](https://agents.md) convention will pick the skills up automatically the next time you open the project. To get the files, clone this repository or use **Code** → **Download ZIP** on GitHub.
 
 Then set environment variables or run the `merchant-setup` skill:
 
