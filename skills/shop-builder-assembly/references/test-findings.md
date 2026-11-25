@@ -91,8 +91,10 @@ A first-time user build on CLI 1.10.0 (2026-11-25) found two more:
    common-layout`. Still open.
 7. On a new site, `add-page` seeds federated blocks of the redesigned set
    (`_site-builder-classic_header`, `_site-builder-classic_lead-gs` and others) instead
-   of native modules. Their values have another shape, so `render_plan.py` stops before
-   any write on such a page. Still open: assembly can't build on them yet.
+   of native modules. Their values have another shape. Assembly now builds on them in
+   part: it makes a store page with `add-page --type topup`, orders and removes blocks,
+   and sets the store's catalog sections. Still open: header links, texts, images and
+   FAQ, which it reports under `needs_human`.
 
 The live check of the redesigned blocks (below) found two more:
 

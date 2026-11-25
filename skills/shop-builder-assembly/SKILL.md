@@ -121,7 +121,10 @@ After confirmation, `apply_plan.py` applies steps 1–5 in this dependency order
 `scripts/apply_style.py` steps 6–8 after the last apply run (run 2 for a new site), from
 a fresh backup, as [CLI operations](references/cli-operations.md) describes.
 
-1. **Pages** — create all page paths before linking navigation.
+1. **Pages** — create all page paths before linking navigation. On a redesign site
+   (`features.redesign` in `get-structure`, true for every new site) a page that gets the
+   store is made with `add-page --type topup`: that page type comes with a store, and a
+   redesigned store can't be added later.
 2. **Site layout** — after page/template creation, add `common-layout` only if the
    site has none, with `create-block --slug <slug> --page-id <page id> --module
    common-layout`; adding it earlier suppresses some template headers and footers.
@@ -134,7 +137,9 @@ a fresh backup, as [CLI operations](references/cli-operations.md) describes.
 4. **Blocks** — add/move/update blocks page by page; resolve IDs after each structural
    change and use targeted patches rather than replacing `values` or `components`.
 5. **Catalog links** — configure `newStore` sections after this project's groups and SKUs
-   are verified. Localize a section title before enabling its `L:` ID.
+   are verified. Localize a section title before enabling its `L:` ID. On a redesigned
+   store `apply_plan.py` points its first sections at the plan's groups and drops the
+   rest; a store with fewer sections than the plan is left as it is and reported.
 6. **Theme** — `apply_style.py` sets the brief's `brand.theme` on the site theme and puts
    planned pages on it; a page's own theme overrides the site's. Take the palette from the
    game's art ([visual style](references/visual-style.md)). Hand over its `needs_human`.
@@ -198,10 +203,13 @@ Preserve completed safe work and explain the smallest action needed to continue.
   layout. Assembly builds on it with any preset: the template's hero and daily rewards
   block stay, demo blocks are exact removals, pages it adds drop their own header and
   footer, and the shared header's links are an Editor step that names each page.
-- A page made of Shop Builder's redesigned blocks (federated blocks named
-  `_site-builder-classic_…`, which `add-page` seeds on some projects) stops the render
-  before any write: assembly patches native modules only
-  ([test findings](references/test-findings.md#cli-gaps-found)).
+- A new site is made of Shop Builder's redesigned blocks (federated blocks named
+  `_site-builder-classic_…`). On them assembly sets up the pages, the order of the blocks
+  and the store's catalog sections. It doesn't set their header links, texts, images or
+  FAQ yet: the plan's `warnings` say so before the yes, and the reports' `needs_human`
+  list each step for the Editor. Show both. A planned block that such a page lacks is
+  left out with the reason in `omissions`, and a store page's hero is the page type's own
+  ([redesigned blocks](references/block-catalog.md#redesigned-blocks)).
 - Every write path, Quests block operations included, stops before any write when the
   target site is published. Unpublish it in Publisher Account first, or build on another
   slug.

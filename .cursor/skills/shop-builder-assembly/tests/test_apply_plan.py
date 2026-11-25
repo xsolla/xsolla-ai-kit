@@ -2321,8 +2321,8 @@ class PublisherTemplateSiteTests(unittest.TestCase):
             cli.calls,
         )
 
-    def test_a_page_of_redesigned_blocks_stops_with_its_own_message(self) -> None:
-        # What add-page seeds on some projects: federated blocks of the redesigned set.
+    def test_a_redesigned_header_counts_as_the_pages_own_header(self) -> None:
+        # What add-page seeds on a new site: federated blocks of the redesigned set.
         site = {
             "pages": [
                 {
@@ -2341,12 +2341,10 @@ class PublisherTemplateSiteTests(unittest.TestCase):
             "layouts": [],
             "blocks": [],
         }
-        with self.assertRaisesRegex(
-            ValueError,
-            r"^Page / is made of Shop Builder's redesigned blocks "
-            r"\(_site-builder-classic_header and others\), and assembly can't build on "
-            r"them yet\. Nothing was written\.$",
-        ):
+        render_plan.require_header_source([{"path": "/"}], site)
+        # Without it the page has no header at all, as on any site with no layout.
+        site["pages"][0]["blocks"].pop(0)
+        with self.assertRaisesRegex(ValueError, "^Page / has no header block of its own"):
             render_plan.require_header_source([{"path": "/"}], site)
 
     def test_header_source_rules(self) -> None:
@@ -2626,9 +2624,14 @@ class OneApprovalTests(unittest.TestCase):
         return [call for call in self.cli.calls if call[1:2] and call[1] in WRITE_COMMANDS]
 
     def test_bootstrap_plan_shows_template_removals_and_the_public_preview(self) -> None:
+        # A new site is a redesign site, where a store page is made with its own type.
         home = self.approved["pages"][0]
         self.assertEqual(
-            [m for m in render_plan.NEW_PAGE_TEMPLATE if m not in home["blocks"]],
+            [
+                m
+                for m in render_plan.REDESIGNED_STORE_PAGE_TEMPLATE
+                if m not in home["blocks"]
+            ],
             home["template_removals"],
         )
         self.assertIn("faq", home["template_removals"])

@@ -76,6 +76,45 @@ The current exports explain the older CLI names: the multi-page `topup` template
 landing/runtime distinctions, not interchangeable aliases. Remaining CLI discovery
 and versioning issues are still open.
 
+## Redesigned blocks
+
+A new site has `features.redesign` on, and its pages are made of redesigned blocks:
+`federated` blocks whose `values.blockId` starts with `_site-builder-classic_`. Each
+stands for a native module, and the plan, the brief and the presets keep the native
+name. `scripts/redesigned_blocks.py` holds the table.
+
+| Redesigned block | Stands for |
+| --- | --- |
+| `header` | `header` |
+| `lead-gs` (default page), `lead` (store page) | `leadGameSales` |
+| `store` | `newStore` |
+| `faq` | `faq` |
+| `footer-v3` | `footer` |
+| `game-packs` | `packs` |
+| `description` | `description` |
+| `card-grid` | `bento-grid` |
+| `gallery` | `gallery` |
+| `system-requirements` | `requirements` |
+| `news` | `news` |
+| `promocode` | `promocodes` |
+| `reward-chains` | `rewards` |
+| `sb-offer-chain`, `sb-daily-reward`, `sidebar` | the same name |
+| `offerwall` | `offerwall-block` |
+
+- They keep their data in another shape: settings in `values.internalBlockValues`,
+  content in `values.resources`. A native patch does not fit them. Shop Builder has no
+  schema for them and takes any patch, so a script checks the shape before it writes.
+- Only a page type adds them. `add-page` with no type seeds header, hero, description,
+  game packs, card grids, gallery, system requirements, FAQ and footer, and no store.
+  `add-page --type topup` seeds header, hero, five stores, daily reward, offer chain,
+  reward chains, promo code, social quests, offerwall, FAQ and footer. Assembly makes a
+  store page with that type and keeps the store with the most sections.
+- Written today: block order and removals, and a store's catalog sections (group, item
+  type and layout of its first sections; the rest are dropped). Not written yet: header
+  links, texts, images and FAQ questions. Those go to `needs_human`.
+- Hero, Fast Login, Promo slider, Social media widgets, Custom code and Social quests
+  have no redesigned twin and are added as native blocks.
+
 ## Safe use rule
 
 Adding a default block requires an observed current palette name. Patching its values

@@ -170,7 +170,8 @@ def main() -> int:
     except ValueError as exc:
         print(str(exc), file=sys.stderr)
         return 1
-    json.dump(fixture, sys.stdout, indent=1, ensure_ascii=False)
+    # One line: the file is large and nobody edits it. `python3 -m json.tool` shows it.
+    json.dump(fixture, sys.stdout, ensure_ascii=False, separators=(",", ":"))
     sys.stdout.write("\n")
     return 0
 
