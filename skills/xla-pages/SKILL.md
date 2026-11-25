@@ -79,6 +79,8 @@ All scripts are in `scripts/` and run with `python3 -I`. Keep each run's files i
      plan's `notes`;
    - the preflight: its lines, the redirect list per provider, and the request times;
    - the gate's result: which writes the CLI can make today;
+   - for a plan that creates a page: that no batch has created a page on a real site yet, so
+     this run is the first test of that write path;
    - that the Pages team publishes this site themselves, and their next publication ships these
      draft changes to x.la.
 
@@ -104,10 +106,12 @@ All scripts are in `scripts/` and run with `python3 -I`. Keep each run's files i
   the report's `fresh_until` time; don't work it out.
 - **The site changed after the backup** (the Pages team edits it too): back up again, render
   again, show the new plan, and ask again.
-- **A run that stopped partway** prints what it created (`created_pages`, `created_blocks`). Show
-  them and offer two ways on: back up, render (created pages now show as updates), show the plan
-  and ask again; or a person deletes them in the Editor. The skill doesn't delete them or restore a
-  version. Never retry blindly.
+- **A run that stopped partway** prints what it created (`created_pages`, `created_blocks`), read
+  back from the site. Show them and offer two ways on: back up, render (created pages now show as
+  updates), show the plan and ask again; or a person deletes them in the Editor. If the report
+  has `created_read_back_failed`, the lists may be incomplete: say so, and a person checks the
+  site in the Editor first. The skill doesn't delete them or restore a version. Never retry
+  blindly.
 - **An existing page that differs from the manifest:** an update writes only row content,
   settings, an empty optional block's hidden flag, static SEO text and the page look. Missing
   bound blocks, extra blocks, wrong versions and bindings are listed for a person; blocks that

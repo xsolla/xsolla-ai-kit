@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import copy
+import subprocess
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
@@ -113,6 +115,38 @@ class ZeroWriteTests(unittest.TestCase):
             "add-page-dynamic": ["--provider-id", "--provider-input"],
             "add-block-pinned": ["the command"],
         }, missing)
+
+    def test_a_cli_whose_create_block_cannot_pin_a_version_is_blocked_by_the_gate(self) -> None:
+        cli = stand_in_cli.StandInCli(capabilities="unpinned")
+        code, report = harness.apply(cli, self.plan_path, self.backup)
+        self.assertEqual("blocked_capability", report["status"])
+        self.assertEqual([], cli.writes())
+        # Its help names --block-version in a sentence, but not as a flag.
+        self.assertIn("--block-version", cli.help(("shopbuilder", "create-block")))
+        self.assertEqual([{"capability": "add-block-pinned", "command": "xsolla shopbuilder create-block",
+                           "missing": ["--block-version"]}], report["details"])
+
+    def test_only_a_flag_listed_under_flags_counts(self) -> None:
+        text = (
+            "Create a block\n\nDeprecated: --package. A later release adds --block-version.\n\n"
+            "Usage:\n  xsolla shopbuilder create-block [flags]\n\n"
+            "Examples:\n  xsolla shopbuilder create-block --block-version 1.4.2\n\n"
+            "Flags:\n      --module string   Block module. See --block-version.\n"
+            "  -h, --help            Show help\n\n"
+            "Global Flags:\n      --json   Emit pure JSON to stdout\n"
+        )
+        self.assertEqual({"--module", "--help", "--json"}, common.help_flags(text))
+        self.assertFalse(common.has_flag(text, "--block-version"))
+        self.assertTrue(common.has_flag(text, "--module"))
+
+    def test_a_write_that_prints_no_body_is_not_a_failure_but_a_read_is(self) -> None:
+        def no_body(command: list, **kwargs) -> subprocess.CompletedProcess:
+            return subprocess.CompletedProcess(command, 0, stdout="\n", stderr="")
+
+        with mock.patch.object(common.subprocess, "run", no_body):
+            self.assertIsNone(common.run_json("shopbuilder", "create-block", "--slug", "x"))
+            with self.assertRaisesRegex(common.CliError, "get-structure returned no JSON"):
+                common.run_json("shopbuilder", "get-structure", "--slug", "x")
 
     def test_responses_older_than_24_hours_stop_with_zero_writes(self) -> None:
         code, report = harness.apply(self.cli, self.plan_path, self.backup, now="2026-11-08T09:00:00Z")

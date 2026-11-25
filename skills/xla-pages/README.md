@@ -41,14 +41,17 @@ cd skills/xla-pages && python3 -m unittest discover -s tests -v
 They run against `tests/stand_in_cli.py`, a stateful stand-in for the CLI, and synthetic
 fixtures: the `/pub` responses have the structure of real ones and invented values. Covered: a
 block outside the manifest, a theme or style write, typed game data, a row over the limits, an
-older CLI at the gate, responses older than 24 hours, an edited plan, a changed site and a
+older CLI at the gate, a CLI whose `create-block` can't pin a version, a flag that `--help`
+names only in a sentence, responses older than 24 hours, an edited plan, a changed site and a
 published site each stop with zero writes; so do updates of existing pages until the
 local override allows one page; a batch creates every page and passes the check; the
 check reports the exact difference; an update keeps the page's bindings identical and runs on
 an older CLI; connections and bindings are stored as Site Builder stores them (site-level
 `valuesSystem`, `#VC:` values, `usedBy`); a version the blocks service doesn't have creates
 nothing and stops the run, and so does a block read back at another version than the pinned
-one; the preflight
+one; a stop partway reports every page and block that is on the site, also when the step that
+created it failed, and says so when the site can't be read back; a write that prints no body
+is not a failure, a read is; the preflight
 covers empty `payment_methods`, a capitalized provider id, empty `countries`, a provider listed
 twice, more than 20 media, a cover whose info is 404, a title over 60 characters, an empty `faq`,
 and a game served by `core-attributes` but missing from the catalog.
@@ -76,6 +79,10 @@ What the code assumes and a real site still has to confirm:
   says `create-block --block-version` refuses a version the blocks service doesn't have and
   creates nothing; no run has shown it. The skill still reads the version back and stops on
   any other.
+- **`create-block` on a real site.** No run has called it. Its help says `--position` counts
+  from 0, and the plan sends a 0-based position; the after-write check compares the block
+  order. Its help lists no response body; the scripts take an empty answer to a write as
+  success and rely on the read-back.
 - **Hiding a federated block** with the `["hidden"]` patch; seen only on other modules.
 - **The linked data provider.** The server's add-page hands out `dataConnectionId`; the Editor
   client writes the `ugc-d-data-game-provider-v2` connection. The skill writes it when it is

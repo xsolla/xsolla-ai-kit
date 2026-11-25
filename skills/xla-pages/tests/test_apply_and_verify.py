@@ -165,6 +165,70 @@ class ApplyAndVerifyTests(unittest.TestCase):
             "create-block added @xla-pages/hero@0.4.2, not the pinned @xla-pages/hero@0.4.1-next.3",
             report["reason"],
         )
+        # The block at the other version is on the page, so the report lists it.
+        self.assertEqual(self.block_ids("/payment/klarna"), report["created_blocks"])
+        self.assertEqual(2, len(report["created_blocks"]))
+
+    def block_ids(self, route: str) -> list:
+        return [b["_id"] for b in page(self.cli.site, route)["blocks"]]
+
+    def stop_partway(self, command: str, change) -> dict:
+        """Apply the batch with `change` wrapped around one stand-in command; the run must stop."""
+        plan, errors, plan_path, backup_dir = harness.prepare(self.dir, self.cli)
+        self.assertEqual([], errors)
+        real = getattr(self.cli, command)
+        setattr(self.cli, command, lambda options, flags: change(real, options, flags))
+        code, report = harness.apply(self.cli, plan_path, backup_dir)
+        self.assertEqual(1, code)
+        self.assertEqual("stopped-partway", report["status"])
+        return report
+
+    def test_two_blocks_from_one_create_block_are_both_reported(self) -> None:
+        def twice(real, options: dict, flags: set) -> object:
+            real(options, flags)
+            return real(options, flags)
+
+        report = self.stop_partway("cmd_create_block", twice)
+        self.assertEqual("create-block left 2 new blocks on /payment/klarna", report["reason"])
+        self.assertEqual(self.block_ids("/payment/klarna"), report["created_blocks"])
+        self.assertEqual(2, len(report["created_blocks"]))
+
+    def test_a_block_created_before_the_cli_failed_is_reported(self) -> None:
+        def then_fail(real, options: dict, flags: set) -> object:
+            real(options, flags)
+            raise common.CliError("xsolla shopbuilder create-block failed: connection reset")
+
+        report = self.stop_partway("cmd_create_block", then_fail)
+        self.assertEqual("xsolla shopbuilder create-block failed: connection reset", report["reason"])
+        self.assertEqual(["/payment/klarna"], report["created_pages"])
+        self.assertEqual(self.block_ids("/payment/klarna"), report["created_blocks"])
+        self.assertEqual(1, len(report["created_blocks"]))
+
+    def test_a_page_created_before_the_cli_failed_is_reported(self) -> None:
+        def then_fail(real, options: dict, flags: set) -> object:
+            real(options, flags)
+            raise common.CliError("xsolla shopbuilder add-page failed: connection reset")
+
+        report = self.stop_partway("cmd_add_page", then_fail)
+        self.assertEqual(["/payment/klarna"], report["created_pages"])
+        # add-page seeded these; the run stopped before it could delete them.
+        self.assertEqual(self.block_ids("/payment/klarna"), report["created_blocks"])
+        self.assertEqual(len(stand_in_cli.SEEDED), len(report["created_blocks"]))
+
+    def test_a_site_that_cannot_be_read_back_marks_the_lists_as_incomplete(self) -> None:
+        def offline(options: dict, flags: set) -> object:
+            raise common.CliError("xsolla shopbuilder get-structure failed: connection reset")
+
+        def then_go_offline(real, options: dict, flags: set) -> object:
+            real(options, flags)
+            self.cli.cmd_get_structure = offline
+            raise common.CliError("xsolla shopbuilder create-block failed: connection reset")
+
+        report = self.stop_partway("cmd_create_block", then_go_offline)
+        self.assertEqual("xsolla shopbuilder create-block failed: connection reset", report["reason"])
+        # The block is on the page, but nothing could read it back: the report says so.
+        self.assertEqual([], report["created_blocks"])
+        self.assertIn("could not be read back", report["created_read_back_failed"])
 
     def test_the_after_write_check_reports_the_exact_difference(self) -> None:
         plan, report, backup_dir = self.run_batch()

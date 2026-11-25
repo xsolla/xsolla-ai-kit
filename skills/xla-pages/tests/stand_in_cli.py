@@ -8,6 +8,8 @@ federated blocks, SEO texts in the localization, and the batch patch API behind 
 `capabilities="shipped"` answers --help like CLI 1.10.0 for the commands scripts/cli_gate.py
 needs (add-page --provider-id/--provider-input, create-block --block-version), so the write path
 can run end to end in tests. `capabilities="older"` answers like CLI 1.9.4, which has neither.
+`capabilities="unpinned"` is the case between them: create-block is there, without
+--block-version. Every --help names the gated flags in a sentence too, which must not count.
 As the CLI's help says, create-block refuses a version the blocks service doesn't have and
 creates nothing.
 Every call is logged; any other command fails the test.
@@ -38,6 +40,11 @@ SHIPPED = {
     ("shopbuilder", "add-page"): ["--slug", "--name", "--path", "--provider-id", "--provider-input"],
     ("shopbuilder", "create-block"): ["--slug", "--page-id", "--module", "--block-version", "--position"],
 }
+UNPINNED = {
+    **SHIPPED,
+    ("shopbuilder", "create-block"): ["--slug", "--page-id", "--module", "--position"],
+}
+TABLES = {"shipped": SHIPPED, "older": OLDER, "unpinned": UNPINNED}
 # What add-page seeds on a new page (native blocks, as CLI 1.9.4 does on a store landing).
 SEEDED = ["header", "leadGameSales", "description", "faq", "footer"]
 
@@ -59,7 +66,7 @@ class StandInCli:
                  sandbox: bool = False, localization: dict | None = None) -> None:
         self.site = copy.deepcopy(site if site is not None else load_site())
         self.localization = copy.deepcopy(localization if localization is not None else load_localization())
-        self.table = dict(SHIPPED if capabilities == "shipped" else OLDER)
+        self.table = dict(TABLES[capabilities])
         if blank_flag:
             key = ("shopbuilder", "add-page")
             self.table[key] = [*self.table[key], "--type"]
@@ -90,7 +97,8 @@ class StandInCli:
         flags = self.table.get(tuple(command))
         if flags is None:
             return "Usage:\n  xsolla shopbuilder [command]\n\nAvailable Commands:\n  add-block\n  add-page\n"
-        lines = [f"Usage:\n  xsolla {' '.join(command)} [flags]\n", "Flags:"]
+        lines = ["Synthetic help. Some releases take --provider-id, --provider-input and --block-version.\n",
+                 f"Usage:\n  xsolla {' '.join(command)} [flags]\n", "Flags:"]
         lines += [f"      {flag} string   synthetic help" for flag in flags]
         return "\n".join(lines) + "\n"
 

@@ -26,6 +26,8 @@ DEFAULT_CONFIG = Path(".xsolla") / "xla-pages.json"
 SLUG_RE = re.compile(r"^[a-z0-9-]+$")
 SITE_SLUG_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 PLACEHOLDER = re.compile(r"\$\{(merchant_id|project_id|site_slug)\}")
+# A flag's own line in --help: "      --slug string   Site domain" or "  -h, --help   ...".
+FLAG_LINE = re.compile(r"\s+(?:-\w, )?(--[\w-]+)")
 PACKAGE_SCOPE = "@xla-pages/"
 
 # Page-level keys the plan may set, and only to the reference page's value. `theme` is
@@ -213,6 +215,10 @@ def execute(args: list[str]) -> object:
     if result.returncode:
         detail = (result.stderr or "").strip() or (result.stdout or "").strip()
         raise CliError(f"xsolla {' '.join(args[:2])} failed: {detail or result.returncode}")
+    if is_write(args) and not (result.stdout or "").strip():
+        # A write may answer with no body (create-block's help lists none). That is not a
+        # failure: the read-back after the write is the proof.
+        return None
     try:
         return json.loads(result.stdout or "")
     except json.JSONDecodeError:
@@ -252,8 +258,22 @@ def has_command(help_text: str, command: tuple[str, ...]) -> bool:
     )
 
 
+def help_flags(help_text: str) -> set[str]:
+    """The flags a --help lists under "Flags:" and "Global Flags:". A flag named anywhere else
+    (a description, an example, a deprecation note) is not one the command takes."""
+    flags, listing = set(), False
+    for line in help_text.splitlines():
+        if line.strip() in ("Flags:", "Global Flags:"):
+            listing = True
+        elif not line[:1].isspace():
+            listing = False
+        elif listing and (match := FLAG_LINE.match(line)):
+            flags.add(match.group(1))
+    return flags
+
+
 def has_flag(help_text: str, flag: str) -> bool:
-    return re.search(r"(?<![\w-])" + re.escape(flag) + r"(?![\w-])", help_text) is not None
+    return flag in help_flags(help_text)
 
 
 def cli_context() -> dict:

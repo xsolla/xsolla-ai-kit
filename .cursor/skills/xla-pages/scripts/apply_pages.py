@@ -263,6 +263,8 @@ class Run:
             "--position", str(op["index"]),
         )
         new = [b for b in self.page(route).get("blocks") or [] if b.get("_id") not in known]
+        # On the report as soon as they are on the page, before a check below can stop the run.
+        self.progress["created_blocks"] += [b.get("_id") for b in new]
         if len(new) != 1:
             raise common.CliError(f"create-block left {len(new)} new blocks on {route}")
         package, version = common.block_identity(new[0])
@@ -273,7 +275,6 @@ class Run:
                 f"create-block added {package}@{version}, not the pinned {op['package']}@{op['version']}"
             )
         state["blocks"][op["key"]] = new[0]["_id"]
-        self.progress["created_blocks"].append(new[0]["_id"])
 
     def op_set_block_field(self, route: str, expected: dict, state: dict, op: dict) -> None:
         block_id = state["blocks"][op["key"]]
@@ -352,6 +353,32 @@ class Run:
         self.patch("page", state["page_id"], [{"op": verb, "path": [op["key"]], "value": op["value"]}])
 
 
+def read_back_created(slug: str, before: dict, progress: dict) -> None:
+    """After a stop partway: the pages and blocks on the site that the backup doesn't have.
+
+    A step can fail after the server did its part: the CLI fails after the write, or the
+    read-back shows another block than the pinned one. The lists kept while writing miss
+    that, so the report takes them from the site.
+    """
+    try:
+        after = common.get_structure(slug)
+    except common.CliError as exc:
+        progress["created_read_back_failed"] = (
+            f"the site could not be read back ({exc}); created_pages and created_blocks may "
+            "miss what the last step created"
+        )
+        return
+    routes = {common.page_route(page) for page in before.get("pages") or []}
+    blocks = {block.get("_id") for page in before.get("pages") or [] for block in page.get("blocks") or []}
+    progress["created_pages"] = [
+        route for page in after["pages"] if (route := common.page_route(page)) not in routes
+    ]
+    progress["created_blocks"] = [
+        block.get("_id") for page in after["pages"] for block in page.get("blocks") or []
+        if block.get("_id") not in blocks
+    ]
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--plan", required=True, type=Path)
@@ -378,6 +405,8 @@ def main(argv: list[str] | None = None) -> int:
                           "details": exc.details}, indent=2, ensure_ascii=False))
         return 1
     except (OSError, ValueError, KeyError, common.CliError) as exc:
+        if progress["writes"]:
+            read_back_created(config["site_slug"], structure, progress)
         print(json.dumps({
             "status": "stopped-partway" if progress["writes"] else "refused",
             "reason": str(exc),
