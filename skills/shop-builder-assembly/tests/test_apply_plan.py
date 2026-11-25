@@ -178,7 +178,39 @@ class ApplyPlanTests(unittest.TestCase):
         self.assertEqual("home", apply_plan.page_for_path(structure, "/")["_id"])
         self.assertIsNone(apply_plan.page_for_path(structure, "/store"))
 
-    def test_common_layout_step_is_skipped_on_a_site_without_one(self) -> None:
+    def test_common_layout_is_created_only_after_missing_layout_check(self) -> None:
+        pages = [{"_id": "home", "path": "/", "blocks": []}]
+        before = {"pages": pages, "layouts": [], "blocks": []}
+        after = {
+            "pages": pages,
+            "layouts": ["layout-id"],
+            "blocks": ["layout-id"],
+        }
+        calls = []
+
+        def cli(*args: str) -> dict:
+            calls.append(args)
+            if args[1] == "get-block":
+                return {"ok": True, "data": {"module": "common-layout"}}
+            return {"ok": True}
+
+        with (
+            mock.patch.object(apply_plan, "structure", side_effect=[before, after]),
+            mock.patch.object(apply_plan, "cli_can_create_layout", return_value=True),
+            mock.patch.object(apply_plan, "run_json", side_effect=cli),
+        ):
+            self.assertEqual("layout-id", apply_plan.ensure_common_layout("shop"))
+        # The command of CLI 1.10.0: the module by --module, through a page.
+        self.assertEqual(
+            (
+                "shopbuilder", "create-block", "--slug", "shop",
+                "--page-id", "home", "--module", "common-layout",
+            ),
+            calls[0],
+        )
+        self.assertEqual(["create-block", "get-block"], [call[1] for call in calls])
+
+    def test_common_layout_step_is_skipped_without_create_block(self) -> None:
         stderr = io.StringIO()
         with (
             mock.patch.object(
@@ -186,11 +218,11 @@ class ApplyPlanTests(unittest.TestCase):
                 "structure",
                 return_value={"pages": [], "layouts": [], "blocks": []},
             ),
+            mock.patch.object(apply_plan, "cli_can_create_layout", return_value=False),
             mock.patch.object(apply_plan, "run_json") as run_json,
             contextlib.redirect_stderr(stderr),
         ):
             self.assertIsNone(apply_plan.ensure_common_layout("shop"))
-        # The CLI's create-block refuses layout modules, so nothing is called.
         run_json.assert_not_called()
         self.assertIn(
             "The Xsolla CLI can't add the common layout to a site, so the site is built "
@@ -237,21 +269,46 @@ class ApplyPlanTests(unittest.TestCase):
         ):
             self.assertEqual("common-id", apply_plan.ensure_common_layout("shop"))
 
-    def test_side_by_side_layout_alone_is_not_a_common_layout(self) -> None:
-        current = {"pages": [], "layouts": ["side-id"], "blocks": ["side-id"]}
+    def test_side_by_side_layout_alone_gets_a_common_layout(self) -> None:
+        pages = [{"_id": "home", "path": "/", "blocks": []}]
+        before = {"pages": pages, "layouts": ["side-id"], "blocks": ["side-id"]}
+        after = {
+            "pages": pages,
+            "layouts": ["side-id", "common-id"],
+            "blocks": ["side-id", "common-id"],
+        }
+        modules = {"side-id": "side-by-side-layout", "common-id": "common-layout"}
         calls = []
 
         def cli(*args: str) -> dict:
             calls.append(args[1])
-            return {"ok": True, "data": {"module": "side-by-side-layout"}}
+            if args[1] == "get-block":
+                return {"ok": True, "data": {"module": modules[args[-1]]}}
+            return {"ok": True}
 
         with (
-            mock.patch.object(apply_plan, "structure", return_value=current),
+            mock.patch.object(apply_plan, "structure", side_effect=[before, after]),
+            mock.patch.object(apply_plan, "cli_can_create_layout", return_value=True),
             mock.patch.object(apply_plan, "run_json", side_effect=cli),
-            contextlib.redirect_stderr(io.StringIO()),
         ):
-            self.assertIsNone(apply_plan.ensure_common_layout("shop"))
-        self.assertEqual(["get-block"], calls)
+            self.assertEqual("common-id", apply_plan.ensure_common_layout("shop"))
+        self.assertEqual(["get-block", "create-block", "get-block", "get-block"], calls)
+
+    def test_common_layout_rejects_unpersisted_layout(self) -> None:
+        with (
+            mock.patch.object(
+                apply_plan,
+                "structure",
+                side_effect=[
+                    {"pages": [{"_id": "home"}], "layouts": [], "blocks": []},
+                    {"pages": [{"_id": "home"}], "layouts": [], "blocks": []},
+                ],
+            ),
+            mock.patch.object(apply_plan, "cli_can_create_layout", return_value=True),
+            mock.patch.object(apply_plan, "run_json", return_value={"ok": True}),
+        ):
+            with self.assertRaisesRegex(RuntimeError, "missing from the saved"):
+                apply_plan.ensure_common_layout("shop")
 
     def test_verified_backup_requires_identity_and_matching_checksums(self) -> None:
         expected = {"merchant_id": 100, "project_id": 200}
@@ -1145,7 +1202,7 @@ class ApplyPlanTests(unittest.TestCase):
         self.assertTrue(result["ok"])
         self.assertEqual(["sb-offer-chain"], result["pages"][0]["blocks"])
 
-    def test_structure_verifier_warns_without_the_common_layout(self) -> None:
+    def test_structure_verifier_requires_planned_common_layout(self) -> None:
         plan = {
             "target": {"merchant_id": 100, "project_id": 200, "slug": "shop"},
             "site_layout": {"module": "common-layout"},
@@ -1164,19 +1221,25 @@ class ApplyPlanTests(unittest.TestCase):
             "blocks": [],
         }
         modules = {"side-id": "side-by-side-layout", "layout-id": "common-layout"}
-        warning = [
-            "The Xsolla CLI can't add the common layout to a site, so the site is built "
-            "without it. A site without the common layout won't open in the Editor, Publish "
-            "or private preview."
-        ]
-        skipped = verify_structure.verify(plan, structure, modules.get)
+        self.assertFalse(verify_structure.verify(plan, structure, modules.get)["ok"])
+        skipped = verify_structure.verify(
+            plan, structure, modules.get, layout_required=False
+        )
         self.assertTrue(skipped["ok"], skipped["errors"])
-        self.assertEqual(warning, skipped["warnings"])
+        self.assertEqual(
+            [
+                "The Xsolla CLI can't add the common layout to a site, so the site is built "
+                "without it. A site without the common layout won't open in the Editor, "
+                "Publish or private preview."
+            ],
+            skipped["warnings"],
+        )
         structure["layouts"] = ["side-id"]
         structure["blocks"] = ["side-id"]
-        side_only = verify_structure.verify(plan, structure, modules.get)
-        self.assertTrue(side_only["ok"], side_only["errors"])
-        self.assertEqual(warning, side_only["warnings"])
+        self.assertEqual(
+            ["site-level common layout is missing"],
+            verify_structure.verify(plan, structure, modules.get)["errors"],
+        )
         structure["layouts"] = ["side-id", "layout-id"]
         structure["blocks"] = ["side-id", "layout-id"]
         result = verify_structure.verify(plan, structure, modules.get)
@@ -1250,6 +1313,14 @@ class FakeShopBuilderCli:
             return {"ok": True, "data": copy.deepcopy(self.landing)}
         if command == "get-structure":
             return {"ok": True, "data": copy.deepcopy(self.landing)}
+        if command == "create-block":
+            if not options.get("--page-id"):
+                raise AssertionError("create-block must receive --page-id")
+            block_id = f"site-block-{len(self.landing['blocks']) + 1}"
+            self.site_modules[block_id] = options["--module"]
+            self.landing["blocks"].append(block_id)
+            self.landing["layouts"].append(block_id)
+            return {"ok": True, "data": {"block": {"_id": block_id}}}
         if command == "get-block":
             return {"ok": True, "data": {"module": self.module_of(options["--block-id"])}}
         if command == "set-landing-type":
@@ -1318,6 +1389,8 @@ class NamedEnvironmentApplyBoundary:
                 "sandbox": environment == "dev",
             }
             result = {"ok": True, "data": config}
+        elif argv == ["shopbuilder", "list-block-modules"]:
+            result = {"ok": True, "data": {"blocks": [], "cannotCreate": []}}
         elif argv == ["auth", "list-account"]:
             result = {"ok": True, "data": {"accounts": [{
                 "context": "publisher", "active": True, "expired": False
@@ -1408,7 +1481,7 @@ class NamedEnvironmentRunReportTests(unittest.TestCase):
         self.assertIn("--backup-dir is required", error)
         self.assertEqual(("list-websites",), self.cli.calls[-1][1:2])
         writes = {
-            "create-website", "set-landing-type", "add-page",
+            "create-website", "create-block", "set-landing-type", "add-page",
             "add-language", "add-block", "update-block", "move-block",
         }
         self.assertFalse(any(call[1] in writes for call in self.cli.calls[before:]))
@@ -1437,7 +1510,7 @@ class NamedEnvironmentRunReportTests(unittest.TestCase):
         self.assertEqual(1, code)
         self.assertIn("differs from the earlier run report", error)
         writes = {
-            "create-website", "set-landing-type", "add-page",
+            "create-website", "create-block", "set-landing-type", "add-page",
             "add-language", "add-block", "update-block", "move-block",
         }
         self.assertFalse(any(call[1] in writes for call in self.cli.calls[cli_calls_before:]))
@@ -1487,7 +1560,9 @@ class ObjectPagePathTests(unittest.TestCase):
     def setUp(self) -> None:
         self.brief = json.loads(EXAMPLE_BRIEF.read_text(encoding="utf-8"))
 
-    def run_apply(self, cli: FakeShopBuilderCli, plan: dict) -> tuple[int, str, str]:
+    def run_apply(
+        self, cli: FakeShopBuilderCli, plan: dict, can_create_layout: bool = True
+    ) -> tuple[int, str, str]:
         stdout, stderr = io.StringIO(), io.StringIO()
         with tempfile.TemporaryDirectory() as directory:
             argv = [
@@ -1502,6 +1577,9 @@ class ObjectPagePathTests(unittest.TestCase):
                 mock.patch.dict(apply_plan.RUN_AUTH, {"logged_in": False, "context": None}),
                 mock.patch.object(sys, "argv", argv),
                 mock.patch.object(apply_plan, "run_preflight"),
+                mock.patch.object(
+                    apply_plan, "cli_can_create_layout", return_value=can_create_layout
+                ),
                 mock.patch.object(apply_plan, "run_json", side_effect=cli),
                 contextlib.redirect_stdout(stdout),
                 contextlib.redirect_stderr(stderr),
@@ -1539,7 +1617,6 @@ class ObjectPagePathTests(unittest.TestCase):
     def test_plan_binds_object_paths_and_reports_string_extra_pages(self) -> None:
         structure = {
             "_id": "landing",
-            "layouts": [],
             "pages": [
                 {"_id": "home", "path": object_path("/"), "blocks": []},
                 {"_id": "legacy", "name": "Legacy", "path": "/legacy", "blocks": []},
@@ -1587,11 +1664,13 @@ class ObjectPagePathTests(unittest.TestCase):
             self.recorded_context,
         )
 
-    def test_new_landing_applies_the_warned_plan_without_a_layout(self) -> None:
-        plan = apply_plan.build_plan(self.brief)
+    def test_new_landing_on_cli_without_create_block_applies_the_warned_plan(self) -> None:
+        plan = apply_plan.build_plan(self.brief, can_create_layout=False)
         self.assertIn(render_plan.LAYOUT_WARNING, plan["warnings"])
         cli = FakeShopBuilderCli(self.brief)
-        code, stdout, stderr = self.run_apply(cli, plan)
+        code, stdout, stderr = self.run_apply(
+            cli, plan, can_create_layout=False
+        )
         self.assertEqual(0, code, stderr)
         report = json.loads(stdout)
         self.assertEqual("bootstrap-complete", report["status"])
@@ -1683,6 +1762,7 @@ class CustomCodeReportTests(unittest.TestCase):
                 mock.patch.dict(apply_plan.RUN_AUTH, {"logged_in": False, "context": None}),
                 mock.patch.object(sys, "argv", argv),
                 mock.patch.object(apply_plan, "run_preflight"),
+                mock.patch.object(apply_plan, "cli_can_create_layout", return_value=True),
                 mock.patch.object(apply_plan, "run_json", side_effect=cli),
                 mock.patch.object(apply_plan, "verified_backup", return_value=True),
                 mock.patch.object(apply_plan, "backup_structure", return_value=saved),
@@ -1841,21 +1921,26 @@ class FakePreflightCli:
 
 
 class CommonLayoutPreflightTests(unittest.TestCase):
-    def run_preflight(self, cli: FakePreflightCli) -> tuple[int, str, str]:
+    def run_preflight(
+        self, cli: FakePreflightCli, can_create_layout: bool
+    ) -> tuple[int, str, str, mock.Mock]:
         stdout, stderr = io.StringIO(), io.StringIO()
         with (
             mock.patch.object(sys, "argv", ["preflight.py", str(EXAMPLE_BRIEF)]),
             mock.patch.object(preflight.shutil, "which", return_value="xsolla"),
             mock.patch.object(preflight, "run_json", side_effect=cli),
+            mock.patch.object(
+                preflight, "cli_can_create_layout", return_value=can_create_layout
+            ) as has_command,
             contextlib.redirect_stdout(stdout),
             contextlib.redirect_stderr(stderr),
         ):
             code = preflight.main()
-        return code, stdout.getvalue(), stderr.getvalue()
+        return code, stdout.getvalue(), stderr.getvalue(), has_command
 
-    def test_new_site_skips_the_layout_step(self) -> None:
+    def test_new_site_on_cli_without_create_block_skips_the_layout_step(self) -> None:
         cli = FakePreflightCli()
-        code, stdout, stderr = self.run_preflight(cli)
+        code, stdout, stderr, has_command = self.run_preflight(cli, can_create_layout=False)
         self.assertEqual(0, code, stderr)
         self.assertIn(
             "The Xsolla CLI can't add the common layout to a site, so the site is built "
@@ -1863,11 +1948,8 @@ class CommonLayoutPreflightTests(unittest.TestCase):
             "or private preview.",
             stderr,
         )
-        target = json.loads(stdout)["target"]
-        self.assertIsNone(target["common_layout_id"])
-        self.assertEqual("skip", target["layout_step"])
-        # The CLI's create-block refuses layout modules: preflight never calls it.
-        self.assertNotIn("create-block", [call[1] for call in cli.calls])
+        self.assertEqual("skip", json.loads(stdout)["target"]["layout_step"])
+        has_command.assert_called_once_with()
 
     def test_missing_groups_fail_but_still_print_the_read_back(self) -> None:
         brief = json.loads(EXAMPLE_BRIEF.read_text(encoding="utf-8"))
@@ -1882,6 +1964,7 @@ class CommonLayoutPreflightTests(unittest.TestCase):
                 mock.patch.object(sys, "argv", ["preflight.py", str(path)]),
                 mock.patch.object(preflight.shutil, "which", return_value="xsolla"),
                 mock.patch.object(preflight, "run_json", side_effect=FakePreflightCli()),
+                mock.patch.object(preflight, "cli_can_create_layout", return_value=True),
                 contextlib.redirect_stdout(stdout),
                 contextlib.redirect_stderr(stderr),
             ):
@@ -1894,13 +1977,22 @@ class CommonLayoutPreflightTests(unittest.TestCase):
             result["catalog"]["missing_groups"],
         )
         self.assertEqual([], result["catalog"]["verified_groups"])
-        self.assertEqual("skip", result["target"]["layout_step"])
+        self.assertEqual("create", result["target"]["layout_step"])
         self.assertIn("virtual_currency:gem-packs", stderr.getvalue())
+
+    def test_new_site_on_cli_with_create_block_passes(self) -> None:
+        code, stdout, stderr, _ = self.run_preflight(
+            FakePreflightCli(), can_create_layout=True
+        )
+        self.assertEqual(0, code, stderr)
+        target = json.loads(stdout)["target"]
+        self.assertIsNone(target["common_layout_id"])
+        self.assertEqual("create", target["layout_step"])
 
     def test_a_published_site_stops_before_the_catalog_read(self) -> None:
         site = {"pages": [], "layouts": [], "blocks": [], "published": True}
         cli = FakePreflightCli(site)
-        code, stdout, stderr = self.run_preflight(cli)
+        code, stdout, stderr, _ = self.run_preflight(cli, can_create_layout=True)
         self.assertEqual(1, code)
         self.assertEqual("", stdout)
         self.assertIn("the target site is published", stderr)
@@ -1928,14 +2020,14 @@ class CommonLayoutPreflightTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "Nothing was written"):
             apply_plan.refuse_published({"published": True})
 
-    def test_existing_site_without_common_layout_skips_the_layout_step(self) -> None:
+    def test_existing_site_without_common_layout_skips_without_create_block(self) -> None:
         site = {"pages": [], "layouts": ["side-id"], "blocks": ["side-id"]}
         cli = FakePreflightCli(site, {"side-id": "side-by-side-layout"})
-        code, stdout, stderr = self.run_preflight(cli)
+        code, stdout, stderr, _ = self.run_preflight(cli, can_create_layout=False)
         self.assertEqual(0, code, stderr)
         self.assertEqual("skip", json.loads(stdout)["target"]["layout_step"])
 
-    def test_partner_site_with_common_layout_passes(self) -> None:
+    def test_partner_site_with_common_layout_passes_without_create_block(self) -> None:
         site = {
             "pages": [],
             "layouts": ["side-id", "common-id"],
@@ -1944,11 +2036,14 @@ class CommonLayoutPreflightTests(unittest.TestCase):
         cli = FakePreflightCli(
             site, {"side-id": "side-by-side-layout", "common-id": "common-layout"}
         )
-        code, stdout, stderr = self.run_preflight(cli)
+        code, stdout, stderr, has_command = self.run_preflight(
+            cli, can_create_layout=False
+        )
         self.assertEqual(0, code, stderr)
         target = json.loads(stdout)["target"]
         self.assertEqual("common-id", target["common_layout_id"])
         self.assertEqual("present", target["layout_step"])
+        has_command.assert_not_called()
         self.assertNotIn("create-block", [call[1] for call in cli.calls])
 
     def test_apply_stops_before_any_write_when_preflight_fails(self) -> None:
@@ -1977,6 +2072,45 @@ class CommonLayoutPreflightTests(unittest.TestCase):
             self.assertEqual(1, apply_plan.main())
         self.assertIn("CLI sandbox must be disabled", stderr.getvalue())
         run_json.assert_not_called()
+
+    def test_the_block_catalog_says_whether_the_layout_can_be_created(self) -> None:
+        # What CLI 1.10.0 answers today: create-block refuses the layout modules.
+        refused = {
+            "ok": True,
+            "data": {
+                "blocks": [{"module": "faq", "uiName": "FAQs"}],
+                "cannotCreate": [
+                    "header — auto-created with every site; modify via update_block",
+                    "common-layout — auto-created with every site",
+                    "side-by-side-layout — auto-created with every site",
+                ],
+            },
+        }
+        allowed = {"ok": True, "data": {"blocks": [], "cannotCreate": ["store — deprecated"]}}
+        cases = (
+            (refused, False),
+            (allowed, True),
+            # A layout that only starts with the same word is another module.
+            ({"ok": True, "data": {"cannotCreate": ["common-layout-v2 — x"]}}, True),
+            # An answer in another shape is not a yes.
+            ({"ok": True, "data": {"blocks": []}}, False),
+            ({"ok": True, "data": []}, False),
+        )
+        for answer, expected in cases:
+            with self.subTest(answer=answer):
+                run = mock.Mock(return_value=answer)
+                self.assertIs(expected, preflight.cli_can_create_layout(run))
+                run.assert_called_once_with("shopbuilder", "list-block-modules")
+
+    def test_a_cli_without_the_block_catalog_cannot_create_the_layout(self) -> None:
+        # An older CLI has no list-block-modules: the call fails, the step is skipped.
+        run = mock.Mock(side_effect=RuntimeError("unknown command"))
+        self.assertIs(False, preflight.cli_can_create_layout(run))
+        with mock.patch.object(
+            preflight, "run_json", side_effect=RuntimeError("returned invalid JSON")
+        ) as run_json:
+            self.assertIs(False, preflight.cli_can_create_layout())
+        run_json.assert_called_once_with("shopbuilder", "list-block-modules")
 
 
 NO_OWN_HEADER = (
@@ -2057,12 +2191,11 @@ class PublisherTemplateSiteTests(unittest.TestCase):
         return cli
 
     def run_render(
-        self, site: dict, cli: FakeShopBuilderCli | None = None
+        self,
+        site: dict,
+        can_create_layout: bool = True,
+        cli: FakeShopBuilderCli | None = None,
     ) -> tuple[int, str, str]:
-        if cli is None:
-            # Render reads each site layout's module with get-block.
-            cli = FakeShopBuilderCli(self.brief)
-            cli.landing, cli.site_modules = site, publisher_template_site(self.brief)[1]
         stdout, stderr = io.StringIO(), io.StringIO()
         with tempfile.TemporaryDirectory() as directory:
             structure_path = Path(directory) / "structure.json"
@@ -2073,7 +2206,11 @@ class PublisherTemplateSiteTests(unittest.TestCase):
             # render_plan.main() imports its CLI helpers from preflight when it runs.
             with (
                 mock.patch.object(sys, "argv", argv),
-                mock.patch("preflight.run_json", side_effect=cli),
+                mock.patch("preflight.cli_can_create_layout", return_value=can_create_layout),
+                mock.patch(
+                    "preflight.run_json",
+                    side_effect=cli or AssertionError("unexpected CLI call"),
+                ),
                 contextlib.redirect_stdout(stdout),
                 contextlib.redirect_stderr(stderr),
             ):
@@ -2082,7 +2219,7 @@ class PublisherTemplateSiteTests(unittest.TestCase):
 
     def run_apply(self, cli: FakeShopBuilderCli) -> tuple[int, str, str, mock.Mock]:
         saved = copy.deepcopy(cli.landing)
-        plan = apply_plan.build_plan(self.brief, saved, module_of=cli.module_of)
+        plan = apply_plan.build_plan(self.brief, saved)
 
         def reconciled(slug: str, landing_id: str, page: dict) -> dict:
             return {
@@ -2109,6 +2246,7 @@ class PublisherTemplateSiteTests(unittest.TestCase):
                 mock.patch.dict(apply_plan.RUN_AUTH, {"logged_in": False, "context": None}),
                 mock.patch.object(sys, "argv", argv),
                 mock.patch.object(apply_plan, "run_preflight"),
+                mock.patch.object(apply_plan, "cli_can_create_layout", return_value=True),
                 mock.patch.object(apply_plan, "run_json", side_effect=cli),
                 mock.patch.object(apply_plan, "verified_backup", return_value=True),
                 mock.patch.object(apply_plan, "backup_structure", return_value=saved),
@@ -2172,9 +2310,9 @@ class PublisherTemplateSiteTests(unittest.TestCase):
         self.assertEqual("implemented-phases-applied", json.loads(stdout)["status"])
         self.assertEqual(["/"], [call.args[2]["path"] for call in reconcile.call_args_list])
 
-    def test_render_finds_the_common_layout_by_get_block(self) -> None:
+    def test_render_on_cli_without_create_block_finds_the_layout_by_get_block(self) -> None:
         cli = self.fake_cli(own_header=True)
-        code, stdout, stderr = self.run_render(cli.landing, cli=cli)
+        code, stdout, stderr = self.run_render(cli.landing, can_create_layout=False, cli=cli)
         self.assertEqual(0, code, stderr)
         self.assertNotIn(render_plan.LAYOUT_WARNING, json.loads(stdout)["warnings"])
         slug = self.brief["site"]["slug"]
@@ -2231,17 +2369,15 @@ class PublisherTemplateSiteTests(unittest.TestCase):
         return brief
 
     def test_a_page_the_plan_would_add_empty_is_left_out(self) -> None:
-        site, modules = publisher_template_site(self.brief)
-        plan = render_plan.build_plan(
-            self.multi_page_brief(faq=False), site, module_of=modules.get
-        )
+        site, _ = publisher_template_site(self.brief)
+        plan = render_plan.build_plan(self.multi_page_brief(faq=False), site)
         self.assertEqual(["/", "/store"], [page["path"] for page in plan["pages"]])
         warnings = plan["warnings"]
         self.assertTrue(any(w.startswith("Page /about would have no sections") for w in warnings))
 
     def test_a_multi_page_plan_builds_on_a_template_site(self) -> None:
-        site, modules = publisher_template_site(self.brief)
-        plan = render_plan.build_plan(self.multi_page_brief(), site, module_of=modules.get)
+        site, _ = publisher_template_site(self.brief)
+        plan = render_plan.build_plan(self.multi_page_brief(), site)
         pages = {page["path"]: page for page in plan["pages"]}
         self.assertEqual(["/", "/store", "/about"], list(pages))
         for path, page in pages.items():
@@ -2257,8 +2393,8 @@ class PublisherTemplateSiteTests(unittest.TestCase):
 
     def test_the_rerun_drops_the_header_add_page_gave_a_new_page(self) -> None:
         brief = self.multi_page_brief()
-        site, modules = publisher_template_site(self.brief)
-        approved = render_plan.build_plan(brief, copy.deepcopy(site), module_of=modules.get)
+        site, _ = publisher_template_site(self.brief)
+        approved = render_plan.build_plan(brief, copy.deepcopy(site))
         created = []
         for path in ("/store", "/about"):
             blocks = [
@@ -2267,7 +2403,7 @@ class PublisherTemplateSiteTests(unittest.TestCase):
             ]
             created.extend(block["_id"] for block in blocks)
             site["pages"].append({"_id": f"page{path}", "path": path, "blocks": blocks})
-        plan = render_plan.build_plan(brief, site, frozenset(created), module_of=modules.get)
+        plan = render_plan.build_plan(brief, site, frozenset(created))
         store = next(page for page in plan["pages"] if page["path"] == "/store")
         self.assertEqual("layout", store["site_header"])
         removed = {(r["module"], r["reason"]) for r in store["removals"]}
@@ -2282,8 +2418,8 @@ class PublisherTemplateSiteTests(unittest.TestCase):
         self.assertEqual([], render_plan.approval_changes(approved, plan, report))
 
     def test_navigation_names_the_pages_to_link_in_the_editor(self) -> None:
-        site, modules = publisher_template_site(self.brief)
-        plan = render_plan.build_plan(self.multi_page_brief(), site, module_of=modules.get)
+        site, _ = publisher_template_site(self.brief)
+        plan = render_plan.build_plan(self.multi_page_brief(), site)
         with mock.patch.object(
             apply_plan, "run_json", return_value={"ok": True, "data": copy.deepcopy(site)}
         ):
@@ -2300,8 +2436,8 @@ class PublisherTemplateSiteTests(unittest.TestCase):
         self.assertTrue(render_plan.is_template_site(site, [{"path": "/"}]))
 
     def test_template_liveops_blocks_stay_on_a_multi_page_home(self) -> None:
-        site, modules = publisher_template_site(self.brief)
-        plan = render_plan.build_plan(self.multi_page_brief(), site, module_of=modules.get)
+        site, _ = publisher_template_site(self.brief)
+        plan = render_plan.build_plan(self.multi_page_brief(), site)
         home = plan["pages"][0]
         self.assertEqual(
             ["lead", "sb-daily-reward", "sb-offer-chain", "rewards", "promocodes"],
@@ -2350,8 +2486,8 @@ class PublisherTemplateSiteTests(unittest.TestCase):
         self.assertEqual(["store-footer", "store-header"], report["created_block_ids"])
 
     def test_navigation_skips_the_shared_template_header(self) -> None:
-        site, modules = publisher_template_site(self.brief)
-        plan = render_plan.build_plan(self.brief, site, module_of=modules.get)
+        site, _ = publisher_template_site(self.brief)
+        plan = render_plan.build_plan(self.brief, site)
         calls = []
 
         def cli(*args: str) -> object:
@@ -2426,6 +2562,7 @@ class OneApprovalTests(unittest.TestCase):
             mock.patch.dict(apply_plan.RUN_AUTH, {"logged_in": False, "context": None}),
             mock.patch.object(sys, "argv", argv),
             mock.patch.object(apply_plan, "run_preflight"),
+            mock.patch.object(apply_plan, "cli_can_create_layout", return_value=True),
             mock.patch.object(apply_plan, "run_json", side_effect=self.cli),
             mock.patch.object(apply_plan, "verified_backup", return_value=True),
             mock.patch.object(apply_plan, "backup_structure", return_value=backup),
@@ -2578,7 +2715,6 @@ class OneApprovalTests(unittest.TestCase):
     def test_template_blocks_the_first_run_created_are_removed_not_preserved(self) -> None:
         site = {
             "_id": "landing-1",
-            "layouts": [],
             "pages": [
                 {
                     "_id": "page-1",
@@ -2628,6 +2764,8 @@ class OneApprovalTests(unittest.TestCase):
             stderr = io.StringIO()
             with (
                 mock.patch.object(sys, "argv", argv),
+                # render_plan.main() imports its CLI helpers from preflight when it runs.
+                mock.patch("preflight.cli_can_create_layout", return_value=True),
                 contextlib.redirect_stdout(io.StringIO()),
                 contextlib.redirect_stderr(stderr),
             ):

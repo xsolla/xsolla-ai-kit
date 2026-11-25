@@ -82,6 +82,8 @@ if argv == ["shopbuilder", "list-websites"]:
     out([])
 if argv[:2] == ["catalog", "list-item-groups"]:
     out({"groups": []})
+if argv == ["shopbuilder", "list-block-modules"]:
+    out({"blocks": [], "cannotCreate": []})
 print("unexpected call: " + " ".join(argv), file=sys.stderr)
 sys.exit(2)
 '''

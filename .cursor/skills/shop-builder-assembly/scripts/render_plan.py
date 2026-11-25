@@ -299,7 +299,7 @@ def has_own_header(page: dict, created_block_ids: frozenset = frozenset()) -> bo
 
 def shared_site_blocks(current: dict) -> set:
     """Site-level blocks that are on no page and aren't a layout: on a template site,
-    the shared header and footer."""
+    the shared header and footer. A layout `create-block` added is not one."""
     page_blocks = {
         block.get("_id") if isinstance(block, dict) else block
         for page in current.get("pages") or []
@@ -418,13 +418,16 @@ def custom_code_warnings(pages: list[dict]) -> list[str]:
 
 def layout_warnings(
     structure: object | None,
+    can_create_layout: bool,
     module_of: Callable[[str], object] | None = None,
 ) -> list[str]:
-    """Warn when the site needs the common layout: the CLI cannot add it.
+    """Warn when the site needs the common layout and the CLI cannot add it.
 
-    A new site always needs it; an existing site only when it has none. Assembly
-    skips the layout step: the CLI's ``create-block`` refuses layout modules.
+    A new site always needs it; an existing site only when it has none. When the
+    CLI's ``create-block`` refuses the module, assembly skips the layout step.
     """
+    if can_create_layout:
+        return []
     if (
         structure is not None
         and common_layout_id(structure_data(structure), module_of) is not None
@@ -936,6 +939,7 @@ def build_plan(
     current_structure: object | None = None,
     created_block_ids: frozenset = frozenset(),
     base_dir: Path | None = None,
+    can_create_layout: bool = True,
     module_of: Callable[[str], object] | None = None,
 ) -> dict:
     """``base_dir`` is the brief's folder, where `brand.images` files are read from."""
@@ -966,7 +970,7 @@ def build_plan(
             "No event data supplied; omit event-specific copy and scarcity claims."
         )
     warnings.extend(custom_code_warnings(pages))
-    warnings.extend(layout_warnings(current_structure, module_of))
+    warnings.extend(layout_warnings(current_structure, can_create_layout, module_of))
     environment = brief["project"].get("environment")
     if environment not in (None, "test"):
         warnings.append(
@@ -1141,7 +1145,7 @@ def approval_changes(approved: dict, plan: dict, run_report: dict) -> list[str]:
 
 def main() -> int:
     # preflight imports this module, so a top-level import would be circular.
-    from preflight import site_block_module
+    from preflight import cli_can_create_layout, site_block_module
 
     parser = argparse.ArgumentParser()
     parser.add_argument("brief", type=Path)
@@ -1185,6 +1189,8 @@ def main() -> int:
             structure,
             created_block_ids(report) if report else frozenset(),
             args.brief.resolve().parent,
+            # Block operations never touch the layout, so they skip the catalog read.
+            "block_operations" in brief or cli_can_create_layout(),
             lambda block_id: site_block_module(slug, block_id),
         )
         if structure is not None:

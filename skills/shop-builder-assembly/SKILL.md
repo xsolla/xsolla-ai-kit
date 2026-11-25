@@ -56,10 +56,12 @@ until [expert-review.md](references/expert-review.md) records approval.
    allowed failure is the groups that proposal creates: render and show the plan with
    it. After the yes and the catalog's creation, run preflight again; it must pass in
    full before apply.
-   When the site needs a common layout (a new site, or one without it), preflight and the
-   rendered plan's `warnings` say the site is built without it and won't open in the
-   Editor, Publish or private preview: the CLI can't add one. Show that with the plan,
-   before any write.
+   When the site needs a common layout (a new site, or one without it) and the CLI can't
+   create it (`shopbuilder list-block-modules` lists `common-layout` under `cannotCreate`),
+   preflight and the rendered plan's `warnings` say the site is built without it and won't
+   open in the Editor, Publish or private preview; show that with the plan, before any
+   write. The plan depends on that CLI check, so a CLI upgrade between render and apply
+   changes its confirmation ID: render again and show it.
 2. If the CLI points at another merchant or project, or has sandbox mode on, switch it to
    the brief's project with sandbox off (`nocode-shop-setup` does this at its first
    check), then rerun preflight; never override later commands.
@@ -120,12 +122,14 @@ After confirmation, `apply_plan.py` applies steps 1–5 in this dependency order
 a fresh backup, as [CLI operations](references/cli-operations.md) describes.
 
 1. **Pages** — create all page paths before linking navigation.
-2. **Site layout** — find the site's `common-layout` by module, not position:
-   `get-structure` lists layouts by ID, so read each one with `get-block`. Other layouts,
-   such as a sidebar's side-by-side layout, stay. Verify the common layout's ID appears in
-   both `blocks` and `layouts`. The CLI can't add a common layout (`create-block` refuses
-   layout modules), so on a site without one this step is skipped and verification warns
-   instead of failing.
+2. **Site layout** — after page/template creation, add `common-layout` only if the
+   site has none, with `create-block --slug <slug> --page-id <page id> --module
+   common-layout`; adding it earlier suppresses some template headers and footers.
+   Find it by module, not position: `get-structure` lists layouts by ID, so read each
+   one with `get-block`. Other layouts, such as a sidebar's side-by-side layout, stay.
+   Verify the common layout's ID appears in both `blocks` and `layouts`. When
+   `list-block-modules` lists `common-layout` under `cannotCreate`, as CLI 1.10.0 does,
+   this step is skipped and verification doesn't require it.
 3. **Navigation** — resolve page IDs and add internal links only after pages exist.
 4. **Blocks** — add/move/update blocks page by page; resolve IDs after each structural
    change and use targeted patches rather than replacing `values` or `components`.

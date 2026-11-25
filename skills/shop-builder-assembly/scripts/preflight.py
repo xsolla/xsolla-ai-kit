@@ -8,6 +8,7 @@ import json
 import shutil
 import subprocess
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 sys.dont_write_bytecode = True  # keep the installed skill folder clean
@@ -19,7 +20,7 @@ if SCRIPTS_DIR not in sys.path:
     sys.path.insert(0, SCRIPTS_DIR)
 
 import cli_environment
-from render_plan import LAYOUT_WARNING, common_layout_id
+from render_plan import COMMON_LAYOUT, LAYOUT_WARNING, common_layout_id
 from validate_shop_brief import load_brief, validate
 
 # One text for preflight, verification and the plan's warning.
@@ -59,6 +60,28 @@ def data(value: object) -> object:
     if isinstance(value, dict) and value.get("ok") is True and "data" in value:
         return value["data"]
     return value
+
+
+def cli_can_create_layout(run: Callable[..., object] | None = None) -> bool:
+    """Return whether the CLI's create-block can add the common layout.
+
+    `list-block-modules` names the modules create-block refuses under
+    ``cannotCreate``, each as "<module> — <reason>". A CLI without that command, a
+    failed call, or an answer in another shape counts as no: the layout step is then
+    skipped, never guessed. ``run`` is the caller's own `run_json`.
+    """
+
+    try:
+        catalog = data((run or run_json)("shopbuilder", "list-block-modules"))
+    except RuntimeError:
+        return False
+    refused = catalog.get("cannotCreate") if isinstance(catalog, dict) else None
+    if not isinstance(refused, list):
+        return False
+    return not any(
+        isinstance(entry, str) and entry.split()[:1] == [COMMON_LAYOUT]
+        for entry in refused
+    )
 
 
 def site_block_module(slug: str, block_id: str) -> object:
@@ -142,8 +165,8 @@ def main() -> int:
         websites = run_json("shopbuilder", "list-websites")
         landing = first_landing(websites, slug)
 
-        # The CLI cannot add the common layout (its create-block refuses layout
-        # modules), so assembly skips that step on a site that has none.
+        # Assembly adds the common layout after its page writes. When the CLI's
+        # create-block refuses the module, assembly skips that step.
         layout_id = None
         if landing is not None:
             site = data(run_json("shopbuilder", "get-structure", "--slug", slug))
@@ -163,6 +186,8 @@ def main() -> int:
             layout_step = "not_applicable"
         elif layout_id is not None:
             layout_step = "present"
+        elif cli_can_create_layout():
+            layout_step = "create"
         else:
             layout_step = "skip"
             print(LAYOUT_SKIPPED, file=sys.stderr)

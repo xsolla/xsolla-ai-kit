@@ -198,7 +198,6 @@ class PresetTests(unittest.TestCase):
         self.brief["content"].pop("faq", None)
         structure = {
             "_id": "landing",
-            "layouts": [],
             "pages": [
                 {
                     "_id": "home",
@@ -250,7 +249,6 @@ class PresetTests(unittest.TestCase):
             "ok": True,
             "data": {
                 "_id": "landing",
-                "layouts": [],
                 "pages": [
                     {
                         "_id": "home",
