@@ -146,3 +146,18 @@ by `tests/mask_site_export.py`.
   `get-theme` returns the same tokens. The palette needs another route on these sites.
 - `get-rendered-block-html` returns the page's CSS class names, not its text, so it
   can't confirm what a block shows.
+
+A full build of the mobile preset on a second new site, through the scripts (same day):
+
+- Both runs went through under one yes: run 1 made the site and its page with
+  `add-page --type topup`; the second render said "Covered by the approved plan"; run 2
+  removed 12 seeded blocks, left header, hero, store and footer, and linked the store.
+  `verify_structure.py` passed, with the two warnings about the layout and the header.
+- A rerun on that site with another catalog group changed only the store's section.
+- `enable-preview` returned a token, and the site opened in the public preview at
+  desktop and phone widths, although it has no common layout. The store showed the
+  group's items with images and prices. With a group type the project has no items of,
+  it showed "No items to display".
+- The header kept its four default links. Three of them scroll to blocks the trim
+  removed, so they lead nowhere until the header is linked.
+- The hero and the store kept Shop Builder's placeholder texts.
