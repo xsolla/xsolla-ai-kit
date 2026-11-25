@@ -7,9 +7,10 @@
         > tests/fixtures/redesigned-site.json
 
 The paths name the pages to keep. Block order, modules, `values` and every reference
-inside them stay as exported. IDs, links, text and account data are replaced, the same
-way everywhere, so a reference still finds its target. Run it again when Shop Builder
-ships a block version with another shape.
+inside them stay as exported, except `values.defaultData`: a copy of the block's
+defaults that nothing reads from a site, and a fifth of the file. IDs, links, text and
+account data are replaced, the same way everywhere, so a reference still finds its
+target. Run it again when Shop Builder ships a block version with another shape.
 """
 
 from __future__ import annotations
@@ -28,6 +29,7 @@ I18N_KEY = re.compile(r"[A-Za-z0-9_.\-]*")
 SITE_KEYS = ("_id", "type", "published", "languages", "layouts")
 PAGE_KEYS = ("_id", "name", "path", "type", "seo")
 DROPPED_BLOCK_KEYS = ("metadata", "icon")
+DROPPED_VALUE_KEYS = ("defaultData",)
 SAFE_HOST = "https://example.invalid/"
 
 
@@ -78,6 +80,10 @@ def without(value: object, key: str) -> object:
 
 def mask_block(masker: Masker, block: dict) -> dict:
     kept = {key: item for key, item in block.items() if key not in DROPPED_BLOCK_KEYS}
+    if isinstance(kept.get("values"), dict):
+        kept["values"] = {
+            key: item for key, item in kept["values"].items() if key not in DROPPED_VALUE_KEYS
+        }
     masked = masker.value(kept)
     values = masked.get("values")
     if isinstance(values, dict) and isinstance(values.get("host"), str):
