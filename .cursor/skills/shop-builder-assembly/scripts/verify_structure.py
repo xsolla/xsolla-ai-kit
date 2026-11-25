@@ -23,7 +23,7 @@ if SCRIPTS_DIR not in sys.path:
 
 from block_ops import QUESTS_DEV_NAME, QUESTS_MODULE, QUESTS_VERSION, card_text_ref
 import cli_environment
-from preflight import LAYOUT_SKIPPED, run_json, site_block_module
+from preflight import LAYOUT_SKIPPED, cli_can_create_layout, run_json, site_block_module
 from render_plan import (
     canonical_hash,
     common_layout_id,
@@ -313,11 +313,12 @@ def verify(
     plan: dict,
     structure: object,
     module_of: Callable[[str], object] | None = None,
+    layout_required: bool = True,
     localization: object = None,
 ) -> dict:
-    """``localization`` is the get-localization output a block-operations plan reads
-    heading texts back from. A site without the common layout gets a warning, not an
-    error: the CLI cannot add one, so assembly skipped the layout step."""
+    """``layout_required`` is False when the CLI's create-block refuses the common
+    layout, so assembly skipped the layout step. ``localization`` is the
+    get-localization output a block-operations plan reads heading texts back from."""
     if plan.get("mode") == "block_operations":
         errors = verify_block_operations(plan, structure, localization)
         current = structure_data(structure)
@@ -351,7 +352,10 @@ def verify(
     if plan.get("site_layout"):
         try:
             if common_layout_id(current, module_of) is None:
-                warnings.append(LAYOUT_SKIPPED)
+                if layout_required:
+                    errors.append("site-level common layout is missing")
+                else:
+                    warnings.append(LAYOUT_SKIPPED)
         except ValueError as exc:
             errors.append(f"site-level common layout is inconsistent: {exc}")
 
@@ -523,6 +527,8 @@ def main() -> int:
             plan,
             load_object(args.structure, "structure"),
             lambda block_id: site_block_module(slug, block_id),
+            layout_required=plan.get("mode") == "block_operations"
+            or cli_can_create_layout(),
             localization=(
                 load_object(args.localization, "localization") if args.localization else None
             ),

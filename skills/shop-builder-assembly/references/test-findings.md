@@ -83,10 +83,12 @@ First-time user runs (2026-10-29 to 2026-11-02, CLI 1.9.4) found two more:
 
 A first-time user build on CLI 1.10.0 (2026-11-25) found two more:
 
-6. `create-block` adds a block to a page (`--page-id`, `--module`) and refuses layout
+6. `create-block` takes the module by `--module` and a `--page-id`, and refuses layout
    modules: `list-block-modules` lists `common-layout` under `cannotCreate`, as
-   auto-created with every site. A site from `create-website` still has `layouts: []`,
-   so assembly builds it without the common layout and warns. Still open.
+   auto-created with every site. A site from `create-website` still has `layouts: []`.
+   The scripts read that list first: while `common-layout` is on it they build the site
+   without the layout and warn, and once it is off they run `create-block --module
+   common-layout`. Still open.
 7. On a new project, `add-page` seeded federated blocks of the redesigned set
    (`_site-builder-classic_header`, `_site-builder-classic_lead-gs` and others) instead
    of native modules. Their values have another shape, so `render_plan.py` stops before

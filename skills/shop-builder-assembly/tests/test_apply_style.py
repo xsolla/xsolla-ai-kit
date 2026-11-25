@@ -80,7 +80,6 @@ class ThemePlanTests(unittest.TestCase):
         brief = brief_with_palette()
         structure = {
             "_id": "landing-1",
-            "layouts": [],
             "pages": [
                 {"_id": "p1", "path": "/", "theme": {"enabled": True}, "blocks": []},
             ],
@@ -177,7 +176,6 @@ class ApplyStyleRunTests(unittest.TestCase):
         self.root = Path(directory.name)
         self.site = {
             "_id": "landing-1",
-            "layouts": [],
             "theme": {
                 "calculationType": "xds-theme",
                 "input": {
@@ -491,7 +489,6 @@ class ImagesPlanTests(unittest.TestCase):
     def test_an_existing_block_that_stays_is_listed_for_the_yes(self) -> None:
         structure = {
             "_id": "landing-1",
-            "layouts": [],
             "pages": [
                 {
                     "_id": "p1",
@@ -565,7 +562,6 @@ class ApplyImagesRunTests(unittest.TestCase):
         transparent = {"enable": True, "type": "color", "color": "rgba(0, 0, 0, 0)"}
         self.site = {
             "_id": "landing-1",
-            "layouts": [],
             "pages": [
                 {
                     "_id": "page-1",

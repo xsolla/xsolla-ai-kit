@@ -58,10 +58,12 @@ built.
    session and others, reaches the live project, payments and refunds included, and give
    the undo: `xsolla config set sandbox true` and the previous merchant and project, by
    ID. Nothing is written to the project before the plan's yes.
-3. **A new site the CLI creates won't open.** The CLI can't give a new store site its
-   common layout: `xsolla shopbuilder create-block` adds page blocks and refuses layout
-   modules. For a new site, say in the first message: a site this CLI creates won't open
-   in the Editor, Publish or private preview. Put the choice in the
+3. **The CLI can make a site that opens.** A new store site gets its common layout only
+   from a CLI whose `xsolla shopbuilder create-block` takes that module. Run
+   `xsolla shopbuilder list-block-modules --json`. If `common-layout` is under
+   `cannotCreate`, as with CLI 1.10.0, or the command fails, say in the first message: a
+   new site this CLI creates won't open in the Editor, Publish or private preview until
+   the CLI can add the layout. Put the choice in the
    batch. Recommended: the developer creates the site in Publisher Account (Storefronts →
    Websites, from the Single-page shop template) and gives its address; assembly builds on
    it, with more pages when the preset has them, and it opens in the Editor and preview.
@@ -113,7 +115,7 @@ answer, so a reply such as "all recommended" settles it:
 - which side, only when the rule above says to ask;
 - the project link, only when neither the request nor the CLI names a project;
 - store or game home;
-- build without the common layout or wait, only for a new site the CLI would create;
+- build without the common layout or wait, only when the CLI can't create `common-layout`;
 - the storefront intake the listing didn't answer: game name, platforms, a short
   description, the site's address, and its languages (recommended: the primary language only; more go in
   later with `shopbuilder-translate`, which shows its own preview). The storefront

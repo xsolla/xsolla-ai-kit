@@ -8,12 +8,14 @@ project overrides after preflight.
 |---|---|---|---|
 | Discover | `xsolla config list --json` | Local profile | Merchant and project match; sandbox mode is off (see [Sandbox mode](#sandbox-mode)) |
 | Discover | `xsolla auth list-account --json` | Credential store | Active Publisher login state |
+| Safety | `shopbuilder list-block-modules --json`, before a plan that builds pages | Installed CLI | `common-layout` is not under `cannotCreate`; otherwise the layout step is skipped |
 | Discover | `xsolla shopbuilder list-websites --json` | Project context | Slug, landing ID, type |
 | Backup | `get-landing`, `get-structure`, `get-localization`, `list-assets`, `list-versions` | Existing slug | Restorable configuration evidence |
 | Bootstrap | `create-website --type topup` | Name, slug | Empty landing with `type:null` |
 | Bootstrap | `set-landing-type --type store` | Slug | Configured webshop landing |
 | Pages | `add-page` | Slug, name, path | Page with default template blocks |
-| Site layout | `get-block --slug <slug> --block-id <id>` for each ID in `layouts` | `get-structure` layout IDs | The module of each site layout; `common-layout` can sit next to other layouts. A site without it is built without it: `create-block` refuses layout modules |
+| Site layout | `get-block --slug <slug> --block-id <id>` for each ID in `layouts` | `get-structure` layout IDs | The module of each site layout; `common-layout` can sit next to other layouts |
+| Site layout | `create-block --slug <slug> --page-id <page id> --module common-layout` (only if missing, and only when the CLI can create it) | Pages already created | Site-level layout required by Editor, Publish, and preview; avoids suppressing template header/footer |
 | Blocks | `add-block`, `move-block`, and page-scoped `update-block` removal patches | Landing/page/block IDs | Ordered page block list |
 | Theme | `update-block` with `type:site` and `type:page`, through `apply_style.py` | Landing/page IDs, targeted patches | Site theme `theme.input`; pages on the site theme |
 | Assets | `upload-asset --type image`, through `apply_style.py` | Landing ID, local file | Permanent CDN URL in a block's background or logo |

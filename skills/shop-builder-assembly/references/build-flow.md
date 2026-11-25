@@ -30,12 +30,14 @@ After confirmation, apply the plan in this dependency order:
 
 1. **Theme**: set site and page theme source fields; page theme overrides site theme.
 2. **Pages**: create all page paths before linking navigation.
-3. **Site layout**: find the site's `common-layout` by module, not position:
-   `get-structure` lists layouts by ID, so read each one with `get-block`. Other layouts,
-   such as a sidebar's side-by-side layout, stay. Verify the common layout's ID appears in
-   both `blocks` and `layouts`. The CLI can't add a common layout (`create-block` refuses
-   layout modules), so on a site without one this step is skipped and verification warns
-   instead of failing.
+3. **Site layout**: after page/template creation, add `common-layout` only if the
+   site has none, with `create-block --slug <slug> --page-id <page id> --module
+   common-layout`; adding it earlier suppresses some template headers and footers.
+   Find it by module, not position: `get-structure` lists layouts by ID, so read each
+   one with `get-block`. Other layouts, such as a sidebar's side-by-side layout, stay.
+   Verify the common layout's ID appears in both `blocks` and `layouts`. When
+   `list-block-modules` lists `common-layout` under `cannotCreate`, as CLI 1.10.0 does,
+   this step is skipped and verification doesn't require it.
 4. **Navigation**: resolve page IDs and add internal links only after pages exist.
 5. **Blocks**: add/move/update blocks page by page; resolve IDs after each structural
    change and use targeted patches rather than replacing `values` or `components`.

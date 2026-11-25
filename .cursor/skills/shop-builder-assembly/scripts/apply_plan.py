@@ -25,8 +25,9 @@ if SCRIPTS_DIR not in sys.path:
     sys.path.insert(0, SCRIPTS_DIR)
 
 import cli_environment
-from preflight import LAYOUT_SKIPPED
+from preflight import LAYOUT_SKIPPED, cli_can_create_layout
 from render_plan import (
+    COMMON_LAYOUT,
     CUSTOM_CODE_WARNING,
     STOPPED_PARTWAY,
     approval_changes,
@@ -280,16 +281,48 @@ def site_block_module(slug: str, block_id: str) -> object:
 
 
 def ensure_common_layout(slug: str) -> str | None:
-    """Return the ID of the site's common layout.
+    """Attach the site layout after pages so template headers/footers survive.
 
-    Returns None when the site has none: the CLI cannot add one (its create-block
-    refuses layout modules), so the site is built without it.
+    Returns None when the site has no layout and the CLI's create-block refuses the
+    module (`list-block-modules` lists it under ``cannotCreate``): the step is
+    skipped and the site is built without it.
     """
-    layout_id = common_layout_id(
-        structure(slug), lambda block_id: site_block_module(slug, block_id)
-    )
-    if layout_id is None:
+
+    def module_of(block_id: str) -> object:
+        return site_block_module(slug, block_id)
+
+    current = structure(slug)
+    layout_id = common_layout_id(current, module_of)
+    if layout_id is not None:
+        return layout_id
+    if not cli_can_create_layout(run_json):
         print(LAYOUT_SKIPPED, file=sys.stderr)
+        return None
+    # create-block places a block through a page, so the layout needs one to exist.
+    page_id = next(
+        (
+            page.get("_id")
+            for page in current["pages"]
+            if isinstance(page, dict) and isinstance(page.get("_id"), str)
+        ),
+        None,
+    )
+    if page_id is None:
+        raise RuntimeError("the common layout needs a page, and the site has none")
+    run_json(
+        "shopbuilder",
+        "create-block",
+        "--slug",
+        slug,
+        "--page-id",
+        page_id,
+        "--module",
+        COMMON_LAYOUT,
+    )
+    # Read it back by module: the command's answer has no documented shape.
+    layout_id = common_layout_id(structure(slug), module_of)
+    if layout_id is None:
+        raise RuntimeError("created common layout is missing from the saved structure")
     return layout_id
 
 
@@ -1910,6 +1943,10 @@ def _main() -> int:
         slug = brief["site"]["slug"]
         websites = run_json("shopbuilder", "list-websites")
         existed = website_exists(websites, slug)
+        # Block operations never touch the layout, so they skip the catalog read.
+        can_create_layout = "block_operations" in brief or cli_can_create_layout(
+            run_json
+        )
         if existed:
             if args.backup_dir is None:
                 raise RuntimeError("--backup-dir is required for an existing target")
@@ -1923,12 +1960,14 @@ def _main() -> int:
                 saved_structure,
                 created,
                 args.brief.resolve().parent,
+                can_create_layout,
                 lambda block_id: site_block_module(slug, block_id),
             )
         else:
             plan = build_plan(
                 brief,
                 base_dir=args.brief.resolve().parent,
+                can_create_layout=can_create_layout,
             )
 
         check_approval(args, plan, approved, report)
