@@ -20,11 +20,12 @@ allowed. The general Shop Builder rules (standard blocks first, Custom Blocks wh
 theme and copy from a brief) don't apply to these pages.
 
 The scripts do the checking; follow their output and never work around a refusal. Data
-connections, bindings and SEO go through commands the CLI has today (`update-block`,
-`update-many-localization`), stored the way Site Builder stores them. Today's CLI can't create
-a dynamic page or add a block at a pinned version, so a batch that creates a page stops at the
-gate with zero writes; an update of an existing page runs. Show the user the gate's report:
-it names the missing commands and flags, which the Shop Builder team tracks.
+connections, bindings and SEO go through `update-block` and `update-many-localization`, stored
+the way Site Builder stores them. Creating a page needs Xsolla CLI 1.10.0 or later: `add-page`
+makes the dynamic page, and `create-block --block-version` adds each block at its pinned
+version. On an older CLI a batch that creates a page stops at the gate with zero writes; an
+update of an existing page runs. Show the user the gate's report: it names the missing
+commands and flags, and updating the CLI adds them.
 
 ## Before anything
 

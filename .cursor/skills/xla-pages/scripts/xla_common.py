@@ -46,8 +46,8 @@ VALUES_SYSTEM_ID = "current-values-system"
 SEO_STRINGS = {"title": "title", "description": "description", "image": "ogImage"}
 
 # The commands any script may run. Everything else (catalog, liveops, publish, preview,
-# verify-website, versions, delete-block, duplicate-block, create-website, create-block,
-# custom blocks) is refused before the CLI runs.
+# verify-website, versions, delete-block, duplicate-block, create-website, the deprecated
+# add-block, custom blocks) is refused before the CLI runs.
 READ_COMMANDS = frozenset(
     {
         ("config", "list"),
@@ -61,7 +61,7 @@ READ_COMMANDS = frozenset(
 WRITE_COMMANDS = frozenset(
     {
         ("shopbuilder", "add-page"),
-        ("shopbuilder", "add-block"),
+        ("shopbuilder", "create-block"),
         ("shopbuilder", "update-block"),
         ("shopbuilder", "update-many-localization"),
     }

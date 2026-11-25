@@ -18,7 +18,7 @@ class ZeroWriteTests(unittest.TestCase):
     def setUp(self) -> None:
         self.tmp = tempfile.TemporaryDirectory()
         self.dir = Path(self.tmp.name)
-        self.cli = stand_in_cli.StandInCli(capabilities="proposed")
+        self.cli = stand_in_cli.StandInCli(capabilities="shipped")
         self.plan, errors, self.plan_path, self.backup = harness.prepare(self.dir, self.cli)
         self.assertEqual([], errors)
         self.cli.calls.clear()
@@ -101,17 +101,17 @@ class ZeroWriteTests(unittest.TestCase):
         code, report = harness.apply(self.cli, self.edited(long_row), self.backup)
         self.assert_refused(code, report, "row")
 
-    def test_the_current_cli_is_blocked_by_the_gate_with_zero_writes(self) -> None:
-        cli = stand_in_cli.StandInCli(capabilities="current")
+    def test_an_older_cli_is_blocked_by_the_gate_with_zero_writes(self) -> None:
+        cli = stand_in_cli.StandInCli(capabilities="older")
         code, report = harness.apply(cli, self.plan_path, self.backup)
         self.assertEqual(1, code)
         self.assertEqual("blocked_capability", report["status"])
         self.assertEqual([], cli.writes())
         missing = {item["capability"]: item["missing"] for item in report["details"]}
-        # Everything else (connections, bindings, SEO) goes through commands the CLI has today.
+        # Everything else (connections, bindings, SEO) goes through commands an older CLI has too.
         self.assertEqual({
             "add-page-dynamic": ["--provider-id", "--provider-input"],
-            "add-block-pinned": ["--package", "--version"],
+            "add-block-pinned": ["the command"],
         }, missing)
 
     def test_responses_older_than_24_hours_stop_with_zero_writes(self) -> None:
@@ -194,6 +194,7 @@ class ZeroWriteTests(unittest.TestCase):
                 ("liveops", "create-promo-code"),
                 ("shopbuilder", "publish", "--slug", "x"),
                 ("shopbuilder", "enable-preview", "--slug", "x"),
+                ("shopbuilder", "add-block", "--block", "hero"),
                 ("shopbuilder", "delete-block", "--blockid", "x"),
                 ("shopbuilder", "duplicate-block", "--blockid", "x"),
                 ("shopbuilder", "update-block", "--force"),

@@ -258,18 +258,19 @@ class Run:
     def op_add_block(self, route: str, expected: dict, state: dict, op: dict) -> None:
         known = {b.get("_id") for b in self.page(route).get("blocks") or []}
         self.write(
-            "shopbuilder", "add-block", "--landing-id", self.landing, "--page-id", state["page_id"],
-            "--block", "federated", "--package", op["package"], "--version", op["version"],
-            "--index", str(op["index"]),
+            "shopbuilder", "create-block", "--slug", self.slug, "--page-id", state["page_id"],
+            "--module", op["package"], "--block-version", op["version"],
+            "--position", str(op["index"]),
         )
         new = [b for b in self.page(route).get("blocks") or [] if b.get("_id") not in known]
         if len(new) != 1:
-            raise common.CliError(f"add-block left {len(new)} new blocks on {route}")
+            raise common.CliError(f"create-block left {len(new)} new blocks on {route}")
         package, version = common.block_identity(new[0])
         if (package, version) != (op["package"], op["version"]):
-            # Site Builder falls back to the latest stable release when a version isn't found.
+            # create-block refuses a version the blocks service doesn't have. The read-back is
+            # the proof that the block on the page is the pinned one.
             raise common.CliError(
-                f"add-block added {package}@{version}, not the pinned {op['package']}@{op['version']}"
+                f"create-block added {package}@{version}, not the pinned {op['package']}@{op['version']}"
             )
         state["blocks"][op["key"]] = new[0]["_id"]
         self.progress["created_blocks"].append(new[0]["_id"])

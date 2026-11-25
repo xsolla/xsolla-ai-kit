@@ -1,4 +1,4 @@
-"""The write path against the stand-in CLI's proposed commands, and the after-write check."""
+"""The write path against the stand-in CLI, and the after-write check."""
 
 from __future__ import annotations
 
@@ -28,7 +28,7 @@ class ApplyAndVerifyTests(unittest.TestCase):
     def setUp(self) -> None:
         self.tmp = tempfile.TemporaryDirectory()
         self.dir = Path(self.tmp.name)
-        self.cli = stand_in_cli.StandInCli(capabilities="proposed")
+        self.cli = stand_in_cli.StandInCli(capabilities="shipped")
         self.manifest = common.load_manifest()
         self.config = common.load_config(harness.CONFIG)
 
@@ -90,7 +90,7 @@ class ApplyAndVerifyTests(unittest.TestCase):
         self.assertFalse(any("publish" in call[1] or "preview" in call[1] for call in self.cli.calls))
 
     def test_a_blank_page_is_used_when_the_cli_has_the_type_flag(self) -> None:
-        self.cli = stand_in_cli.StandInCli(capabilities="proposed", blank_flag=True)
+        self.cli = stand_in_cli.StandInCli(capabilities="shipped", blank_flag=True)
         self.run_batch()
         add_pages = [call for call in self.cli.writes() if call[1] == "add-page"]
         self.assertTrue(all(call[call.index("--type") + 1] == "blank" for call in add_pages))
@@ -132,7 +132,7 @@ class ApplyAndVerifyTests(unittest.TestCase):
         # {slug} is this page's route param. An unfilled {provider} is not, so it stays as written.
         self.assertEqual("https://x.la/{provider}/:slug", seo["canonical"]["value"])
 
-    def test_a_version_the_server_falls_back_from_stops_the_run(self) -> None:
+    def test_a_version_the_blocks_service_lacks_creates_nothing_and_stops_the_run(self) -> None:
         plan, errors, plan_path, backup_dir = harness.prepare(self.dir, self.cli)
         self.assertEqual([], errors)
         del self.cli.defaults[("@xla-pages/hero", "0.4.1-next.3")]
@@ -140,8 +140,29 @@ class ApplyAndVerifyTests(unittest.TestCase):
         code, report = harness.apply(self.cli, plan_path, backup_dir)
         self.assertEqual(1, code)
         self.assertEqual("stopped-partway", report["status"])
+        self.assertEqual("@xla-pages/hero@0.4.1-next.3 is not in the blocks service", report["reason"])
+        # No hero at another version: the page stops at the block created before it.
+        self.assertEqual(["@xla-pages/top-navigation"],
+                         [common.block_identity(b)[0] for b in page(self.cli.site, "/payment/klarna")["blocks"]])
+
+    def test_a_block_read_back_at_another_version_stops_the_run(self) -> None:
+        plan, errors, plan_path, backup_dir = harness.prepare(self.dir, self.cli)
+        self.assertEqual([], errors)
+        create = self.cli.cmd_create_block
+
+        def at_another_version(options: dict, flags: set) -> object:
+            result = create(options, flags)
+            if options["--module"] == "@xla-pages/hero":
+                created = self.cli.page(options["--page-id"])["blocks"][int(options["--position"])]
+                created["values"]["version"] = "0.4.2"
+            return result
+
+        self.cli.cmd_create_block = at_another_version
+        code, report = harness.apply(self.cli, plan_path, backup_dir)
+        self.assertEqual(1, code)
+        self.assertEqual("stopped-partway", report["status"])
         self.assertEqual(
-            "add-block added @xla-pages/hero@0.4.2, not the pinned @xla-pages/hero@0.4.1-next.3",
+            "create-block added @xla-pages/hero@0.4.2, not the pinned @xla-pages/hero@0.4.1-next.3",
             report["reason"],
         )
 
@@ -212,9 +233,9 @@ class ApplyAndVerifyTests(unittest.TestCase):
             differences,
         )
 
-    def test_an_update_of_row_text_runs_on_the_current_cli(self) -> None:
+    def test_an_update_of_row_text_runs_on_an_older_cli(self) -> None:
         self.run_batch()
-        self.cli.table = dict(stand_in_cli.CURRENT)
+        self.cli.table = dict(stand_in_cli.OLDER)
         batch = harness.load_batch()
         batch["providers"][1]["hero_description"] = "Pay with Toss in two taps"
         config = harness.write_config(self.dir, allow_unverified_updates=True)
