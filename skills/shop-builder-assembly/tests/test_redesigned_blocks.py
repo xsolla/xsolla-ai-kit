@@ -395,6 +395,33 @@ class RedesignedPlanTests(unittest.TestCase):
             {render_plan.logical_module(block) for block in fixture_page(STORE_PAGE)["blocks"]},
         )
 
+    def test_a_page_to_be_made_leaves_out_what_its_page_type_comes_without(self) -> None:
+        def planned(structure: dict | None, pages: list[dict]) -> dict:
+            brief = copy.deepcopy(self.brief)
+            brief["content"] = {**brief.get("content", {}), "gallery": ["art.png"],
+                                "page_overrides": pages}
+            return render_plan.build_plan(brief, structure)
+
+        store = {"name": "Home", "path": "/",
+                 "blocks": ["header", "leadGameSales", "newStore", "gallery", "footer"]}
+        about = {"name": "About", "path": "/about", "blocks": ["header", "gallery", "footer"]}
+        left_out = {"path": "/", "module": "gallery",
+                    "reason": render_plan.NO_BLOCK_IN_PAGE_TYPE, "action": "omit"}
+        # A new site: the store page's type has no gallery; the default page has one.
+        plan = planned(None, [store, about])
+        self.assertEqual(
+            [["header", "leadGameSales", "newStore", "footer"], ["header", "gallery", "footer"]],
+            [page["blocks"] for page in plan["pages"]],
+        )
+        self.assertEqual([left_out], [o for o in plan["omissions"] if o["module"] == "gallery"])
+        # A redesign site that doesn't have the page yet: the same.
+        site = redesigned_site(self.brief)
+        site["pages"] = []
+        self.assertIn(left_out, planned(site, [store])["omissions"])
+        # A site without the redesign makes a native page, where the block can be added.
+        site["features"] = {"redesign": False}
+        self.assertEqual(store["blocks"], planned(site, [store])["pages"][0]["blocks"])
+
     def test_a_template_site_keeps_its_redesigned_blocks(self) -> None:
         # A site made from a template: the header and footer sit in the site layout.
         # Before, every redesigned block on the page was planned for removal.
@@ -647,7 +674,13 @@ class RedesignedNewSiteTests(unittest.TestCase):
     """A new site, both runs under one yes, through apply_plan.main()."""
 
     def setUp(self) -> None:
-        self.brief = json.loads(EXAMPLE_BRIEF.read_text(encoding="utf-8"))
+        self.use("mobile-single-page")
+
+    def use(self, example: str) -> None:
+        """Start a new site from one of the example briefs."""
+        self.brief = json.loads(
+            (ROOT / "examples" / f"{example}.json").read_text(encoding="utf-8")
+        )
         directory = tempfile.TemporaryDirectory()
         self.addCleanup(directory.cleanup)
         self.root = Path(directory.name)
@@ -710,6 +743,39 @@ class RedesignedNewSiteTests(unittest.TestCase):
         )
         self.assertEqual([], self.cli.writes("add-block"))
         self.assertEqual([], self.cli.writes("create-block"))
+
+    def test_every_preset_builds_under_one_yes(self) -> None:
+        # The first plan must already leave out what the pages will lack: a section
+        # that disappears in the second render would need a new yes, with the site and
+        # its pages already made.
+        for example in ("mobile-single-page", "pc-multi-page", "live-service-events"):
+            with self.subTest(example=example):
+                self.use(example)
+                report = self.build()
+                self.assertEqual("implemented-phases-applied", report["status"])
+                built = {
+                    render_plan.page_path(page): [
+                        render_plan.logical_module(block) for block in page["blocks"]
+                    ]
+                    for page in self.cli.landing["pages"]
+                }
+                self.assertEqual(
+                    {page["path"]: page["blocks"] for page in self.approved["pages"]}, built
+                )
+
+    def test_the_first_plan_leaves_out_what_a_store_page_will_lack(self) -> None:
+        self.use("live-service-events")
+        events = next(page for page in self.approved["pages"] if page["path"] == "/events")
+        self.assertEqual(["header", "leadGameSales", "newStore", "footer"], events["blocks"])
+        self.assertIn(
+            {
+                "path": "/events",
+                "module": "description",
+                "reason": render_plan.NO_BLOCK_IN_PAGE_TYPE,
+                "action": "omit",
+            },
+            self.approved["omissions"],
+        )
 
     def test_the_report_says_what_was_left_for_the_editor(self) -> None:
         report = self.build()

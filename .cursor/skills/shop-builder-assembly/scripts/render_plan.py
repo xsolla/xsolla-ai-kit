@@ -180,6 +180,10 @@ NO_REDESIGNED_BLOCK = (
     "this page is made of Shop Builder's redesigned blocks and has no such block; "
     "assembly can't add one"
 )
+NO_BLOCK_IN_PAGE_TYPE = (
+    "the page Shop Builder makes here comes without this block, and assembly can't add "
+    "a redesigned one"
+)
 
 
 def choose_preset(brief: dict) -> str:
@@ -563,13 +567,32 @@ def new_page_type(redesign: bool, page: dict) -> str | None:
     return REDESIGNED_STORE_PAGE_TYPE if redesign and "newStore" in page["blocks"] else None
 
 
+def new_page_template(redesign: bool, page: dict) -> list[str]:
+    """The blocks a page this plan creates comes with, by the modules they stand for."""
+    return REDESIGNED_STORE_PAGE_TEMPLATE if new_page_type(redesign, page) else NEW_PAGE_TEMPLATE
+
+
+def omit_blocks_a_new_page_lacks(page: dict, omissions: list[dict]) -> None:
+    """Leave out of a page this plan creates on a redesign site what its page type comes
+    without. The render after the page is made leaves the same blocks out, so the plan
+    shown for the yes must already do it: otherwise that render needs a new yes."""
+    template = new_page_template(True, page)
+    for module in list(page["blocks"]):
+        if has_twin(module) and module not in template:
+            page["blocks"].remove(module)
+            omissions.append(
+                {
+                    "path": page["path"],
+                    "module": module,
+                    "reason": NO_BLOCK_IN_PAGE_TYPE,
+                    "action": "omit",
+                }
+            )
+
+
 def template_removals(page: dict, redesign: bool = False) -> list[str]:
     """Return the template blocks a page created by this plan comes with but won't keep."""
-    template = (
-        REDESIGNED_STORE_PAGE_TEMPLATE
-        if new_page_type(redesign, page)
-        else NEW_PAGE_TEMPLATE
-    )
+    template = new_page_template(redesign, page)
     return [module for module in template if module not in page["blocks"]]
 
 
@@ -591,6 +614,7 @@ def bind_current_state(
             page["preserved_blocks"] = []
             page["removals"] = []
             # Shop Builder makes a new site a redesign site.
+            omit_blocks_a_new_page_lacks(page, omissions)
             page["template_removals"] = template_removals(page, redesign=True)
         return {
             "status": "not-supplied",
@@ -639,6 +663,8 @@ def bind_current_state(
                 page_plan["site_header"] = "layout"
                 for key in ("blocks", "requested_blocks"):
                     page_plan[key] = adapt_to_template_page(page_plan[key], set())
+            if redesign:
+                omit_blocks_a_new_page_lacks(page_plan, omissions)
             page_plan["template_removals"] = template_removals(page_plan, redesign)
             continue
         page_plan["page_id"] = current_page.get("_id")
