@@ -106,6 +106,7 @@ XSOLLA_PROJECT_API_KEY=<your API key>
 | `headless-checkout-integration` | Payments via Headless Checkout | @y.klochikhin | Done |
 | `webhooks-impl` | Webhook handler generation | @e.chernykh | Done |
 | `production` | Sandbox → live / go-live | @y.klochikhin | Done |
+| `payment-errors` | Errors 3007 and 0401-2000 before the first sandbox payment | @j.manashti | Draft |
 | `quest-setup` | Quest Platform quests, events, rewards, Web Shop and Shop Builder Quests operations | @r.aliyev | Draft |
 
 ## Invoking a skill
@@ -128,7 +129,8 @@ and `production`. `nocode-shop-setup` is the entry for Shop Builder: a store goe
 `game-web-portal`. `shopbuilder-translate` translates the page copy of a Shop Builder
 site. `xla-pages` builds the XLA Pages on x.la from their own manifest. `quest-setup` creates
 and manages Quest Platform quests, events, rewards, Web Shop quest modules, and approved
-Shop Builder Quests block operations.
+Shop Builder Quests block operations. `payment-errors` gives the most likely cause and
+fix for error 3007 or 0401-2000 before the first sandbox payment.
 
 ## Contributing
 
