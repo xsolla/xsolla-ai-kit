@@ -2514,6 +2514,37 @@ WRITE_COMMANDS = {
 }
 
 
+class NativePlanIdentityTests(unittest.TestCase):
+    """A plan for a site made of native blocks keeps its confirmation ID.
+
+    The IDs were taken before assembly learned Shop Builder's redesigned blocks, and that
+    work must not move them: a yes given for a native site stays valid. When a native
+    plan is meant to change, update the ID in the same commit and say why.
+    """
+
+    def setUp(self) -> None:
+        self.brief = json.loads(EXAMPLE_BRIEF.read_text(encoding="utf-8"))
+
+    def test_a_template_site_plan_keeps_its_id(self) -> None:
+        site, _ = publisher_template_site(self.brief)
+        plan = render_plan.build_plan(self.brief, site)
+        self.assertEqual("sha256:1a2a50e6af85", plan["confirmation_id"])
+
+    def test_a_new_native_page_plan_keeps_its_id(self) -> None:
+        blocks = [
+            {"_id": f"block-{index}", "module": module}
+            for index, module in enumerate(render_plan.NEW_PAGE_TEMPLATE, start=1)
+        ]
+        site = {
+            "_id": "landing-1",
+            "layouts": [],
+            "blocks": [block["_id"] for block in blocks],
+            "pages": [{"_id": "page-1", "name": "Home", "path": "/", "blocks": blocks}],
+        }
+        plan = render_plan.build_plan(self.brief, site)
+        self.assertEqual("sha256:a5dee758db83", plan["confirmation_id"])
+
+
 class OneApprovalTests(unittest.TestCase):
     """A new site's second run reuses the developer's yes only when the plan is covered."""
 

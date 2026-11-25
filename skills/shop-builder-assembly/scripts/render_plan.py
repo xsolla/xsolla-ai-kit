@@ -24,6 +24,7 @@ from block_ops import (
     block_fingerprints,
     plan_block_operations,
 )
+from redesigned_blocks import PREFIX as REDESIGNED_BLOCK_PREFIX
 from validate_shop_brief import load_brief, validate
 
 PRESET_PAGES = {
@@ -147,7 +148,6 @@ NO_OWN_HEADER = (
 # Shop Builder's redesigned block set: federated blocks whose `values.blockId` starts
 # with this prefix, such as `_site-builder-classic_header`. Their values have another
 # shape than the native modules', so the patches assembly makes don't fit them.
-REDESIGNED_BLOCK_PREFIX = "_site-builder-classic_"
 REDESIGNED_BLOCKS = (
     "Page {path} is made of Shop Builder's redesigned blocks ({module} and others), "
     "and assembly can't build on them yet. Nothing was written."
