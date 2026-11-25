@@ -73,7 +73,8 @@ until [expert-review.md](references/expert-review.md) records approval.
    list-projects`), each page and its sections in order, the products and offers in
    each, the visual direction (palette, backgrounds, artwork and where it came from), each
    page's search title, description and share image, exact block removals, the template
-   sections each new page comes with that are removed (`template_removals`), catalog
+   sections each new page comes with that are removed (`template_removals` has one entry
+   per block: say how many of each, such as four more Store sections), catalog
    mappings (for an `__all__` section, every enabled item it pulls in, with test or
    leftover entries flagged; recommend sections of the new groups only, since disabling
    an entry changes the live catalog at once), existing pages the theme puts on the site colors, that a preview link anyone can

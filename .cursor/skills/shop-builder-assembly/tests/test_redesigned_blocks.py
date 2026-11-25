@@ -378,22 +378,31 @@ class RedesignedPlanTests(unittest.TestCase):
         self.assertEqual("topup", render_plan.new_page_type(True, store))
         self.assertIsNone(render_plan.new_page_type(True, about))
         self.assertIsNone(render_plan.new_page_type(False, store))
+        # One entry per block that goes: four of the five stores, one of the two heroes.
         self.assertEqual(
-            ["sb-daily-reward", "sb-offer-chain", "rewards", "promocodes", "social-quests",
-             "offerwall-block", "faq"],
+            "sb-daily-reward sb-offer-chain newStore newStore rewards newStore newStore "
+            "promocodes social-quests offerwall-block faq leadGameSales".split(),
             render_plan.template_removals(store, redesign=True),
         )
-        native = [m for m in render_plan.NEW_PAGE_TEMPLATE if m not in about["blocks"]]
-        self.assertEqual(native, render_plan.template_removals(about, redesign=True))
+        self.assertEqual(
+            "leadGameSales packs packs bento-grid bento-grid bento-grid gallery packs "
+            "requirements faq".split(),
+            render_plan.template_removals(about, redesign=True),
+        )
+        # A site without the redesign: the native page, as before.
         self.assertEqual(
             [m for m in render_plan.NEW_PAGE_TEMPLATE if m not in store["blocks"]],
             render_plan.template_removals(store),
         )
-        # The list matches what the fixture's store page really has.
-        self.assertEqual(
-            set(render_plan.REDESIGNED_STORE_PAGE_TEMPLATE),
-            {render_plan.logical_module(block) for block in fixture_page(STORE_PAGE)["blocks"]},
-        )
+        # Both lists are what the fixture's pages really have, block by block.
+        for template, path in (
+            (render_plan.REDESIGNED_PAGE_TEMPLATE, DEFAULT_PAGE),
+            (render_plan.REDESIGNED_STORE_PAGE_TEMPLATE, STORE_PAGE),
+        ):
+            self.assertEqual(
+                template,
+                [render_plan.logical_module(block) for block in fixture_page(path)["blocks"]],
+            )
 
     def test_a_page_to_be_made_leaves_out_what_its_page_type_comes_without(self) -> None:
         def planned(structure: dict | None, pages: list[dict]) -> dict:
@@ -761,6 +770,13 @@ class RedesignedNewSiteTests(unittest.TestCase):
                 }
                 self.assertEqual(
                     {page["path"]: page["blocks"] for page in self.approved["pages"]}, built
+                )
+                # The plan shown for the yes lists as many blocks to remove as the run
+                # removed.
+                self.assertEqual(
+                    {page["path"]: len(page["template_removals"])
+                     for page in self.approved["pages"]},
+                    {page["path"]: page["removed_blocks"] for page in report["pages"]},
                 )
 
     def test_the_first_plan_leaves_out_what_a_store_page_will_lack(self) -> None:

@@ -2625,13 +2625,12 @@ class OneApprovalTests(unittest.TestCase):
 
     def test_bootstrap_plan_shows_template_removals_and_the_public_preview(self) -> None:
         # A new site is a redesign site, where a store page is made with its own type.
+        # That page comes with five stores and two heroes: one of each stays.
         home = self.approved["pages"][0]
+        self.assertEqual(["header", "leadGameSales", "newStore", "footer"], home["blocks"])
         self.assertEqual(
-            [
-                m
-                for m in render_plan.REDESIGNED_STORE_PAGE_TEMPLATE
-                if m not in home["blocks"]
-            ],
+            "sb-daily-reward sb-offer-chain newStore newStore rewards newStore newStore "
+            "promocodes social-quests offerwall-block faq leadGameSales".split(),
             home["template_removals"],
         )
         self.assertIn("faq", home["template_removals"])

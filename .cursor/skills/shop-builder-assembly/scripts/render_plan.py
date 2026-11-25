@@ -131,8 +131,24 @@ NEW_PAGE_TEMPLATE = [
     "faq",
     "footer",
 ]
-# The page type that seeds a redesign site's page with a store, and the blocks it puts
-# there, by the modules they stand for (test-findings.md). The default page has no store.
+# What `add-page` puts on a page of a redesign site, block by block, by the modules the
+# blocks stand for (test-findings.md): the default page, which has no store, and the
+# page of the type that comes with one. A module is listed once for each of its blocks.
+REDESIGNED_PAGE_TEMPLATE = [
+    "header",
+    "leadGameSales",
+    "description",
+    "packs",
+    "packs",
+    "bento-grid",
+    "bento-grid",
+    "bento-grid",
+    "gallery",
+    "packs",
+    "requirements",
+    "faq",
+    "footer",
+]
 REDESIGNED_STORE_PAGE_TYPE = "topup"
 REDESIGNED_STORE_PAGE_TEMPLATE = [
     "header",
@@ -140,11 +156,16 @@ REDESIGNED_STORE_PAGE_TEMPLATE = [
     "newStore",
     "sb-daily-reward",
     "sb-offer-chain",
+    "newStore",
+    "newStore",
     "rewards",
+    "newStore",
+    "newStore",
     "promocodes",
     "social-quests",
     "offerwall-block",
     "faq",
+    "leadGameSales",
     "footer",
 ]
 PREVIEW = {"when": "after assembly, for the visual review", "access": "anyone with the link"}
@@ -569,7 +590,13 @@ def new_page_type(redesign: bool, page: dict) -> str | None:
 
 def new_page_template(redesign: bool, page: dict) -> list[str]:
     """The blocks a page this plan creates comes with, by the modules they stand for."""
-    return REDESIGNED_STORE_PAGE_TEMPLATE if new_page_type(redesign, page) else NEW_PAGE_TEMPLATE
+    if not redesign:
+        return NEW_PAGE_TEMPLATE
+    return (
+        REDESIGNED_STORE_PAGE_TEMPLATE
+        if new_page_type(redesign, page)
+        else REDESIGNED_PAGE_TEMPLATE
+    )
 
 
 def omit_blocks_a_new_page_lacks(page: dict, omissions: list[dict]) -> None:
@@ -591,9 +618,17 @@ def omit_blocks_a_new_page_lacks(page: dict, omissions: list[dict]) -> None:
 
 
 def template_removals(page: dict, redesign: bool = False) -> list[str]:
-    """Return the template blocks a page created by this plan comes with but won't keep."""
-    template = new_page_template(redesign, page)
-    return [module for module in template if module not in page["blocks"]]
+    """Return the template blocks a page created by this plan comes with but won't keep,
+    one entry per block: of a module the page comes with several times, one block stays
+    and each of the others is listed, so the list is as long as the run's removals."""
+    kept: set[str] = set()
+    removed = []
+    for module in new_page_template(redesign, page):
+        if module in page["blocks"] and module not in kept:
+            kept.add(module)
+        else:
+            removed.append(module)
+    return removed
 
 
 def bind_current_state(
