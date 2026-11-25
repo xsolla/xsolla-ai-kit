@@ -858,6 +858,45 @@ class RedesignedStyleTests(unittest.TestCase):
             needs_human,
         )
 
+    def test_a_native_looking_text_field_on_a_federated_block_is_not_written(self) -> None:
+        # Shop Builder takes any patch to these blocks, and a later block version could
+        # carry a field named like a native one. The native writer must still pass.
+        hero = self.site["pages"][0]["blocks"][1]
+        texts = FIXTURE["localization"]["pages"][self.site["pages"][0]["_id"]]["texts"]
+        hero["values"]["title"] = {"enable": True, "id": next(iter(texts))}
+        approved = {
+            "copy": {
+                "locale": "en-US",
+                "texts": [
+                    {**self.where, "module": "leadGameSales", "field": "title",
+                     "html": "<h1>Hello</h1>", "page_modules": {"/": "leadGameSales"}}
+                ],
+                "buttons": [],
+                "faq": None,
+                "seo": [],
+            }
+        }
+        localization = {"common": {}, "pages": {self.site["pages"][0]["_id"]: {"texts": texts}}}
+        with (
+            mock.patch.object(apply_style, "localization", return_value=localization),
+            mock.patch.object(
+                apply_style, "run_json", side_effect=AssertionError("nothing may be written")
+            ),
+        ):
+            results, needs_human, _ = apply_style.copy_phase(
+                "shop", "landing-1", self.site, approved, block_ids(self.site), None
+            )
+        self.assertEqual(
+            [{"block_id": hero["_id"], "module": PREFIX + "lead-gs", "field": "title",
+              "status": "skipped", "reason": apply_style.FEDERATED_TEXT}],
+            results,
+        )
+        self.assertEqual(
+            ["The _site-builder-classic_lead-gs block's title wasn't written: it is a "
+             "federated block, whose text assembly doesn't write yet. Set it in the editor."],
+            needs_human,
+        )
+
     def test_an_image_is_not_put_on_a_redesigned_block(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             (Path(directory) / "hero.png").write_bytes(b"png")

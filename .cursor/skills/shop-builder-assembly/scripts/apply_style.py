@@ -612,6 +612,7 @@ def button_label_slot(block: dict, position: int) -> tuple[str | None, str | Non
 
 
 FEDERATED_FAQ = "it is a federated block, whose questions assembly doesn't write yet"
+FEDERATED_TEXT = "it is a federated block, whose text assembly doesn't write yet"
 
 
 def faq_item_ids(landing_id: str, block_id: str, index: int) -> tuple[str, str, str]:
@@ -700,6 +701,18 @@ def copy_phase(
 
     for item in texts:
         for page, block in planned_blocks(item):
+            if isinstance((block.get("values") or {}).get("blockId"), str):
+                # It keeps its text elsewhere; a field named like a native one isn't it.
+                module = effective_module(block)
+                results.append(
+                    {"block_id": block["_id"], "module": module, "field": item["field"],
+                     "status": "skipped", "reason": FEDERATED_TEXT}
+                )
+                needs_human.append(
+                    f"The {module} block's {item['field']} wasn't written: {FEDERATED_TEXT}. "
+                    "Set it in the editor."
+                )
+                continue
             field = (block.get("values") or {}).get(item["field"])
             lid = field.get("id") if isinstance(field, dict) else None
             entry = {
