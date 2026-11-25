@@ -99,8 +99,9 @@ CUSTOM_CODE_WARNING = (
     "block visible in the Site Builder editor."
 )
 LAYOUT_WARNING = (
-    "The common layout needs a newer Xsolla CLI, so the site is built without it. A "
-    "site without the common layout won't open in the Editor, Publish or private preview."
+    "The Xsolla CLI can't add the common layout to a site, so the site is built without "
+    "it. A site without the common layout won't open in the Editor, Publish or private "
+    "preview."
 )
 LIVEOPS_BLOCKS = {
     "promocodes": ("promo_codes", "no promo code promotion configured in the project"),
@@ -142,6 +143,14 @@ APPROVAL_SCOPE = (
 NO_OWN_HEADER = (
     "Page {path} has no header block of its own, and the site has no common layout "
     "that could hold one. Nothing was written."
+)
+# Shop Builder's redesigned block set: federated blocks whose `values.blockId` starts
+# with this prefix, such as `_site-builder-classic_header`. Their values have another
+# shape than the native modules', so the patches assembly makes don't fit them.
+REDESIGNED_BLOCK_PREFIX = "_site-builder-classic_"
+REDESIGNED_BLOCKS = (
+    "Page {path} is made of Shop Builder's redesigned blocks ({module} and others), "
+    "and assembly can't build on them yet. Nothing was written."
 )
 
 
@@ -290,7 +299,7 @@ def has_own_header(page: dict, created_block_ids: frozenset = frozenset()) -> bo
 
 def shared_site_blocks(current: dict) -> set:
     """Site-level blocks that are on no page and aren't a layout: on a template site,
-    the shared header and footer. A layout `create-block` added is not one."""
+    the shared header and footer."""
     page_blocks = {
         block.get("_id") if isinstance(block, dict) else block
         for page in current.get("pages") or []
@@ -339,6 +348,23 @@ def require_header_source(pages: list[dict], structure: object) -> None:
         if current_page is None or has_own_header(current_page):
             continue
         if not has_layout:
+            blocks = current_page.get("blocks")
+            redesigned = next(
+                (
+                    module
+                    for module in (
+                        effective_module(block)
+                        for block in (blocks if isinstance(blocks, list) else [])
+                        if isinstance(block, dict)
+                    )
+                    if isinstance(module, str) and module.startswith(REDESIGNED_BLOCK_PREFIX)
+                ),
+                None,
+            )
+            if redesigned is not None:
+                raise ValueError(
+                    REDESIGNED_BLOCKS.format(path=page_plan["path"], module=redesigned)
+                )
             raise ValueError(NO_OWN_HEADER.format(path=page_plan["path"]))
 
 
@@ -392,16 +418,13 @@ def custom_code_warnings(pages: list[dict]) -> list[str]:
 
 def layout_warnings(
     structure: object | None,
-    has_create_block: bool,
     module_of: Callable[[str], object] | None = None,
 ) -> list[str]:
-    """Warn when the site needs the common layout and the CLI cannot add it.
+    """Warn when the site needs the common layout: the CLI cannot add it.
 
-    A new site always needs it; an existing site only when it has none. Without
-    ``create-block`` assembly skips the layout step.
+    A new site always needs it; an existing site only when it has none. Assembly
+    skips the layout step: the CLI's ``create-block`` refuses layout modules.
     """
-    if has_create_block:
-        return []
     if (
         structure is not None
         and common_layout_id(structure_data(structure), module_of) is not None
@@ -913,7 +936,6 @@ def build_plan(
     current_structure: object | None = None,
     created_block_ids: frozenset = frozenset(),
     base_dir: Path | None = None,
-    has_create_block: bool = True,
     module_of: Callable[[str], object] | None = None,
 ) -> dict:
     """``base_dir`` is the brief's folder, where `brand.images` files are read from."""
@@ -944,7 +966,7 @@ def build_plan(
             "No event data supplied; omit event-specific copy and scarcity claims."
         )
     warnings.extend(custom_code_warnings(pages))
-    warnings.extend(layout_warnings(current_structure, has_create_block, module_of))
+    warnings.extend(layout_warnings(current_structure, module_of))
     environment = brief["project"].get("environment")
     if environment not in (None, "test"):
         warnings.append(
@@ -1119,7 +1141,7 @@ def approval_changes(approved: dict, plan: dict, run_report: dict) -> list[str]:
 
 def main() -> int:
     # preflight imports this module, so a top-level import would be circular.
-    from preflight import cli_has_command, site_block_module
+    from preflight import site_block_module
 
     parser = argparse.ArgumentParser()
     parser.add_argument("brief", type=Path)
@@ -1163,7 +1185,6 @@ def main() -> int:
             structure,
             created_block_ids(report) if report else frozenset(),
             args.brief.resolve().parent,
-            cli_has_command("shopbuilder", "create-block"),
             lambda block_id: site_block_module(slug, block_id),
         )
         if structure is not None:

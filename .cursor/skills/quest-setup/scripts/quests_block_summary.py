@@ -512,7 +512,11 @@ def find_site(runner: Runner, fetcher: QuestFetcher, env: List[str]) -> Dict[str
     if not listing.get("ok"):
         return {"ok": False, "error": "site_list_failed"}
     sites, structures = [], {}
-    for entry in listing.get("data") or []:
+    entries = listing.get("data")
+    if isinstance(entries, dict):
+        # CLI 1.10.0 answers with a page of the list: {"landings": [...], "total": n}.
+        entries = entries.get("landings")
+    for entry in entries or []:
         slug = entry.get("domain")
         if not slug:
             continue

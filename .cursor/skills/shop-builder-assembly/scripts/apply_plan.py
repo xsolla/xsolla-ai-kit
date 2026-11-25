@@ -25,9 +25,8 @@ if SCRIPTS_DIR not in sys.path:
     sys.path.insert(0, SCRIPTS_DIR)
 
 import cli_environment
-from preflight import LAYOUT_SKIPPED, cli_has_command
+from preflight import LAYOUT_SKIPPED
 from render_plan import (
-    COMMON_LAYOUT,
     CUSTOM_CODE_WARNING,
     STOPPED_PARTWAY,
     approval_changes,
@@ -39,7 +38,6 @@ from render_plan import (
     load_run_report,
     page_path,
     require_header_source,
-    site_block_ids,
     structure_data,
     structure_hash,
 )
@@ -282,32 +280,17 @@ def site_block_module(slug: str, block_id: str) -> object:
 
 
 def ensure_common_layout(slug: str) -> str | None:
-    """Attach the site layout after pages so template headers/footers survive.
+    """Return the ID of the site's common layout.
 
-    Returns None when the site has no layout and the CLI has no create-block: the
-    step is skipped and the site is built without it.
+    Returns None when the site has none: the CLI cannot add one (its create-block
+    refuses layout modules), so the site is built without it.
     """
     layout_id = common_layout_id(
         structure(slug), lambda block_id: site_block_module(slug, block_id)
     )
-    if layout_id is not None:
-        return layout_id
-    if not cli_has_command("shopbuilder", "create-block"):
+    if layout_id is None:
         print(LAYOUT_SKIPPED, file=sys.stderr)
-        return None
-    created = data(
-        run_json("shopbuilder", "create-block", "--slug", slug, "--block", COMMON_LAYOUT)
-    )
-    block = created.get("block") if isinstance(created, dict) else None
-    block_id = block.get("_id") if isinstance(block, dict) else None
-    if not isinstance(block_id, str):
-        raise RuntimeError("create-block returned no layout block ID")
-    saved = structure(slug)
-    if block_id not in saved.get("layouts", []) or block_id not in site_block_ids(
-        saved.get("blocks")
-    ):
-        raise RuntimeError("created common layout is missing from the saved structure")
-    return block_id
+    return layout_id
 
 
 def page_for_path(value: dict, path: str) -> dict | None:
@@ -1927,7 +1910,6 @@ def _main() -> int:
         slug = brief["site"]["slug"]
         websites = run_json("shopbuilder", "list-websites")
         existed = website_exists(websites, slug)
-        has_create_block = cli_has_command("shopbuilder", "create-block")
         if existed:
             if args.backup_dir is None:
                 raise RuntimeError("--backup-dir is required for an existing target")
@@ -1941,14 +1923,12 @@ def _main() -> int:
                 saved_structure,
                 created,
                 args.brief.resolve().parent,
-                has_create_block,
                 lambda block_id: site_block_module(slug, block_id),
             )
         else:
             plan = build_plan(
                 brief,
                 base_dir=args.brief.resolve().parent,
-                has_create_block=has_create_block,
             )
 
         check_approval(args, plan, approved, report)

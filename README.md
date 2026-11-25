@@ -6,7 +6,7 @@ Install the kit in your AI coding tool and your agent can integrate Xsolla's API
 
 On the Shop Builder path, in preview, the agent turns your game description into a validated shop brief and builds an unpublished Shop Builder site from it through the Xsolla CLI, in your own Publisher Account project. You review the site and publish it yourself in Publisher Account.
 
-To use it today, install the Xsolla CLI 1.9.4 or later: `brew install xsolla/xsolla-cli/xsolla`. A new store opens in the Shop Builder Editor and preview only with a CLI that has `shopbuilder create-block`, and no released CLI has it yet (1.9.4 is the latest); the agent checks this first and tells you.
+To use it today, install the Xsolla CLI 1.10.0 or later: `brew install xsolla/xsolla-cli/xsolla`. A new store the CLI creates doesn't open in the Shop Builder Editor or preview yet, because the CLI can't add the site's common layout; the agent says so first and offers to build on a site you create in Publisher Account.
 
 ## What's inside
 

@@ -61,10 +61,10 @@ waits for a CLI release. **Open** has nothing merged yet.
 
 | # | Requirement | Done when | Skills | Status | Where |
 |---|---|---|---|---|---|
-| R1 | Finish the assembly phases: theme, copy and assets, verify, preview | A new site goes from brief to preview with theme, copy, art and SEO, without hand-written scripts | shop-builder-assembly | Partial: the theme, images and copy are scripted. `apply_style.py` sets the brief's palette on the site theme, puts the planned pages on it, and hands over the Editor recalculation until the CLI recomputes the theme; it uploads each approved image once and puts it on its block; it writes the approved text, hero button labels and FAQ items in the primary locale. Fonts are an Editor step: the current theme shape has no font field the CLI can set. SEO is R8's. Verify and preview wait for the `verify-website` and preview fixes | [#137](https://github.com/xsolla/xsolla-ai-kit/pull/137), [#138](https://github.com/xsolla/xsolla-ai-kit/pull/138), [#139](https://github.com/xsolla/xsolla-ai-kit/pull/139) |
+| R1 | Finish the assembly phases: theme, copy and assets, verify, preview | A new site goes from brief to preview with theme, copy, art and SEO, without hand-written scripts | shop-builder-assembly | Partial: the theme, images and copy are scripted. `apply_style.py` sets the brief's palette on the site theme, puts the planned pages on it, and hands over the Editor recalculation until the CLI recomputes the theme; it uploads each approved image once and puts it on its block; it writes the approved text, hero button labels and FAQ items in the primary locale. Fonts are an Editor step: the current theme shape has no font field the CLI can set. SEO is R8's. `verify-website` takes page IDs since CLI 1.10.0; preview waits for the preview fix | [#137](https://github.com/xsolla/xsolla-ai-kit/pull/137), [#138](https://github.com/xsolla/xsolla-ai-kit/pull/138), [#139](https://github.com/xsolla/xsolla-ai-kit/pull/139) |
 | R2 | One approval covers the whole build | A full build has exactly one approval | nocode-shop-setup, shop-builder-assembly, catalog-design, description-to-shop | Done: a new catalog and new LiveOps share the one yes, and nothing is written before it, as shown in headless runs (see How the status was checked). The approval scope is accepted for 1.5.0 (D1) | [#117](https://github.com/xsolla/xsolla-ai-kit/pull/117), [#128](https://github.com/xsolla/xsolla-ai-kit/pull/128), [#129](https://github.com/xsolla/xsolla-ai-kit/pull/129), [#130](https://github.com/xsolla/xsolla-ai-kit/pull/130) |
 | R3 | Approve a mockup made with any available tool | Every approval request includes a picture of the site | shop-builder-assembly, nocode-shop-setup | Done for a store; a game home shows `game-web-portal`'s plan instead. A Figma kit of real blocks at true sizes is open (design team) | [#117](https://github.com/xsolla/xsolla-ai-kit/pull/117), [#130](https://github.com/xsolla/xsolla-ai-kit/pull/130) |
-| R4 | Visual loop at 1440 and 390 px as the definition of done | Every report says `real_visual_check: yes` for desktop and mobile | shop-builder-assembly | Done. A new site can't open in preview until the CLI ships `create-block`, and the review needs a signed-in browser: without one, the handoff says the site isn't reviewed | [#117](https://github.com/xsolla/xsolla-ai-kit/pull/117) |
+| R4 | Visual loop at 1440 and 390 px as the definition of done | Every report says `real_visual_check: yes` for desktop and mobile | shop-builder-assembly | Done. A new site can't open in preview until the CLI can add the common layout (`create-block` in CLI 1.10.0 refuses layout modules), and the review needs a signed-in browser: without one, the handoff says the site isn't reviewed | [#117](https://github.com/xsolla/xsolla-ai-kit/pull/117) |
 | R5 | Ship the Shop Builder render rules | None of the rules shows up as a fix in a test run's friction log | shop-builder-assembly | Done: the rules and the opaque-color refusal. The copy step follows the text rules: the validator refuses copy that isn't HTML, `<img>` in copy, and an FAQ question that isn't an `<h4>`. Open check: `apply_plan.py` writes header navigation labels as `<span>` HTML, which the render rules call plain text; the earlier verified runs rendered them, so confirm on the next test site before changing it. The plan's step order matches the skill (theme, images and copy last) | [#117](https://github.com/xsolla/xsolla-ai-kit/pull/117), [#118](https://github.com/xsolla/xsolla-ai-kit/pull/118), [#130](https://github.com/xsolla/xsolla-ai-kit/pull/130) |
 | R6 | Support Publisher Account templates and mobile game homes | An App Store link becomes a multi-page hub with LiveOps through the kit; see [R6 in detail](#r6-in-detail) | shop-builder-assembly, game-web-portal, nocode-shop-setup | Done: part (b) works for the single-page preset on a Single-page shop template site, tested on the masked real-export fixture and a scripted run (D3 decided). Part (c) is merged: `game-web-portal` takes App Store and Google Play titles, `scripts/store_url.py` passes only the three exact store hosts, and `nocode-shop-setup` offers a game home to mobile titles. A multi-page plan on a template site builds too, tested on the masked fixture and a scripted run | [#134](https://github.com/xsolla/xsolla-ai-kit/pull/134), [#144](https://github.com/xsolla/xsolla-ai-kit/pull/144), [#145](https://github.com/xsolla/xsolla-ai-kit/pull/145) |
 | R7 | Helpers for CLI gaps instead of a stop | The agent neither stops nor improvises on known gaps | shop-builder-assembly, catalog-design | CLI: decided (D4 a). The kit keeps its "no raw HTTP" rule and stops on a known gap, saying which; the gaps close with the CLI release | — |
@@ -85,16 +85,17 @@ blocks. `game-web-portal` accepts only a Steam link and returns `needs_input` fo
 and Google Play titles, and `nocode-shop-setup` offers a game home only for PC games.
 
 **Why.** A site made from a template already has the common layout, so it opens in the
-editor and preview without `create-block`. It also comes with the LiveOps blocks that the
+editor and preview without the CLI adding one. It also comes with the LiveOps blocks that the
 CLI can't add yet: daily rewards, offer chain, reward system and promo codes.
 
 **Part (b): `shop-builder-assembly` on a store template site**
 
 1. **Who creates the site.** The developer, in Publisher Account, from a store template:
-   Single-page shop first. The first message of `nocode-shop-setup` gives the steps when
-   the CLI lacks `create-block`, as the recommended answer to "build anyway, or wait". The
-   agent never creates a site through the browser, the same rule as `game-web-portal`.
-   With a CLI that has `create-block`, `create-website` stays the default.
+   Single-page shop first. The first message of `nocode-shop-setup` gives the steps for a
+   new site, as the recommended answer to "build anyway, or wait": the CLI can't add the
+   common layout. The agent never creates a site through the browser, the same rule as
+   `game-web-portal`. Once the CLI can add the common layout, `create-website` is the
+   default again.
 2. **Discover.** Export the site as today. Find the common layout's header and footer by
    module with `get-block`, and each page's blocks by module.
 3. **Plan.** Render with `--structure` and map the preset's sections onto the template's
@@ -151,8 +152,8 @@ relying on details beyond that. The LiveOps block contracts are already in
 and the [block catalog](../../shop-builder-assembly/references/block-catalog.md).
 
 **Out of scope.** The agent creating sites in the browser; templates other than
-Single-page shop and Multi-page web portal; removing the template path once `create-block`
-ships, which is a separate decision.
+Single-page shop and Multi-page web portal; removing the template path once the CLI can add
+the common layout, which is a separate decision.
 
 ### Items from the feedback reports
 
@@ -223,7 +224,7 @@ Google Play titles.
   replace the demo content within the plan; (c) also accept mobile titles in
   `game-web-portal`.
 - Recommendation: (b) now, then (c). A template site already has the common layout, so (b)
-  gives a site that opens in the editor and preview before the CLI ships `create-block`.
+  gives a site that opens in the editor and preview before the CLI can add the common layout.
   Specified in [R6 in detail](#r6-in-detail).
 - **Decided 2026-11-03: (b) now,** by the Shop Builder skills' code owner (apyanzin-xsolla);
   (c) stays open.
@@ -269,9 +270,9 @@ the matching "known gap" text from the skills and update R1, R4 and R7 above.
 
 | Team | Fix | Unblocks |
 |---|---|---|
-| CLI | Release `shopbuilder create-block` | R1, R4: a new site opens in the editor and preview |
+| CLI | A command that adds the common layout to a new site; `create-block` in CLI 1.10.0 refuses layout modules | R1, R4: a new site opens in the editor and preview |
 | CLI | Recompute the theme after a CLI patch | R1, R5 |
-| CLI | `enable-preview` and `preview-link` without a browser session; `verify-website` sends page IDs | R1, R4 |
+| CLI | `enable-preview` without a browser session, and a command that returns the preview link (CLI 1.10.0 removed `preview-link`) | R1, R4 |
 | CLI | `update-block` fails when nothing changed; `add-page` path object; federated `add-block` | R5, R7 |
 | CLI | LiveOps and catalog flags: limits, bonus conditions, fixed promo codes; bundles in group listings; one flag name for group IDs; default publisher ID | R7, R8 |
 | CLI | `auth login` makes a key after a project switch; `xsolla update` finds releases | R9 |

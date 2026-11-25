@@ -64,10 +64,12 @@ from committed evidence.
    changes after a login. The CLI needs a secure cached Shop Builder session or
    another non-manual multi-command flow. Still open.
 2. `verify-website --slug ...` returned HTTP 400 because the generated request omitted
-   required `draftPagesIds`. Still open.
+   required `draftPagesIds`. Fixed in CLI 1.10.0: `--draft-pages-ids` is a required flag
+   that takes a JSON array of page IDs.
 3. `enable-preview` and `preview-link` returned `admin_privileges_requred` for a
    Publisher Account project owner, while the same user could open Preview in the
-   Publisher Account editor. Still open.
+   Publisher Account editor. CLI 1.10.0 removed `preview-link`; `enable-preview` is
+   still open.
 
 First-time user runs (2026-10-29 to 2026-11-02, CLI 1.9.4) found two more:
 
@@ -79,5 +81,16 @@ First-time user runs (2026-10-29 to 2026-11-02, CLI 1.9.4) found two more:
    linked to its store project: `get-landing` showed an `auth.loginId` of an unrelated
    Login project in two runs. Assembly reads it back and reports a mismatch. Still open.
 
+A first-time user build on CLI 1.10.0 (2026-11-25) found two more:
+
+6. `create-block` adds a block to a page (`--page-id`, `--module`) and refuses layout
+   modules: `list-block-modules` lists `common-layout` under `cannotCreate`, as
+   auto-created with every site. A site from `create-website` still has `layouts: []`,
+   so assembly builds it without the common layout and warns. Still open.
+7. On a new project, `add-page` seeded federated blocks of the redesigned set
+   (`_site-builder-classic_header`, `_site-builder-classic_lead-gs` and others) instead
+   of native modules. Their values have another shape, so `render_plan.py` stops before
+   any write on such a page. Still open.
+
 Do not work around these gaps by copying `pa-v4-token` from browser storage. Continue
-to use `xsolla auth login`. Gaps 1–3 are filed; 4 and 5 still need a ticket.
+to use `xsolla auth login`. Gaps 1–3 are filed; 4 to 7 still need a ticket.

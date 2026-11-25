@@ -30,12 +30,12 @@ After confirmation, apply the plan in this dependency order:
 
 1. **Theme**: set site and page theme source fields; page theme overrides site theme.
 2. **Pages**: create all page paths before linking navigation.
-3. **Site layout**: after page/template creation, add `common-layout` only if the
-   site has none; adding it earlier suppresses some template headers and footers.
-   Find it by module, not position: `get-structure` lists layouts by ID, so read each
-   one with `get-block`. Other layouts, such as a sidebar's side-by-side layout, stay.
-   Verify the common layout's ID appears in both `blocks` and `layouts`. Without
-   `create-block` in the CLI, this step is skipped and verification doesn't require it.
+3. **Site layout**: find the site's `common-layout` by module, not position:
+   `get-structure` lists layouts by ID, so read each one with `get-block`. Other layouts,
+   such as a sidebar's side-by-side layout, stay. Verify the common layout's ID appears in
+   both `blocks` and `layouts`. The CLI can't add a common layout (`create-block` refuses
+   layout modules), so on a site without one this step is skipped and verification warns
+   instead of failing.
 4. **Navigation**: resolve page IDs and add internal links only after pages exist.
 5. **Blocks**: add/move/update blocks page by page; resolve IDs after each structural
    change and use targeted patches rather than replacing `values` or `components`.
@@ -52,7 +52,8 @@ After confirmation, apply the plan in this dependency order:
   <post-apply-structure.json>` for the deterministic structural comparison.
 - Check every requested locale, page path, navigation target, block order, catalog
   group, and asset URL.
-- Run `xsolla shopbuilder verify-website --slug <slug>`.
+- Run `xsolla shopbuilder verify-website --slug <slug> --draft-pages-ids '["<page id>"]'`.
+  The flag is required: a JSON array with the `_id` of every page in `get-structure`.
 - Enable preview only if the confirmed plan includes it, then return the preview link.
 - Report skips, interventions, and gaps; state that the site is **not published**.
 - If the plan adds the Custom code (`html`) block, tell the user it is added empty and

@@ -61,30 +61,6 @@ def data(value: object) -> object:
     return value
 
 
-def cli_has_command(*command: str) -> bool:
-    """Return whether the installed CLI has the command.
-
-    For an unknown subcommand the CLI prints its parent's help and exits 0, so only
-    the usage line tells: it names the command when the command exists.
-    """
-
-    try:
-        result = subprocess.run(
-            cli_environment.command(*command, "--help"),
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            check=False,
-        )
-    except OSError:
-        return False
-    usage = " ".join(["xsolla", *command])
-    return any(
-        line.strip() == usage or line.strip().startswith(usage + " ")
-        for line in (result.stdout or "").splitlines()
-    )
-
-
 def site_block_module(slug: str, block_id: str) -> object:
     block = data(
         run_json("shopbuilder", "get-block", "--slug", slug, "--block-id", block_id)
@@ -166,8 +142,8 @@ def main() -> int:
         websites = run_json("shopbuilder", "list-websites")
         landing = first_landing(websites, slug)
 
-        # Assembly adds the common layout after its page writes. A CLI without
-        # create-block cannot add it, so assembly skips that step.
+        # The CLI cannot add the common layout (its create-block refuses layout
+        # modules), so assembly skips that step on a site that has none.
         layout_id = None
         if landing is not None:
             site = data(run_json("shopbuilder", "get-structure", "--slug", slug))
@@ -187,8 +163,6 @@ def main() -> int:
             layout_step = "not_applicable"
         elif layout_id is not None:
             layout_step = "present"
-        elif cli_has_command("shopbuilder", "create-block"):
-            layout_step = "create"
         else:
             layout_step = "skip"
             print(LAYOUT_SKIPPED, file=sys.stderr)

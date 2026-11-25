@@ -82,9 +82,6 @@ if argv == ["shopbuilder", "list-websites"]:
     out([])
 if argv[:2] == ["catalog", "list-item-groups"]:
     out({"groups": []})
-if argv == ["shopbuilder", "create-block", "--help"]:
-    print("Usage:\n  xsolla shopbuilder create-block [flags]")
-    sys.exit(0)
 print("unexpected call: " + " ".join(argv), file=sys.stderr)
 sys.exit(2)
 '''

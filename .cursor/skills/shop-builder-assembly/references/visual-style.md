@@ -165,8 +165,8 @@ below against the result.
 The review is the definition of done: without desktop and mobile screenshots of every page,
 the site isn't reviewed.
 
-1. **Open the preview.** When `enable-preview` or `preview-link` fails (a known CLI gap,
-   see [test-findings.md](test-findings.md)), use the browser the agent has that is signed
+1. **Open the preview.** When `enable-preview` fails (a known CLI gap, see
+   [test-findings.md](test-findings.md)), use the browser the agent has that is signed
    in to Publisher Account: open the site's editor, press Preview, and load the preview it
    opens. Close the editor tab before the next CLI write. If the preview session has
    expired and can't be started, ask the developer once to press Preview in the editor.

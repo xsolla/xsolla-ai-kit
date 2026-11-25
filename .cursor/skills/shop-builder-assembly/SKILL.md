@@ -56,11 +56,10 @@ until [expert-review.md](references/expert-review.md) records approval.
    allowed failure is the groups that proposal creates: render and show the plan with
    it. After the yes and the catalog's creation, run preflight again; it must pass in
    full before apply.
-   When the site needs a common layout (a new site, or one without it) and the CLI has
-   no `shopbuilder create-block`, preflight and the rendered plan's `warnings` say the site
-   is built without it and won't open in the Editor, Publish or private preview; show that
-   with the plan, before any write. The plan depends on that CLI check, so a CLI upgrade
-   between render and apply changes its confirmation ID: render again and show it.
+   When the site needs a common layout (a new site, or one without it), preflight and the
+   rendered plan's `warnings` say the site is built without it and won't open in the
+   Editor, Publish or private preview: the CLI can't add one. Show that with the plan,
+   before any write.
 2. If the CLI points at another merchant or project, or has sandbox mode on, switch it to
    the brief's project with sandbox off (`nocode-shop-setup` does this at its first
    check), then rerun preflight; never override later commands.
@@ -121,12 +120,12 @@ After confirmation, `apply_plan.py` applies steps 1–5 in this dependency order
 a fresh backup, as [CLI operations](references/cli-operations.md) describes.
 
 1. **Pages** — create all page paths before linking navigation.
-2. **Site layout** — after page/template creation, add `common-layout` only if the
-   site has none; adding it earlier suppresses some template headers and footers.
-   Find it by module, not position: `get-structure` lists layouts by ID, so read each
-   one with `get-block`. Other layouts, such as a sidebar's side-by-side layout, stay.
-   Verify the common layout's ID appears in both `blocks` and `layouts`. Without
-   `create-block` in the CLI, this step is skipped and verification doesn't require it.
+2. **Site layout** — find the site's `common-layout` by module, not position:
+   `get-structure` lists layouts by ID, so read each one with `get-block`. Other layouts,
+   such as a sidebar's side-by-side layout, stay. Verify the common layout's ID appears in
+   both `blocks` and `layouts`. The CLI can't add a common layout (`create-block` refuses
+   layout modules), so on a site without one this step is skipped and verification warns
+   instead of failing.
 3. **Navigation** — resolve page IDs and add internal links only after pages exist.
 4. **Blocks** — add/move/update blocks page by page; resolve IDs after each structural
    change and use targeted patches rather than replacing `values` or `components`.
@@ -154,11 +153,13 @@ If the CLI lacks an operation, stop it, record the gap, and file a CLI/API ticke
   for a new site, `approved-plan.json` otherwise.
 - Check every requested locale, page path, navigation target, block order, catalog
   group, and asset URL.
-- Run `xsolla shopbuilder verify-website --slug <slug>`.
-- Enable preview for the visual review (`enable-preview`, `preview-link`); the plan's yes
-  covers it, because the plan says anyone with the link can open it. Return the link.
-- When `verify-website` fails with `draftPagesIds must be an array`, or preview fails
-  with `admin_privileges_requred`, it is a known CLI gap
+- Run `xsolla shopbuilder verify-website --slug <slug> --draft-pages-ids '["<page id>"]'`.
+  The flag is required: a JSON array with the `_id` of every page in `get-structure`.
+- Enable preview for the visual review (`enable-preview`); the plan's yes covers it,
+  because the plan says anyone with the link can open it. No CLI command returns the
+  link (`preview-link` was removed in CLI 1.10.0): open the preview in the browser as
+  the visual review describes, and return that link.
+- When preview fails with `admin_privileges_requred`, it is a known CLI gap
   ([test findings](references/test-findings.md#cli-gaps-found)): report it once and go
   on, without retrying. For the preview, open it in the browser as the visual review
   describes.
@@ -193,6 +194,10 @@ Preserve completed safe work and explain the smallest action needed to continue.
   layout. Assembly builds on it with any preset: the template's hero and daily rewards
   block stay, demo blocks are exact removals, pages it adds drop their own header and
   footer, and the shared header's links are an Editor step that names each page.
+- A page made of Shop Builder's redesigned blocks (federated blocks named
+  `_site-builder-classic_…`, which `add-page` seeds on some projects) stops the render
+  before any write: assembly patches native modules only
+  ([test findings](references/test-findings.md#cli-gaps-found)).
 - Every write path, Quests block operations included, stops before any write when the
   target site is published. Unpublish it in Publisher Account first, or build on another
   slug.

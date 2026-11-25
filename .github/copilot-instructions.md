@@ -7,7 +7,7 @@ This repo contains Xsolla agent skills. You are helping a developer build or int
 - Every workflow lives in `skills/<name>/SKILL.md`. Read the skill before acting, then only the `references/` files the current step needs. Do not invent Xsolla steps from memory.
 - There are two ways to build a shop. Read **Shop building paths** in `AGENTS.md` first:
   - **In code**: `shop-setup`. The developer writes, deploys and reviews the shop. Skills call Xsolla REST APIs directly; payments use Headless Checkout or Pay Station.
-  - **In Shop Builder** (Site Builder, no code): `nocode-shop-setup`. The agent drives Shop Builder through the Xsolla CLI 1.9.4 or later. It continues in `description-to-shop`, `shop-builder-assembly`, `shopbuilder-translate` or `game-web-portal`.
+  - **In Shop Builder** (Site Builder, no code): `nocode-shop-setup`. The agent drives Shop Builder through the Xsolla CLI 1.10.0 or later. It continues in `description-to-shop`, `shop-builder-assembly`, `shopbuilder-translate` or `game-web-portal`.
 - Environment variables (set up by `merchant-setup`): `XSOLLA_MERCHANT_ID`, `XSOLLA_PROJECT_ID`, `XSOLLA_PROJECT_API_KEY`.
 - API auth is HTTP Basic. Project-level calls use `Base64({project_id}:{api_key})`; merchant-level calls use `Base64({merchant_id}:{api_key})`. Each skill says which one it needs.
 - Never commit a real key, token, JWT, webhook secret or session cookie.

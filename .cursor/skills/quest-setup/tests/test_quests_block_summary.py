@@ -307,7 +307,9 @@ class MainTest(unittest.TestCase):
 class FindSiteTest(unittest.TestCase):
     """No --slug: pick the one site with a visible Quests block."""
 
-    def run_find(self, structures: dict, listing_ok: bool = True) -> tuple:
+    def run_find(
+        self, structures: dict, listing_ok: bool = True, wrapped: bool = False
+    ) -> tuple:
         calls = []
 
         def runner(args):
@@ -315,7 +317,11 @@ class FindSiteTest(unittest.TestCase):
             if args[0] == "list-websites":
                 if not listing_ok:
                     return {"ok": False}
-                return {"ok": True, "data": [{"domain": slug} for slug in structures]}
+                sites = [{"domain": slug} for slug in structures]
+                if wrapped:
+                    # CLI 1.10.0 answers with a page of the list, not the bare list.
+                    return {"ok": True, "data": {"landings": sites, "total": len(sites)}}
+                return {"ok": True, "data": sites}
             if args[0] == "get-structure":
                 found = structures[args[2]]
                 return {"ok": True, "data": found} if found is not None else {"ok": False}
@@ -344,6 +350,11 @@ class FindSiteTest(unittest.TestCase):
             {c[0] for c in calls}, {"list-websites", "get-structure", "get-localization"}
         )
         self.assertEqual([c[2] for c in calls if c[0] == "get-localization"], ["my-test-site"])
+
+    def test_the_paged_listing_of_cli_1_10_is_read(self) -> None:
+        code, result, _ = self.run_find({"my-test-site": structure()}, wrapped=True)
+        self.assertEqual(code, 0)
+        self.assertEqual(result["site"], "my-test-site")
 
     def test_two_sites_with_a_block_pick_none(self) -> None:
         code, result, _ = self.run_find({"site-a": structure(), "site-b": structure()})
