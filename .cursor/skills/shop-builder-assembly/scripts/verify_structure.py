@@ -432,23 +432,23 @@ def verify(
         for block in blocks:
             if logical_module(block) != "newStore" or not expected_sections:
                 continue
-            actual_sections = (
-                [(*section, True) for section in store_sections(block)]
-                if is_redesigned(effective_module(block))
-                else []
-            )
-            for component in block.get("components", []):
-                section = component.get("section", {})
-                item = section.get("item", {})
-                card = component.get("card", {})
-                actual_sections.append(
-                    (
-                        item.get("group"),
-                        item.get("type"),
-                        card.get("selectedLayoutType"),
-                        component.get("enable"),
+            if is_redesigned(effective_module(block)):
+                # Its sections are in its values; `components` is the native store's.
+                actual_sections = [(*section, True) for section in store_sections(block)]
+            else:
+                actual_sections = []
+                for component in block.get("components", []):
+                    section = component.get("section", {})
+                    item = section.get("item", {})
+                    card = component.get("card", {})
+                    actual_sections.append(
+                        (
+                            item.get("group"),
+                            item.get("type"),
+                            card.get("selectedLayoutType"),
+                            component.get("enable"),
+                        )
                     )
-                )
             if actual_sections != expected_sections:
                 errors.append(
                     f"catalog sections differ on {path}: expected {expected_sections}, "

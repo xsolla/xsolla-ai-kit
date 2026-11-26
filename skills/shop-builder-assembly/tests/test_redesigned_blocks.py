@@ -930,6 +930,14 @@ class RedesignedNewSiteTests(unittest.TestCase):
             result["warnings"],
         )
         store = site["pages"][0]["blocks"][2]
+        # A federated store's sections are read from one place. A `components` entry on
+        # it, which no block has today, is not a section and is not counted as one.
+        store["components"] = [{
+            "enable": True,
+            "section": {"item": {"group": "__all__", "type": "virtual_currency"}},
+            "card": {"selectedLayoutType": "vertical"},
+        }]
+        self.assertEqual([], verify_structure.verify(plan, site, layout_required=False)["errors"])
         sections = store["values"]["internalBlockValues"]["storeSections"]
         group = sections["entities"][sections["ids"][0]]["group"]
         store["values"]["resources"]["store-group"][group]["groupExternalId"] = "another"
