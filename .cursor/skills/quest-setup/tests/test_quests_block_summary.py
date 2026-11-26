@@ -308,7 +308,11 @@ class FindSiteTest(unittest.TestCase):
     """No --slug: pick the one site with a visible Quests block."""
 
     def run_find(
-        self, structures: dict, listing_ok: bool = True, wrapped: bool = False
+        self,
+        structures: dict,
+        listing_ok: bool = True,
+        wrapped: bool = False,
+        total: int | None = None,
     ) -> tuple:
         calls = []
 
@@ -320,7 +324,8 @@ class FindSiteTest(unittest.TestCase):
                 sites = [{"domain": slug} for slug in structures]
                 if wrapped:
                     # CLI 1.10.0 answers with a page of the list, not the bare list.
-                    return {"ok": True, "data": {"landings": sites, "total": len(sites)}}
+                    count = len(sites) if total is None else total
+                    return {"ok": True, "data": {"landings": sites, "total": count}}
                 return {"ok": True, "data": sites}
             if args[0] == "get-structure":
                 found = structures[args[2]]
@@ -355,6 +360,15 @@ class FindSiteTest(unittest.TestCase):
         code, result, _ = self.run_find({"my-test-site": structure()}, wrapped=True)
         self.assertEqual(code, 0)
         self.assertEqual(result["site"], "my-test-site")
+
+    def test_a_listing_cut_short_is_an_error_not_a_pick(self) -> None:
+        # The page holds one site of three: the Quests block may be on one not listed.
+        code, result, calls = self.run_find(
+            {"my-test-site": structure()}, wrapped=True, total=3
+        )
+        self.assertEqual(code, 1)
+        self.assertEqual(result, {"ok": False, "error": "site_list_truncated"})
+        self.assertEqual([c[0] for c in calls], ["list-websites"])
 
     def test_two_sites_with_a_block_pick_none(self) -> None:
         code, result, _ = self.run_find({"site-a": structure(), "site-b": structure()})

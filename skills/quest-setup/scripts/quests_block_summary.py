@@ -515,7 +515,12 @@ def find_site(runner: Runner, fetcher: QuestFetcher, env: List[str]) -> Dict[str
     entries = listing.get("data")
     if isinstance(entries, dict):
         # CLI 1.10.0 answers with a page of the list: {"landings": [...], "total": n}.
+        total = entries.get("total")
         entries = entries.get("landings")
+        if isinstance(total, int) and isinstance(entries, list) and total > len(entries):
+            # The block may be on a site the page left out: no pick is better than a
+            # wrong one.
+            return {"ok": False, "error": "site_list_truncated"}
     for entry in entries or []:
         slug = entry.get("domain")
         if not slug:
