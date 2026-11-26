@@ -54,9 +54,9 @@
 # yet. Payments reviews it until then; replace the handle once access is granted.
 /skills/webhooks-impl/                           @y-klochikhin @JavadManashti
 
-# Payment errors — metadata owner is j.manashti (AI Kit maintainer). Payments
-# reviews it for technical accuracy, like the other payment skills.
-/skills/payment-errors/                          @y-klochikhin @JavadManashti
+# Payment errors — metadata owner is j.manashti (AI Kit maintainer). For
+# technical accuracy, Payments reviews 0401-2000 and Subscriptions reviews 3007.
+/skills/payment-errors/                          @y-klochikhin @mkukarin01 @JavadManashti
 
 # Quest Platform
 /skills/quest-setup/                             @raliyev-xsolla @JavadManashti @y-klochikhin
@@ -79,7 +79,7 @@
 /.cursor/skills/merchant-setup/                  @y-klochikhin @JavadManashti
 /.cursor/skills/production/                      @y-klochikhin @JavadManashti
 /.cursor/skills/webhooks-impl/                   @y-klochikhin @JavadManashti
-/.cursor/skills/payment-errors/                  @y-klochikhin @JavadManashti
+/.cursor/skills/payment-errors/                  @y-klochikhin @mkukarin01 @JavadManashti
 /.cursor/skills/quest-setup/                     @raliyev-xsolla @JavadManashti @y-klochikhin
 /.cursor/skills/nocode-shop-setup/               @apyanzin-xsolla @JavadManashti @y-klochikhin
 /.cursor/skills/shop-builder-assembly/           @apyanzin-xsolla @JavadManashti @y-klochikhin
