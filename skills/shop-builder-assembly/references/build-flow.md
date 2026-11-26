@@ -29,7 +29,8 @@ approval outside this skill, so treat presets as provisional.
 After confirmation, apply the plan in this dependency order:
 
 1. **Theme**: set site and page theme source fields; page theme overrides site theme.
-2. **Pages**: create all page paths before linking navigation.
+2. **Pages**: create all page paths before linking navigation. On a redesign site a
+   page that gets the store is made with `add-page --type topup`, which comes with one.
 3. **Site layout**: after page/template creation, add `common-layout` only if the
    site has none, with `create-block --slug <slug> --page-id <page id> --module
    common-layout`; adding it earlier suppresses some template headers and footers.
@@ -45,7 +46,8 @@ After confirmation, apply the plan in this dependency order:
    localized HTML through localization commands, never through block value patches.
 7. **Catalog links**: configure `newStore` sections only after catalog groups and
    SKUs have been verified in the same project. Localize a section title before
-   enabling its `L:` ID.
+   enabling its `L:` ID. A redesigned store gets the plan's groups on its first
+   sections; one with fewer sections than the plan is left as it is and reported.
 
 ## Verification and handoff
 
@@ -58,6 +60,8 @@ After confirmation, apply the plan in this dependency order:
   The flag is required: a JSON array with the `_id` of every page in `get-structure`.
 - Enable preview only if the confirmed plan includes it, then return the preview link.
 - Report skips, interventions, and gaps; state that the site is **not published**.
+  Relay every `needs_human` line of the run reports: on redesigned blocks these are the
+  header links, texts, images and FAQ that assembly doesn't set yet.
 - If the plan adds the Custom code (`html`) block, tell the user it is added empty and
   hidden: they paste their code and make the block visible in the Site Builder editor.
   Never write HTML, CSS, or JavaScript into it.

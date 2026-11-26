@@ -2427,8 +2427,8 @@ class PublisherTemplateSiteTests(unittest.TestCase):
             cli.calls,
         )
 
-    def test_a_page_of_redesigned_blocks_stops_with_its_own_message(self) -> None:
-        # What add-page seeds on some projects: federated blocks of the redesigned set.
+    def test_a_redesigned_header_counts_as_the_pages_own_header(self) -> None:
+        # What add-page seeds on a new site: federated blocks of the redesigned set.
         site = {
             "pages": [
                 {
@@ -2447,12 +2447,10 @@ class PublisherTemplateSiteTests(unittest.TestCase):
             "layouts": [],
             "blocks": [],
         }
-        with self.assertRaisesRegex(
-            ValueError,
-            r"^Page / is made of Shop Builder's redesigned blocks "
-            r"\(_site-builder-classic_header and others\), and assembly can't build on "
-            r"them yet\. Nothing was written\.$",
-        ):
+        render_plan.require_header_source([{"path": "/"}], site)
+        # Without it the page has no header at all, as on any site with no layout.
+        site["pages"][0]["blocks"].pop(0)
+        with self.assertRaisesRegex(ValueError, "^Page / has no header block of its own"):
             render_plan.require_header_source([{"path": "/"}], site)
 
     def test_header_source_rules(self) -> None:
@@ -2620,6 +2618,37 @@ WRITE_COMMANDS = {
 }
 
 
+class NativePlanIdentityTests(unittest.TestCase):
+    """A plan for a site made of native blocks keeps its confirmation ID.
+
+    The IDs were taken before assembly learned Shop Builder's redesigned blocks, and that
+    work must not move them: a yes given for a native site stays valid. When a native
+    plan is meant to change, update the ID in the same commit and say why.
+    """
+
+    def setUp(self) -> None:
+        self.brief = json.loads(EXAMPLE_BRIEF.read_text(encoding="utf-8"))
+
+    def test_a_template_site_plan_keeps_its_id(self) -> None:
+        site, _ = publisher_template_site(self.brief)
+        plan = render_plan.build_plan(self.brief, site)
+        self.assertEqual("sha256:1a2a50e6af85", plan["confirmation_id"])
+
+    def test_a_new_native_page_plan_keeps_its_id(self) -> None:
+        blocks = [
+            {"_id": f"block-{index}", "module": module}
+            for index, module in enumerate(render_plan.NEW_PAGE_TEMPLATE, start=1)
+        ]
+        site = {
+            "_id": "landing-1",
+            "layouts": [],
+            "blocks": [block["_id"] for block in blocks],
+            "pages": [{"_id": "page-1", "name": "Home", "path": "/", "blocks": blocks}],
+        }
+        plan = render_plan.build_plan(self.brief, site)
+        self.assertEqual("sha256:a5dee758db83", plan["confirmation_id"])
+
+
 class OneApprovalTests(unittest.TestCase):
     """A new site's second run reuses the developer's yes only when the plan is covered."""
 
@@ -2701,9 +2730,13 @@ class OneApprovalTests(unittest.TestCase):
         return [call for call in self.cli.calls if call[1:2] and call[1] in WRITE_COMMANDS]
 
     def test_bootstrap_plan_shows_template_removals_and_the_public_preview(self) -> None:
+        # A new site is a redesign site, where a store page is made with its own type.
+        # That page comes with five stores and two heroes: one of each stays.
         home = self.approved["pages"][0]
+        self.assertEqual(["header", "leadGameSales", "newStore", "footer"], home["blocks"])
         self.assertEqual(
-            [m for m in render_plan.NEW_PAGE_TEMPLATE if m not in home["blocks"]],
+            "sb-daily-reward sb-offer-chain newStore newStore rewards newStore newStore "
+            "promocodes social-quests offerwall-block faq leadGameSales".split(),
             home["template_removals"],
         )
         self.assertIn("faq", home["template_removals"])

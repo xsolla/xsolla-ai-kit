@@ -13,7 +13,7 @@ project overrides after preflight.
 | Backup | `get-landing`, `get-structure`, `get-localization`, `list-assets`, `list-versions` | Existing slug | Restorable configuration evidence |
 | Bootstrap | `create-website --type topup` | Name, slug | Empty landing with `type:null` |
 | Bootstrap | `set-landing-type --type store` | Slug | Configured webshop landing |
-| Pages | `add-page` | Slug, name, path | Page with default template blocks |
+| Pages | `add-page`; with `--type topup` for a store page of a redesign site | Slug, name, path | Page with default template blocks; the `topup` page comes with a store |
 | Site layout | `get-block --slug <slug> --block-id <id>` for each ID in `layouts` | `get-structure` layout IDs | The module of each site layout; `common-layout` can sit next to other layouts |
 | Site layout | `create-block --slug <slug> --page-id <page id> --module common-layout` (only if missing, and only when the CLI can create it) | Pages already created | Site-level layout required by Editor, Publish, and preview; avoids suppressing template header/footer |
 | Blocks | `add-block`, `move-block`, and page-scoped `update-block` removal patches | Landing/page/block IDs | Ordered page block list |

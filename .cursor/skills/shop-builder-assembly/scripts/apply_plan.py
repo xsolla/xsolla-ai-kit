@@ -37,10 +37,20 @@ from render_plan import (
     effective_module,
     load_approved_plan,
     load_run_report,
+    logical_module,
+    new_page_type,
     page_path,
+    preferred_blocks,
     require_header_source,
     structure_data,
     structure_hash,
+)
+from redesigned_blocks import (
+    has_twin,
+    is_redesigned,
+    store_problem,
+    store_section_patches,
+    store_sections,
 )
 from validate_shop_brief import VERIFIED_BLOCK_MODULES, load_brief, validate
 from block_ops import (
@@ -1185,7 +1195,7 @@ def reconcile_page(slug: str, landing_id: str, page_plan: dict) -> dict:
     desired = page_plan["blocks"]
     # Only a module this run adds must have a verified contract. A block already on the
     # page, such as a template's own hero, is kept or moved as it is.
-    on_page = {effective_module(block) for block in page.get("blocks", [])}
+    on_page = {logical_module(block) for block in page.get("blocks", [])}
     unverified = sorted(set(desired) - VERIFIED_BLOCK_MODULES - on_page)
     if unverified:
         raise RuntimeError(
@@ -1198,9 +1208,14 @@ def reconcile_page(slug: str, landing_id: str, page_plan: dict) -> dict:
         not isinstance(block, dict) for block in blocks
     ):
         raise RuntimeError("pages[].blocks must contain full block objects")
+    preferred = preferred_blocks(blocks)
     for block in blocks:
-        module = effective_module(block)
-        if module in desired and module not in kept:
+        module = logical_module(block)
+        if (
+            module in desired
+            and module not in kept
+            and preferred.get(module, block.get("_id")) == block.get("_id")
+        ):
             kept.add(module)
         else:
             removals.append(block)
@@ -1221,7 +1236,7 @@ def reconcile_page(slug: str, landing_id: str, page_plan: dict) -> dict:
             "current page requires unconfirmed block removals; back up, re-render, "
             f"and reconfirm the plan ({details})"
         )
-    current_modules = [effective_module(block) for block in blocks]
+    current_modules = [logical_module(block) for block in blocks]
     if not removals and current_modules == desired:
         return {
             "path": page_plan["path"],
@@ -1265,10 +1280,19 @@ def reconcile_page(slug: str, landing_id: str, page_plan: dict) -> dict:
         raise RuntimeError(
             f"page disappeared during reconciliation: {page_plan['path']}"
         )
-    existing = [effective_module(block) for block in page.get("blocks", [])]
+    existing = [logical_module(block) for block in page.get("blocks", [])]
     known_block_ids = {block.get("_id") for block in page.get("blocks", [])}
+    redesigned_page = any(
+        is_redesigned(effective_module(block)) for block in page.get("blocks", [])
+    )
     for module in desired:
         if module not in existing:
+            if redesigned_page and has_twin(module):
+                # The plan leaves such a block out; a native one must not slip in.
+                raise RuntimeError(
+                    f"page {page_plan['path']} is made of Shop Builder's redesigned "
+                    f"blocks and has no {module} block; render the plan again"
+                )
             run_json(
                 "shopbuilder",
                 "add-block",
@@ -1298,7 +1322,7 @@ def reconcile_page(slug: str, landing_id: str, page_plan: dict) -> dict:
         page = page_for_path(structure(slug), page_plan["path"])
         if page is None:
             raise RuntimeError(f"page disappeared during ordering: {page_plan['path']}")
-        modules = [effective_module(block) for block in page.get("blocks", [])]
+        modules = [logical_module(block) for block in page.get("blocks", [])]
         source = modules.index(module)
         if source != destination:
             run_json(
@@ -1317,7 +1341,7 @@ def reconcile_page(slug: str, landing_id: str, page_plan: dict) -> dict:
     final_page = page_for_path(structure(slug), page_plan["path"])
     if final_page is None:
         raise RuntimeError(f"could not read final page {page_plan['path']}")
-    final_modules = [effective_module(block) for block in final_page.get("blocks", [])]
+    final_modules = [logical_module(block) for block in final_page.get("blocks", [])]
     if final_modules != desired:
         raise RuntimeError(
             f"block reconciliation failed for {page_plan['path']}: {final_modules}"
@@ -1393,7 +1417,7 @@ def add_missing_pages(slug: str, page_plans: list[dict]) -> list[str]:
     for page_plan in page_plans:
         if page_for_path(current, page_plan["path"]) is not None:
             continue
-        run_json(
+        command = [
             "shopbuilder",
             "add-page",
             "--slug",
@@ -1402,7 +1426,14 @@ def add_missing_pages(slug: str, page_plans: list[dict]) -> list[str]:
             page_plan["name"],
             "--path",
             page_plan["path"],
+        ]
+        features = current.get("features")
+        page_type = new_page_type(
+            isinstance(features, dict) and features.get("redesign") is True, page_plan
         )
+        if page_type:
+            command += ["--type", page_type]
+        run_json(*command)
         created.append(page_plan["path"])
         current = structure(slug)
         page = page_for_path(current, page_plan["path"])
@@ -1448,6 +1479,16 @@ def ensure_locales(slug: str, desired: list[str]) -> dict:
         "added": added,
         "preserved_extra": sorted(set(final_languages) - set(desired)),
     }
+
+
+REDESIGNED_HEADER = (
+    "the header is one of Shop Builder's redesigned blocks, which assembly doesn't link "
+    "yet; set its links in the Editor"
+)
+REDESIGNED_STORE_SKIPPED = (
+    "The store on {path} wasn't linked to the catalog: {reason}. Set its sections in "
+    "the Editor."
+)
 
 
 def stable_component_id(landing_id: str, page_id: str, target_path: str) -> str:
@@ -1603,12 +1644,25 @@ def apply_navigation(slug: str, landing_id: str, plan: dict) -> list[dict]:
             (
                 block
                 for block in page.get("blocks", [])
-                if effective_module(block) == "header"
+                if logical_module(block) == "header"
             ),
             None,
         )
         if not isinstance(header, dict) or not isinstance(header.get("_id"), str):
             raise RuntimeError(f"page {page_plan['path']} has no header block")
+        if is_redesigned(effective_module(header)):
+            results.append(
+                {
+                    "path": page_plan["path"],
+                    "header_id": header["_id"],
+                    "skipped": REDESIGNED_HEADER,
+                    "needs_human": (
+                        f"The header on {page_plan['path']} keeps the links Shop Builder "
+                        "gave it; set them in the Editor."
+                    ),
+                }
+            )
+            continue
         components = header.get("values", {}).get("components", {})
         right = header.get("values", {}).get("rightComponents", [])
         actual_page_ids = [
@@ -1799,19 +1853,41 @@ def wire_catalog_sections(slug: str, landing_id: str, plan: dict) -> list[dict]:
         page = page_for_path(current, page_plan["path"])
         if page is None:
             raise RuntimeError(f"missing page during catalog wiring: {page_plan['path']}")
+        linked = False
         for block in page.get("blocks", []):
-            if effective_module(block) != "newStore":
+            if logical_module(block) != "newStore":
                 continue
+            linked = True
             block_id = block.get("_id")
             if not isinstance(block_id, str):
                 raise RuntimeError("newStore block has no _id")
-            patches = catalog_patches(block.get("components"), plan["catalog_sections"])
-            actual = [
-                store_section_identity(component)
-                for component in block.get("components", [])
-            ]
-            if actual == desired:
-                patches = []
+            if is_redesigned(effective_module(block)):
+                # Never a partial store: a store that can't take the plan's sections
+                # is left as it is, and the report says so.
+                reason = store_problem(block, plan["catalog_sections"])
+                if reason is not None:
+                    results.append(
+                        {
+                            "path": page_plan["path"],
+                            "block_id": block_id,
+                            "skipped": reason,
+                            "needs_human": REDESIGNED_STORE_SKIPPED.format(
+                                path=page_plan["path"], reason=reason
+                            ),
+                        }
+                    )
+                    continue
+                patches = store_section_patches(block, plan["catalog_sections"])
+            else:
+                patches = catalog_patches(
+                    block.get("components"), plan["catalog_sections"]
+                )
+                actual = [
+                    store_section_identity(component)
+                    for component in block.get("components", [])
+                ]
+                if actual == desired:
+                    patches = []
             if patches:
                 run_json(
                     "shopbuilder",
@@ -1833,9 +1909,16 @@ def wire_catalog_sections(slug: str, landing_id: str, plan: dict) -> list[dict]:
             results.append(
                 {"path": page_plan["path"], "block_id": block_id, "sections": desired}
             )
+        if "newStore" in page_plan.get("blocks", []) and not linked:
+            # Without this the catalog step would report success with nothing linked.
+            raise RuntimeError(
+                f"page {page_plan['path']} has no store block to link the catalog to"
+            )
 
     refreshed = structure(slug)
     for result in results:
+        if "skipped" in result:
+            continue
         page = page_for_path(refreshed, result["path"])
         block = next(
             (
@@ -1847,15 +1930,18 @@ def wire_catalog_sections(slug: str, landing_id: str, plan: dict) -> list[dict]:
         ) if page else None
         if block is None:
             raise RuntimeError("newStore block disappeared during catalog verification")
-        actual = [
-            store_section_identity(component) for component in block.get("components", [])
-        ]
+        if is_redesigned(effective_module(block)):
+            actual = [(*section, True) for section in store_sections(block)]
+        else:
+            actual = [
+                store_section_identity(component)
+                for component in block.get("components", [])
+            ]
         if actual != desired:
             raise RuntimeError(
                 f"catalog reconciliation failed on {result['path']}: {actual}"
             )
     return results
-
 
 def website_slugs(value: object) -> set[str]:
     """Return the slugs list-websites reports, or an empty set for an unknown shape."""
@@ -2158,6 +2244,12 @@ def _main() -> int:
         pages = [reconcile_page(slug, landing_id, page) for page in plan["pages"]]
         navigation = apply_navigation(slug, landing_id, plan)
         catalog_links = wire_catalog_sections(slug, landing_id, plan)
+        # A phase that left a redesigned block for the Editor isn't a completed one.
+        handed_over = {
+            phase: [item["needs_human"] for item in items if "needs_human" in item]
+            for phase, items in (("navigation", navigation), ("catalog_links", catalog_links))
+        }
+        needs_human = [step for steps in handed_over.values() for step in steps]
         print(
             json.dumps(
                 {
@@ -2178,7 +2270,12 @@ def _main() -> int:
                     "navigation": navigation,
                     "catalog_links": catalog_links,
                     "locales": locales,
-                    "completed_phases": plan["implemented_phases"],
+                    "completed_phases": [
+                        phase
+                        for phase in plan["implemented_phases"]
+                        if not handed_over.get(phase)
+                    ],
+                    **({"needs_human": needs_human} if needs_human else {}),
                     "pending_phases": plan["style_phases"] + plan["unsupported_phases"],
                     "next_action": (
                         "Back up the site, then run apply_style.py under the same yes for "

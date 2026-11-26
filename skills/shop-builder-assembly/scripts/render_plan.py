@@ -24,6 +24,15 @@ from block_ops import (
     block_fingerprints,
     plan_block_operations,
 )
+from redesigned_blocks import (
+    STORE as REDESIGNED_STORE,
+    has_twin,
+    is_redesigned,
+    logical_name,
+    store_problem,
+    store_section_count,
+    too_many_sections,
+)
 from validate_shop_brief import load_brief, validate
 
 PRESET_PAGES = {
@@ -124,6 +133,45 @@ NEW_PAGE_TEMPLATE = [
     "faq",
     "footer",
 ]
+# What `add-page` puts on a page of a redesign site, block by block, by the modules the
+# blocks stand for (test-findings.md): the default page, which has no store, and the
+# page of the type that comes with one. A module is listed once for each of its blocks.
+REDESIGNED_PAGE_TEMPLATE = [
+    "header",
+    "leadGameSales",
+    "description",
+    "packs",
+    "packs",
+    "bento-grid",
+    "bento-grid",
+    "bento-grid",
+    "gallery",
+    "packs",
+    "requirements",
+    "faq",
+    "footer",
+]
+REDESIGNED_STORE_PAGE_TYPE = "topup"
+# The sections of the store that page keeps: of its five stores, the one with the most.
+REDESIGNED_STORE_SECTIONS = 3
+REDESIGNED_STORE_PAGE_TEMPLATE = [
+    "header",
+    "leadGameSales",
+    "newStore",
+    "sb-daily-reward",
+    "sb-offer-chain",
+    "newStore",
+    "newStore",
+    "rewards",
+    "newStore",
+    "newStore",
+    "promocodes",
+    "social-quests",
+    "offerwall-block",
+    "faq",
+    "leadGameSales",
+    "footer",
+]
 PREVIEW = {"when": "after assembly, for the visual review", "access": "anyone with the link"}
 # What the developer's yes to a plan covers. A later plan for the same assembly, such as
 # a new site's second run, must keep these unchanged to reuse that yes.
@@ -144,13 +192,27 @@ NO_OWN_HEADER = (
     "Page {path} has no header block of its own, and the site has no common layout "
     "that could hold one. Nothing was written."
 )
-# Shop Builder's redesigned block set: federated blocks whose `values.blockId` starts
-# with this prefix, such as `_site-builder-classic_header`. Their values have another
-# shape than the native modules', so the patches assembly makes don't fit them.
-REDESIGNED_BLOCK_PREFIX = "_site-builder-classic_"
-REDESIGNED_BLOCKS = (
-    "Page {path} is made of Shop Builder's redesigned blocks ({module} and others), "
-    "and assembly can't build on them yet. Nothing was written."
+# Shop Builder's redesigned block set: federated blocks such as
+# `_site-builder-classic_header`, which a new site's pages are made of. Their values have
+# another shape than the native modules', and assembly writes only part of it so far.
+REDESIGNED_SITE = (
+    "Shop Builder makes a new site from its redesigned blocks. On those, assembly sets up "
+    "the pages, the order of the blocks and the store's catalog sections. It doesn't set "
+    "their header links, texts or images yet, and the palette may not take effect: "
+    "finish those in the Editor."
+)
+NO_REDESIGNED_BLOCK = (
+    "this page is made of Shop Builder's redesigned blocks and has no such block; "
+    "assembly can't add one"
+)
+STORE_NOT_LINKED = "The store on {path} won't be linked to the catalog: {reason}. {advice}"
+FEWER_GROUPS = (
+    "Plan fewer catalog groups, or set the store's sections in the Editor after the build."
+)
+SECTIONS_IN_EDITOR = "Set the store's sections in the Editor after the build."
+NO_BLOCK_IN_PAGE_TYPE = (
+    "the page Shop Builder makes here comes without this block, and assembly can't add "
+    "a redesigned one"
 )
 
 
@@ -223,6 +285,26 @@ def effective_module(block: dict) -> object:
     return module
 
 
+def logical_module(block: dict) -> object:
+    """The module a block stands for in a plan: a redesigned block's native name, and
+    any other block's own. `effective_module` stays the block's identity."""
+    return logical_name(effective_module(block))
+
+
+def preferred_blocks(blocks: list) -> dict:
+    """The block to keep when a page has several of one module and the first isn't the
+    one: of a redesigned page's stores, the one with the most sections, because
+    assembly can't add a section to a store."""
+    stores = [
+        block
+        for block in blocks
+        if isinstance(block, dict) and effective_module(block) == REDESIGNED_STORE
+    ]
+    if len(stores) < 2:
+        return {}
+    return {"newStore": max(stores, key=store_section_count).get("_id")}
+
+
 def page_path(page: object) -> str | None:
     """Return the URL path of a page from get-structure.
 
@@ -291,7 +373,7 @@ def has_own_header(page: dict, created_block_ids: frozenset = frozenset()) -> bo
     blocks = page.get("blocks")
     return any(
         isinstance(block, dict)
-        and effective_module(block) == "header"
+        and logical_module(block) == "header"
         and block.get("_id") not in created_block_ids
         for block in (blocks if isinstance(blocks, list) else [])
     )
@@ -348,23 +430,6 @@ def require_header_source(pages: list[dict], structure: object) -> None:
         if current_page is None or has_own_header(current_page):
             continue
         if not has_layout:
-            blocks = current_page.get("blocks")
-            redesigned = next(
-                (
-                    module
-                    for module in (
-                        effective_module(block)
-                        for block in (blocks if isinstance(blocks, list) else [])
-                        if isinstance(block, dict)
-                    )
-                    if isinstance(module, str) and module.startswith(REDESIGNED_BLOCK_PREFIX)
-                ),
-                None,
-            )
-            if redesigned is not None:
-                raise ValueError(
-                    REDESIGNED_BLOCKS.format(path=page_plan["path"], module=redesigned)
-                )
             raise ValueError(NO_OWN_HEADER.format(path=page_plan["path"]))
 
 
@@ -434,6 +499,68 @@ def layout_warnings(
     ):
         return []
     return [LAYOUT_WARNING]
+
+
+def builds_on_redesigned_blocks(structure: object | None, pages: list[dict]) -> bool:
+    """Whether a planned page is, or will be, made of Shop Builder's redesigned blocks:
+    on a new site, on a redesign site that doesn't have the page yet, or on a page that
+    already has such blocks. ``pages`` are bound to the site."""
+    if structure is None:
+        return True
+    features = structure_data(structure).get("features")
+    redesign = isinstance(features, dict) and features.get("redesign") is True
+    return any(
+        (redesign and page["page_id"] is None)
+        or any(is_redesigned(block["module"]) for block in page["current_blocks"])
+        for page in pages
+    )
+
+
+def store_warnings(
+    pages: list[dict], sections: list[dict], structure: object | None
+) -> list[str]:
+    """Say, while the plan is still a proposal, that a redesigned store can't take the
+    plan's catalog sections. The run finds that out only after it has removed the page's
+    other blocks, and then leaves the store as it is. ``pages`` are bound to the site."""
+    if not sections:
+        return []
+    current = structure_data(structure) if structure is not None else {}
+    features = current.get("features")
+    # Shop Builder makes a new site a redesign site.
+    redesign = structure is None or (
+        isinstance(features, dict) and features.get("redesign") is True
+    )
+    by_path = {page_path(page): page for page in current.get("pages") or []}
+    warnings = []
+    for page in pages:
+        if "newStore" not in page["blocks"]:
+            continue
+        reason, advice = None, SECTIONS_IN_EDITOR
+        if page["page_id"] is None:
+            # The store of the page this plan makes there.
+            if redesign and len(sections) > REDESIGNED_STORE_SECTIONS:
+                reason = too_many_sections(REDESIGNED_STORE_SECTIONS, len(sections))
+                advice = FEWER_GROUPS
+        else:
+            removed = {removal["block_id"] for removal in page["removals"]}
+            store = next(
+                (
+                    block
+                    for block in by_path[page["path"]].get("blocks", [])
+                    if effective_module(block) == REDESIGNED_STORE
+                    and block.get("_id") not in removed
+                ),
+                None,
+            )
+            if store is not None:
+                reason = store_problem(store, sections)
+                if 0 < store_section_count(store) < len(sections):
+                    advice = FEWER_GROUPS
+        if reason:
+            warnings.append(
+                STORE_NOT_LINKED.format(path=page["path"], reason=reason, advice=advice)
+            )
+    return warnings
 
 
 def selected_pages(brief: dict, preset: str) -> list[dict]:
@@ -510,9 +637,54 @@ def omit_unwritable_blocks(
     return pages, omissions
 
 
-def template_removals(page: dict) -> list[str]:
-    """Return the template blocks a page created by this plan comes with but won't keep."""
-    return [module for module in NEW_PAGE_TEMPLATE if module not in page["blocks"]]
+def new_page_type(redesign: bool, page: dict) -> str | None:
+    """The `add-page --type` for a page this plan creates, or None for the default page.
+    A redesigned store can't be added to a page, so a store page of a redesign site is
+    made with the type that comes with one."""
+    return REDESIGNED_STORE_PAGE_TYPE if redesign and "newStore" in page["blocks"] else None
+
+
+def new_page_template(redesign: bool, page: dict) -> list[str]:
+    """The blocks a page this plan creates comes with, by the modules they stand for."""
+    if not redesign:
+        return NEW_PAGE_TEMPLATE
+    return (
+        REDESIGNED_STORE_PAGE_TEMPLATE
+        if new_page_type(redesign, page)
+        else REDESIGNED_PAGE_TEMPLATE
+    )
+
+
+def omit_blocks_a_new_page_lacks(page: dict, omissions: list[dict]) -> None:
+    """Leave out of a page this plan creates on a redesign site what its page type comes
+    without. The render after the page is made leaves the same blocks out, so the plan
+    shown for the yes must already do it: otherwise that render needs a new yes."""
+    template = new_page_template(True, page)
+    for module in list(page["blocks"]):
+        if has_twin(module) and module not in template:
+            page["blocks"].remove(module)
+            omissions.append(
+                {
+                    "path": page["path"],
+                    "module": module,
+                    "reason": NO_BLOCK_IN_PAGE_TYPE,
+                    "action": "omit",
+                }
+            )
+
+
+def template_removals(page: dict, redesign: bool = False) -> list[str]:
+    """Return the template blocks a page created by this plan comes with but won't keep,
+    one entry per block: of a module the page comes with several times, one block stays
+    and each of the others is listed, so the list is as long as the run's removals."""
+    kept: set[str] = set()
+    removed = []
+    for module in new_page_template(redesign, page):
+        if module in page["blocks"] and module not in kept:
+            kept.add(module)
+        else:
+            removed.append(module)
+    return removed
 
 
 def bind_current_state(
@@ -532,7 +704,9 @@ def bind_current_state(
             page["current_blocks"] = []
             page["preserved_blocks"] = []
             page["removals"] = []
-            page["template_removals"] = template_removals(page)
+            # Shop Builder makes a new site a redesign site.
+            omit_blocks_a_new_page_lacks(page, omissions)
+            page["template_removals"] = template_removals(page, redesign=True)
         return {
             "status": "not-supplied",
             "application_mode": "bootstrap-only",
@@ -564,6 +738,8 @@ def bind_current_state(
             )
 
     template_site = is_template_site(current, pages)
+    features = current.get("features")
+    redesign = isinstance(features, dict) and features.get("redesign") is True
     for page_plan in pages:
         page_plan["page_id"] = None
         page_plan["current_blocks"] = []
@@ -578,7 +754,9 @@ def bind_current_state(
                 page_plan["site_header"] = "layout"
                 for key in ("blocks", "requested_blocks"):
                     page_plan[key] = adapt_to_template_page(page_plan[key], set())
-            page_plan["template_removals"] = template_removals(page_plan)
+            if redesign:
+                omit_blocks_a_new_page_lacks(page_plan, omissions)
+            page_plan["template_removals"] = template_removals(page_plan, redesign)
             continue
         page_plan["page_id"] = current_page.get("_id")
         blocks = current_page.get("blocks", [])
@@ -592,19 +770,34 @@ def bind_current_state(
             page_plan["site_header"] = "layout"
             # Blocks this assembly created are template blocks, not the template's own.
             on_page = {
-                effective_module(block)
+                logical_module(block)
                 for block in blocks
                 if block.get("_id") not in created_block_ids
             }
             for key in ("blocks", "requested_blocks"):
                 page_plan[key] = adapt_to_template_page(page_plan[key], on_page)
+        if any(is_redesigned(effective_module(block)) for block in blocks):
+            # A redesigned block is added only by the page type that seeds it, so a
+            # planned block this page lacks is left out, with the reason.
+            on_page = {logical_module(block) for block in blocks}
+            for module in list(page_plan["blocks"]):
+                if module not in on_page and has_twin(module):
+                    page_plan["blocks"].remove(module)
+                    omissions.append(
+                        {
+                            "path": page_plan["path"],
+                            "module": module,
+                            "reason": NO_REDESIGNED_BLOCK,
+                            "action": "omit",
+                        }
+                    )
         omitted_on_page = {
             omission["module"]: omission
             for omission in omissions
             if omission["path"] == page_plan["path"]
         }
         current_modules = {
-            effective_module(block)
+            logical_module(block)
             for block in blocks
             if isinstance(effective_module(block), str)
             and block.get("_id") not in created_block_ids
@@ -618,6 +811,7 @@ def bind_current_state(
             ]
         kept: set[str] = set()
         desired = page_plan["blocks"]
+        preferred = preferred_blocks(blocks)
         for block in blocks:
             block_id = block.get("_id")
             module = effective_module(block)
@@ -625,25 +819,31 @@ def bind_current_state(
                 raise ValueError(
                     "every current block must have string _id and module fields"
                 )
+            # The plan's name for the block; the records below keep its own.
+            name = logical_name(module)
             page_plan["current_blocks"].append({"block_id": block_id, "module": module})
             if (
-                module in preserved_modules
-                and module not in kept
+                name in preserved_modules
+                and name not in kept
                 and block_id not in created_block_ids
             ):
                 page_plan["preserved_blocks"].append(
                     {
                         "block_id": block_id,
                         "module": module,
-                        "reason": omitted_on_page[module]["reason"],
+                        "reason": omitted_on_page[name]["reason"],
                     }
                 )
-                omitted_on_page[module]["action"] = "preserve-existing"
-                omitted_on_page[module]["block_id"] = block_id
-            if module in desired and module not in kept:
-                kept.add(module)
+                omitted_on_page[name]["action"] = "preserve-existing"
+                omitted_on_page[name]["block_id"] = block_id
+            if (
+                name in desired
+                and name not in kept
+                and preferred.get(name, block_id) == block_id
+            ):
+                kept.add(name)
             else:
-                if module in kept:
+                if name in kept or name in desired:
                     reason = "duplicate module"
                 elif block_id in created_block_ids:
                     reason = "template block on a page this assembly created"
@@ -715,7 +915,7 @@ def placement(
         existing.extend(
             block["block_id"]
             for block in page.get("current_blocks", [])
-            if block["module"] == page_modules[page["path"]]
+            if logical_name(block["module"]) == page_modules[page["path"]]
             and block["block_id"] not in removed
             and block["block_id"] not in created_block_ids
         )
@@ -971,6 +1171,9 @@ def build_plan(
         )
     warnings.extend(custom_code_warnings(pages))
     warnings.extend(layout_warnings(current_structure, can_create_layout, module_of))
+    warnings.extend(store_warnings(pages, catalog_groups, current_structure))
+    if builds_on_redesigned_blocks(current_structure, pages):
+        warnings.append(REDESIGNED_SITE)
     environment = brief["project"].get("environment")
     if environment not in (None, "test"):
         warnings.append(
@@ -1103,8 +1306,9 @@ def approval_changes(approved: dict, plan: dict, run_report: dict) -> list[str]:
 
     ``run_report`` is the report of the earlier run under that yes, such as a new
     site's bootstrap. The yes covers ``plan`` only when it keeps the approved pages,
-    sections, catalog, locales, brand and content, and removes only blocks that the
-    earlier run created or that the approved plan listed by ID.
+    sections, catalog, locales, brand and content, removes only blocks that the
+    earlier run created or that the approved plan listed by ID, and has no warning the
+    approved plan didn't show.
     """
     changes = []
     if run_report.get("approved_confirmation_id") != approved.get("confirmation_id"):
@@ -1118,6 +1322,14 @@ def approval_changes(approved: dict, plan: dict, run_report: dict) -> list[str]:
             changes.append(f"{label} changed")
     if page_outline(approved) != page_outline(plan):
         changes.append("the pages or their sections changed")
+    # A warning the yes never saw needs a new one. A warning that is gone doesn't: the
+    # Custom code note, for one, goes once a run has added that block.
+    seen = approved.get("warnings", [])
+    changes.extend(
+        f"it has a warning the approved plan didn't show: {warning}"
+        for warning in plan.get("warnings", [])
+        if warning not in seen
+    )
     extra_pages = plan["current_state"].get("extra_pages", [])
     if extra_pages:
         changes.append(

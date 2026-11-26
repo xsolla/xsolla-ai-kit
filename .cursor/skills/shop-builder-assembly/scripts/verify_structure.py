@@ -28,11 +28,13 @@ from render_plan import (
     canonical_hash,
     common_layout_id,
     effective_module,
+    logical_module,
     page_path,
     stable_structure,
     structure_data,
     uses_own_theme,
 )
+from redesigned_blocks import is_redesigned, store_sections
 
 
 def load_object(path: Path, label: str) -> dict:
@@ -394,7 +396,8 @@ def verify(
             not isinstance(block, dict) for block in blocks
         ):
             raise ValueError(f"structure page {path} has an invalid blocks list")
-        actual_modules = [effective_module(block) for block in blocks]
+        # The plan names a redesigned block by the native module it stands for.
+        actual_modules = [logical_module(block) for block in blocks]
         expected_modules = page_plan.get("blocks")
         page_ok = actual_modules == expected_modules
         if not page_ok:
@@ -427,30 +430,40 @@ def verify(
             for section in plan.get("catalog_sections", [])
         ]
         for block in blocks:
-            if effective_module(block) != "newStore" or not expected_sections:
+            if logical_module(block) != "newStore" or not expected_sections:
                 continue
-            actual_sections = []
-            for component in block.get("components", []):
-                section = component.get("section", {})
-                item = section.get("item", {})
-                card = component.get("card", {})
-                actual_sections.append(
-                    (
-                        item.get("group"),
-                        item.get("type"),
-                        card.get("selectedLayoutType"),
-                        component.get("enable"),
+            if is_redesigned(effective_module(block)):
+                # Its sections are in its values; `components` is the native store's.
+                actual_sections = [(*section, True) for section in store_sections(block)]
+            else:
+                actual_sections = []
+                for component in block.get("components", []):
+                    section = component.get("section", {})
+                    item = section.get("item", {})
+                    card = component.get("card", {})
+                    actual_sections.append(
+                        (
+                            item.get("group"),
+                            item.get("type"),
+                            card.get("selectedLayoutType"),
+                            component.get("enable"),
+                        )
                     )
-                )
             if actual_sections != expected_sections:
                 errors.append(
                     f"catalog sections differ on {path}: expected {expected_sections}, "
                     f"got {actual_sections}"
                 )
         header = next(
-            (block for block in blocks if effective_module(block) == "header"), None
+            (block for block in blocks if logical_module(block) == "header"), None
         )
-        if isinstance(header, dict) and expected_navigation_ids:
+        if isinstance(header, dict) and is_redesigned(effective_module(header)):
+            # Assembly doesn't link a redesigned header yet, so there is nothing to check.
+            warnings.append(
+                f"the header on {path} is one of Shop Builder's redesigned blocks; "
+                "its links are set in the Editor and weren't checked"
+            )
+        elif isinstance(header, dict) and expected_navigation_ids:
             values = header.get("values", {})
             components = values.get("components", {})
             right = values.get("rightComponents", [])

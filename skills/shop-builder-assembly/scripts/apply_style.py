@@ -51,6 +51,7 @@ from render_plan import (
     file_sha256,
     load_approved_plan,
     load_run_report,
+    logical_module,
     structure_hash,
     uses_own_theme,
 )
@@ -457,7 +458,7 @@ def images_phase(
             module = image.get("page_modules", {}).get(path, image["module"])
             page = page_for_path(current, path) or {}
             for block in page.get("blocks", []):
-                if effective_module(block) != module:
+                if logical_module(block) != module:
                     continue
                 if block.get("_id") in allowed:
                     targets.append((image, block))
@@ -610,6 +611,10 @@ def button_label_slot(block: dict, position: int) -> tuple[str | None, str | Non
     return None, lid
 
 
+FEDERATED_FAQ = "it is a federated block, whose questions assembly doesn't write yet"
+FEDERATED_TEXT = "it is a federated block, whose text assembly doesn't write yet"
+
+
 def faq_item_ids(landing_id: str, block_id: str, index: int) -> tuple[str, str, str]:
     """Stable IDs for an FAQ item this script adds, so a rerun finds it again."""
     component = str(uuid.uuid5(uuid.NAMESPACE_URL, f"{landing_id}:{block_id}:faq:{index}"))
@@ -684,7 +689,7 @@ def copy_phase(
             module = item["page_modules"][path]
             page = page_for_path(current, path) or {}
             for block in page.get("blocks", []):
-                if effective_module(block) != module:
+                if logical_module(block) != module:
                     continue
                 if block.get("_id") in allowed:
                     yield page, block
@@ -696,6 +701,18 @@ def copy_phase(
 
     for item in texts:
         for page, block in planned_blocks(item):
+            if isinstance((block.get("values") or {}).get("blockId"), str):
+                # It keeps its text elsewhere; a field named like a native one isn't it.
+                module = effective_module(block)
+                results.append(
+                    {"block_id": block["_id"], "module": module, "field": item["field"],
+                     "status": "skipped", "reason": FEDERATED_TEXT}
+                )
+                needs_human.append(
+                    f"The {module} block's {item['field']} wasn't written: {FEDERATED_TEXT}. "
+                    "Set it in the editor."
+                )
+                continue
             field = (block.get("values") or {}).get(item["field"])
             lid = field.get("id") if isinstance(field, dict) else None
             entry = {
@@ -738,6 +755,17 @@ def copy_phase(
             results.append(entry)
 
     for page, block in planned_blocks(faq) if faq else []:
+        if isinstance((block.get("values") or {}).get("blockId"), str):
+            # Its questions aren't `components`; native items must not be added to it.
+            results.append(
+                {"block_id": block["_id"], "module": effective_module(block), "field": "items",
+                 "status": "skipped", "reason": FEDERATED_FAQ}
+            )
+            needs_human.append(
+                f"The FAQ block's questions weren't written: {FEDERATED_FAQ}. Set them in "
+                "the editor."
+            )
+            continue
         components = block.get("components")
         components = components if isinstance(components, list) else []
         questions = [
