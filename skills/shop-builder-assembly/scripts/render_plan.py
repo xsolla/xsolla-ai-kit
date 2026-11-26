@@ -1195,7 +1195,8 @@ def main() -> int:
         )
         if structure is not None:
             require_header_source(plan["pages"], structure)
-    except (RuntimeError, ValueError) as exc:
+    except (RuntimeError, ValueError, OSError) as exc:
+        # OSError: no `xsolla` on PATH when a site layout's module has to be read.
         print(str(exc), file=sys.stderr)
         return 1
     print(json.dumps(plan, indent=2))

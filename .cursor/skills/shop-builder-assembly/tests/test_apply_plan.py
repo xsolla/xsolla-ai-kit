@@ -2136,6 +2136,27 @@ class CommonLayoutPreflightTests(unittest.TestCase):
         self.assertEqual(0, code, stderr.getvalue())
         self.assertIn(render_plan.LAYOUT_WARNING, json.loads(stdout.getvalue())["warnings"])
 
+    def test_render_of_an_existing_site_without_the_cli_stops_cleanly(self) -> None:
+        # get-structure lists a site layout by ID only, so its module is read with
+        # get-block. With no CLI that read raises OSError too: a message, no traceback.
+        brief = json.loads(EXAMPLE_BRIEF.read_text(encoding="utf-8"))
+        site, _ = publisher_template_site(brief)
+        stdout, stderr = io.StringIO(), io.StringIO()
+        with tempfile.TemporaryDirectory() as directory:
+            structure_path = Path(directory) / "structure.json"
+            structure_path.write_text(json.dumps({"ok": True, "data": site}), encoding="utf-8")
+            argv = ["render_plan.py", str(EXAMPLE_BRIEF), "--structure", str(structure_path)]
+            with (
+                mock.patch.object(sys, "argv", argv),
+                mock.patch("preflight.run_json", side_effect=FileNotFoundError("xsolla")),
+                contextlib.redirect_stdout(stdout),
+                contextlib.redirect_stderr(stderr),
+            ):
+                code = render_plan.main()
+        self.assertEqual(1, code)
+        self.assertEqual("", stdout.getvalue())
+        self.assertIn("xsolla", stderr.getvalue())
+
 
 NO_OWN_HEADER = (
     "Page / has no header block of its own. Sites created from a Publisher Account "
