@@ -6,13 +6,18 @@ For people maintaining the scripts, not for agent replies. Agent-facing rules ar
 ## Session retry
 
 `apply_plan.py` and `backup_shop.py` do not log in before commands; the CLI refreshes
-an expired token on its own. When a command fails with an authentication error or a
-Publisher-session bootstrap failure, the script runs `xsolla auth login` once per run,
+an expired token on its own. When a command fails with an authentication error, the
+script runs `xsolla auth login` once per run,
 re-reads `xsolla config list --json`, stops if the merchant, project, or sandbox
 setting changed, and retries the command. A second authentication failure ends the
 run. The scripts never read a browser cookie, never accept a manually copied PA token,
-and do not retry ambiguous API operation failures. Session-bootstrap HTTP 429
-responses use bounded backoff.
+and do not retry ambiguous API operation failures. A Publisher-session bootstrap
+failure, HTTP 429 included, happens before the request is sent: it uses bounded
+backoff and never starts a login. If it keeps failing, the run stops with the CLI
+error, and the user runs `xsolla auth login` in their own terminal before a rerun.
+The scripts check for a bootstrap failure before an authentication failure. So a
+bootstrap error that comes with exit code 10 also gets the backoff and then the stop,
+not a login. This order is intended.
 ## Known gaps to track
 
 The official Blocks page is the authoritative product inventory, but the CLI does not
