@@ -59,7 +59,9 @@ a quest) never trigger it.
    (no `--slug`, read-only). When its `site` is set, that is the only site with a
    visible Quests block: use it without asking, name it in the plan's Site bullet, and
    use the same output as the block summary (no second read). When `site` is null, go
-   on with step 2 using the `sites` names; the site list is already read.
+   on with step 2 using the `sites` names; the site list is already read. When it
+   answers `site_list_truncated`, the project has more sites than one page of the list
+   holds: go on with step 1 and add `--all` to the command, so the list has every site.
 1. Always run the read-only list, `xsolla shopbuilder list-websites --json`, before
    replying. Never say the list is unavailable without running it.
 2. If the publisher already named a site that is in the list, use it and skip the

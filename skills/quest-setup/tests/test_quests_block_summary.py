@@ -312,7 +312,7 @@ class FindSiteTest(unittest.TestCase):
         structures: dict,
         listing_ok: bool = True,
         wrapped: bool = False,
-        total: int | None = None,
+        total: float | None = None,
     ) -> tuple:
         calls = []
 
@@ -369,6 +369,9 @@ class FindSiteTest(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertEqual(result, {"ok": False, "error": "site_list_truncated"})
         self.assertEqual([c[0] for c in calls], ["list-websites"])
+        # A total that arrives as a float counts the same.
+        code, result, _ = self.run_find({"my-test-site": structure()}, wrapped=True, total=3.0)
+        self.assertEqual((code, result["error"]), (1, "site_list_truncated"))
 
     def test_two_sites_with_a_block_pick_none(self) -> None:
         code, result, _ = self.run_find({"site-a": structure(), "site-b": structure()})
