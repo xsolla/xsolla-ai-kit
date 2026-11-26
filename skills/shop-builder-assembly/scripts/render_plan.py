@@ -1306,8 +1306,9 @@ def approval_changes(approved: dict, plan: dict, run_report: dict) -> list[str]:
 
     ``run_report`` is the report of the earlier run under that yes, such as a new
     site's bootstrap. The yes covers ``plan`` only when it keeps the approved pages,
-    sections, catalog, locales, brand and content, and removes only blocks that the
-    earlier run created or that the approved plan listed by ID.
+    sections, catalog, locales, brand and content, removes only blocks that the
+    earlier run created or that the approved plan listed by ID, and has no warning the
+    approved plan didn't show.
     """
     changes = []
     if run_report.get("approved_confirmation_id") != approved.get("confirmation_id"):
@@ -1321,13 +1322,14 @@ def approval_changes(approved: dict, plan: dict, run_report: dict) -> list[str]:
             changes.append(f"{label} changed")
     if page_outline(approved) != page_outline(plan):
         changes.append("the pages or their sections changed")
-    if REDESIGNED_SITE in plan.get("warnings", []) and REDESIGNED_SITE not in approved.get(
-        "warnings", []
-    ):
-        changes.append(
-            "the site is made of Shop Builder's redesigned blocks, which the approved "
-            "plan didn't say"
-        )
+    # A warning the yes never saw needs a new one. A warning that is gone doesn't: the
+    # Custom code note, for one, goes once a run has added that block.
+    seen = approved.get("warnings", [])
+    changes.extend(
+        f"it has a warning the approved plan didn't show: {warning}"
+        for warning in plan.get("warnings", [])
+        if warning not in seen
+    )
     extra_pages = plan["current_state"].get("extra_pages", [])
     if extra_pages:
         changes.append(

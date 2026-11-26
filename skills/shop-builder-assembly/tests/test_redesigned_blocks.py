@@ -546,11 +546,32 @@ class RedesignedPlanTests(unittest.TestCase):
         self.assertEqual([], render_plan.approval_changes(approved, plan, report))
         approved["warnings"].remove(render_plan.REDESIGNED_SITE)
         self.assertEqual(
-            [
-                "the site is made of Shop Builder's redesigned blocks, which the approved "
-                "plan didn't say"
-            ],
+            ["it has a warning the approved plan didn't show: " + render_plan.REDESIGNED_SITE],
             render_plan.approval_changes(approved, plan, report),
+        )
+
+    def test_only_a_warning_the_yes_never_saw_needs_a_new_yes(self) -> None:
+        site = redesigned_site(self.brief, STORE_PAGE)
+        plan = render_plan.build_plan(self.brief, site, block_ids(site))
+        report = {
+            "approved_confirmation_id": "sha256:approved",
+            "slug": plan["target"]["slug"],
+            "landing_id": site["_id"],
+            "created_blocks": {"/": sorted(block_ids(site))},
+        }
+        approved = {**copy.deepcopy(plan), "confirmation_id": "sha256:approved"}
+        # A warning that is gone is harmless: the yes saw more than the plan now says.
+        approved["warnings"].append("A warning only the approved plan had.")
+        self.assertEqual([], render_plan.approval_changes(approved, plan, report))
+        # Any new one is not, whichever it is.
+        later = copy.deepcopy(plan)
+        later["warnings"] += ["First new warning.", "Second new warning."]
+        self.assertEqual(
+            [
+                "it has a warning the approved plan didn't show: First new warning.",
+                "it has a warning the approved plan didn't show: Second new warning.",
+            ],
+            render_plan.approval_changes(approved, later, report),
         )
 
 
