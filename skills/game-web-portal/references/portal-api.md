@@ -11,8 +11,8 @@ Catalog and Login stay delegated, and checkout is the Web Shop's hosted Pay Stat
   `xsolla publisher list-projects`.
 - `xsolla config set sandbox false`, when preflight stops on sandbox mode.
 - Read: `xsolla shopbuilder` `list-websites`, `get-landing`, `get-structure`, `list-pages`,
-  `get-page`, `get-localization`, `list-assets`, `list-agreements`.
-- Write: `xsolla shopbuilder` `add-page`, `add-block`, `move-block`, `update-block`,
+  `get-page`, `get-localization`, `list-assets`, `list-agreements`, `get-block-schema`.
+- Write: `xsolla shopbuilder` `add-page`, `create-block`, `reorder-blocks`, `update-block`,
   `upload-asset`, `add-language`, `update-localization`, `update-many-localization`,
   `add-connector`, `update-restrictions`.
 - `--help` on any listed command, to check its flags, and `xsolla --help` (help on the CLI
@@ -45,11 +45,11 @@ Every other command is out of bounds, even when the partner asks for it: among t
 
 | Key | What it is | Used by |
 |---|---|---|
-| `domain` | the site's domain label, e.g. `voidwall` → `voidwall.xsolla.site` (the CLI's `--slug`) | `landing/{domain}/…`, localization |
-| `landingId` | the landing's `_id` (top-level `_id` in `get-structure`) | blocks, assets, theme patches |
+| `domain` | the site's domain label, e.g. `voidwall` → `voidwall.xsolla.site` (the CLI's `--slug`) | `landing/{domain}/…`, localization, `add-page`, `create-block`, `reorder-blocks` |
+| `landingId` | the landing's `_id` (top-level `_id` in `get-structure`) | `update-block` (block, page and theme patches), assets |
 
 Sending a domain where a `landingId` is required returns **500**. Resolve `landingId` once
-during Discover and reuse it.
+during Discover and reuse it. `create-block` and `reorder-blocks` have no `--landing-id`.
 
 ## Discover
 
@@ -141,7 +141,8 @@ footer) and most sections.
 | Step | Command |
 |---|---|
 | Add each missing section's page | `add-page --slug <domain> --name <name> --path <path>` |
-| Add its blocks at the top of the page | `add-block --landing-id <landingId> --page-id <pageId> --block <module> --index 0`, then `--index 1` |
+| Read each module's version | `get-block-schema --module <module>`: its `maxVersion` |
+| Add its blocks at the top of the page | `create-block --slug <domain> --page-id <pageId> --module <module> --version <maxVersion> --position 0`, then `--position 1` |
 | Hide the seeded blocks it doesn't keep | `update-block --landing-id <landingId> --data <map>` |
 
 ### Portal layout
@@ -163,7 +164,7 @@ On this template, `add-page` seeds a new page with 11 game-sales blocks — `lea
 `description`, `packs` ×3, `bento-grid` ×3, `gallery`, `requirements`, `faq` — and no header or
 footer, which come from the site layout. The page gets no page type and no sidebar link, and it
 starts with its own theme ("Use global theme" off): set `["theme","enabled"]` to `false` on it
-(see the table below). For Community, add `lead` (`--index 0`) and `embed` (`--index 1`), then
+(see the table below). For Community, add `lead` (`--position 0`) and `embed` (`--position 1`), then
 hide the 11 seeded blocks; the partner deletes them in the builder.
 
 Added blocks bring content of their own. Read each one after adding it:
@@ -207,12 +208,26 @@ it, with its blocks, as `needs_human`.
 | Intent | Command |
 |---|---|
 | Add a page | `add-page` — `--name` (1–80 chars), `--path` (lowercase `a–z`, `0–9`, hyphen, slash; max 80) |
-| Add / move a block | `add-block` / `move-block` |
+| Add a block | `create-block` |
+| Move a block | `reorder-blocks` |
 | Hide a block, set its images, switches and store buttons, or patch the theme | `update-block` |
 
-`add-block` takes a **module template name** (`--block`), not a block ID, plus the landing
-`_id`, the page `_id`, and always `--index`: without it the block is appended to the end of the
-page (CLI 1.9.4), not placed where the layout needs it. Use only the modules in the layout above.
+`create-block` takes the site's domain (`--slug`), not the landing `_id`, the page `_id`
+(`--page-id`), a **module name** (`--module`), not a block ID, and always `--position`, counted
+from 0: without it the block is appended to the end of the page, not placed where the layout
+needs it. Use only the modules in the layout above.
+
+- Pass `--version` with the `maxVersion` that `get-block-schema --module <module>` reports. The
+  CLI requires it for a module that has versions, and `lead` and `embed` both do.
+- Don't pass `--block-values` or `--block-version`. Content is set after the add, as below, and
+  `--block-version` is for a block from the blocks service, which this layout doesn't use.
+- The command prints no body. Read `get-structure` after it for the new block's `_id`.
+
+`reorder-blocks` takes `--slug`, `--page-id` and `--block-order`: a JSON list of every block
+`_id` on the page, hidden ones included, in the new order. Read the page in `get-structure`
+right before; the CLI treats a list that misses a block as an error.
+
+The CLI still has `add-block` and `move-block`, marked deprecated. Don't use them.
 
 `update-block` sends a map of `requestId → change`:
 
