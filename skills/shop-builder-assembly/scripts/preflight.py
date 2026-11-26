@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -66,22 +67,24 @@ def cli_can_create_layout(run: Callable[..., object] | None = None) -> bool:
     """Return whether the CLI's create-block can add the common layout.
 
     `list-block-modules` names the modules create-block refuses under
-    ``cannotCreate``, each as "<module> — <reason>". A CLI without that command, a
-    failed call, or an answer in another shape counts as no: the layout step is then
-    skipped, never guessed. ``run`` is the caller's own `run_json`.
+    ``cannotCreate``, each as "<module> — <reason>". A CLI without that command, no
+    CLI at all, a failed call, or an answer in another shape, entries included,
+    counts as no: the layout step is then skipped, never guessed. ``run`` is the
+    caller's own `run_json`.
     """
 
     try:
         catalog = data((run or run_json)("shopbuilder", "list-block-modules"))
-    except RuntimeError:
+    except (RuntimeError, OSError):
         return False
     refused = catalog.get("cannotCreate") if isinstance(catalog, dict) else None
-    if not isinstance(refused, list):
+    if not isinstance(refused, list) or not all(
+        isinstance(entry, str) for entry in refused
+    ):
         return False
-    return not any(
-        isinstance(entry, str) and entry.split()[:1] == [COMMON_LAYOUT]
-        for entry in refused
-    )
+    # The module's name, whatever separator follows it; `common-layout-v2` is another.
+    named = re.compile(re.escape(COMMON_LAYOUT) + r"(?![\w-])")
+    return not any(named.match(entry.strip()) for entry in refused)
 
 
 def site_block_module(slug: str, block_id: str) -> object:
