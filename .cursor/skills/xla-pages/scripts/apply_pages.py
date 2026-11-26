@@ -353,30 +353,38 @@ class Run:
         self.patch("page", state["page_id"], [{"op": verb, "path": [op["key"]], "value": op["value"]}])
 
 
+def routes_and_blocks(structure: dict) -> tuple[list, list]:
+    """The page routes and block ids of a structure. Entries that aren't objects are skipped."""
+    pages = [page for page in structure.get("pages") or [] if isinstance(page, dict)]
+    routes = [route for page in pages if (route := common.page_route(page)) is not None]
+    blocks = [
+        block["_id"] for page in pages for block in page.get("blocks") or []
+        if isinstance(block, dict) and block.get("_id") is not None
+    ]
+    return routes, blocks
+
+
 def read_back_created(slug: str, before: dict, progress: dict) -> None:
-    """After a stop partway: the pages and blocks on the site that the backup doesn't have.
+    """After a stop partway: add the pages and blocks on the site that the backup doesn't have.
 
     A step can fail after the server did its part: the CLI fails after the write, or the
     read-back shows another block than the pinned one. The lists kept while writing miss
-    that, so the report takes them from the site.
+    that, so the report also takes them from the site. They are what is new since the backup,
+    not provably what this run created: an edit made in the Editor meanwhile is in them too.
     """
     try:
-        after = common.get_structure(slug)
-    except common.CliError as exc:
+        old_routes, old_blocks = routes_and_blocks(before)
+        routes, blocks = routes_and_blocks(common.get_structure(slug))
+    except Exception as exc:  # noqa: BLE001 - nothing may hide the stop report main is printing
         progress["created_read_back_failed"] = (
             f"the site could not be read back ({exc}); created_pages and created_blocks may "
             "miss what the last step created"
         )
         return
-    routes = {common.page_route(page) for page in before.get("pages") or []}
-    blocks = {block.get("_id") for page in before.get("pages") or [] for block in page.get("blocks") or []}
-    progress["created_pages"] = [
-        route for page in after["pages"] if (route := common.page_route(page)) not in routes
-    ]
-    progress["created_blocks"] = [
-        block.get("_id") for page in after["pages"] for block in page.get("blocks") or []
-        if block.get("_id") not in blocks
-    ]
+    for key, now, old in (("created_pages", routes, old_routes), ("created_blocks", blocks, old_blocks)):
+        new = [item for item in now if item not in old]
+        # What the run already listed stays, in case the read-back is stale.
+        progress[key] = new + [item for item in progress[key] if item not in new]
 
 
 def main(argv: list[str] | None = None) -> int:

@@ -50,8 +50,10 @@ an older CLI; connections and bindings are stored as Site Builder stores them (s
 `valuesSystem`, `#VC:` values, `usedBy`); a version the blocks service doesn't have creates
 nothing and stops the run, and so does a block read back at another version than the pinned
 one; a stop partway reports every page and block that is on the site, also when the step that
-created it failed, and says so when the site can't be read back; a write that prints no body
-is not a failure, a read is; the preflight
+created it failed; it still reports when the site can't be read back, whatever that read fails
+with, and says the lists may be incomplete; entries that aren't objects are skipped, and a
+stale read-back keeps what the run already listed; a write that prints no body is not a
+failure, a read is; the preflight
 covers empty `payment_methods`, a capitalized provider id, empty `countries`, a provider listed
 twice, more than 20 media, a cover whose info is 404, a title over 60 characters, an empty `faq`,
 and a game served by `core-attributes` but missing from the catalog.

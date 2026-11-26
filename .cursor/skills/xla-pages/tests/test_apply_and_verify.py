@@ -172,9 +172,9 @@ class ApplyAndVerifyTests(unittest.TestCase):
     def block_ids(self, route: str) -> list:
         return [b["_id"] for b in page(self.cli.site, route)["blocks"]]
 
-    def stop_partway(self, command: str, change) -> dict:
+    def stop_partway(self, command: str, change, name: str = "backup") -> dict:
         """Apply the batch with `change` wrapped around one stand-in command; the run must stop."""
-        plan, errors, plan_path, backup_dir = harness.prepare(self.dir, self.cli)
+        plan, errors, plan_path, backup_dir = harness.prepare(self.dir, self.cli, name=name)
         self.assertEqual([], errors)
         real = getattr(self.cli, command)
         setattr(self.cli, command, lambda options, flags: change(real, options, flags))
@@ -216,19 +216,63 @@ class ApplyAndVerifyTests(unittest.TestCase):
         self.assertEqual(len(stand_in_cli.SEEDED), len(report["created_blocks"]))
 
     def test_a_site_that_cannot_be_read_back_marks_the_lists_as_incomplete(self) -> None:
-        def offline(options: dict, flags: set) -> object:
-            raise common.CliError("xsolla shopbuilder get-structure failed: connection reset")
+        # Whatever the read-back fails with, the stop report still prints.
+        failures = {
+            "cli": common.CliError("xsolla shopbuilder get-structure failed: connection reset"),
+            "os": OSError("xsolla: cannot execute"),
+            "decode": UnicodeDecodeError("utf-8", b"\xff", 0, 1, "invalid start byte"),
+            "key": KeyError("pages"),
+            "other": TypeError("not what the script expects"),
+        }
+        for name, failure in failures.items():
+            with self.subTest(name):
+                self.cli = stand_in_cli.StandInCli()
 
-        def then_go_offline(real, options: dict, flags: set) -> object:
+                def offline(options: dict, flags: set, failure: Exception = failure) -> object:
+                    raise failure
+
+                def then_go_offline(real, options: dict, flags: set, offline=offline) -> object:
+                    real(options, flags)
+                    self.cli.cmd_get_structure = offline
+                    raise common.CliError("xsolla shopbuilder create-block failed: connection reset")
+
+                report = self.stop_partway("cmd_create_block", then_go_offline, name=name)
+                self.assertEqual("xsolla shopbuilder create-block failed: connection reset", report["reason"])
+                # The block is on the page, but nothing could read it back: the report says so
+                # and keeps what the run knew.
+                self.assertEqual(["/payment/klarna"], report["created_pages"])
+                self.assertEqual([], report["created_blocks"])
+                self.assertIn("could not be read back", report["created_read_back_failed"])
+
+    def answer_get_structure_with(self, site: dict):
+        self.cli.cmd_get_structure = lambda options, flags: {"ok": True, "data": copy.deepcopy(site)}
+
+    def test_a_read_back_with_entries_that_are_not_objects_still_reports(self) -> None:
+        def then_malformed(real, options: dict, flags: set) -> object:
             real(options, flags)
-            self.cli.cmd_get_structure = offline
+            site = copy.deepcopy(self.cli.site)
+            site["pages"].insert(0, "oops")
+            page(site, "/payment/klarna")["blocks"].insert(0, "oops")
+            self.answer_get_structure_with(site)
             raise common.CliError("xsolla shopbuilder create-block failed: connection reset")
 
-        report = self.stop_partway("cmd_create_block", then_go_offline)
-        self.assertEqual("xsolla shopbuilder create-block failed: connection reset", report["reason"])
-        # The block is on the page, but nothing could read it back: the report says so.
-        self.assertEqual([], report["created_blocks"])
-        self.assertIn("could not be read back", report["created_read_back_failed"])
+        report = self.stop_partway("cmd_create_block", then_malformed)
+        self.assertEqual(["/payment/klarna"], report["created_pages"])
+        self.assertEqual(self.block_ids("/payment/klarna"), report["created_blocks"])
+        self.assertNotIn("created_read_back_failed", report)
+
+    def test_a_stale_read_back_keeps_what_the_run_already_knew(self) -> None:
+        def then_stale(real, options: dict, flags: set) -> object:
+            if options["--module"] != "@xla-pages/hero":
+                return real(options, flags)
+            # The site answers as it was before the run: nothing new on it.
+            self.answer_get_structure_with(stand_in_cli.load_site())
+            raise common.CliError("xsolla shopbuilder create-block failed: connection reset")
+
+        report = self.stop_partway("cmd_create_block", then_stale)
+        self.assertEqual(["/payment/klarna"], report["created_pages"])
+        self.assertEqual(self.block_ids("/payment/klarna"), report["created_blocks"])
+        self.assertEqual(1, len(report["created_blocks"]))
 
     def test_the_after_write_check_reports_the_exact_difference(self) -> None:
         plan, report, backup_dir = self.run_batch()

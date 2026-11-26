@@ -206,7 +206,7 @@ class StandInCli:
             }
         position = int(options.get("--position", len(page["blocks"])))
         page["blocks"].insert(position, block)
-        return {"ok": True}
+        return None  # its help lists no response body; what the real CLI prints is not verified
 
     def cmd_update_block(self, options: dict, flags: set) -> object:
         for change in json.loads(options["--data"]).values():
