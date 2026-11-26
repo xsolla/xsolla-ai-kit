@@ -140,7 +140,9 @@ a fresh backup, as [CLI operations](references/cli-operations.md) describes.
 5. **Catalog links** — configure `newStore` sections after this project's groups and SKUs
    are verified. Localize a section title before enabling its `L:` ID. On a redesigned
    store `apply_plan.py` points its first sections at the plan's groups and drops the
-   rest; a store with fewer sections than the plan is left as it is and reported.
+   rest; a store with fewer sections than the plan is left as it is and reported. The
+   plan's `warnings` say so before the yes: a store page comes with a store of three
+   sections, so show it and offer to plan three groups or fewer.
 6. **Theme** — `apply_style.py` sets the brief's `brand.theme` on the site theme and puts
    planned pages on it; a page's own theme overrides the site's. Take the palette from the
    game's art ([visual style](references/visual-style.md)). Hand over its `needs_human`.

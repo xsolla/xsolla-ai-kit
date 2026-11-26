@@ -280,10 +280,12 @@ class RedesignedSiteFixtureTests(unittest.TestCase):
             "store store promocode social-quests offerwall faq lead footer-v3".split(),
             names(self.pages[STORE_PAGE]),
         )
-        self.assertEqual(
-            [1, 3, 1, 1, 1],
-            [redesigned_blocks.store_section_count(b) for b in stores(self.pages[STORE_PAGE])],
-        )
+        sections = [
+            redesigned_blocks.store_section_count(b) for b in stores(self.pages[STORE_PAGE])
+        ]
+        self.assertEqual([1, 3, 1, 1, 1], sections)
+        # The plan warns from this number before the page exists.
+        self.assertEqual(render_plan.REDESIGNED_STORE_SECTIONS, max(sections))
 
     def test_every_redesigned_block_in_the_fixture_is_in_the_name_table(self) -> None:
         for path, page in self.pages.items():
@@ -469,6 +471,67 @@ class RedesignedPlanTests(unittest.TestCase):
         self.assertEqual(
             {"newStore": stores(page)[1]["_id"]}, render_plan.preferred_blocks(page["blocks"])
         )
+
+    def with_groups(self, count: int) -> dict:
+        brief = copy.deepcopy(self.brief)
+        brief["catalog"]["groups"] = [
+            {"external_id": f"group-{number}", "type": "virtual_good", "placement": "primary"}
+            for number in range(1, count + 1)
+        ]
+        return brief
+
+    def test_the_plan_warns_when_the_store_cannot_take_its_catalog_groups(self) -> None:
+        # The store a store page comes with has three sections, and assembly can't add
+        # one. The plan must say so while it is still a proposal: the run finds out
+        # only after it has removed the page's other blocks.
+        warning = (
+            "The store on / won't be linked to the catalog: it has 3 section(s) and the "
+            "plan has 4; assembly can't add a section to it. Plan fewer catalog groups, or "
+            "set the store's sections in the Editor after the build."
+        )
+        four = self.with_groups(4)
+        first = render_plan.build_plan(four)
+        self.assertIn(warning, first["warnings"])
+        # The render after the page is made says the same, word for word, so the yes
+        # that saw the warning still covers it.
+        site = redesigned_site(four, STORE_PAGE)
+        second = render_plan.build_plan(four, site, block_ids(site))
+        self.assertIn(warning, second["warnings"])
+        self.assertEqual([], [w for w in second["warnings"] if w not in first["warnings"]])
+        # Three groups fit, on a new site and on the page as made.
+        three = self.with_groups(3)
+        for plan in (
+            render_plan.build_plan(three),
+            render_plan.build_plan(three, site, block_ids(site)),
+        ):
+            self.assertEqual([], [w for w in plan["warnings"] if "linked to the catalog" in w])
+
+    def test_the_warning_reads_the_store_the_page_keeps(self) -> None:
+        # An existing page with one store of one section: two groups don't fit.
+        site = redesigned_site(self.brief, STORE_PAGE)
+        page = site["pages"][0]
+        small = stores(page)[0]
+        page["blocks"] = [b for b in page["blocks"] if b is small or b not in stores(page)]
+        plan = render_plan.build_plan(self.with_groups(2), site)
+        self.assertIn(
+            "The store on / won't be linked to the catalog: it has 1 section(s) and the "
+            "plan has 2; assembly can't add a section to it. Plan fewer catalog groups, or "
+            "set the store's sections in the Editor after the build.",
+            plan["warnings"],
+        )
+        # A store with another shape is named too.
+        small["values"]["internalBlockValues"]["storeSections"]["ids"] = "0"
+        plan = render_plan.build_plan(self.with_groups(1), site)
+        self.assertTrue(
+            any(redesigned_blocks.UNKNOWN_STORE in w for w in plan["warnings"]), plan["warnings"]
+        )
+        # A native store takes any number of sections.
+        native = {"_id": "landing-1", "layouts": [], "blocks": ["h", "s", "f"], "pages": [{
+            "_id": "page-1", "name": "Home", "path": "/", "blocks": [
+                {"_id": "h", "module": "header"}, {"_id": "s", "module": "newStore"},
+                {"_id": "f", "module": "footer"}]}]}
+        plan = render_plan.build_plan(self.with_groups(6), native)
+        self.assertEqual([], [w for w in plan["warnings"] if "linked to the catalog" in w])
 
     def test_a_yes_given_without_the_note_does_not_cover_a_redesigned_site(self) -> None:
         site = redesigned_site(self.brief, STORE_PAGE)
@@ -685,11 +748,17 @@ class RedesignedNewSiteTests(unittest.TestCase):
     def setUp(self) -> None:
         self.use("mobile-single-page")
 
-    def use(self, example: str) -> None:
-        """Start a new site from one of the example briefs."""
+    def use(self, example: str, groups: int | None = None) -> None:
+        """Start a new site from one of the example briefs, with ``groups`` catalog
+        groups when given."""
         self.brief = json.loads(
             (ROOT / "examples" / f"{example}.json").read_text(encoding="utf-8")
         )
+        if groups is not None:
+            self.brief["catalog"]["groups"] = [
+                {"external_id": f"group-{n}", "type": "virtual_good", "placement": "primary"}
+                for n in range(1, groups + 1)
+            ]
         directory = tempfile.TemporaryDirectory()
         self.addCleanup(directory.cleanup)
         self.root = Path(directory.name)
@@ -791,6 +860,30 @@ class RedesignedNewSiteTests(unittest.TestCase):
                 "action": "omit",
             },
             self.approved["omissions"],
+        )
+
+    def test_too_many_groups_are_said_before_the_yes_and_the_store_is_left_alone(self) -> None:
+        self.use("mobile-single-page", groups=4)
+        warning = next(w for w in self.approved["warnings"] if "linked to the catalog" in w)
+        self.assertIn("it has 3 section(s) and the plan has 4", warning)
+        # The yes saw the warning, so it covers both runs; the store keeps its sections.
+        report = self.build()
+        self.assertNotIn("catalog_links", report["completed_phases"])
+        self.assertEqual(
+            [
+                "The store on / wasn't linked to the catalog: it has 3 section(s) and the "
+                "plan has 4; assembly can't add a section to it. Set its sections in the "
+                "Editor.",
+                "The header on / keeps the links Shop Builder gave it; set them in the Editor.",
+            ],
+            sorted(report["needs_human"], reverse=True),
+        )
+        store = self.cli.landing["pages"][0]["blocks"][2]
+        self.assertEqual(
+            [("__test__/virtual_good", "virtual_good", "vertical"),
+             ("__test__/virtual_currency", "virtual_good", "vertical"),
+             ("__test__/virtual_good-free", "virtual_good", "horizontal")],
+            redesigned_blocks.store_sections(store),
         )
 
     def test_the_report_says_what_was_left_for_the_editor(self) -> None:

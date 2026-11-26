@@ -29,7 +29,9 @@ from redesigned_blocks import (
     has_twin,
     is_redesigned,
     logical_name,
+    store_problem,
     store_section_count,
+    too_many_sections,
 )
 from validate_shop_brief import load_brief, validate
 
@@ -150,6 +152,8 @@ REDESIGNED_PAGE_TEMPLATE = [
     "footer",
 ]
 REDESIGNED_STORE_PAGE_TYPE = "topup"
+# The sections of the store that page keeps: of its five stores, the one with the most.
+REDESIGNED_STORE_SECTIONS = 3
 REDESIGNED_STORE_PAGE_TEMPLATE = [
     "header",
     "leadGameSales",
@@ -201,6 +205,11 @@ NO_REDESIGNED_BLOCK = (
     "this page is made of Shop Builder's redesigned blocks and has no such block; "
     "assembly can't add one"
 )
+STORE_NOT_LINKED = "The store on {path} won't be linked to the catalog: {reason}. {advice}"
+FEWER_GROUPS = (
+    "Plan fewer catalog groups, or set the store's sections in the Editor after the build."
+)
+SECTIONS_IN_EDITOR = "Set the store's sections in the Editor after the build."
 NO_BLOCK_IN_PAGE_TYPE = (
     "the page Shop Builder makes here comes without this block, and assembly can't add "
     "a redesigned one"
@@ -505,6 +514,53 @@ def builds_on_redesigned_blocks(structure: object | None, pages: list[dict]) -> 
         or any(is_redesigned(block["module"]) for block in page["current_blocks"])
         for page in pages
     )
+
+
+def store_warnings(
+    pages: list[dict], sections: list[dict], structure: object | None
+) -> list[str]:
+    """Say, while the plan is still a proposal, that a redesigned store can't take the
+    plan's catalog sections. The run finds that out only after it has removed the page's
+    other blocks, and then leaves the store as it is. ``pages`` are bound to the site."""
+    if not sections:
+        return []
+    current = structure_data(structure) if structure is not None else {}
+    features = current.get("features")
+    # Shop Builder makes a new site a redesign site.
+    redesign = structure is None or (
+        isinstance(features, dict) and features.get("redesign") is True
+    )
+    by_path = {page_path(page): page for page in current.get("pages") or []}
+    warnings = []
+    for page in pages:
+        if "newStore" not in page["blocks"]:
+            continue
+        reason, advice = None, SECTIONS_IN_EDITOR
+        if page["page_id"] is None:
+            # The store of the page this plan makes there.
+            if redesign and len(sections) > REDESIGNED_STORE_SECTIONS:
+                reason = too_many_sections(REDESIGNED_STORE_SECTIONS, len(sections))
+                advice = FEWER_GROUPS
+        else:
+            removed = {removal["block_id"] for removal in page["removals"]}
+            store = next(
+                (
+                    block
+                    for block in by_path[page["path"]].get("blocks", [])
+                    if effective_module(block) == REDESIGNED_STORE
+                    and block.get("_id") not in removed
+                ),
+                None,
+            )
+            if store is not None:
+                reason = store_problem(store, sections)
+                if 0 < store_section_count(store) < len(sections):
+                    advice = FEWER_GROUPS
+        if reason:
+            warnings.append(
+                STORE_NOT_LINKED.format(path=page["path"], reason=reason, advice=advice)
+            )
+    return warnings
 
 
 def selected_pages(brief: dict, preset: str) -> list[dict]:
@@ -1115,6 +1171,7 @@ def build_plan(
         )
     warnings.extend(custom_code_warnings(pages))
     warnings.extend(layout_warnings(current_structure, can_create_layout, module_of))
+    warnings.extend(store_warnings(pages, catalog_groups, current_structure))
     if builds_on_redesigned_blocks(current_structure, pages):
         warnings.append(REDESIGNED_SITE)
     environment = brief["project"].get("environment")

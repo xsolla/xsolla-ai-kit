@@ -101,16 +101,22 @@ def store_section_count(block: dict) -> int:
     return len(parts[0]) if parts else 0
 
 
+def too_many_sections(has: int, planned: int) -> str:
+    """The reason a store with ``has`` sections can't take ``planned`` of them. The plan
+    and the run word it the same way, so a yes that saw it in the plan covers the run."""
+    return (
+        f"it has {has} section(s) and the plan has {planned}; "
+        "assembly can't add a section to it"
+    )
+
+
 def store_problem(block: dict, sections: list[dict]) -> str | None:
     """Why the plan's catalog sections can't be set on this store, or None."""
     parts = _store_parts(block)
     if parts is None:
         return UNKNOWN_STORE
     if len(sections) > len(parts[0]):
-        return (
-            f"it has {len(parts[0])} section(s) and the plan has {len(sections)}; "
-            "assembly can't add a section to it"
-        )
+        return too_many_sections(len(parts[0]), len(sections))
     unknown = sorted({s["type"] for s in sections} - set(STORE_ITEM_TYPES))
     if unknown:
         return "assembly doesn't know the item type for " + ", ".join(unknown)
