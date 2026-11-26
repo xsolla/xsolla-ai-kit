@@ -1,6 +1,6 @@
 # CLI assembly operations
 
-This is the dependency map for `xsolla` 1.9.4 or newer. Run every command against the
+This is the dependency map for `xsolla` 1.10.0 or newer. Run every command against the
 already verified project context; do not add per-command
 project overrides after preflight.
 
@@ -8,21 +8,21 @@ project overrides after preflight.
 |---|---|---|---|
 | Discover | `xsolla config list --json` | Local profile | Merchant and project match; sandbox mode is off (see [Sandbox mode](#sandbox-mode)) |
 | Discover | `xsolla auth list-account --json` | Credential store | Active Publisher login state |
-| Safety | `shopbuilder create-block --help`, only when the site has no common layout | Installed CLI | The usage line names `create-block`; otherwise the layout step is skipped |
+| Safety | `shopbuilder list-block-modules --json`, before a plan that builds pages | Installed CLI | `common-layout` is not under `cannotCreate`; otherwise the layout step is skipped |
 | Discover | `xsolla shopbuilder list-websites --json` | Project context | Slug, landing ID, type |
 | Backup | `get-landing`, `get-structure`, `get-localization`, `list-assets`, `list-versions` | Existing slug | Restorable configuration evidence |
 | Bootstrap | `create-website --type topup` | Name, slug | Empty landing with `type:null` |
 | Bootstrap | `set-landing-type --type store` | Slug | Configured webshop landing |
 | Pages | `add-page` | Slug, name, path | Page with default template blocks |
 | Site layout | `get-block --slug <slug> --block-id <id>` for each ID in `layouts` | `get-structure` layout IDs | The module of each site layout; `common-layout` can sit next to other layouts |
-| Site layout | `create-block --slug <slug> --block common-layout` (only if missing) | Pages already created | Site-level layout required by Editor, Publish, and preview; avoids suppressing template header/footer |
+| Site layout | `create-block --slug <slug> --page-id <page id> --module common-layout` (only if missing, and only when the CLI can create it) | Pages already created | Site-level layout required by Editor, Publish, and preview; avoids suppressing template header/footer |
 | Blocks | `add-block`, `move-block`, and page-scoped `update-block` removal patches | Landing/page/block IDs | Ordered page block list |
 | Theme | `update-block` with `type:site` and `type:page`, through `apply_style.py` | Landing/page IDs, targeted patches | Site theme `theme.input`; pages on the site theme |
 | Assets | `upload-asset --type image`, through `apply_style.py` | Landing ID, local file | Permanent CDN URL in a block's background or logo |
 | Copy | `update-many-localization` through `apply_style.py`; `add-language` in `apply_plan.py` | Slug, page and `L:` IDs | Localized HTML in the primary locale |
 | Catalog | `update-block` on `newStore.components` | Same-project group IDs | Store sections |
-| Verify | `get-structure`, `get-localization`, `verify-website` | Slug | Plan comparison and readiness result |
-| Preview | `enable-preview`, `preview-link` | Slug | Human-reviewable preview only |
+| Verify | `get-structure`, `get-localization`, `verify-website --draft-pages-ids '["<page id>"]'` | Slug, page IDs | Plan comparison and readiness result |
+| Preview | `enable-preview` | Slug | Human-reviewable preview only |
 
 `apply_plan.py` and `backup_shop.py` handle expired sessions themselves (one re-login per
 run, then retry). The agent never runs `auth login` and never supplies a token. Block operations are in [block-operations.md](block-operations.md).
@@ -162,7 +162,8 @@ any write.
 
 ## Page deletion
 
-The CLI does not expose page deletion. If an existing target contains paths outside
+No script deletes a page: `delete-page` needs `--force` without a terminal, like
+`delete-block`, and no script passes it. If an existing target contains paths outside
 the confirmed plan, stop before writes and report the extra paths instead of leaving
 a silently mixed preset or deleting the whole website.
 

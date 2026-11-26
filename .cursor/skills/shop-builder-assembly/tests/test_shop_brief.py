@@ -33,8 +33,9 @@ preflight = load_module("preflight", ROOT / "scripts" / "preflight.py")
 backup_shop = load_module("backup_shop", ROOT / "scripts" / "backup_shop.py")
 
 LAYOUT_WARNING = (
-    "The common layout needs a newer Xsolla CLI, so the site is built without it. A "
-    "site without the common layout won't open in the Editor, Publish or private preview."
+    "The Xsolla CLI can't add the common layout to a site, so the site is built without "
+    "it. A site without the common layout won't open in the Editor, Publish or private "
+    "preview."
 )
 
 
@@ -127,15 +128,15 @@ class ShopBriefTests(unittest.TestCase):
         self.assertNotIn(warning, render_plan.build_plan(brief, already_there)["warnings"])
 
     def test_new_site_on_cli_without_create_block_warns_in_the_plan(self) -> None:
-        plan = render_plan.build_plan(self.brief, has_create_block=False)
+        plan = render_plan.build_plan(self.brief, can_create_layout=False)
         self.assertIn(LAYOUT_WARNING, plan["warnings"])
         self.assertNotEqual(
-            render_plan.build_plan(self.brief, has_create_block=True)["confirmation_id"],
+            render_plan.build_plan(self.brief, can_create_layout=True)["confirmation_id"],
             plan["confirmation_id"],
         )
 
     def test_new_site_on_cli_with_create_block_has_no_layout_warning(self) -> None:
-        plan = render_plan.build_plan(self.brief, has_create_block=True)
+        plan = render_plan.build_plan(self.brief, can_create_layout=True)
         self.assertNotIn(LAYOUT_WARNING, plan["warnings"])
 
     def test_existing_site_with_common_layout_has_no_layout_warning(self) -> None:
@@ -146,7 +147,7 @@ class ShopBriefTests(unittest.TestCase):
         }
         modules = {"side-id": "side-by-side-layout", "common-id": "common-layout"}
         plan = render_plan.build_plan(
-            self.brief, site, has_create_block=False, module_of=modules.get
+            self.brief, site, can_create_layout=False, module_of=modules.get
         )
         self.assertNotIn(LAYOUT_WARNING, plan["warnings"])
 
@@ -154,7 +155,7 @@ class ShopBriefTests(unittest.TestCase):
         site = {"pages": [], "layouts": ["side-id"], "blocks": ["side-id"]}
         modules = {"side-id": "side-by-side-layout"}
         plan = render_plan.build_plan(
-            self.brief, site, has_create_block=False, module_of=modules.get
+            self.brief, site, can_create_layout=False, module_of=modules.get
         )
         self.assertIn(LAYOUT_WARNING, plan["warnings"])
 
@@ -348,7 +349,7 @@ class ShopBriefTests(unittest.TestCase):
             mock.patch.object(
                 preflight, "run_json", side_effect=[config, accounts, {}, {}]
             ) as run_json,
-            mock.patch.object(preflight, "cli_has_command", return_value=True),
+            mock.patch.object(preflight, "cli_can_create_layout", return_value=True),
             contextlib.redirect_stdout(stdout),
         ):
             self.assertEqual(0, preflight.main())

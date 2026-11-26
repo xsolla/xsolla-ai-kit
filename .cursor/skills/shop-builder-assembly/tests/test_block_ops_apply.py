@@ -779,10 +779,6 @@ class FakeApplySubprocessBoundary:
             result = {"ok": True, "data": []}
         elif argv[:2] == ["catalog", "list-item-groups"]:
             result = {"ok": True, "data": {"groups": []}}
-        elif argv == ["shopbuilder", "create-block", "--help"]:
-            return subprocess.CompletedProcess(
-                command, 0, "Usage:\n  xsolla shopbuilder create-block [flags]\n", ""
-            )
         else:
             result = self.site.run_json(*argv)
             if argv[:2] == ["shopbuilder", "get-structure"]:

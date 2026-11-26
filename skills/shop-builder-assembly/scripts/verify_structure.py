@@ -23,7 +23,7 @@ if SCRIPTS_DIR not in sys.path:
 
 from block_ops import QUESTS_DEV_NAME, QUESTS_MODULE, QUESTS_VERSION, card_text_ref
 import cli_environment
-from preflight import LAYOUT_SKIPPED, cli_has_command, run_json, site_block_module
+from preflight import LAYOUT_SKIPPED, cli_can_create_layout, run_json, site_block_module
 from render_plan import (
     canonical_hash,
     common_layout_id,
@@ -316,9 +316,9 @@ def verify(
     layout_required: bool = True,
     localization: object = None,
 ) -> dict:
-    """``layout_required`` is False when the CLI has no create-block, so assembly
-    skipped the layout step. ``localization`` is the get-localization output a
-    block-operations plan reads heading texts back from."""
+    """``layout_required`` is False when the CLI's create-block refuses the common
+    layout, so assembly skipped the layout step. ``localization`` is the
+    get-localization output a block-operations plan reads heading texts back from."""
     if plan.get("mode") == "block_operations":
         errors = verify_block_operations(plan, structure, localization)
         current = structure_data(structure)
@@ -527,7 +527,8 @@ def main() -> int:
             plan,
             load_object(args.structure, "structure"),
             lambda block_id: site_block_module(slug, block_id),
-            layout_required=cli_has_command("shopbuilder", "create-block"),
+            layout_required=plan.get("mode") == "block_operations"
+            or cli_can_create_layout(),
             localization=(
                 load_object(args.localization, "localization") if args.localization else None
             ),

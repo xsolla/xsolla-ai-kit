@@ -1,6 +1,6 @@
 # xsolla-ai-kit — Agent Context
 
-`xsolla/xsolla-ai-kit` is a collection of agent skills (`skills/<name>/SKILL.md`, agentskills.io format) for building with Xsolla. On the headless path, skills call Xsolla REST APIs directly. The Shop Builder path uses the Xsolla CLI 1.9.4 or later (`brew install xsolla/xsolla-cli/xsolla`). Claude Code users: `CLAUDE.md` is a copy of this file.
+`xsolla/xsolla-ai-kit` is a collection of agent skills (`skills/<name>/SKILL.md`, agentskills.io format) for building with Xsolla. On the headless path, skills call Xsolla REST APIs directly. The Shop Builder path uses the Xsolla CLI 1.10.0 or later (`brew install xsolla/xsolla-cli/xsolla`). Claude Code users: `CLAUDE.md` is a copy of this file.
 
 ---
 

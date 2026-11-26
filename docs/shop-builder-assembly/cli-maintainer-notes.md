@@ -32,7 +32,8 @@ The first dedicated-project run also found defects in Publisher-session reuse,
 `verify-website`, and CLI preview authorization. See
 [`test-findings.md`](../../skills/shop-builder-assembly/references/test-findings.md) for reproducible evidence.
 
-The CLI does not expose page deletion. If an existing target contains paths outside
+No script deletes a page: `delete-page` needs `--force` without a terminal, like
+`delete-block`, and no script passes it. If an existing target contains paths outside
 the confirmed plan, stop before writes and report the extra paths instead of leaving
 a silently mixed preset or deleting the whole website.
 
