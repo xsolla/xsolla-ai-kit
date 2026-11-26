@@ -115,9 +115,12 @@ Never recreate discovered existing entities.
 - **The partner creates the site.** Until a site created through the CLI gets a layout,
   the portal is built on the partner's template site, and a page the agent adds has no
   page type and no link in the sidebar menu; the partner adds the link.
-- **Deprecated block endpoints.** `add-block` and `move-block` call Shop Builder
-  endpoints marked deprecated for future removal. They work today; the skill moves
-  with the CLI when those commands switch to the newer routes.
+- **Deprecated commands.** Xsolla CLI 1.10.0 marks `update-block`, `update-localization` and
+  `get-structure` as deprecated. They still run, and the skill stays on them: its patches,
+  payloads and seeded-block checks are written for them. Their replacements (`patch-block`,
+  `update-page`, `update-theme`, `update-translation`, `get-full-structure`) are not among
+  the commands the agent runs. Blocks are added and moved with `create-block` and
+  `reorder-blocks`, not the deprecated `add-block` and `move-block`.
 
 ## Handoff: the portal's Storefront section
 

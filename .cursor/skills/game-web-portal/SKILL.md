@@ -94,12 +94,14 @@ Verify (read-back) → Human review → Handoff
 2. **Preflight** — confirm the platform, domain, and locale, then run
    [`scripts/preflight.py`](scripts/preflight.py) with `--merchant-id` and `--project-id`.
    It checks that the CLI points at that merchant and project with its sandbox mode off.
-   If it fails, stop before any write. If `store_url` is supplied, check it with `scripts/store_url.py`
-   and read the listing as store content says.
+   If it fails, stop before any write. Check the CLI too: `xsolla shopbuilder create-block --help`
+   must list `--module`, `--version` and `--position` (Xsolla CLI 1.10.0 or later). On an older
+   CLI, stop before any write and ask the partner to update it. If `store_url` is supplied,
+   check it with `scripts/store_url.py` and read the listing as store content says.
 3. **Discover** — find the partner's site at `domain` and read its structure
    (`xsolla shopbuilder list-websites`, `get-landing`, `get-structure`). Capture the landing
-   `_id`, page IDs, and block IDs before any mutation — block and theme calls are keyed by
-   landing `_id`, not the domain. Confirm the template's `/news`, `/rewards` and `/store`
+   `_id`, page IDs, and block IDs before any mutation — `update-block` and asset calls are
+   keyed by landing `_id`, not the domain. Confirm the template's `/news`, `/rewards` and `/store`
    pages, and read its catalog groups (a test or demo group means sample items) and sign-in
    ([Discover](references/portal-api.md#discover)).
    Never recreate a discovered existing entity; resume at the first incomplete item.
@@ -114,7 +116,7 @@ Verify (read-back) → Human review → Handoff
    and LiveOps. Put any pending `catalog-design` proposal in the same message; wait for one
    explicit yes to both. "Set up my portal" is not that yes. Re-confirm if the plan changes.
 6. **Draft** — map each section to the template's page by path, then build only the missing
-   ones: `add-page`, its blocks with `add-block --index`, and `update-block` to hide the
+   ones: `add-page`, its blocks with `create-block --position`, and `update-block` to hide the
    seeded blocks it doesn't keep, following the portal layout in
    [references/portal-api.md](references/portal-api.md). The template's own pages keep their
    blocks. Right after `add-page`, record the new page with
@@ -124,7 +126,7 @@ Verify (read-back) → Human review → Handoff
    preflight passed, reports it `untouched`; hide before any copy or locale change, which
    would mark its block `changed`. The agent never deletes a block: the hidden seeded blocks
    go to the partner to delete, as `needs_human`. Everything else uses CLI commands too:
-   `move-block`, `update-block` (only the patches portal-api.md lists), `upload-asset`,
+   `reorder-blocks`, `update-block` (only the patches portal-api.md lists), `upload-asset`,
    `add-language`, `update-localization`, `update-many-localization`, and `add-connector` or
    `update-restrictions` when the plan lists them. A change with no CLI command is
    `needs_human`: say what to do in Publisher Account and record it. Apply one change group
