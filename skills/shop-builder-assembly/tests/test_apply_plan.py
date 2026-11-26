@@ -72,6 +72,13 @@ def load_render_plan():
 render_plan = load_render_plan()
 
 APPROVED_CONTEXT = {"merchant_id": 100, "project_id": 200, "sandbox": False}
+# The CLI error of issue #105, as the live run printed it.
+MISSING_COOKIE_ERROR = (
+    "auto-bootstrapping publisher session from stored token: publisher session "
+    "bootstrap did not yield a pa-v4-token or ps2[user_session] cookie "
+    "(final URL: https://publisher.xsolla.com/)"
+)
+UNAUTHENTICATED_ERROR = "authentication required for this command."
 
 
 def fresh_run_auth(logged_in: bool = False) -> dict:
@@ -579,6 +586,55 @@ class ApplyPlanTests(unittest.TestCase):
         self.assertEqual(3, run.call_count)
         self.assertEqual([mock.call(5), mock.call(10)], sleep.call_args_list)
 
+    def test_run_json_retries_a_missing_bootstrap_cookie_without_a_login(self) -> None:
+        missing_cookie = mock.Mock(returncode=1, stderr=MISSING_COOKIE_ERROR, stdout="")
+        succeeded = mock.Mock(returncode=0, stderr="", stdout='{"ok":true}')
+        with (
+            mock.patch.dict(apply_plan.RUN_AUTH, fresh_run_auth()),
+            mock.patch.object(
+                apply_plan.subprocess,
+                "run",
+                side_effect=[missing_cookie, missing_cookie, succeeded],
+            ) as run,
+            mock.patch.object(apply_plan.time, "sleep") as sleep,
+        ):
+            self.assertEqual(
+                {"ok": True}, apply_plan.run_json("shopbuilder", "update-block")
+            )
+            self.assertFalse(apply_plan.RUN_AUTH["logged_in"])
+        self.assertEqual(
+            [["xsolla", "shopbuilder", "update-block", "--json"]] * 3,
+            [call.args[0] for call in run.call_args_list],
+        )
+        self.assertEqual([mock.call(5), mock.call(10)], sleep.call_args_list)
+
+    def test_run_json_stops_without_a_login_when_the_bootstrap_keeps_failing(self) -> None:
+        # Exit code 10 alone would start a login; a bootstrap failure never does.
+        for returncode in (1, apply_plan.CLI_EXIT_AUTH):
+            failed = mock.Mock(returncode=returncode, stderr=MISSING_COOKIE_ERROR, stdout="")
+            with self.subTest(returncode=returncode):
+                with (
+                    mock.patch.dict(apply_plan.RUN_AUTH, fresh_run_auth()),
+                    mock.patch.object(
+                        apply_plan.subprocess, "run", side_effect=[failed] * 4
+                    ) as run,
+                    mock.patch.object(apply_plan.time, "sleep") as sleep,
+                ):
+                    with self.assertRaises(RuntimeError) as caught:
+                        apply_plan.run_json("shopbuilder", "get-structure")
+                    self.assertFalse(apply_plan.RUN_AUTH["logged_in"])
+                message = str(caught.exception)
+                self.assertIn(MISSING_COOKIE_ERROR, message)
+                self.assertIn("made no change, so it is safe to rerun", message)
+                self.assertIn("runs `xsolla auth login` in their own terminal first", message)
+                self.assertEqual(
+                    [["xsolla", "shopbuilder", "get-structure", "--json"]] * 4,
+                    [call.args[0] for call in run.call_args_list],
+                )
+                self.assertEqual(
+                    [mock.call(5), mock.call(10), mock.call(20)], sleep.call_args_list
+                )
+
     def test_run_json_does_not_retry_ambiguous_operation_failure(self) -> None:
         failed = mock.Mock(returncode=1, stderr="request failed (HTTP 429)", stdout="")
         with (
@@ -614,12 +670,7 @@ class ApplyPlanTests(unittest.TestCase):
 
     def test_run_json_logs_in_once_and_retries_after_auth_failure(self) -> None:
         failures = {
-            "missing bootstrap cookie": (
-                1,
-                "auto-bootstrapping publisher session from stored token: publisher "
-                "session bootstrap did not yield a pa-v4-token or ps2[user_session] cookie",
-            ),
-            "no usable token": (1, "authentication required for this command."),
+            "no usable token": (1, UNAUTHENTICATED_ERROR),
             "API 401": (10, '{"ok": false, "error": {"code": "http_401"}}'),
         }
         login_succeeded = mock.Mock(returncode=0, stderr="", stdout="Login successful")
@@ -666,19 +717,37 @@ class ApplyPlanTests(unittest.TestCase):
                     ):
                         apply_plan.refresh_supported_login()
 
+    def test_a_failed_login_keeps_the_cli_error_that_led_to_it(self) -> None:
+        unauthenticated = mock.Mock(returncode=1, stderr=UNAUTHENTICATED_ERROR, stdout="")
+        for outcome in (
+            mock.Mock(returncode=1, stderr="", stdout=""),
+            subprocess.TimeoutExpired(["xsolla", "auth", "login"], 45),
+        ):
+            with self.subTest(outcome=type(outcome).__name__):
+                with (
+                    mock.patch.dict(apply_plan.RUN_AUTH, fresh_run_auth()),
+                    mock.patch.object(
+                        apply_plan.subprocess,
+                        "run",
+                        side_effect=[unauthenticated, outcome, outcome],
+                    ),
+                    mock.patch.object(apply_plan.time, "sleep"),
+                ):
+                    with self.assertRaises(RuntimeError) as caught:
+                        apply_plan.run_json("shopbuilder", "get-structure")
+                message = str(caught.exception)
+                self.assertIn("run `xsolla auth login` in their own terminal", message)
+                self.assertIn(UNAUTHENTICATED_ERROR, message)
+
     def test_run_json_never_logs_in_twice_in_one_run(self) -> None:
-        missing_cookie = mock.Mock(
-            returncode=1,
-            stderr="publisher session bootstrap did not yield a pa-v4-token cookie",
-            stdout="",
-        )
+        unauthenticated = mock.Mock(returncode=1, stderr=UNAUTHENTICATED_ERROR, stdout="")
         login_succeeded = mock.Mock(returncode=0, stderr="", stdout="Login successful")
         with (
             mock.patch.dict(apply_plan.RUN_AUTH, fresh_run_auth()),
             mock.patch.object(
                 apply_plan.subprocess,
                 "run",
-                side_effect=[missing_cookie, login_succeeded, config_result(), missing_cookie],
+                side_effect=[unauthenticated, login_succeeded, config_result(), unauthenticated],
             ) as run,
             mock.patch.object(apply_plan.time, "sleep"),
         ):
@@ -694,7 +763,7 @@ class ApplyPlanTests(unittest.TestCase):
         with (
             mock.patch.dict(apply_plan.RUN_AUTH, fresh_run_auth(logged_in=True)),
             mock.patch.object(
-                apply_plan.subprocess, "run", side_effect=[missing_cookie]
+                apply_plan.subprocess, "run", side_effect=[unauthenticated]
             ) as run,
         ):
             with self.assertRaisesRegex(RuntimeError, "still fails"):
@@ -702,11 +771,7 @@ class ApplyPlanTests(unittest.TestCase):
         run.assert_called_once()
 
     def test_run_json_aborts_when_login_changes_cli_context(self) -> None:
-        missing_cookie = mock.Mock(
-            returncode=1,
-            stderr="publisher session bootstrap did not yield a pa-v4-token cookie",
-            stdout="",
-        )
+        unauthenticated = mock.Mock(returncode=1, stderr=UNAUTHENTICATED_ERROR, stdout="")
         login_succeeded = mock.Mock(returncode=0, stderr="", stdout="Login successful")
         for drift, message in (
             ({"project_id": 300}, r"\(project_id 200 -> 300\)"),
@@ -719,7 +784,7 @@ class ApplyPlanTests(unittest.TestCase):
                     mock.patch.object(
                         apply_plan.subprocess,
                         "run",
-                        side_effect=[missing_cookie, login_succeeded, config_result(**drift)],
+                        side_effect=[unauthenticated, login_succeeded, config_result(**drift)],
                     ) as run,
                     mock.patch.object(apply_plan.time, "sleep"),
                 ):
@@ -730,20 +795,16 @@ class ApplyPlanTests(unittest.TestCase):
                 self.assertEqual(3, run.call_count)
 
     def test_run_json_says_a_rerun_is_safe_when_a_run_ends_after_its_login(self) -> None:
-        missing_cookie = mock.Mock(
-            returncode=1,
-            stderr="publisher session bootstrap did not yield a pa-v4-token cookie",
-            stdout="",
-        )
+        unauthenticated = mock.Mock(returncode=1, stderr=UNAUTHENTICATED_ERROR, stdout="")
         login_succeeded = mock.Mock(returncode=0, stderr="", stdout="")
         endings = {
             "second auth failure": [
-                missing_cookie,
+                unauthenticated,
                 login_succeeded,
                 config_result(),
-                missing_cookie,
+                unauthenticated,
             ],
-            "context drift": [missing_cookie, login_succeeded, config_result(project_id=300)],
+            "context drift": [unauthenticated, login_succeeded, config_result(project_id=300)],
         }
         for ending, results in endings.items():
             with self.subTest(ending):
