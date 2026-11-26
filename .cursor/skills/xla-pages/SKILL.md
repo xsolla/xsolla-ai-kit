@@ -20,11 +20,12 @@ allowed. The general Shop Builder rules (standard blocks first, Custom Blocks wh
 theme and copy from a brief) don't apply to these pages.
 
 The scripts do the checking; follow their output and never work around a refusal. Data
-connections, bindings and SEO go through commands the CLI has today (`update-block`,
-`update-many-localization`), stored the way Site Builder stores them. Today's CLI can't create
-a dynamic page or add a block at a pinned version, so a batch that creates a page stops at the
-gate with zero writes; an update of an existing page runs. Show the user the gate's report:
-it names the missing commands and flags, which the Shop Builder team tracks.
+connections, bindings and SEO go through `update-block` and `update-many-localization`, stored
+the way Site Builder stores them. Creating a page needs Xsolla CLI 1.10.0 or later: `add-page`
+makes the dynamic page, and `create-block --block-version` adds each block at its pinned
+version. On an older CLI a batch that creates a page stops at the gate with zero writes; an
+update of an existing page runs. Show the user the gate's report: it names the missing
+commands and flags, and updating the CLI adds them.
 
 ## Before anything
 
@@ -78,6 +79,8 @@ All scripts are in `scripts/` and run with `python3 -I`. Keep each run's files i
      plan's `notes`;
    - the preflight: its lines, the redirect list per provider, and the request times;
    - the gate's result: which writes the CLI can make today;
+   - for a plan that creates a page: that no batch has created a page on a real site yet, so
+     this run is the first test of that write path;
    - that the Pages team publishes this site themselves, and their next publication ships these
      draft changes to x.la.
 
@@ -103,10 +106,13 @@ All scripts are in `scripts/` and run with `python3 -I`. Keep each run's files i
   the report's `fresh_until` time; don't work it out.
 - **The site changed after the backup** (the Pages team edits it too): back up again, render
   again, show the new plan, and ask again.
-- **A run that stopped partway** prints what it created (`created_pages`, `created_blocks`). Show
-  them and offer two ways on: back up, render (created pages now show as updates), show the plan
-  and ask again; or a person deletes them in the Editor. The skill doesn't delete them or restore a
-  version. Never retry blindly.
+- **A run that stopped partway** prints what is new on the site since the backup
+  (`created_pages`, `created_blocks`), read back from the site. That is what the run created,
+  plus anything a person added in the Editor meanwhile: say so. Show them and offer two ways on:
+  back up, render (created pages now show as updates), show the plan and ask again; or a person
+  deletes them in the Editor. If the report has `created_read_back_failed`, the lists may be
+  incomplete: say so, and a person checks the site in the Editor first. The skill doesn't delete
+  them or restore a version. Never retry blindly.
 - **An existing page that differs from the manifest:** an update writes only row content,
   settings, an empty optional block's hidden flag, static SEO text and the page look. Missing
   bound blocks, extra blocks, wrong versions and bindings are listed for a person; blocks that

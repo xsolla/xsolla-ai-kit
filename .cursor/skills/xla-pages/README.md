@@ -7,11 +7,12 @@ federated blocks only, pinned to the reference pages' versions and bound to the 
 ## Status
 
 Draft. Preflight, plan, validation and the after-write check work. Data connections, bindings
-and SEO are written through today's `update-block` and `update-many-localization`, in the shapes
-the Site Builder server uses. Creating a page needs what the CLI doesn't have yet: a dynamic
-page with a data provider from `add-page`, and a federated block at an exact version
-(`scripts/cli_gate.py` lists the commands and flags). With the current CLI a batch that creates a page
-stops at the gate with zero writes and reports what is missing. Updates of existing pages are off
+and SEO are written through `update-block` and `update-many-localization`, in the shapes
+the Site Builder server uses. Creating a page needs Xsolla CLI 1.10.0 or later: a dynamic
+page with a data provider from `add-page`, and a federated block at an exact version from
+`create-block --block-version` (`scripts/cli_gate.py` lists the commands and flags). On an older
+CLI a batch that creates a page stops at the gate with zero writes and reports what is missing.
+No batch has created a page on a real site yet. Updates of existing pages are off
 until one run on a single test page confirms their write shapes (the manifest's
 `writes.updates`; `allow_unverified_updates` in the local config opens that one run).
 
@@ -39,14 +40,20 @@ cd skills/xla-pages && python3 -m unittest discover -s tests -v
 
 They run against `tests/stand_in_cli.py`, a stateful stand-in for the CLI, and synthetic
 fixtures: the `/pub` responses have the structure of real ones and invented values. Covered: a
-block outside the manifest, a theme or style write, typed game data, a row over the limits, the
-current CLI at the gate, responses older than 24 hours, an edited plan, a changed site and a
+block outside the manifest, a theme or style write, typed game data, a row over the limits, an
+older CLI at the gate, a CLI whose `create-block` can't pin a version, a flag that `--help`
+names only in a sentence, responses older than 24 hours, an edited plan, a changed site and a
 published site each stop with zero writes; so do updates of existing pages until the
 local override allows one page; a batch creates every page and passes the check; the
 check reports the exact difference; an update keeps the page's bindings identical and runs on
-the current CLI; connections and bindings are stored as Site Builder stores them (site-level
-`valuesSystem`, `#VC:` values, `usedBy`); a block the server adds at another version than the
-pinned one stops the run; the preflight
+an older CLI; connections and bindings are stored as Site Builder stores them (site-level
+`valuesSystem`, `#VC:` values, `usedBy`); a version the blocks service doesn't have creates
+nothing and stops the run, and so does a block read back at another version than the pinned
+one; a stop partway reports every page and block that is on the site, also when the step that
+created it failed; it still reports when the site can't be read back, whatever that read fails
+with, and says the lists may be incomplete; entries that aren't objects are skipped, and a
+stale read-back keeps what the run already listed; a write that prints no body is not a
+failure, a read is; the preflight
 covers empty `payment_methods`, a capitalized provider id, empty `countries`, a provider listed
 twice, more than 20 media, a cover whose info is 404, a title over 60 characters, an empty `faq`,
 and a game served by `core-attributes` but missing from the catalog.
@@ -70,9 +77,14 @@ What the code assumes and a real site still has to confirm:
   than passes.
 - **Block ids.** That a federated block's `values.blockId` holds the scoped package name
   (`@xla-pages/hero`). The indexed Site Builder code has no `@xla-pages` block.
-- **Versions.** The `stable_releases` lists and the hero 0.2.0 sorting warning. The server falls
-  back to the latest stable version when the asked one is missing; the skill reads the version
-  back and stops.
+- **Versions.** The `stable_releases` lists and the hero 0.2.0 sorting warning. The CLI's help
+  says `create-block --block-version` refuses a version the blocks service doesn't have and
+  creates nothing; no run has shown it. The skill still reads the version back and stops on
+  any other.
+- **`create-block` on a real site.** No run has called it. Its help says `--position` counts
+  from 0, and the plan sends a 0-based position; the after-write check compares the block
+  order. Its help lists no response body; the scripts take an empty answer to a write as
+  success and rely on the read-back.
 - **Hiding a federated block** with the `["hidden"]` patch; seen only on other modules.
 - **The linked data provider.** The server's add-page hands out `dataConnectionId`; the Editor
   client writes the `ugc-d-data-game-provider-v2` connection. The skill writes it when it is

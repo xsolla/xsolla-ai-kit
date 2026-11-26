@@ -1,4 +1,4 @@
-"""The write path against the stand-in CLI's proposed commands, and the after-write check."""
+"""The write path against the stand-in CLI, and the after-write check."""
 
 from __future__ import annotations
 
@@ -28,7 +28,7 @@ class ApplyAndVerifyTests(unittest.TestCase):
     def setUp(self) -> None:
         self.tmp = tempfile.TemporaryDirectory()
         self.dir = Path(self.tmp.name)
-        self.cli = stand_in_cli.StandInCli(capabilities="proposed")
+        self.cli = stand_in_cli.StandInCli(capabilities="shipped")
         self.manifest = common.load_manifest()
         self.config = common.load_config(harness.CONFIG)
 
@@ -90,7 +90,7 @@ class ApplyAndVerifyTests(unittest.TestCase):
         self.assertFalse(any("publish" in call[1] or "preview" in call[1] for call in self.cli.calls))
 
     def test_a_blank_page_is_used_when_the_cli_has_the_type_flag(self) -> None:
-        self.cli = stand_in_cli.StandInCli(capabilities="proposed", blank_flag=True)
+        self.cli = stand_in_cli.StandInCli(capabilities="shipped", blank_flag=True)
         self.run_batch()
         add_pages = [call for call in self.cli.writes() if call[1] == "add-page"]
         self.assertTrue(all(call[call.index("--type") + 1] == "blank" for call in add_pages))
@@ -132,7 +132,7 @@ class ApplyAndVerifyTests(unittest.TestCase):
         # {slug} is this page's route param. An unfilled {provider} is not, so it stays as written.
         self.assertEqual("https://x.la/{provider}/:slug", seo["canonical"]["value"])
 
-    def test_a_version_the_server_falls_back_from_stops_the_run(self) -> None:
+    def test_a_version_the_blocks_service_lacks_creates_nothing_and_stops_the_run(self) -> None:
         plan, errors, plan_path, backup_dir = harness.prepare(self.dir, self.cli)
         self.assertEqual([], errors)
         del self.cli.defaults[("@xla-pages/hero", "0.4.1-next.3")]
@@ -140,10 +140,139 @@ class ApplyAndVerifyTests(unittest.TestCase):
         code, report = harness.apply(self.cli, plan_path, backup_dir)
         self.assertEqual(1, code)
         self.assertEqual("stopped-partway", report["status"])
+        self.assertEqual("@xla-pages/hero@0.4.1-next.3 is not in the blocks service", report["reason"])
+        # No hero at another version: the page stops at the block created before it.
+        self.assertEqual(["@xla-pages/top-navigation"],
+                         [common.block_identity(b)[0] for b in page(self.cli.site, "/payment/klarna")["blocks"]])
+
+    def test_a_block_read_back_at_another_version_stops_the_run(self) -> None:
+        plan, errors, plan_path, backup_dir = harness.prepare(self.dir, self.cli)
+        self.assertEqual([], errors)
+        create = self.cli.cmd_create_block
+
+        def at_another_version(options: dict, flags: set) -> object:
+            result = create(options, flags)
+            if options["--module"] == "@xla-pages/hero":
+                created = self.cli.page(options["--page-id"])["blocks"][int(options["--position"])]
+                created["values"]["version"] = "0.4.2"
+            return result
+
+        self.cli.cmd_create_block = at_another_version
+        code, report = harness.apply(self.cli, plan_path, backup_dir)
+        self.assertEqual(1, code)
+        self.assertEqual("stopped-partway", report["status"])
         self.assertEqual(
-            "add-block added @xla-pages/hero@0.4.2, not the pinned @xla-pages/hero@0.4.1-next.3",
+            "create-block added @xla-pages/hero@0.4.2, not the pinned @xla-pages/hero@0.4.1-next.3",
             report["reason"],
         )
+        # The block at the other version is on the page, so the report lists it.
+        self.assertEqual(self.block_ids("/payment/klarna"), report["created_blocks"])
+        self.assertEqual(2, len(report["created_blocks"]))
+
+    def block_ids(self, route: str) -> list:
+        return [b["_id"] for b in page(self.cli.site, route)["blocks"]]
+
+    def stop_partway(self, command: str, change, name: str = "backup") -> dict:
+        """Apply the batch with `change` wrapped around one stand-in command; the run must stop."""
+        plan, errors, plan_path, backup_dir = harness.prepare(self.dir, self.cli, name=name)
+        self.assertEqual([], errors)
+        real = getattr(self.cli, command)
+        setattr(self.cli, command, lambda options, flags: change(real, options, flags))
+        code, report = harness.apply(self.cli, plan_path, backup_dir)
+        self.assertEqual(1, code)
+        self.assertEqual("stopped-partway", report["status"])
+        return report
+
+    def test_two_blocks_from_one_create_block_are_both_reported(self) -> None:
+        def twice(real, options: dict, flags: set) -> object:
+            real(options, flags)
+            return real(options, flags)
+
+        report = self.stop_partway("cmd_create_block", twice)
+        self.assertEqual("create-block left 2 new blocks on /payment/klarna", report["reason"])
+        self.assertEqual(self.block_ids("/payment/klarna"), report["created_blocks"])
+        self.assertEqual(2, len(report["created_blocks"]))
+
+    def test_a_block_created_before_the_cli_failed_is_reported(self) -> None:
+        def then_fail(real, options: dict, flags: set) -> object:
+            real(options, flags)
+            raise common.CliError("xsolla shopbuilder create-block failed: connection reset")
+
+        report = self.stop_partway("cmd_create_block", then_fail)
+        self.assertEqual("xsolla shopbuilder create-block failed: connection reset", report["reason"])
+        self.assertEqual(["/payment/klarna"], report["created_pages"])
+        self.assertEqual(self.block_ids("/payment/klarna"), report["created_blocks"])
+        self.assertEqual(1, len(report["created_blocks"]))
+
+    def test_a_page_created_before_the_cli_failed_is_reported(self) -> None:
+        def then_fail(real, options: dict, flags: set) -> object:
+            real(options, flags)
+            raise common.CliError("xsolla shopbuilder add-page failed: connection reset")
+
+        report = self.stop_partway("cmd_add_page", then_fail)
+        self.assertEqual(["/payment/klarna"], report["created_pages"])
+        # add-page seeded these; the run stopped before it could delete them.
+        self.assertEqual(self.block_ids("/payment/klarna"), report["created_blocks"])
+        self.assertEqual(len(stand_in_cli.SEEDED), len(report["created_blocks"]))
+
+    def test_a_site_that_cannot_be_read_back_marks_the_lists_as_incomplete(self) -> None:
+        # Whatever the read-back fails with, the stop report still prints.
+        failures = {
+            "cli": common.CliError("xsolla shopbuilder get-structure failed: connection reset"),
+            "os": OSError("xsolla: cannot execute"),
+            "decode": UnicodeDecodeError("utf-8", b"\xff", 0, 1, "invalid start byte"),
+            "key": KeyError("pages"),
+            "other": TypeError("not what the script expects"),
+        }
+        for name, failure in failures.items():
+            with self.subTest(name):
+                self.cli = stand_in_cli.StandInCli()
+
+                def offline(options: dict, flags: set, failure: Exception = failure) -> object:
+                    raise failure
+
+                def then_go_offline(real, options: dict, flags: set, offline=offline) -> object:
+                    real(options, flags)
+                    self.cli.cmd_get_structure = offline
+                    raise common.CliError("xsolla shopbuilder create-block failed: connection reset")
+
+                report = self.stop_partway("cmd_create_block", then_go_offline, name=name)
+                self.assertEqual("xsolla shopbuilder create-block failed: connection reset", report["reason"])
+                # The block is on the page, but nothing could read it back: the report says so
+                # and keeps what the run knew.
+                self.assertEqual(["/payment/klarna"], report["created_pages"])
+                self.assertEqual([], report["created_blocks"])
+                self.assertIn("could not be read back", report["created_read_back_failed"])
+
+    def answer_get_structure_with(self, site: dict):
+        self.cli.cmd_get_structure = lambda options, flags: {"ok": True, "data": copy.deepcopy(site)}
+
+    def test_a_read_back_with_entries_that_are_not_objects_still_reports(self) -> None:
+        def then_malformed(real, options: dict, flags: set) -> object:
+            real(options, flags)
+            site = copy.deepcopy(self.cli.site)
+            site["pages"].insert(0, "oops")
+            page(site, "/payment/klarna")["blocks"].insert(0, "oops")
+            self.answer_get_structure_with(site)
+            raise common.CliError("xsolla shopbuilder create-block failed: connection reset")
+
+        report = self.stop_partway("cmd_create_block", then_malformed)
+        self.assertEqual(["/payment/klarna"], report["created_pages"])
+        self.assertEqual(self.block_ids("/payment/klarna"), report["created_blocks"])
+        self.assertNotIn("created_read_back_failed", report)
+
+    def test_a_stale_read_back_keeps_what_the_run_already_knew(self) -> None:
+        def then_stale(real, options: dict, flags: set) -> object:
+            if options["--module"] != "@xla-pages/hero":
+                return real(options, flags)
+            # The site answers as it was before the run: nothing new on it.
+            self.answer_get_structure_with(stand_in_cli.load_site())
+            raise common.CliError("xsolla shopbuilder create-block failed: connection reset")
+
+        report = self.stop_partway("cmd_create_block", then_stale)
+        self.assertEqual(["/payment/klarna"], report["created_pages"])
+        self.assertEqual(self.block_ids("/payment/klarna"), report["created_blocks"])
+        self.assertEqual(1, len(report["created_blocks"]))
 
     def test_the_after_write_check_reports_the_exact_difference(self) -> None:
         plan, report, backup_dir = self.run_batch()
@@ -212,9 +341,9 @@ class ApplyAndVerifyTests(unittest.TestCase):
             differences,
         )
 
-    def test_an_update_of_row_text_runs_on_the_current_cli(self) -> None:
+    def test_an_update_of_row_text_runs_on_an_older_cli(self) -> None:
         self.run_batch()
-        self.cli.table = dict(stand_in_cli.CURRENT)
+        self.cli.table = dict(stand_in_cli.OLDER)
         batch = harness.load_batch()
         batch["providers"][1]["hero_description"] = "Pay with Toss in two taps"
         config = harness.write_config(self.dir, allow_unverified_updates=True)

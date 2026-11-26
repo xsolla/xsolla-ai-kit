@@ -2,8 +2,8 @@
 """The write gate: does the installed CLI's --help list every command and flag the plan needs?
 
 It reads `xsolla <command> --help` only. The CLI version number is never checked. The table
-below is the one source of the commands and flags the writes need; until the CLI ships them,
-the gate fails and nothing is written.
+below is the one source of the commands and flags the writes need; on a CLI that lacks one of
+them, the gate fails and nothing is written.
 """
 
 from __future__ import annotations
@@ -23,14 +23,16 @@ import xla_common as common  # noqa: E402
 # names, change this table and the scripts that call them together.
 # Connections, bindings, settings, hiding, the page look and the canonical URL go through
 # update-block's batch patches (entities block, page and valuesSystem); SEO texts through
-# update-many-localization. Both exist today. What the CLI still lacks: the add-page fields the
-# server already takes (providerId, providerInput) and an add-block at an exact version.
+# update-many-localization. Xsolla CLI 1.10.0 has the rest: add-page takes a dynamic page's
+# paths provider (providerId, providerInput), and create-block adds a block from the blocks
+# service at an exact version (--block-version; an unknown version is an error and creates
+# nothing). The deprecated add-block has no exact version and is never called.
 CAPABILITIES = {
     "add-page": (("shopbuilder", "add-page"), ("--slug", "--name", "--path")),
     "add-page-dynamic": (("shopbuilder", "add-page"), ("--provider-id", "--provider-input")),
     "add-block-pinned": (
-        ("shopbuilder", "add-block"),
-        ("--landing-id", "--page-id", "--block", "--package", "--version", "--index"),
+        ("shopbuilder", "create-block"),
+        ("--slug", "--page-id", "--module", "--block-version", "--position"),
     ),
     "update-block": (("shopbuilder", "update-block"), ("--landing-id", "--data")),
     "update-many-localization": (("shopbuilder", "update-many-localization"), ("--slug", "--data")),

@@ -5,10 +5,13 @@ site-level data connections in `valuesSystem.dataProviderConnections`, "#VC:" bo
 federated blocks, SEO texts in the localization, and the batch patch API behind `update-block`
 (entities block, page, site and valuesSystem).
 
-`capabilities="current"` answers --help like CLI 1.9.4. `capabilities="proposed"` also lists the
-flags scripts/cli_gate.py waits for (add-page --provider-id/--provider-input, add-block
---package/--version), so the write path can run end to end in tests. Like the server,
-add-block falls back to the latest published version of a package when the asked one is missing.
+`capabilities="shipped"` answers --help like CLI 1.10.0 for the commands scripts/cli_gate.py
+needs (add-page --provider-id/--provider-input, create-block --block-version), so the write path
+can run end to end in tests. `capabilities="older"` answers like CLI 1.9.4, which has neither.
+`capabilities="unpinned"` is the case between them: create-block is there, without
+--block-version. Every --help names the gated flags in a sentence too, which must not count.
+As the CLI's help says, create-block refuses a version the blocks service doesn't have and
+creates nothing.
 Every call is logged; any other command fails the test.
 """
 
@@ -25,19 +28,23 @@ sys.path.insert(0, str(TESTS.parent / "scripts"))
 
 import xla_common as common  # noqa: E402
 
-CURRENT = {
+OLDER = {
     ("shopbuilder", "add-page"): ["--slug", "--name", "--path"],
-    ("shopbuilder", "add-block"): ["--landing-id", "--page-id", "--block", "--index"],
     ("shopbuilder", "update-block"): ["--landing-id", "--data"],
     ("shopbuilder", "update-many-localization"): ["--slug", "--data"],
     ("shopbuilder", "get-structure"): ["--slug"],
     ("shopbuilder", "get-localization"): ["--slug"],
 }
-PROPOSED = {
-    **CURRENT,
+SHIPPED = {
+    **OLDER,
     ("shopbuilder", "add-page"): ["--slug", "--name", "--path", "--provider-id", "--provider-input"],
-    ("shopbuilder", "add-block"): ["--landing-id", "--page-id", "--block", "--package", "--version", "--index"],
+    ("shopbuilder", "create-block"): ["--slug", "--page-id", "--module", "--block-version", "--position"],
 }
+UNPINNED = {
+    **SHIPPED,
+    ("shopbuilder", "create-block"): ["--slug", "--page-id", "--module", "--position"],
+}
+TABLES = {"shipped": SHIPPED, "older": OLDER, "unpinned": UNPINNED}
 # What add-page seeds on a new page (native blocks, as CLI 1.9.4 does on a store landing).
 SEEDED = ["header", "leadGameSales", "description", "faq", "footer"]
 
@@ -54,17 +61,12 @@ def load_localization() -> dict:
     return load_fixture("localization.json")
 
 
-def version_key(version: str) -> tuple:
-    main, _, pre = version.partition("-")
-    return tuple(int(part) for part in main.split(".")), pre == "", pre
-
-
 class StandInCli:
-    def __init__(self, site: dict | None = None, capabilities: str = "proposed", blank_flag: bool = False,
+    def __init__(self, site: dict | None = None, capabilities: str = "shipped", blank_flag: bool = False,
                  sandbox: bool = False, localization: dict | None = None) -> None:
         self.site = copy.deepcopy(site if site is not None else load_site())
         self.localization = copy.deepcopy(localization if localization is not None else load_localization())
-        self.table = dict(PROPOSED if capabilities == "proposed" else CURRENT)
+        self.table = dict(TABLES[capabilities])
         if blank_flag:
             key = ("shopbuilder", "add-page")
             self.table[key] = [*self.table[key], "--type"]
@@ -95,7 +97,8 @@ class StandInCli:
         flags = self.table.get(tuple(command))
         if flags is None:
             return "Usage:\n  xsolla shopbuilder [command]\n\nAvailable Commands:\n  add-block\n  add-page\n"
-        lines = [f"Usage:\n  xsolla {' '.join(command)} [flags]\n", "Flags:"]
+        lines = ["Synthetic help. Some releases take --provider-id, --provider-input and --block-version.\n",
+                 f"Usage:\n  xsolla {' '.join(command)} [flags]\n", "Flags:"]
         lines += [f"      {flag} string   synthetic help" for flag in flags]
         return "\n".join(lines) + "\n"
 
@@ -184,26 +187,26 @@ class StandInCli:
         self.site["pages"].append(page)
         return {"ok": True, "data": copy.deepcopy(page)}
 
-    def cmd_add_block(self, options: dict, flags: set) -> object:
+    def cmd_create_block(self, options: dict, flags: set) -> object:
+        if options["--slug"] != self.site["domain"]:
+            raise common.CliError("landing not found")
         page = self.page(options["--page-id"])
-        if "--package" not in options:
-            block = {"_id": self.next_id("block"), "module": options["--block"], "values": {}}
+        if "--block-version" not in options:
+            block = {"_id": self.next_id("block"), "module": options["--module"], "values": {}}
         else:
-            package, version = options["--package"], options["--version"]
-            versions = sorted((v for p, v in self.defaults if p == package), key=version_key)
-            if not versions:
-                raise common.CliError(f"{package} is not in the blocks service")
-            if version not in versions:
-                version = versions[-1]  # the server's "falling back to latest stable version"
+            package, version = options["--module"], options["--block-version"]
+            if (package, version) not in self.defaults:
+                # An unknown block or version is an error and creates nothing.
+                raise common.CliError(f"{package}@{version} is not in the blocks service")
             block = {
                 "_id": self.next_id("block"), "module": "federated", "hidden": False,
                 "values": {"host": "https://blocks.example.invalid/", "blockId": package, "version": version,
                            "internalBlockValues": copy.deepcopy(self.defaults[(package, version)]),
                            "resources": {"localizedValues": {}, "media": {}}},
             }
-        index = int(options.get("--index", len(page["blocks"])))
-        page["blocks"].insert(index, block)
-        return {"ok": True, "data": {"_id": block["_id"]}}
+        position = int(options.get("--position", len(page["blocks"])))
+        page["blocks"].insert(position, block)
+        return None  # its help lists no response body; what the real CLI prints is not verified
 
     def cmd_update_block(self, options: dict, flags: set) -> object:
         for change in json.loads(options["--data"]).values():
