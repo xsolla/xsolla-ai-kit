@@ -48,7 +48,13 @@ wraps that answer as 0401-2000, so the field's name never reaches the user.
    removed. The kit's skills don't send `settings.external_id`; it comes from
    the partner's own code. If the field isn't there, this cause doesn't apply:
    go to [Contact support](#contact-support).
-2. Ask which fix the user wants, and say what each one does on the live site:
+2. Before asking which fix, check two things with the user. Any code path that
+   creates payment tokens without `settings.external_id` breaks as soon as
+   **Use external ID** is on, because every payment then needs an `external_id`.
+   Ask whether this project already takes real payments, and whether any other
+   part of their code creates payment tokens without `settings.external_id`. If
+   either answer is yes, say what it means before step 3.
+3. Ask which fix the user wants, and say what each one does on the live site:
    - **Keep the field.** It ties each payment to an order in their system and
      blocks paying twice for one order. The user turns on **Use external ID**
      in **Project settings > Integration settings > Payments**, then saves:
@@ -60,14 +66,19 @@ wraps that answer as 0401-2000, so the field's name never reaches the user.
      On the live site: it's a project setting, so live payments follow it too.
      Every payment needs a new `external_id`, unique across sandbox and live,
      and the test payment in Publisher Account doesn't work while the option is
-     on. To run that test payment, the user can turn the option off for the
-     test. While it's off, any request that sends `settings.external_id` fails
-     again, so turn it back on right after the test.
+     on.
+
+     Turning the option off is only for running that Publisher Account test
+     payment. It's not a fix: the error comes back while the option is off.
+     Don't use it on a project that takes real payments, because every live
+     token request that sends `settings.external_id` fails until the option is
+     back on. To run the test: turn the option off, run the test payment, and
+     turn the option back on right after.
    - **Drop the field.** Show the user the exact line that sets
      `settings.external_id`; they remove it. On the live site, once that code is
      deployed: Xsolla no longer ties those payments to the user's order IDs, so
      it can't block a second payment for the same order.
-3. Retry the same token call. A token in the response means it's fixed. The
+4. Retry the same token call. A token in the response means it's fixed. The
    same error: go to [Contact support](#contact-support).
 
 Docs: [What is the external ID?](https://developers.xsolla.com/dev-resources/faq/payments/#faq_payments_q_new_transaction_external_id)
