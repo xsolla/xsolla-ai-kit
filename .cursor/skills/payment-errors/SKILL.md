@@ -1,0 +1,149 @@
+---
+name: payment-errors
+description: >-
+  Error 3007, 0401-2000: most likely cause and fix. 3007: subscription checkout
+  fails before the card form. 0401-2000: a Store API payment token call returns
+  Exception with PayStation service. Use when a subscription checkout or payment
+  token call fails with one of these codes. Proposes only changes the user makes
+  themselves, and names each change's effect on the live site before asking.
+metadata:
+  owner: j.manashti
+  domain: payments
+  status: draft
+---
+
+# Payment errors
+
+Two errors can stop partners before their first sandbox test payment, and their
+messages don't say the fix: 3007 at subscription checkout, and 0401-2000 from the
+Store API payment token call. For each one, this skill gives the most likely
+cause, the fix, and what to send support when the fix doesn't work.
+
+## Rules
+
+- **Say "most likely cause".** You can't see the project's settings. Never say
+  you checked them or found the cause.
+- **The retry is the check.** After each fix, the user retries the same
+  checkout or token call. Each step says where the same error sends you; the
+  last stop is [Contact support](#contact-support).
+- **The user makes every change.** Each fix is a change in Publisher Account or
+  in the user's own code. Propose it; don't make it. Project changes apply to
+  the live site too, so before you ask, say what each change does there.
+- In anything public, write IDs as `<merchant_id>` and `<project_id>`. Tokens and
+  keys go to Xsolla support only.
+
+## Error 3007: subscription checkout fails before the card form
+
+Checkout for a subscription plan fails with 3007 before the card form shows.
+
+| Code | Most likely cause | Fix |
+|------|-------------------|-----|
+| 3007 | Subscriptions webhooks not activated | Click **Test** on the subscriptions webhooks page, then retry |
+| 3007 | Plans created only through the API (temporary) | Create one plan in Publisher Account, then retry |
+| 3007 | Wrong integration type, or a project misconfiguration | Not fixable by the partner: contact support |
+
+0. **Sandbox or live.** This path has no token request to read, so use what
+   you and the user can see:
+   - The address of the checkout that showed 3007:
+     `sandbox-secure.xsolla.com` is sandbox, `secure.xsolla.com` is live.
+   - If you can read the user's code or config: the sandbox/live table in
+     `production` (Step 3), every row except Token body.
+
+   Then ask whether the project already takes real payments. The user can
+   check for real payments in the transaction registry under **Finance** in
+   Publisher Account. If it does, or the user can't tell, say in steps 1 and 2
+   that the live-site effect starts as soon as they make the change.
+1. **Subscriptions webhooks.** The fix is to click **Test** at the bottom of the
+   subscriptions webhooks page, which activates the subscriptions part of the
+   webhooks. Before you give the link, say what that means for the live site:
+   once subscriptions are active, the project's plans can also be bought on its
+   live site. That's expected. Then ask the user to open this page and click
+   **Test**:
+
+   ```text
+   https://publisher.xsolla.com/<merchant_id>/projects/<project_id>/edit/webhooks/subscriptions
+   ```
+
+   Retry the same checkout. The card form showing means it's fixed. The same
+   error: go to step 2.
+2. **Plans created only through the API (temporary workaround).**
+   <!-- TEMPORARY: remove this step and the table row marked (temporary) once Xsolla activates subscriptions on projects automatically. The Subscriptions team updates the docs and skills then. -->
+   Ask whether every plan was created through the API (the Xsolla CLI counts).
+   If not, go to step 3. If so, the fix is one plan created in Publisher
+   Account under **Items catalog > Subscriptions**. Before you ask, say what it
+   does on the live site: it's one of the project's plans, so once
+   subscriptions are active it can be bought there too. So the user should
+   create a plan they'd be happy to sell. Then ask them to create it, and retry
+   the same checkout. The same error: go to step 3.
+3. **Anything else.** A wrong integration type or a project misconfiguration
+   can't be fixed by the partner: Xsolla has to fix both. A wrong integration
+   type is usually handled by the account manager. Go to
+   [Contact support](#contact-support).
+
+## Error 0401-2000: Exception with PayStation service
+
+The Store API payment token call returns
+`[0401-2000]: Exception with PayStation service`.
+
+| Code | Most likely cause | Fix |
+|------|-------------------|-----|
+| 0401-2000 | The request sends `settings.external_id`, but **Use external ID** is off for the project | Turn on **Use external ID**, or remove `settings.external_id` from the request |
+
+Where the cause comes from: called directly, the Pay Station token API answers
+this request with a clear message about `settings.external_id`. The Store API
+wraps that answer as 0401-2000, so the field's name never reaches the user.
+
+1. Find the token request in the user's code, or ask for its body with keys
+   removed. The kit's skills don't send `settings.external_id`; it comes from
+   the partner's own code. If the field isn't there, this cause doesn't apply:
+   go to [Contact support](#contact-support).
+2. Before asking which fix, check two things with the user. Any code path that
+   creates payment tokens without `settings.external_id` breaks as soon as
+   **Use external ID** is on, because every payment then needs an `external_id`.
+   Ask whether this project already takes real payments, and whether any other
+   part of their code creates payment tokens without `settings.external_id`. If
+   either answer is yes, say what it means before step 3.
+3. Ask which fix the user wants, and say what each one does on the live site:
+   - **Keep the field.** It ties each payment to an order in their system and
+     blocks paying twice for one order. The user turns on **Use external ID**
+     in **Project settings > Integration settings > Payments**, then saves:
+
+     ```text
+     https://publisher.xsolla.com/<merchant_id>/projects/<project_id>/edit/advanced
+     ```
+
+     On the live site: it's a project setting, so live payments follow it too.
+     Every payment needs a new `external_id`, unique across sandbox and live,
+     and the test payment in Publisher Account doesn't work while the option is
+     on.
+
+     Turning the option off is only for running that Publisher Account test
+     payment. It's not a fix: the error comes back while the option is off.
+     Don't use it on a project that takes real payments, because every live
+     token request that sends `settings.external_id` fails until the option is
+     back on. To run the test: turn the option off, run the test payment, and
+     turn the option back on right after.
+   - **Drop the field.** Show the user the exact line that sets
+     `settings.external_id`; they remove it. On the live site, once that code is
+     deployed: Xsolla no longer ties those payments to the user's order IDs, so
+     it can't block a second payment for the same order.
+4. Retry the same token call. A token in the response means it's fixed. The
+   same error: go to [Contact support](#contact-support).
+
+Docs: [What is the external ID?](https://developers.xsolla.com/dev-resources/faq/payments/#faq_payments_q_new_transaction_external_id)
+
+## Contact support
+
+When a step above sends you here, contact Xsolla support through the chat in
+Publisher Account. Send:
+
+| Error | Include |
+|-------|---------|
+| 3007 | Project ID, merchant ID, subscriptions webhooks status, the purchase token that failed |
+| 0401-2000 | Project ID, merchant ID, the token request body with keys removed, the full error response |
+
+## Related skills
+
+- `shop-setup`: the three ways to get a payment token.
+- `production`: error 0002-0004 when leaving sandbox.
+- `webhooks-impl`: subscription webhook events on the user's backend.
