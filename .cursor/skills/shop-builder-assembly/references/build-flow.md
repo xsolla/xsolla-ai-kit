@@ -58,7 +58,8 @@ After confirmation, apply the plan in this dependency order:
   group, and asset URL.
 - Run `xsolla shopbuilder verify-website --slug <slug> --draft-pages-ids '["<page id>"]'`.
   The flag is required: a JSON array with the `_id` of every page in `get-structure`.
-- Enable preview only if the confirmed plan includes it, then return the preview link.
+- Enable preview only if the confirmed plan includes it, then return the preview link
+  (`scripts/preview_link.py`).
 - Report skips, interventions, and gaps; state that the site is **not published**.
   Relay every `needs_human` line of the run reports: on redesigned blocks these are the
   header links, texts, images and FAQ that assembly doesn't set yet.

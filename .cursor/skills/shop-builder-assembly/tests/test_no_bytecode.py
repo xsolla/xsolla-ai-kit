@@ -19,6 +19,7 @@ ENTRY_SCRIPTS = (
     "apply_plan.py",
     "backup_shop.py",
     "preflight.py",
+    "preview_link.py",
     "render_plan.py",
     "validate_shop_brief.py",
     "verify_structure.py",
