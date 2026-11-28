@@ -272,7 +272,7 @@ the matching "known gap" text from the skills and update R1, R4 and R7 above.
 |---|---|---|
 | CLI | `shopbuilder create-block` takes the `common-layout` module; CLI 1.10.0 shipped the command but lists that module under `cannotCreate` | R1, R4: a new site opens in the editor and preview |
 | CLI | Recompute the theme after a CLI patch | R1, R5 |
-| CLI | `enable-preview` without a browser session, and a command that returns the preview link (CLI 1.10.0 removed `preview-link`) | R1, R4 |
+| CLI | `enable-preview` without a browser session, and a command that returns the preview link (CLI 1.10.0 removed `preview-link`; `preview_link.py` builds it from the token meanwhile) | R1, R4 |
 | CLI | `update-block` fails when nothing changed; `add-page` path object; federated `add-block` | R5, R7 |
 | CLI | LiveOps and catalog flags: limits, bonus conditions, fixed promo codes; bundles in group listings; one flag name for group IDs; default publisher ID | R7, R8 |
 | CLI | `auth login` makes a key after a project switch; `xsolla update` finds releases | R9 |

@@ -22,7 +22,7 @@ project overrides after preflight.
 | Copy | `update-many-localization` through `apply_style.py`; `add-language` in `apply_plan.py` | Slug, page and `L:` IDs | Localized HTML in the primary locale |
 | Catalog | `update-block` on `newStore.components` | Same-project group IDs | Store sections |
 | Verify | `get-structure`, `get-localization`, `verify-website --draft-pages-ids '["<page id>"]'` | Slug, page IDs | Plan comparison and readiness result |
-| Preview | `enable-preview` | Slug | Human-reviewable preview only |
+| Preview | `get-structure`, then `enable-preview` unless the preview is already on, through `scripts/preview_link.py` | Slug | The public preview link, for human review only |
 
 `apply_plan.py` and `backup_shop.py` handle expired sessions themselves (one re-login per
 run, then retry). A Publisher-session bootstrap failure is different: the scripts retry it

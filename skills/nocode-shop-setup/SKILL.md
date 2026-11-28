@@ -162,6 +162,22 @@ widget: this site renders its own checkout and login.
 Do not start `description-to-shop` or `shop-builder-assembly` for a game home.
 Do not start `game-web-portal` for a store.
 
+## A preview on request
+
+When the user asks to see a Shop Builder site that exists ("show me the preview of my
+site"), nothing is built and no plan is needed.
+
+1. Say in one line that the link opens the draft to anyone who has it, until the preview
+   is switched off, and ask for a yes.
+2. Run `scripts/preview_link.py --slug <slug>` of `shop-builder-assembly`. It reads the
+   site, switches the public preview on with `xsolla shopbuilder enable-preview` unless
+   it is on already, and prints the link.
+3. Give the link, when it expires, and the command that switches the preview off.
+
+A published site is refused: give its live address instead. If the script fails, say
+why in one line and, with a browser signed in to Publisher Account, open the site's
+editor and press Preview. Never put a link together by hand, and never publish.
+
 ## One approval
 
 Show the catalog proposal and the storefront skill's plan in **one message**, with a

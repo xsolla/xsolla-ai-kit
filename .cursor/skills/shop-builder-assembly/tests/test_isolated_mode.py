@@ -16,6 +16,7 @@ SCRIPTS_WITH_SIBLING_IMPORTS = (
     "backup_shop.py",
     "patch_backgrounds.py",
     "preflight.py",
+    "preview_link.py",
     "render_plan.py",
     "verify_structure.py",
 )

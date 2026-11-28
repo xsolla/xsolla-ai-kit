@@ -167,11 +167,13 @@ If the CLI lacks an operation, stop it, record the gap, and file a CLI/API ticke
   group, and asset URL.
 - Run `xsolla shopbuilder verify-website --slug <slug> --draft-pages-ids '["<page id>"]'`.
   The flag is required: a JSON array with the `_id` of every page in `get-structure`.
-- Enable preview for the visual review (`enable-preview`); the plan's yes covers it,
-  because the plan says anyone with the link can open it. No CLI command returns the
-  link (`preview-link` was removed in CLI 1.10.0): open the preview in the browser as
-  the visual review describes, and return that link.
-- When preview fails with `admin_privileges_requred`, it is a known CLI gap
+- Make the preview link for the visual review with `scripts/preview_link.py --plan
+  approved-plan.json`. It switches the public preview on with `enable-preview`, or
+  reuses the one that is on, and prints the link; the plan's yes covers it, because the
+  plan says anyone with the link can open it. Return the link with its expiry, and say
+  that anyone who has it can open the draft until the preview is switched off. Never
+  put a link together by hand.
+- When it fails with `admin_privileges_requred`, it is a known CLI gap
   ([test findings](references/test-findings.md#cli-gaps-found)): report it once and go
   on, without retrying. For the preview, open it in the browser as the visual review
   describes.

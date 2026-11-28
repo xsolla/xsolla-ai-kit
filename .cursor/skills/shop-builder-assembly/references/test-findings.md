@@ -70,7 +70,10 @@ from committed evidence.
 3. `enable-preview` and `preview-link` returned `admin_privileges_requred` for a
    Publisher Account project owner, while the same user could open Preview in the
    Publisher Account editor. CLI 1.10.0 removed `preview-link`; `enable-preview` is
-   still open.
+   still open. `enable-preview` answers with a token, and the link is the preview host,
+   the slug and that token: `https://preview.xsollasitebuilder.com/<slug>?publicToken=<token>`,
+   as Publisher Account's own public preview switch builds it. `scripts/preview_link.py`
+   builds it the same way.
 
 First-time user runs (2026-10-29 to 2026-11-02, CLI 1.9.4) found two more:
 
